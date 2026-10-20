@@ -1,6 +1,6 @@
 # Endstation (Arbeitstitel)
 
-Ein Endzeit-Erkundungsspiel auf der echten Karte. Du gehst draußen herum, findest Vorräte an echten Orten und baust deinen alten Bus zum Zuhause aus. Kein Zwang, kein Stress: Wer eine Pause macht, verliert nichts.
+Ein Endzeit-Erkundungsspiel auf der echten Karte. Tagsüber gehst du draußen herum, findest Vorräte und Baupläne an echten Orten. Abends richtest du deine Endstation ein, eine alte Bus-Wartehalle in 3D. Kein Zwang, kein Stress: Wer eine Pause macht, verliert nichts.
 
 **Stand:** Prototyp 0.1 (Einzelspieler, läuft im Handy-Browser)
 
@@ -13,6 +13,9 @@ Ein Endzeit-Erkundungsspiel auf der echten Karte. Du gehst draußen herum, finde
 - Fundstellen überall (Autos, Rucksäcke, Gartenlauben …) und an echten Orten (Supermarkt, Apotheke, Baumarkt, Tankstelle, Brunnen, Bushaltestelle)
 - Durchsuchen, wenn man nah genug dran ist; Abklingzeit pro Fundstelle
 - Bus-Ausbau (Regenfass, Werkbank, Dachgarten, Sanitätsecke, Funkgerät) mit passiver Produktion
+- Kartennebel zum Freilaufen, Sektoren, echte Tageszeit und echtes Wetter
+- Bewachte Fundstellen, Rundenkampf mit Timing, Waffen
+- **Endstation:** eigener Ort (bleibt auf dem Gerät), 3D-Halle zum Einrichten, 20 Möbel und Deko-Teile, Baupläne, Gemütlichkeit
 - 12 Erinnerungsstücke zum Sammeln
 - Rückkehr-Bonus nach einer Pause, Vibration bei Fundstellen in Reichweite
 - Spielstand wird automatisch auf dem Gerät gespeichert
@@ -46,6 +49,7 @@ src/
   core/        Reine Spiellogik, ohne Browser. Läuft später unverändert auf dem Server.
   services/    Austauschbare Dienste: Backend, Login, Standort, Speicher, Einstellungen
   map/         Karte, Endzeit-Kartenstil, Demo-Dorf
+  base/        3D-Endstation (three.js): Halle und Möbelmodelle
   ui/          Bildschirme und Bedienelemente
 docs/          Konzept, Architektur, Fahrplan
 scripts/       Generatoren für Demo-Dorf und Platzhalter-Logo
@@ -58,4 +62,5 @@ Mehr dazu in [docs/ARCHITEKTUR.md](docs/ARCHITEKTUR.md), das Spielkonzept in [do
 
 - Kartendaten © OpenStreetMap-Mitwirkende (ODbL), Kacheln von [OpenFreeMap](https://openfreemap.org) (kostenlos, ohne API-Schlüssel)
 - Kartendarstellung mit [MapLibre GL JS](https://maplibre.org) (BSD-3)
+- 3D-Endstation mit [three.js](https://threejs.org) (MIT)
 - Schriften: Doto, Barlow Semi Condensed, Covered By Your Grace (SIL Open Font License), liegen im Projekt, kein Google-Server

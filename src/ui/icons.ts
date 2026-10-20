@@ -44,6 +44,10 @@ const P: Record<string, string> = {
   snow: '<path d="M7 14.5h10a4 4 0 0 0 .4-8 5.5 5.5 0 0 0-10.7 1.2A3.5 3.5 0 0 0 7 14.5z"/><path d="M8 18.5h.01M12 20.5h.01M16 18.5h.01M10 21.5h.01M14 22h.01" stroke-width="2.4"/>',
   fog: '<path d="M4 9h16M3 13h18M5 17h14M7 21h10"/>',
   storm: '<path d="M7 14.5h10a4 4 0 0 0 .4-8 5.5 5.5 0 0 0-10.7 1.2A3.5 3.5 0 0 0 7 14.5z"/><path d="M12.5 15.5l-2.5 4h3l-2 3.5"/>',
+  home: '<path d="M4 11.5L12 5l8 6.5"/><path d="M6 10v9.5h12V10"/><path d="M10 19.5v-5h4v5"/>',
+  rotl: '<path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/>',
+  rotr: '<path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v4.5h-4.5"/>',
+  blueprint: '<rect x="3.5" y="4.5" width="17" height="15" rx="1.5"/><path d="M7 15l3-4 3 3 4-6"/><path d="M3.5 9h17"/>',
   compass: '<circle cx="12" cy="12" r="8.5"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>',
   wrench: '<path d="M15 3.5a5 5 0 0 0-4.8 6.4L3.5 16.6l3.9 3.9 6.7-6.7A5 5 0 0 0 20.5 9l-3 3-3.5-3.5 3-3a5 5 0 0 0-2-2z"/>',
 };

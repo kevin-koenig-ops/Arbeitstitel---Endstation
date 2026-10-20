@@ -23,16 +23,32 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - Tag/Dämmerung/Nacht aus dem Sonnenstand, Nacht mit mehr Gefahr und mehr Beute
 - Echtes Wetter mit Regen, Schnee, Nebel, Gewitter
 
+## ✅ Iteration 1d: Die Endstation (Basisbau)
+
+- Eigenen Ort festlegen (bleibt nur auf dem Gerät), bauen nur vor Ort
+- 3D-Wartehalle mit Schutt, 20 Möbel- und Deko-Teile, Gemütlichkeit mit Stufen
+- Baupläne an passenden Fundstellen, Licht nach echter Tageszeit
+
+**Zu Hause testen:** Macht das Einrichten abends Spaß? Welche Teile fehlen? Ist die Halle zu klein oder zu groß?
+
+## Iteration 1e: Endstation ausbauen
+
+- Mehr Räume freischalten (Stellwerk, Werkstatt, Dach), jeder mit eigenem Zweck
+- Mehr Baupläne und seltene Fundstücke (Neonschild, Jukebox, Aquarium …)
+- Wandplätze für Bilder, Poster und gefundene Erinnerungsstücke
+- Gemütlichkeit wirkt sich aus (z. B. schnellere Erholung, mehr Ertrag vom Garten)
+- Bus und Endstation zusammenführen: Ausbauten des Busses stehen sichtbar in der Halle
+
 ## Iteration 2: Geschichte und Überlebende (Tiefe)
 
-- Hauptziel „Fahrt zur Küste“: Bus-Teile an bestimmten echten Orten (Batterie, Reifen, Treibstoff …)
+- Endziel „Die Linie 0 fährt wieder“: Bus-Teile an bestimmten echten Orten (Batterie, Reifen, Treibstoff …), am Ende die Fahrt zur Küste
 - Erinnerungsstücke als zusammenhängende Geschichten (Sets)
 - Funkaufträge zu echten Orten in der Nähe
 
 ## Iteration 2b: Überlebende (das Herzstück)
 
 - Überlebende finden (seltenes Ereignis an Fundstellen oder durch Funksignale)
-- Jede Figur mit Name, kurzer Geschichte, Fähigkeit, Bedürfnissen
+- Jede Figur mit Name, kurzer Geschichte, Fähigkeit, Bedürfnissen; sie wohnen sichtbar in der Endstation und wünschen sich bestimmte Möbel
 - Versorgen statt Pflicht: Wer gut versorgt ist, hilft mehr; niemand stirbt, wenn man mal nicht spielt
 - Erste Story-Kapitel, die an Erinnerungsstücke anknüpfen
 - Sanitätsecke bekommt ihre Funktion

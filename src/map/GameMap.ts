@@ -42,6 +42,7 @@ interface Options {
   onCameraMove: () => void;
   onDataChanged: () => void;
   onError: (msg: string) => void;
+  onBaseTap?: () => void;
 }
 
 const ll = (p: LatLon): [number, number] => [p.lon, p.lat];
@@ -54,6 +55,7 @@ export class GameMap {
   private player: Marker | null = null;
   private playerEl: HTMLElement | null = null;
   private target: Marker | null = null;
+  private baseMarker: Marker | null = null;
   private lastMarkerTap = 0;
   private loaded = false;
   private errorShown = false;
@@ -141,6 +143,20 @@ export class GameMap {
     } else {
       this.player.setLngLat(ll(pos));
     }
+  }
+
+  /** Die eigene Endstation auf der Karte (nur für dich sichtbar). */
+  setBase(p: LatLon | null) {
+    this.baseMarker?.remove();
+    this.baseMarker = null;
+    if (!p) return;
+    const el = h('button', { class: 'base-marker', type: 'button', 'aria-label': 'Deine Endstation' }, h('span', { class: 'base-sign' }, 'H'), h('span', { class: 'base-pole' }));
+    el.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      this.lastMarkerTap = Date.now();
+      this.opts.onBaseTap?.();
+    });
+    this.baseMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(ll(p)).addTo(this.map);
   }
 
   setRange(c: LatLon, radiusM: number) {

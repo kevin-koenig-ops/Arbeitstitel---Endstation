@@ -3,6 +3,7 @@
 // Umzug vom Gerät in ein Konto).
 
 import { MAX_HEALTH, START_WEAPONS } from './content';
+import { RUBBLE } from './furniture';
 import { SCHEMA_VERSION } from './rules';
 import type { PlayerState } from './types';
 
@@ -21,6 +22,11 @@ const MIGRATIONS: Record<number, (s: Raw) => void> = {
   2: (s) => {
     s.explored = {};
     s.sectors = {};
+  },
+  // Version 3 -> 4: Basisbau (Endstation) und Baupläne
+  3: (s) => {
+    s.base = { items: [], rubble: RUBBLE.map((r) => r.id), nextUid: 1 };
+    s.blueprints = {};
   },
 };
 

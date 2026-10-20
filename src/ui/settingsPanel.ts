@@ -115,7 +115,7 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
       'section',
       { class: 'set-group' },
       h('h2', null, 'Datenschutz'),
-      h('p', { class: 'note' }, 'Dein genauer Standort verlässt dein Gerät nicht. Für die echte Karte lädt die App Kartenkacheln von OpenFreeMap; dabei sieht der Kartenserver nur, welcher Kartenausschnitt geladen wird. Für echtes Wetter geht ein auf etwa 10 km gerundeter Ort an Open-Meteo. Das kannst du oben ausschalten.'),
+      h('p', { class: 'note' }, 'Dein genauer Standort verlässt dein Gerät nicht. Für die echte Karte lädt die App Kartenkacheln von OpenFreeMap; dabei sieht der Kartenserver nur, welcher Kartenausschnitt geladen wird. Für echtes Wetter geht ein auf etwa 10 km gerundeter Ort an Open-Meteo. Das kannst du oben ausschalten. Den Ort deiner Endstation speichert nur dieses Gerät; andere Spieler sehen ihn nie.'),
     ),
     h('section', { class: 'set-group' }, h('h2', null, 'Spielstand'), del),
     h('p', { class: 'version' }, `Version ${GAME_VERSION} · Kartendaten © OpenStreetMap-Mitwirkende`),

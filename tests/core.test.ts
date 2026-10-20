@@ -145,7 +145,8 @@ describe('Spielstand', () => {
     void health, healthAt, weapons, combat;
     const old = { ...v1, schema: 1, stats: { searches: 7 } };
     const m = migrate(JSON.parse(JSON.stringify(old)))!;
-    expect(m.schema).toBe(3);
+    expect(m.schema).toBe(4);
+    expect(m.base.rubble.length).toBe(3);
     expect(m.explored).toEqual({});
     expect(m.health).toBe(10);
     expect(m.weapons[0].kind).toBe('crowbar');

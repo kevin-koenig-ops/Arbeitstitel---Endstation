@@ -1,4 +1,6 @@
 // Kern-Datentypen des Spiels.
+import type { FurnitureId } from './furniture';
+export type { FurnitureId };
 //
 // Wichtig für später (Mehrspieler): Alles in src/core ist reine Spiellogik ohne
 // Browser-Abhängigkeiten. Derselbe Code kann später unverändert auf einem Server
@@ -70,6 +72,22 @@ export interface Character {
   background: BackgroundId;
 }
 
+export interface PlacedItem {
+  uid: number;
+  kind: FurnitureId;
+  x: number;
+  y: number;
+  /** Drehung in 90°-Schritten (0–3). */
+  rot: number;
+}
+
+export interface BaseState {
+  items: PlacedItem[];
+  /** Noch nicht weggeräumter Schutt. */
+  rubble: string[];
+  nextUid: number;
+}
+
 export interface BuiltModule {
   builtAt: number;
   /** Zeitpunkt, bis zu dem die passive Produktion abgeholt wurde. */
@@ -102,6 +120,10 @@ export interface PlayerState {
   explored: Record<string, string>;
   /** Erreichte Stufe pro Sektor (1 = erkundet, 2 = gesichert). */
   sectors: Record<string, number>;
+  /** Die Endstation (Basis). Ihr Ort steht NICHT hier, sondern nur auf dem Gerät. */
+  base: BaseState;
+  /** Gefundene Baupläne: id -> Fundzeitpunkt. */
+  blueprints: Partial<Record<FurnitureId, number>>;
   stats: { searches: number; kills: number };
 }
 
@@ -116,7 +138,12 @@ export type Action =
   | { type: 'fight'; move: CombatMove; quality: Quality }
   | { type: 'craft'; weapon: WeaponId }
   | { type: 'heal' }
-  | { type: 'explore'; at: LatLon; accuracyM: number };
+  | { type: 'explore'; at: LatLon; accuracyM: number }
+  // Basis: bewusst ohne Position, damit der Ort der Endstation privat bleibt
+  | { type: 'clearRubble'; id: string }
+  | { type: 'place'; kind: FurnitureId; x: number; y: number; rot: number }
+  | { type: 'move'; uid: number; x: number; y: number; rot: number }
+  | { type: 'store'; uid: number };
 
 export type RejectReason =
   | 'too_far'
@@ -131,10 +158,17 @@ export type RejectReason =
   | 'exhausted'
   | 'no_combat'
   | 'no_medicine'
-  | 'full_health';
+  | 'full_health'
+  | 'blocked'
+  | 'no_blueprint'
+  | 'not_found';
 
 export type GameEvent =
-  | { type: 'loot'; spotId: string; items: Partial<Inventory>; memento?: string; bonus: boolean; perk?: Resource; night?: boolean }
+  | { type: 'loot'; spotId: string; items: Partial<Inventory>; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: FurnitureId }
+  | { type: 'rubbleCleared'; id: string; reward: Partial<Inventory> }
+  | { type: 'placed'; uid: number; kind: FurnitureId }
+  | { type: 'moved'; uid: number }
+  | { type: 'stored'; uid: number; refund: Partial<Inventory> }
   | { type: 'explored'; added: number }
   | { type: 'sector'; key: string; level: number; reward: Partial<Inventory> }
   | { type: 'built'; module: ModuleId }

@@ -35,6 +35,18 @@ import {
   WEAPONS,
 } from './content';
 import { ExploredView, revealAround, SECTOR_LEVELS } from './explore';
+import {
+  BLUEPRINT_CHANCE,
+  BLUEPRINT_SOURCES,
+  COMFORT_TIERS,
+  FURNITURE,
+  footprint,
+  HALL_D,
+  HALL_W,
+  RUBBLE,
+  RUBBLE_REWARD,
+  type FurnitureId,
+} from './furniture';
 import { distanceM } from './geo';
 import { dayPhase } from './sun';
 import { pickWeighted, randInt, rngFrom } from './rng';
@@ -55,7 +67,7 @@ import type {
 } from './types';
 import { resolveGridSpot } from './world';
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 const HOUR = 3600_000;
 const REGEN_MS = HEALTH_REGEN_MIN * 60_000;
 const MAX_GPS_SLACK_M = 25;
@@ -78,6 +90,8 @@ export function createPlayer(playerId: string, character: Character, now: number
     combat: null,
     explored: {},
     sectors: {},
+    base: { items: [], rubble: RUBBLE.map((r) => r.id), nextUid: 1 },
+    blueprints: {},
     stats: { searches: 0, kills: 0 },
   };
 }
@@ -143,6 +157,51 @@ export function guardOf(seed: string, spot: Spot, now: number): EnemyId | null {
   const chance = Math.min(0.75, GUARD_CHANCE[spot.source] * (night ? NIGHT_GUARD_FACTOR : 1));
   if (r() >= chance) return null;
   return pickWeighted(r, ENEMY_WEIGHTS);
+}
+
+// --- Basis ---------------------------------------------------------------------------
+
+export function knowsBlueprint(state: PlayerState, kind: FurnitureId): boolean {
+  return !!FURNITURE[kind].starter || !!state.blueprints[kind];
+}
+
+/** Gemütlichkeit: jedes Teil zählt, doppelte Teile nur halb. */
+export function comfort(state: PlayerState): number {
+  const seen = new Set<FurnitureId>();
+  let c = 0;
+  for (const it of state.base.items) {
+    c += seen.has(it.kind) ? FURNITURE[it.kind].comfort / 2 : FURNITURE[it.kind].comfort;
+    seen.add(it.kind);
+  }
+  return Math.round(c);
+}
+
+export function comfortTier(value: number): { name: string; next: number | null } {
+  let name = COMFORT_TIERS[0][1];
+  let next: number | null = null;
+  for (const [min, n] of COMFORT_TIERS) {
+    if (value >= min) name = n;
+    else if (next === null) next = min;
+  }
+  return { name, next };
+}
+
+/** Darf ein Teil hier stehen? Gibt den Grund zurück, falls nicht. */
+export function placementProblem(state: PlayerState, kind: FurnitureId, x: number, y: number, rot: number, ignoreUid?: number): RejectReason | null {
+  const { w, d } = footprint(kind, rot);
+  if (x < 0 || y < 0 || x + w > HALL_W || y + d > HALL_D || !Number.isInteger(x) || !Number.isInteger(y)) return 'blocked';
+  const layer = FURNITURE[kind].layer;
+  const overlaps = (ax: number, ay: number, aw: number, ad: number) => x < ax + aw && ax < x + w && y < ay + ad && ay < y + d;
+  for (const it of state.base.items) {
+    if (it.uid === ignoreUid || FURNITURE[it.kind].layer !== layer) continue;
+    const f = footprint(it.kind, it.rot);
+    if (overlaps(it.x, it.y, f.w, f.d)) return 'blocked';
+  }
+  for (const id of state.base.rubble) {
+    const r = RUBBLE.find((x) => x.id === id);
+    if (r && overlaps(r.x, r.y, r.w, r.d)) return 'blocked';
+  }
+  return null;
 }
 
 /** Was liegt im Bus zum Abholen bereit (Regenfass, Dachgarten)? */
@@ -311,6 +370,53 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       break;
     }
 
+    case 'clearRubble': {
+      if (!state.base.rubble.includes(action.id)) return reject('not_found');
+      state.base.rubble = state.base.rubble.filter((id) => id !== action.id);
+      for (const k of RESOURCE_ORDER) state.inventory[k] += RUBBLE_REWARD[k] ?? 0;
+      events.push({ type: 'rubbleCleared', id: action.id, reward: RUBBLE_REWARD });
+      break;
+    }
+
+    case 'place': {
+      const def = FURNITURE[action.kind];
+      if (!def) return reject('not_found');
+      if (!knowsBlueprint(state, action.kind)) return reject('no_blueprint');
+      if (!canAfford(state.inventory, def.cost)) return reject('cost');
+      const rot = ((action.rot % 4) + 4) % 4;
+      const problem = placementProblem(state, action.kind, action.x, action.y, rot);
+      if (problem) return reject(problem);
+      for (const k of RESOURCE_ORDER) state.inventory[k] -= def.cost[k] ?? 0;
+      const uid = state.base.nextUid++;
+      state.base.items.push({ uid, kind: action.kind, x: action.x, y: action.y, rot });
+      events.push({ type: 'placed', uid, kind: action.kind });
+      break;
+    }
+
+    case 'move': {
+      const it = state.base.items.find((i) => i.uid === action.uid);
+      if (!it) return reject('not_found');
+      const rot = ((action.rot % 4) + 4) % 4;
+      const problem = placementProblem(state, it.kind, action.x, action.y, rot, it.uid);
+      if (problem) return reject(problem);
+      it.x = action.x;
+      it.y = action.y;
+      it.rot = rot;
+      events.push({ type: 'moved', uid: it.uid });
+      break;
+    }
+
+    case 'store': {
+      const it = state.base.items.find((i) => i.uid === action.uid);
+      if (!it) return reject('not_found');
+      // Einlagern gibt alles zurück: Umräumen soll nie etwas kosten.
+      const refund = FURNITURE[it.kind].cost;
+      for (const k of RESOURCE_ORDER) state.inventory[k] += refund[k] ?? 0;
+      state.base.items = state.base.items.filter((i) => i.uid !== it.uid);
+      events.push({ type: 'stored', uid: it.uid, refund });
+      break;
+    }
+
     case 'build': {
       const def = MODULES[action.module];
       if (state.bus.modules[action.module]) return reject('already_built');
@@ -400,11 +506,19 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, guarded: boo
   else if (missing.length && r() < chance) memento = missing[Math.floor(r() * missing.length)].id;
   if (memento) state.collection[memento] = ctx.now;
 
+  // Bauplan
+  let blueprint: FurnitureId | undefined;
+  const sources = (BLUEPRINT_SOURCES[spot.kind] ?? []).filter((id) => !state.blueprints[id]);
+  if (sources.length && r() < BLUEPRINT_CHANCE[spot.source]) {
+    blueprint = sources[Math.floor(r() * sources.length)];
+    state.blueprints[blueprint] = ctx.now;
+  }
+
   state.spots[spot.id] = ctx.now;
   state.returnBonus = false;
   state.stats.searches += 1;
   pruneSpots(state, ctx.now);
-  return { type: 'loot', spotId: spot.id, items, memento, bonus, perk, night };
+  return { type: 'loot', spotId: spot.id, items, memento, bonus, perk, night, blueprint };
 }
 
 /** Bei einer Niederlage fällt etwas aus dem Rucksack. Nie viel, nie der Bus. */

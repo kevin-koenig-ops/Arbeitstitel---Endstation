@@ -19,6 +19,7 @@ import type { App, Screen } from '../app';
 import { avatarSvg } from '../avatar';
 import { append, clear, h, svgEl } from '../dom';
 import { openBusPanel } from '../game/busPanel';
+import { getBasePlace } from '../../services/basePlace';
 import { openCombat } from '../game/combat';
 import { AmbienceController, ambienceEffects, currentAmbience, guardSightM, PHASE_NAMES, WEATHER_NAMES, type Ambience } from '../game/ambience';
 import { Particles } from '../game/dust';
@@ -71,6 +72,8 @@ export function gameScreen(app: App): Screen {
   const locChip = h('div', { class: 'loc-chip' });
   const busBadge = h('span', { class: 'bus-badge', hidden: true });
   const locateBtn = h('button', { class: 'iconbtn locate', type: 'button', 'aria-label': 'Auf mich zentrieren', onclick: () => recenter() }, svgEl(icon('locate')));
+  const homeBadge = h('span', { class: 'home-badge', hidden: true }, '+');
+  const homeBtn = h('button', { class: 'iconbtn home', type: 'button', 'aria-label': 'Deine Endstation', onclick: () => void openBase() }, svgEl(icon('home')), homeBadge);
   const hud = h(
     'div',
     { class: 'hud' },
@@ -92,6 +95,7 @@ export function gameScreen(app: App): Screen {
       'div',
       { class: 'hud-bottom' },
       locChip,
+      homeBtn,
       h('button', { class: 'bus-btn', type: 'button', onclick: () => openBus() }, svgEl(icon('bus', 26)), h('span', null, 'Bus'), busBadge),
       locateBtn,
     ),
@@ -405,6 +409,53 @@ export function gameScreen(app: App): Screen {
     openFight();
   };
 
+  // --- Endstation -------------------------------------------------------------------
+  const refreshBaseMarker = () => {
+    const place = getBasePlace();
+    gm?.setBase(place?.pos ?? null);
+    homeBadge.hidden = !!place;
+  };
+
+  // Die 3D-Halle (three.js) wird erst beim ersten Öffnen nachgeladen,
+  // damit die Karte beim Start schneller da ist.
+  let baseLoading = false;
+  const openBase = async () => {
+    if (baseLoading) return;
+    baseLoading = true;
+    let mod: typeof import('../base/baseView');
+    try {
+      mod = await import('../base/baseView');
+    } catch {
+      app.toast('Die Endstation konnte nicht geladen werden. Prüfe die Verbindung.', 'warn');
+      return;
+    } finally {
+      baseLoading = false;
+    }
+    const { openBaseView, openSetBase } = mod;
+    sheet.close();
+    closeOverlay();
+    if (!getBasePlace()) {
+      overlay = openSetBase(app, overlayHost, () => fix, (set) => {
+        overlay = null;
+        refreshBaseMarker();
+        if (set) void openBase();
+      });
+      return;
+    }
+    overlay = openBaseView(app, overlayHost, {
+      getFix: () => fix,
+      phase: () => currentAmbience().phase,
+      onClose: () => {
+        overlay = null;
+        refreshBaseMarker();
+      },
+      onChanged: () => {
+        renderHud();
+        refreshBaseMarker();
+      },
+    });
+  };
+
   const openBus = () => {
     sheet.close();
     closeOverlay();
@@ -484,6 +535,7 @@ export function gameScreen(app: App): Screen {
           if (provider?.kind === 'sim') walkTo(p);
         },
         onSpotTap: (id) => sheet.open(id),
+        onBaseTap: () => void openBase(),
         onFollowChange: (f) => locateBtn.classList.toggle('lost', !f),
         onCameraMove: updateFog,
         onDataChanged: () => {
@@ -509,6 +561,7 @@ export function gameScreen(app: App): Screen {
       }
       if (destroyed) return;
       gm.fog?.setExplored(app.backend.current()?.explored ?? {});
+      refreshBaseMarker();
       particles = new Particles(dust);
       ambience = new AmbienceController(app, el, gm.map, gm.fog?.canvas ?? null, particles, bolt);
       ambience.onChange((a) => {

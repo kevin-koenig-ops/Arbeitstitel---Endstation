@@ -16,4 +16,7 @@ export const REJECT_TEXT: Record<RejectReason, string> = {
   no_combat: 'Der Kampf ist schon vorbei.',
   no_medicine: 'Du hast keine Medizin.',
   full_health: 'Du bist schon fit.',
+  blocked: 'Da ist kein Platz.',
+  no_blueprint: 'Dafür fehlt dir noch der Bauplan.',
+  not_found: 'Das gibt es hier nicht (mehr).',
 };

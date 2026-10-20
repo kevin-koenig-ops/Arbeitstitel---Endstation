@@ -313,7 +313,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .hud-bottom {
   display: grid;
   grid-template-columns: 46px 1fr 46px;
-  grid-template-areas: "chip chip chip" ". bus locate";
+  grid-template-areas: "chip chip chip" "home bus locate";
   align-items: center;
   justify-items: center;
   row-gap: 10px;
@@ -646,3 +646,70 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .game[data-phase="night"] .player-face { box-shadow: 0 0 0 3px var(--amber), 0 0 0 6px rgba(18, 17, 15, 0.8), 0 0 30px rgba(255, 210, 140, 0.6); }
 
 .select { height: 42px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--steel); color: var(--bone); font: 600 15px var(--font-ui); max-width: 100%; }
+
+/* --- Endstation (Basis) --------------------------------------------------------------- */
+.iconbtn.home { grid-area: home; position: relative; }
+.home-badge { position: absolute; top: -4px; right: -4px; width: 20px; height: 20px; border-radius: 50%; background: var(--amber); color: var(--ink); font: 800 15px/20px var(--font-ui); text-align: center; box-shadow: 0 0 0 2px var(--ink); }
+.base-marker { position: relative; width: 40px; height: 64px; padding: 0; border: 0; background: none; cursor: pointer; }
+.base-sign { position: absolute; left: 2px; top: 0; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: #2f6b3c; color: #e6c13a; font: 800 22px/1 var(--font-ui); box-shadow: 0 0 0 3px #e6c13a, 0 0 0 5px #15130f, 0 0 22px rgba(230, 193, 58, 0.6); }
+.base-pole { position: absolute; left: 18.5px; top: 38px; width: 3px; height: 24px; background: #15130f; }
+
+.overlay.base-view { padding: 0; overflow: hidden; background: #14110e; }
+/* Himmel hinter der Halle, passend zur echten Tageszeit */
+.overlay.base-view[data-phase='day'] { background: radial-gradient(120% 70% at 50% 18%, #6b5a42 0%, #3a3127 45%, #17130f 100%); }
+.overlay.base-view[data-phase='dusk'] { background: radial-gradient(120% 70% at 50% 18%, #7a4a35 0%, #3b2622 45%, #15100f 100%); }
+.overlay.base-view[data-phase='night'] { background: radial-gradient(120% 70% at 50% 18%, #222a3d 0%, #13161f 50%, #0b0b0e 100%); }
+.base-stage { position: absolute; inset: 0; }
+.base-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.base-head { position: absolute; top: 0; left: 0; right: 0; display: flex; flex-direction: column; gap: 8px; padding-left: var(--gutter-l); padding-right: var(--gutter-r); padding-block: calc(var(--safe-t) + 12px) 0; pointer-events: none; }
+.base-head > * { pointer-events: auto; }
+.base-title-row { display: flex; align-items: center; justify-content: space-between; }
+.base-info { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.comfort { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; border-radius: 17px; background: rgba(18, 17, 15, 0.85); border: 1px solid var(--line); font-size: 13px; }
+.comfort-label { color: var(--dust); text-transform: uppercase; letter-spacing: 0.1em; font-size: 11px; font-weight: 600; }
+.comfort b { font: 700 18px var(--font-ui); color: var(--amber); font-variant-numeric: tabular-nums; }
+.comfort-tier { font-weight: 600; }
+.base-res { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.base-res .cost-chip { background: rgba(18, 17, 15, 0.85); }
+.base-away { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 10px; background: rgba(27, 26, 23, 0.94); border: 1px solid var(--line); font-size: 14px; color: var(--dust); }
+.base-cam { position: absolute; right: var(--gutter-r); top: 46%; display: flex; flex-direction: column; gap: 8px; }
+.base-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding-left: var(--gutter-l);
+  padding-right: var(--gutter-r);
+  padding-block: 10px calc(var(--safe-b) + 12px);
+  background: linear-gradient(to top, rgba(14, 12, 10, 0.97) 70%, rgba(14, 12, 10, 0));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.drawer-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.drawer-tabs button { flex: none; height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid var(--line); background: var(--steel); color: var(--dust); font: 600 14px var(--font-ui); cursor: pointer; }
+.drawer-tabs button[aria-selected="true"] { background: var(--amber); color: var(--ink); border-color: var(--amber); }
+.drawer-list { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x proximity; scrollbar-width: thin; }
+.fcard { flex: none; width: 108px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 6px; border-radius: 10px; border: 1px solid var(--line); background: var(--steel); color: var(--bone); cursor: pointer; scroll-snap-align: start; }
+.fcard:hover { border-color: var(--amber); }
+.fthumb { position: relative; width: 76px; height: 76px; border-radius: 8px; background: radial-gradient(circle at 50% 40%, #3a332a, #1d1a16); display: grid; place-items: center; overflow: hidden; }
+.fthumb img { width: 76px; height: 76px; }
+.flock { position: absolute; right: 4px; bottom: 4px; color: var(--bone); }
+.fname { font: 700 13px/1.15 var(--font-ui); text-align: center; }
+.fcard .cost { justify-content: center; }
+.fcard .cost-chip { padding: 2px 6px; font-size: 12px; }
+.fcard.locked .fthumb img { filter: grayscale(1) brightness(0.45); }
+.fcard.locked .fname { color: var(--dust); }
+.fcard.poor { opacity: 0.6; }
+.fhint { font-size: 11px; line-height: 1.2; color: var(--dust); text-align: center; }
+.drawer-hint { margin: 0; font-size: 13px; color: var(--amber); }
+.ctx-bar { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 12px; background: rgba(27, 26, 23, 0.96); border: 1px solid var(--line); }
+.ctx-title { font: 700 18px/1.2 var(--font-ui); }
+.ctx-title small { display: block; margin-top: 2px; font: 400 14px/1.3 var(--font-ui); color: var(--dust); }
+.ctx-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.ctx-actions .btn { flex: 1 1 auto; }
+.receipt-blueprint { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; padding: 8px 10px; border-radius: 6px; background: #2f4a6a; color: #e8eef6; font: 700 15px var(--font-ui); }
+.overlay.set-base { display: grid; place-items: center; }
+.narrow-box { max-width: 460px; }
+.set-base-lead { margin: 0; font-size: 18px; line-height: 1.45; }
+.set-base .row .btn { flex: 1; }
