@@ -179,7 +179,7 @@ class Grid<T> {
 
 // --- Hauptfunktion ---------------------------------------------------------------------
 
-export const DECOR_LIMITS = { trees: 6500, cars: 260 };
+export const DECOR_LIMITS = { trees: 4500, cars: 220 };
 
 export function generateDecor(input: DecorInput, center: LatLon, radiusM: number): DecorResult {
   const P = new Proj(center);
