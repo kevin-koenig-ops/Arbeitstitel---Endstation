@@ -461,7 +461,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 /* MapLibre-Steuerung an den Look anpassen */
 .maplibregl-ctrl-attrib { background: rgba(18, 17, 15, 0.7) !important; color: var(--dust); font-family: var(--font-ui); }
 .maplibregl-ctrl-attrib a { color: var(--dust) !important; }
-.maplibregl-ctrl-bottom-right { bottom: calc(var(--safe-b) + 90px); }
+.maplibregl-ctrl-bottom-right { bottom: calc(var(--safe-b) + 128px); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
