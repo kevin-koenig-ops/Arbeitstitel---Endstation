@@ -10,6 +10,13 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - Wird die echte Karte schön dargestellt? Fehlen Ebenen oder sieht etwas komisch aus?
 - Wie lange hält der Akku?
 
+## ✅ Iteration 1b: Kartenoptik und Kampf
+
+- 3D-Bäume, abwechslungsreiche Häuser, Autowracks, Strommasten, warmer Dunst, Tiefenunschärfe
+- Bewachte Fundstellen, Rundenkampf mit Timing, Gesundheit, Waffen aus der Werkbank
+
+**Draußen testen:** Fühlt sich der Kampf gut an? Mehr Action oder mehr Taktik? Sind die Gegner zu stark oder zu schwach?
+
 ## Iteration 2: Überlebende (das Herzstück)
 
 - Überlebende finden (seltenes Ereignis an Fundstellen oder durch Funksignale)
@@ -17,6 +24,7 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - Versorgen statt Pflicht: Wer gut versorgt ist, hilft mehr; niemand stirbt, wenn man mal nicht spielt
 - Erste Story-Kapitel, die an Erinnerungsstücke anknüpfen
 - Sanitätsecke bekommt ihre Funktion
+- Überlebende kämpfen mit und bringen eigene Kampf-Aktionen mit (heilen, Falle stellen)
 
 ## Iteration 3: Feinschliff & App-Gefühl
 
@@ -32,10 +40,17 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - Gast-Spielstand ins Konto übernehmen
 - Spielstand auf mehreren Geräten
 
+## Iteration 4b: Mehr Bedrohung
+
+- Horden, die langsam durch echte Straßen ziehen (umgehen, durchschleichen oder kämpfen)
+- Stammwege werden mit der Zeit gesichert
+- Lärm beim Durchsuchen lockt Streuner an
+
 ## Iteration 5: Gemeinschaft
 
 - Server mit denselben Spielregeln (`src/core`), `RemoteBackend`
 - Spuren anderer Spieler: Notizen, Vorratskisten, Warnschilder
+- Nester (befallene Supermärkte usw.) als Raids für mehrere Spieler
 - Funknetz: Tauschen über Entfernung, Pakete brauchen echte Stunden
 - Stadt-Land-Austausch
 

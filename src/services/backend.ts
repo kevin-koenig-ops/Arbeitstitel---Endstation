@@ -9,9 +9,9 @@
 //                            Datenbank hält. Die Oberfläche bleibt unverändert.
 
 import { distanceM } from '../core/geo';
-import { applyAction, createPlayer } from '../core/rules';
+import { applyAction, createPlayer, guardOf } from '../core/rules';
 import { migrate } from '../core/save';
-import type { Action, ActionResult, Character, LatLon, PlayerState, Spot } from '../core/types';
+import type { Action, ActionResult, Character, EnemyId, LatLon, PlayerState, Spot } from '../core/types';
 import { gridSpotsAround, poiSpots, type PoiCandidate } from '../core/world';
 import type { AuthProvider } from './auth';
 import { readJson, removeKey, writeJson } from './storage';
@@ -26,6 +26,8 @@ export interface GameBackend {
   deleteSave(): Promise<void>;
   /** Fundstellen in der Nähe. Im Mehrspieler kommen sie vom Server. */
   spotsNear(center: LatLon, radiusM: number, pois: PoiCandidate[]): Promise<Spot[]>;
+  /** Wer bewacht diese Fundstelle gerade? Im Mehrspieler weiß das der Server. */
+  guardFor(spot: Spot): EnemyId | null;
   now(): number;
 }
 
@@ -77,6 +79,10 @@ export class LocalBackend implements GameBackend {
   async deleteSave() {
     removeKey(await this.key());
     this.state = null;
+  }
+
+  guardFor(spot: Spot) {
+    return guardOf(this.worldSeed, spot, this.clock());
   }
 
   async spotsNear(center: LatLon, radiusM: number, pois: PoiCandidate[]) {

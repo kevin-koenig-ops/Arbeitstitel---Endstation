@@ -1,9 +1,9 @@
 // Der Spielbildschirm: Karte, Standort, Fundstellen, HUD und Overlays.
 
 import { FALLBACK_START, IS_PREVIEW, VIEW_RADIUS_M } from '../../config';
-import { RESOURCE_ORDER, RESOURCES } from '../../core/content';
+import { ENEMIES, MAX_HEALTH, RESOURCE_ORDER, RESOURCES } from '../../core/content';
 import { distanceM } from '../../core/geo';
-import { dayNumber, pendingHarvest, readyAt, searchRangeM } from '../../core/rules';
+import { currentHealth, dayNumber, pendingHarvest, readyAt, searchRangeM } from '../../core/rules';
 import type { LatLon, Resource, Spot } from '../../core/types';
 import { DEMO, GameMap, type SpotView } from '../../map/GameMap';
 import {
@@ -18,10 +18,12 @@ import type { App, Screen } from '../app';
 import { avatarSvg } from '../avatar';
 import { append, clear, h, svgEl } from '../dom';
 import { openBusPanel } from '../game/busPanel';
+import { openCombat } from '../game/combat';
 import { mountDust } from '../game/dust';
 import { SpotSheet } from '../game/spotSheet';
 import { icon, resIcon } from '../icons';
 import { settingsPanel } from '../settingsPanel';
+import { REJECT_TEXT } from '../texts';
 
 export function gameScreen(app: App): Screen {
   const initial = app.settings.get();
@@ -45,6 +47,7 @@ export function gameScreen(app: App): Screen {
   const sheetHost = h('div', { class: 'sheet-host' });
 
   const dayEl = h('span', { class: 'who-day' });
+  const hpEl = h('span', { class: 'who-hp', 'aria-label': 'Gesundheit' });
   const chips = {} as Record<Resource, { el: HTMLElement; num: HTMLElement; last: number }>;
   const resBar = h(
     'div',
@@ -70,7 +73,7 @@ export function gameScreen(app: App): Screen {
         'button',
         { class: 'who', type: 'button', 'aria-label': 'Bus und Vorräte öffnen', onclick: () => openBus() },
         svgEl(avatar, 'who-face'),
-        h('span', { class: 'who-text' }, h('span', { class: 'who-name' }, state0.character.name), dayEl),
+        h('span', { class: 'who-text' }, h('span', { class: 'who-name' }, state0.character.name), dayEl, hpEl),
       ),
       resBar,
       h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Pause', onclick: () => openPause() }, svgEl(icon('menu'))),
@@ -106,6 +109,7 @@ export function gameScreen(app: App): Screen {
     getFix: () => fix,
     isSim: () => provider?.kind === 'sim',
     walkTo: (p) => walkTo(p),
+    onFight: (spot) => startFight(spot),
     onChanged: () => {
       renderHud();
       updateSpots();
@@ -117,6 +121,14 @@ export function gameScreen(app: App): Screen {
     const s = app.backend.current();
     if (!s) return;
     dayEl.textContent = `Tag ${dayNumber(s, app.backend.now())}`;
+    const hp = currentHealth(s, app.backend.now());
+    if (hpEl.childElementCount !== MAX_HEALTH) {
+      clear(hpEl);
+      for (let i = 0; i < MAX_HEALTH; i++) hpEl.append(h('i'));
+    }
+    [...hpEl.children].forEach((c, i) => c.classList.toggle('on', i < hp));
+    hpEl.dataset.low = String(hp <= 3);
+    hpEl.setAttribute('aria-label', `Gesundheit ${hp} von ${MAX_HEALTH}`);
     for (const r of RESOURCE_ORDER) {
       const c = chips[r];
       const v = s.inventory[r];
@@ -201,13 +213,14 @@ export function gameScreen(app: App): Screen {
       const wait = readyAt(s, spot) - now;
       const d = fix ? distanceM(fix.pos, spot.pos) : Infinity;
       const st = wait > 0 ? 'cooldown' : d <= range ? 'inrange' : 'ready';
+      const guard = wait > 0 ? null : app.backend.guardFor(spot);
       if (st === 'inrange') {
         if (!notified.has(spot.id)) {
           notified.add(spot.id);
           notifyNear(spot);
         }
       } else if (d > range + 15) notified.delete(spot.id);
-      views.push({ spot, state: st });
+      views.push({ spot, state: st, guard });
     }
     gm.setSpots(views);
     const t = performance.now();
@@ -293,6 +306,31 @@ export function gameScreen(app: App): Screen {
     overlay = null;
   };
 
+  // --- Kampf ------------------------------------------------------------------------
+  const openFight = () => {
+    sheet.close();
+    closeOverlay();
+    overlay = openCombat(app, overlayHost, (end) => {
+      overlay = null;
+      renderHud();
+      updateSpots();
+      if (end.outcome === 'won' && end.loot) sheet.showLoot(end.spot, end.loot, `${ENEMIES[end.enemy].name} erledigt`);
+      else if (end.outcome === 'fled') app.toast('Du hast dich zurückgezogen.');
+    });
+  };
+
+  const startFight = async (spot: Spot) => {
+    if (!fix) return;
+    const res = await app.backend.dispatch({ type: 'engage', spot, at: fix.pos, accuracyM: fix.accuracyM });
+    const ev = res.events[0];
+    if (ev.type === 'rejected') {
+      app.toast(REJECT_TEXT[ev.reason], 'warn');
+      updateSpots();
+      return;
+    }
+    openFight();
+  };
+
   const openBus = () => {
     sheet.close();
     closeOverlay();
@@ -360,6 +398,8 @@ export function gameScreen(app: App): Screen {
       renderLocChip();
       unmountDust = mountDust(dust);
       void onVisible();
+      // Ein laufender Kampf geht nach dem Neuladen weiter.
+      if (app.backend.current()?.combat) openFight();
       document.addEventListener('visibilitychange', onVisible);
 
       const start = mapMode === 'demo' ? DEMO.start : (initial.lastPos ?? FALLBACK_START);

@@ -133,7 +133,7 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
         'circle-pitch-scale': 'map',
         'circle-blur': 1,
         'circle-radius': ['interpolate', ['exponential', 2], ['zoom'], 15, 7, 17, 26, 19, 100],
-        'circle-color': ['match', ['get', 's'], 'inrange', '#ffd27a', ['match', ['get', 'src'], 'poi', '#f1e2bd', '#ffb22e']],
+        'circle-color': ['case', ['==', ['get', 'g'], 1], '#d9482b', ['==', ['get', 's'], 'inrange'], '#ffd27a', ['==', ['get', 'src'], 'poi'], '#f1e2bd', '#ffb22e'],
         'circle-opacity': ['match', ['get', 's'], 'cooldown', 0, 'inrange', 0.75, 0.5],
       },
     },

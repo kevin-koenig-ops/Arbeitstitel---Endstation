@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MODULES } from '../src/core/content';
 import { distanceM, offsetM } from '../src/core/geo';
-import { applyAction, createPlayer, pendingHarvest, readyAt, searchRangeM } from '../src/core/rules';
+import { applyAction, createPlayer, currentHealth, guardOf, pendingHarvest, readyAt, searchRangeM } from '../src/core/rules';
 import { migrate } from '../src/core/save';
 import type { Character, PlayerState, Spot } from '../src/core/types';
 import { classifyPoi, gridSpotsAround, poiSpots, resolveGridSpot } from '../src/core/world';
@@ -45,7 +45,9 @@ describe('Welt', () => {
 });
 
 describe('Durchsuchen', () => {
-  const spot = (): Spot => gridSpotsAround(SEED, HOME, 400)[0];
+  // Eine Fundstelle, die jetzt und nach Ablauf der Abklingzeit unbewacht ist
+  const spot = (): Spot =>
+    gridSpotsAround(SEED, HOME, 600).find((s) => !guardOf(SEED, s, T0) && !guardOf(SEED, s, readyAt({ ...fresh(), spots: { [s.id]: T0 } }, s)))!;
 
   it('gibt Beute, wenn man nah genug dran ist', () => {
     const s = spot();
@@ -136,5 +138,95 @@ describe('Spielstand', () => {
     expect(migrate(JSON.parse(JSON.stringify(s)))).toEqual(s);
     expect(migrate({ foo: 1 })).toBeNull();
     expect(migrate(null)).toBeNull();
+  });
+
+  it('hebt alte Spielstände (Version 1) auf die neue Version', () => {
+    const { health, healthAt, weapons, combat, ...v1 } = fresh();
+    void health, healthAt, weapons, combat;
+    const old = { ...v1, schema: 1, stats: { searches: 7 } };
+    const m = migrate(JSON.parse(JSON.stringify(old)))!;
+    expect(m.schema).toBe(2);
+    expect(m.health).toBe(10);
+    expect(m.weapons[0].kind).toBe('crowbar');
+    expect(m.combat).toBeNull();
+    expect(m.stats).toEqual({ searches: 7, kills: 0 });
+  });
+});
+
+describe('Kampf', () => {
+  const guarded = (enemy?: string) =>
+    gridSpotsAround(SEED, HOME, 1500).find((s) => {
+      const g = guardOf(SEED, s, T0);
+      return g && (!enemy || g === enemy);
+    })!;
+  const engage = (state: PlayerState, s: Spot, now = T0) => applyAction(state, { type: 'engage', spot: s, at: s.pos, accuracyM: 5 }, ctx(now));
+  const hit = (state: PlayerState, quality: 'miss' | 'good' | 'perfect' = 'good', move: 'strike' | 'dodge' | 'distract' | 'heal' | 'flee' = 'strike') =>
+    applyAction(state, { type: 'fight', move, quality }, ctx());
+
+  it('bewachte Fundstellen kann man nicht einfach durchsuchen', () => {
+    const s = guarded();
+    expect(applyAction(fresh(), { type: 'search', spot: s, at: s.pos, accuracyM: 5 }, ctx()).events[0]).toEqual({ type: 'rejected', reason: 'guarded' });
+    const free = gridSpotsAround(SEED, HOME, 600).find((x) => !guardOf(SEED, x, T0))!;
+    expect(engage(fresh(), free).events[0]).toEqual({ type: 'rejected', reason: 'not_guarded' });
+  });
+
+  it('gewinnt einen Kampf und bekommt mehr Beute', () => {
+    const s = guarded('walker');
+    let st = engage(fresh(), s).state;
+    expect(st.combat?.enemyHp).toBe(4);
+    let events: ReturnType<typeof hit>['events'] = [];
+    for (let i = 0; i < 6 && st.combat; i++) ({ state: st, events } = hit(st, 'perfect'));
+    expect(st.combat).toBeNull();
+    expect(events.map((e) => e.type)).toEqual(['round', 'combatWon', 'loot']);
+    expect(st.stats.kills).toBe(1);
+    expect(readyAt(st, s)).toBeGreaterThan(T0);
+    expect(st.weapons[0].dur).toBeLessThan(14);
+  });
+
+  it('Ausweichen schützt, Ablenken kostet Material und betäubt', () => {
+    const s = guarded();
+    const st = engage(fresh(), s).state;
+    const d = hit(st, 'perfect', 'dodge');
+    const dr = d.events[0];
+    expect(dr.type === 'round' && dr.taken).toBe(0);
+    expect(d.state.combat?.opening).toBe(true);
+    const x = hit(st, 'good', 'distract');
+    const xr = x.events[0];
+    expect(xr.type === 'round' && xr.stunned && xr.taken === 0).toBe(true);
+    expect(x.state.inventory.material).toBe(st.inventory.material - 1);
+  });
+
+  it('verliert man, fällt nur etwas aus dem Rucksack, und die Gesundheit kommt zurück', () => {
+    const s = guarded('brute');
+    let st: PlayerState = { ...fresh(), health: 2, weapons: [] };
+    st = engage(st, s).state;
+    let events: ReturnType<typeof hit>['events'] = [];
+    for (let i = 0; i < 10 && st.combat; i++) ({ state: st, events } = hit(st, 'miss'));
+    const lost = events.find((e) => e.type === 'combatLost');
+    expect(lost).toBeDefined();
+    expect(st.health).toBe(0);
+    expect(st.bus).toEqual(fresh().bus);
+    expect(engage(st, s).events[0]).toEqual({ type: 'rejected', reason: 'exhausted' });
+    expect(currentHealth(st, T0 + 3 * HOUR)).toBe(9);
+  });
+
+  it('Fliehen geht immer und kostet nichts', () => {
+    const s = guarded();
+    const st = engage(fresh(), s).state;
+    const f = hit(st, 'miss', 'flee');
+    expect(f.events).toEqual([{ type: 'fled' }]);
+    expect(f.state.inventory).toEqual(fresh().inventory);
+    expect(f.state.combat).toBeNull();
+  });
+
+  it('Waffen herstellen und mit Medizin heilen', () => {
+    let st = { ...fresh(), inventory: { food: 0, water: 0, medicine: 2, material: 30 }, health: 5 };
+    expect(applyAction(st, { type: 'craft', weapon: 'bat' }, ctx()).events[0]).toEqual({ type: 'rejected', reason: 'locked' });
+    st = applyAction(st, { type: 'build', module: 'workbench' }, ctx()).state;
+    st = applyAction(st, { type: 'craft', weapon: 'bat' }, ctx()).state;
+    expect(st.weapons.map((w) => w.kind)).toEqual(['crowbar', 'bat']);
+    const healed = applyAction(st, { type: 'heal' }, ctx());
+    expect(healed.state.health).toBe(9);
+    expect(healed.state.inventory.medicine).toBe(1);
   });
 });

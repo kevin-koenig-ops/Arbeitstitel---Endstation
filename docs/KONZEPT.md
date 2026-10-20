@@ -18,6 +18,17 @@ Ein Endzeit-Spiel auf der echten Karte, das man nebenbei im Alltag spielt: Handy
 3. **Ausbauen:** Mit Material wird der Bus ausgebaut. Manche Ausbauten produzieren von allein (Regenfass, Dachgarten).
 4. **Entdecken:** Selten findet man Erinnerungsstücke, kleine Notizen und Fundsachen, die nach und nach erzählen, was passiert ist.
 
+## Bedrohung und Kampf
+
+- **Streuner bewachen Fundstellen** (etwa jede vierte, an echten Orten öfter). Wer sie erledigt, bekommt mehr Beute und öfter ein Erinnerungsstück. Man kann sie auch einfach links liegen lassen.
+- **Kampf in Runden mit Timing-Moment:** Zuschlagen, Ausweichen, Ablenken (1 Material) oder Verbinden (1 Medizin). Bei Zuschlagen, Ausweichen und Ablenken entscheidet ein kurzer Timing-Balken, wie gut es klappt. Ein Kampf dauert etwa 20 Sekunden und wird im Stehen gespielt.
+- **Gegner:** Streuner (normal), Kriecher (flink, schwer zu treffen), Brocken (zäh, in Warnweste).
+- **Waffen** aus der Werkbank: Brechstange, Nagelschläger, Armbrust. Sie nutzen sich ab.
+- **Niederlage ist kein Drama:** Man flieht, ein paar Sachen fallen aus dem Rucksack. Der Bus bleibt sicher, Gesundheit kommt von selbst zurück (1 Punkt alle 20 Minuten).
+- **Fliehen geht immer** und kostet nichts.
+
+Später: Horden, die durch echte Straßen ziehen (nie als Mauer, Stammwege werden sicher), Nester als Raids für mehrere Spieler, Lärm beim Durchsuchen.
+
 ## Langfristiges Ziel (geplant)
 
 - **Überlebende** als Herzstück: Menschen mit Namen, Geschichte und Fähigkeit, die im Bus mitfahren und versorgt werden wollen. Die persönliche Geschichte des Spielers.

@@ -1,7 +1,7 @@
 // Spielinhalte als reine Daten. Neue Fundorte, Gegenstände oder Ausbauten
 // kommen hier dazu, ohne dass sich die Logik ändern muss.
 
-import type { BackgroundId, Inventory, ModuleId, Resource, SpotKind } from './types';
+import type { BackgroundId, EnemyId, Inventory, ModuleId, Quality, Resource, SpotKind, Weapon, WeaponId } from './types';
 
 export const RESOURCE_ORDER: Resource[] = ['food', 'water', 'medicine', 'material'];
 
@@ -340,3 +340,68 @@ export const MEMENTOS: MementoDef[] = [
 
 /** Das allererste Fundstück, damit die Sammlung sofort startet. */
 export const FIRST_MEMENTO = 'polaroid';
+
+// --- Kampf -------------------------------------------------------------------------
+
+export const MAX_HEALTH = 10;
+/** Alle so viele Minuten kommt 1 Lebenspunkt von selbst zurück. */
+export const HEALTH_REGEN_MIN = 20;
+/** Mit weniger Gesundheit fängt man keinen Kampf an. */
+export const MIN_HEALTH_TO_FIGHT = 2;
+/** Medizin heilt so viel, im Kampf etwas weniger (Verbinden unter Druck). */
+export const HEAL_AMOUNT = 4;
+export const HEAL_IN_COMBAT = 3;
+
+export interface EnemyDef {
+  name: string;
+  hp: number;
+  dmg: [number, number];
+  /** Zieht pro Treffer so viel Schaden ab. */
+  armor: number;
+  /** Geschwindigkeit des Timing-Balkens (1 = normal). */
+  speed: number;
+  desc: string;
+}
+
+export const ENEMIES: Record<EnemyId, EnemyDef> = {
+  walker: { name: 'Streuner', hp: 4, dmg: [1, 2], armor: 0, speed: 1, desc: 'Schlurft langsam, beißt aber zu.' },
+  crawler: { name: 'Kriecher', hp: 3, dmg: [1, 2], armor: 0, speed: 1.45, desc: 'Flink und tief am Boden. Schwer zu erwischen.' },
+  brute: { name: 'Brocken', hp: 6, dmg: [1, 3], armor: 1, speed: 0.85, desc: 'Groß, zäh und in Warnweste.' },
+};
+
+/** Welcher Gegner wie häufig eine Fundstelle bewacht. */
+export const ENEMY_WEIGHTS: readonly (readonly [EnemyId, number])[] = [
+  ['walker', 60],
+  ['crawler', 25],
+  ['brute', 15],
+];
+
+/** Anteil bewachter Fundstellen. */
+export const GUARD_CHANCE = { grid: 0.25, poi: 0.4 };
+/** Bewachte Fundstellen lohnen sich: mehr Beute, öfter Erinnerungsstücke. */
+export const GUARD_LOOT_FACTOR = 1.5;
+export const GUARD_MEMENTO_BONUS = 0.12;
+
+export const QUALITY_FACTOR: Record<Quality, number> = { miss: 0.5, good: 1, perfect: 1.5 };
+
+export interface WeaponDef {
+  name: string;
+  dmg: number;
+  dur: number;
+  cost: Partial<Inventory>;
+  requires?: ModuleId;
+  desc: string;
+}
+
+/** Ohne Waffe kämpft man mit den Fäusten. */
+export const FIST_DAMAGE = 1;
+
+export const WEAPON_ORDER: WeaponId[] = ['crowbar', 'bat', 'crossbow'];
+
+export const WEAPONS: Record<WeaponId, WeaponDef> = {
+  crowbar: { name: 'Brechstange', dmg: 2, dur: 14, cost: { material: 4 }, desc: 'Öffnet Türen und Schädel.' },
+  bat: { name: 'Nagelschläger', dmg: 3, dur: 16, cost: { material: 8 }, requires: 'workbench', desc: 'Ein Baseballschläger mit ein paar Nägeln.' },
+  crossbow: { name: 'Armbrust', dmg: 4, dur: 12, cost: { material: 14, medicine: 1 }, requires: 'workbench', desc: 'Leise und kräftig. Die Bolzen nutzen sich ab.' },
+};
+
+export const START_WEAPONS: Weapon[] = [{ kind: 'crowbar', dur: WEAPONS.crowbar.dur }];

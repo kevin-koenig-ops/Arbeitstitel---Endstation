@@ -3,7 +3,7 @@
 import maplibregl from 'maplibre-gl';
 import type { GeoJSONFeature, GeoJSONSource, Map as MLMap, Marker } from 'maplibre-gl';
 import { circleRing, distanceM } from '../core/geo';
-import type { LatLon, Spot } from '../core/types';
+import type { EnemyId, LatLon, Spot } from '../core/types';
 import type { PoiCandidate } from '../core/world';
 import { h, svgEl } from '../ui/dom';
 import { icon, spotIcon } from '../ui/icons';
@@ -20,6 +20,8 @@ export type SpotState = 'ready' | 'cooldown' | 'inrange';
 export interface SpotView {
   spot: Spot;
   state: SpotState;
+  /** Gegner, der die Fundstelle bewacht, oder null. */
+  guard: EnemyId | null;
 }
 
 export const DEMO = demoWorld as unknown as {
@@ -182,14 +184,14 @@ export class GameMap {
 
   setSpots(views: SpotView[]) {
     // Bodenleuchten nur neu setzen, wenn sich Fundstellen oder ihr Zustand ändern
-    const sig = views.map((v) => v.spot.id + v.state).join('|');
+    const sig = views.map((v) => v.spot.id + v.state + (v.guard ?? '')).join('|');
     if (sig !== this.glowSig && this.loaded) {
       this.glowSig = sig;
       (this.map.getSource('glow') as GeoJSONSource | undefined)?.setData({
         type: 'FeatureCollection',
         features: views.map((v) => ({
           type: 'Feature',
-          properties: { s: v.state, src: v.spot.source },
+          properties: { s: v.state, src: v.spot.source, g: v.guard ? 1 : 0 },
           geometry: { type: 'Point', coordinates: ll(v.spot.pos) },
         })),
       });
@@ -204,6 +206,7 @@ export class GameMap {
           { class: 'spot', type: 'button', 'aria-label': v.spot.name, 'data-source': v.spot.source },
           h('span', { class: 'spot-badge' }, svgEl(spotIcon(v.spot.kind, 19))),
           h('span', { class: 'spot-stake' }),
+          h('span', { class: 'spot-guard', 'aria-hidden': 'true' }),
         );
         el.addEventListener('click', (ev) => {
           ev.stopPropagation();
@@ -214,9 +217,12 @@ export class GameMap {
         m = { marker, el, state: '' };
         this.markers.set(v.spot.id, m);
       }
-      if (m.state !== v.state) {
+      const st = v.state + (v.guard ? ':g' : '');
+      if (m.state !== st) {
         m.el.dataset.state = v.state;
-        m.state = v.state;
+        m.el.dataset.guard = v.guard ? '1' : '0';
+        m.el.setAttribute('aria-label', v.guard ? `${v.spot.name} (bewacht)` : v.spot.name);
+        m.state = st;
       }
     }
     for (const [id, m] of this.markers) {

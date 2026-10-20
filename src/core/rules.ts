@@ -8,33 +8,51 @@
 import {
   BACKGROUNDS,
   BASE_SEARCH_RANGE_M,
+  ENEMIES,
+  ENEMY_WEIGHTS,
   FIRST_MEMENTO,
+  FIST_DAMAGE,
+  GUARD_CHANCE,
+  GUARD_LOOT_FACTOR,
+  GUARD_MEMENTO_BONUS,
+  HEAL_AMOUNT,
+  HEAL_IN_COMBAT,
+  HEALTH_REGEN_MIN,
+  MAX_HEALTH,
   MEMENTOS,
+  MIN_HEALTH_TO_FIGHT,
   MODULES,
   PERK_CHANCE,
+  QUALITY_FACTOR,
   RESOURCE_ORDER,
   RETURN_BONUS_AFTER_H,
   SPOT_KINDS,
   START_INVENTORY,
+  START_WEAPONS,
+  WEAPONS,
 } from './content';
 import { distanceM } from './geo';
-import { randInt, rngFrom } from './rng';
+import { pickWeighted, randInt, rngFrom } from './rng';
 import type {
   Action,
   ActionResult,
   Character,
+  EnemyId,
   GameEvent,
   Inventory,
   ModuleId,
   PlayerState,
+  RejectReason,
   Resource,
   RuleContext,
   Spot,
+  Weapon,
 } from './types';
 import { resolveGridSpot } from './world';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 const HOUR = 3600_000;
+const REGEN_MS = HEALTH_REGEN_MIN * 60_000;
 const MAX_GPS_SLACK_M = 25;
 
 export function createPlayer(playerId: string, character: Character, now: number): PlayerState {
@@ -49,9 +67,15 @@ export function createPlayer(playerId: string, character: Character, now: number
     spots: {},
     collection: {},
     returnBonus: false,
-    stats: { searches: 0 },
+    health: MAX_HEALTH,
+    healthAt: now,
+    weapons: START_WEAPONS.map((w) => ({ ...w })),
+    combat: null,
+    stats: { searches: 0, kills: 0 },
   };
 }
+
+// --- Abfragen (auch für die Oberfläche) ------------------------------------------
 
 export function searchRangeM(state: PlayerState): number {
   return BASE_SEARCH_RANGE_M + (BACKGROUNDS[state.character.background].rangeBonusM ?? 0);
@@ -79,6 +103,39 @@ export function moduleUnlocked(state: PlayerState, id: ModuleId): boolean {
   return MODULES[id].requires.every((req) => !!state.bus.modules[req]);
 }
 
+/** Gesundheit inklusive der Erholung seit dem letzten Stand. */
+export function currentHealth(state: PlayerState, now: number): number {
+  if (state.health >= MAX_HEALTH) return MAX_HEALTH;
+  return Math.min(MAX_HEALTH, state.health + Math.floor((now - state.healthAt) / REGEN_MS));
+}
+
+/** Millisekunden bis zum nächsten Lebenspunkt (0 bei voller Gesundheit). */
+export function nextHealthIn(state: PlayerState, now: number): number {
+  if (currentHealth(state, now) >= MAX_HEALTH) return 0;
+  return REGEN_MS - ((now - state.healthAt) % REGEN_MS);
+}
+
+/** Die beste noch heile Waffe, oder null (dann Fäuste). */
+export function bestWeapon(state: PlayerState): Weapon | null {
+  let best: Weapon | null = null;
+  for (const w of state.weapons) if (w.dur > 0 && (!best || WEAPONS[w.kind].dmg > WEAPONS[best.kind].dmg)) best = w;
+  return best;
+}
+
+export function guardWindow(spot: Spot, now: number): number {
+  return Math.floor(now / cooldownMs(spot));
+}
+
+/**
+ * Wird die Fundstelle gerade bewacht, und von wem? Deterministisch aus Welt-Seed,
+ * Fundstelle und Zeitfenster, also für alle Spieler gleich.
+ */
+export function guardOf(seed: string, spot: Spot, now: number): EnemyId | null {
+  const r = rngFrom(seed, 'wache', spot.id, guardWindow(spot, now));
+  if (r() >= GUARD_CHANCE[spot.source]) return null;
+  return pickWeighted(r, ENEMY_WEIGHTS);
+}
+
 /** Was liegt im Bus zum Abholen bereit (Regenfass, Dachgarten)? */
 export function pendingHarvest(state: PlayerState, now: number): Partial<Inventory> {
   const out: Partial<Inventory> = {};
@@ -91,13 +148,13 @@ export function pendingHarvest(state: PlayerState, now: number): Partial<Invento
   return out;
 }
 
+// --- Aktionen ----------------------------------------------------------------------
+
 export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext): ActionResult {
   const state: PlayerState = structuredClone(prev);
   const events: GameEvent[] = [];
-  const reject = (reason: Extract<GameEvent, { type: 'rejected' }>['reason']): ActionResult => ({
-    state: prev,
-    events: [{ type: 'rejected', reason }],
-  });
+  const reject = (reason: RejectReason): ActionResult => ({ state: prev, events: [{ type: 'rejected', reason }] });
+  settleHealth(state, ctx.now);
 
   switch (action.type) {
     case 'session': {
@@ -111,57 +168,122 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
     case 'search': {
       const spot = verifySpot(action.spot, ctx);
       if (!spot) return reject('invalid_spot');
-      const slack = Math.min(Math.max(action.accuracyM, 0), MAX_GPS_SLACK_M);
-      if (distanceM(action.at, spot.pos) > searchRangeM(prev) + slack) return reject('too_far');
-      if (readyAt(prev, spot) > ctx.now) return reject('cooldown');
+      if (!inRange(state, spot, action.at, action.accuracyM)) return reject('too_far');
+      if (readyAt(state, spot) > ctx.now) return reject('cooldown');
+      if (guardOf(ctx.worldSeed, spot, ctx.now)) return reject('guarded');
+      events.push(lootSpot(state, spot, ctx, false));
+      break;
+    }
 
-      const def = SPOT_KINDS[spot.kind];
-      const window = Math.floor(ctx.now / cooldownMs(spot));
-      const r = rngFrom(ctx.worldSeed, prev.playerId, spot.id, window);
-      const items: Partial<Inventory> = {};
-      for (const rule of def.loot) {
-        if (r() < rule.chance) items[rule.res] = (items[rule.res] ?? 0) + randInt(r, rule.min, rule.max);
+    case 'engage': {
+      const spot = verifySpot(action.spot, ctx);
+      if (!spot) return reject('invalid_spot');
+      // Läuft schon ein Kampf an dieser Stelle: einfach weiter.
+      if (state.combat?.spot.id === spot.id) {
+        events.push({ type: 'combatStarted', enemy: state.combat.enemy });
+        break;
       }
-      // Nie ganz leer ausgehen.
-      if (Object.keys(items).length === 0) {
-        const fallback = def.loot[0];
-        items[fallback.res] = fallback.min;
+      if (!inRange(state, spot, action.at, action.accuracyM)) return reject('too_far');
+      if (readyAt(state, spot) > ctx.now) return reject('cooldown');
+      const enemy = guardOf(ctx.worldSeed, spot, ctx.now);
+      if (!enemy) return reject('not_guarded');
+      if (state.health < MIN_HEALTH_TO_FIGHT) return reject('exhausted');
+      state.combat = { spot, enemy, enemyHp: ENEMIES[enemy].hp, round: 0, opening: false, window: guardWindow(spot, ctx.now) };
+      events.push({ type: 'combatStarted', enemy });
+      break;
+    }
+
+    case 'fight': {
+      const c = state.combat;
+      if (!c) return reject('no_combat');
+      const def = ENEMIES[c.enemy];
+      const { move, quality } = action;
+      if (move === 'flee') {
+        state.combat = null;
+        events.push({ type: 'fled' });
+        break;
       }
-      // Vorgeschichte
-      let perk: Resource | undefined;
-      const bonusRes = BACKGROUNDS[prev.character.background].bonusRes;
-      if (bonusRes && r() < PERK_CHANCE) {
-        items[bonusRes] = (items[bonusRes] ?? 0) + 1;
-        perk = bonusRes;
+      if (move === 'heal' && state.inventory.medicine < 1) return reject('no_medicine');
+      if (move === 'distract' && state.inventory.material < 1) return reject('cost');
+
+      const r = rngFrom(ctx.worldSeed, state.playerId, 'kampf', c.spot.id, c.window, c.round);
+      let dealt = 0;
+      let dodged = false;
+      let stunned = false;
+      let healed = 0;
+      let weaponBroke: Weapon['kind'] | undefined;
+
+      if (move === 'strike') {
+        const w = bestWeapon(state);
+        const base = w ? WEAPONS[w.kind].dmg : FIST_DAMAGE;
+        const raw = Math.round(base * QUALITY_FACTOR[quality] * (c.opening ? 1.5 : 1)) - def.armor;
+        dealt = Math.max(quality === 'miss' ? 0 : 1, raw);
+        c.opening = false;
+        if (w) {
+          w.dur -= 1;
+          if (w.dur <= 0) {
+            weaponBroke = w.kind;
+            state.weapons = state.weapons.filter((x) => x.dur > 0);
+          }
+        }
+      } else if (move === 'dodge') {
+        dodged = quality !== 'miss';
+        c.opening = quality === 'perfect' || (quality === 'good' && r() < 0.5);
+      } else if (move === 'distract') {
+        state.inventory.material -= 1;
+        stunned = quality !== 'miss';
+      } else if (move === 'heal') {
+        state.inventory.medicine -= 1;
+        healed = Math.min(HEAL_IN_COMBAT, MAX_HEALTH - state.health);
+        state.health += healed;
       }
-      // Werkbank
-      if (prev.bus.modules.workbench && items.material) items.material += 1;
-      // Rückkehr-Bonus
-      const bonus = prev.returnBonus;
-      if (bonus) for (const k of Object.keys(items) as Resource[]) items[k] = (items[k] ?? 0) * 2;
 
-      for (const k of Object.keys(items) as Resource[]) state.inventory[k] += items[k] ?? 0;
+      c.enemyHp = Math.max(0, c.enemyHp - dealt);
+      const enemyAttacks = c.enemyHp > 0 && !dodged && !stunned;
+      const taken = enemyAttacks ? randInt(r, def.dmg[0], def.dmg[1]) : 0;
+      state.health = Math.max(0, state.health - taken);
+      c.round += 1;
+      events.push({ type: 'round', move, quality, dealt, taken, dodged, stunned, healed, weaponBroke });
 
-      // Erinnerungsstück
-      let memento: string | undefined;
-      const missing = MEMENTOS.filter((m) => !prev.collection[m.id]);
-      if (prev.stats.searches === 0 && !prev.collection[FIRST_MEMENTO]) memento = FIRST_MEMENTO;
-      else if (missing.length && r() < def.mementoChance) memento = missing[Math.floor(r() * missing.length)].id;
-      if (memento) state.collection[memento] = ctx.now;
+      if (c.enemyHp <= 0) {
+        state.combat = null;
+        state.stats.kills += 1;
+        events.push({ type: 'combatWon', enemy: c.enemy });
+        events.push(lootSpot(state, c.spot, ctx, true));
+      } else if (state.health <= 0) {
+        state.combat = null;
+        state.healthAt = ctx.now;
+        const dropped = dropSome(state, r);
+        events.push({ type: 'combatLost', enemy: c.enemy, dropped });
+      }
+      break;
+    }
 
-      state.spots[spot.id] = ctx.now;
-      state.returnBonus = false;
-      state.stats.searches += 1;
-      pruneSpots(state, ctx.now);
-      events.push({ type: 'loot', spotId: spot.id, items, memento, bonus, perk });
+    case 'craft': {
+      const def = WEAPONS[action.weapon];
+      if (def.requires && !state.bus.modules[def.requires]) return reject('locked');
+      if (!canAfford(state.inventory, def.cost)) return reject('cost');
+      for (const r of RESOURCE_ORDER) state.inventory[r] -= def.cost[r] ?? 0;
+      state.weapons.push({ kind: action.weapon, dur: def.dur });
+      events.push({ type: 'crafted', weapon: action.weapon });
+      break;
+    }
+
+    case 'heal': {
+      if (state.inventory.medicine < 1) return reject('no_medicine');
+      if (state.health >= MAX_HEALTH) return reject('full_health');
+      const amount = Math.min(HEAL_AMOUNT, MAX_HEALTH - state.health);
+      state.inventory.medicine -= 1;
+      state.health += amount;
+      events.push({ type: 'healed', amount });
       break;
     }
 
     case 'build': {
       const def = MODULES[action.module];
-      if (prev.bus.modules[action.module]) return reject('already_built');
-      if (!moduleUnlocked(prev, action.module)) return reject('locked');
-      if (!canAfford(prev.inventory, def.cost)) return reject('cost');
+      if (state.bus.modules[action.module]) return reject('already_built');
+      if (!moduleUnlocked(state, action.module)) return reject('locked');
+      if (!canAfford(state.inventory, def.cost)) return reject('cost');
       for (const r of RESOURCE_ORDER) state.inventory[r] -= def.cost[r] ?? 0;
       state.bus.modules[action.module] = { builtAt: ctx.now, lastHarvestAt: ctx.now };
       events.push({ type: 'built', module: action.module });
@@ -169,7 +291,7 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
     }
 
     case 'harvest': {
-      const items = pendingHarvest(prev, ctx.now);
+      const items = pendingHarvest(state, ctx.now);
       if (Object.keys(items).length === 0) return reject('nothing');
       for (const [id, built] of Object.entries(state.bus.modules)) {
         const prod = MODULES[id as ModuleId].produces;
@@ -188,6 +310,80 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
 
   state.lastActiveAt = ctx.now;
   return { state, events };
+}
+
+// --- Helfer ---------------------------------------------------------------------------
+
+/** Erholung seit healthAt in den Spielstand übernehmen. */
+function settleHealth(state: PlayerState, now: number) {
+  if (state.health >= MAX_HEALTH) {
+    state.health = MAX_HEALTH;
+    state.healthAt = now;
+    return;
+  }
+  const gained = Math.floor((now - state.healthAt) / REGEN_MS);
+  if (gained <= 0) return;
+  state.health = Math.min(MAX_HEALTH, state.health + gained);
+  state.healthAt = state.health >= MAX_HEALTH ? now : state.healthAt + gained * REGEN_MS;
+}
+
+function inRange(state: PlayerState, spot: Spot, at: Spot['pos'], accuracyM: number) {
+  const slack = Math.min(Math.max(accuracyM, 0), MAX_GPS_SLACK_M);
+  return distanceM(at, spot.pos) <= searchRangeM(state) + slack;
+}
+
+/** Beute für eine Fundstelle würfeln und gutschreiben. */
+function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, guarded: boolean): Extract<GameEvent, { type: 'loot' }> {
+  const def = SPOT_KINDS[spot.kind];
+  const r = rngFrom(ctx.worldSeed, state.playerId, spot.id, guardWindow(spot, ctx.now));
+  const items: Partial<Inventory> = {};
+  for (const rule of def.loot) {
+    if (r() < rule.chance) items[rule.res] = (items[rule.res] ?? 0) + randInt(r, rule.min, rule.max);
+  }
+  // Nie ganz leer ausgehen.
+  if (Object.keys(items).length === 0) items[def.loot[0].res] = def.loot[0].min;
+  if (guarded) for (const k of Object.keys(items) as Resource[]) items[k] = Math.ceil((items[k] ?? 0) * GUARD_LOOT_FACTOR);
+  // Vorgeschichte
+  let perk: Resource | undefined;
+  const bonusRes = BACKGROUNDS[state.character.background].bonusRes;
+  if (bonusRes && r() < PERK_CHANCE) {
+    items[bonusRes] = (items[bonusRes] ?? 0) + 1;
+    perk = bonusRes;
+  }
+  // Werkbank
+  if (state.bus.modules.workbench && items.material) items.material += 1;
+  // Rückkehr-Bonus
+  const bonus = state.returnBonus;
+  if (bonus) for (const k of Object.keys(items) as Resource[]) items[k] = (items[k] ?? 0) * 2;
+
+  for (const k of Object.keys(items) as Resource[]) state.inventory[k] += items[k] ?? 0;
+
+  // Erinnerungsstück
+  let memento: string | undefined;
+  const missing = MEMENTOS.filter((m) => !state.collection[m.id]);
+  const chance = def.mementoChance + (guarded ? GUARD_MEMENTO_BONUS : 0);
+  if (state.stats.searches === 0 && !state.collection[FIRST_MEMENTO]) memento = FIRST_MEMENTO;
+  else if (missing.length && r() < chance) memento = missing[Math.floor(r() * missing.length)].id;
+  if (memento) state.collection[memento] = ctx.now;
+
+  state.spots[spot.id] = ctx.now;
+  state.returnBonus = false;
+  state.stats.searches += 1;
+  pruneSpots(state, ctx.now);
+  return { type: 'loot', spotId: spot.id, items, memento, bonus, perk };
+}
+
+/** Bei einer Niederlage fällt etwas aus dem Rucksack. Nie viel, nie der Bus. */
+function dropSome(state: PlayerState, r: () => number): Partial<Inventory> {
+  const dropped: Partial<Inventory> = {};
+  const have = RESOURCE_ORDER.filter((k) => state.inventory[k] > 0);
+  for (let i = 0; i < 2 && have.length; i++) {
+    const k = have.splice(Math.floor(r() * have.length), 1)[0];
+    const n = Math.min(state.inventory[k], 1 + Math.floor(r() * 2));
+    state.inventory[k] -= n;
+    dropped[k] = n;
+  }
+  return dropped;
 }
 
 /**

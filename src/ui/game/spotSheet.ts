@@ -1,23 +1,16 @@
 // Untere Karte für eine Fundstelle: Infos, Durchsuchen, Fundbeleg.
 
-import { BACKGROUNDS, MEMENTOS, RESOURCE_ORDER, RESOURCES, SPOT_KINDS } from '../../core/content';
+import { BACKGROUNDS, ENEMIES, HEALTH_REGEN_MIN, MEMENTOS, MIN_HEALTH_TO_FIGHT, RESOURCE_ORDER, RESOURCES, SPOT_KINDS } from '../../core/content';
 import { distanceM, formatDistance } from '../../core/geo';
-import { readyAt, searchRangeM } from '../../core/rules';
-import type { GameEvent, LatLon, RejectReason, Spot } from '../../core/types';
+import { currentHealth, nextHealthIn, readyAt, searchRangeM } from '../../core/rules';
+import type { GameEvent, LatLon, Spot } from '../../core/types';
 import type { Fix } from '../../services/location';
 import type { App } from '../app';
 import { append, clear, h, reducedMotion, sleep, svgEl } from '../dom';
 import { icon, resIcon, spotIcon } from '../icons';
+import { REJECT_TEXT } from '../texts';
+import { enemySvg } from '../zombies';
 
-const REJECT_TEXT: Record<RejectReason, string> = {
-  too_far: 'Zu weit weg. Geh näher ran.',
-  cooldown: 'Hier ist gerade nichts mehr zu holen.',
-  invalid_spot: 'Diese Fundstelle gibt es nicht mehr.',
-  cost: 'Dafür fehlen dir Vorräte.',
-  locked: 'Das ist noch nicht freigeschaltet.',
-  already_built: 'Schon gebaut.',
-  nothing: 'Hier gibt es gerade nichts.',
-};
 
 export function formatWait(ms: number): string {
   const min = Math.max(1, Math.ceil(ms / 60_000));
@@ -35,18 +28,23 @@ interface Ctx {
   isSim: () => boolean;
   walkTo: (p: LatLon) => void;
   onChanged: () => void;
+  /** Kampf an einer bewachten Fundstelle beginnen. */
+  onFight: (spot: Spot) => void;
 }
 
 export class SpotSheet {
   openId: string | null = null;
   private el: HTMLElement | null = null;
   private busy = false;
+  /** Was die Karte gerade zeigt. Der Fundbeleg soll nicht von Updates überschrieben werden. */
+  private mode: 'info' | 'receipt' = 'info';
 
   constructor(private ctx: Ctx) {}
 
   open(id: string) {
     if (this.busy) return;
     this.openId = id;
+    this.mode = 'info';
     if (!this.el) {
       this.el = h('div', { class: 'sheet', role: 'dialog', 'aria-label': 'Fundstelle' });
       this.ctx.host.append(this.el);
@@ -63,7 +61,7 @@ export class SpotSheet {
 
   /** Bei neuem Standort aufrufen, damit Entfernung und Knopf aktuell bleiben. */
   refresh() {
-    if (this.openId && !this.busy) this.render();
+    if (this.openId && !this.busy && this.mode === 'info') this.render();
   }
 
   private render() {
@@ -78,12 +76,20 @@ export class SpotSheet {
     const range = searchRangeM(state);
     const inRange = dist <= range;
     const wait = readyAt(state, spot) - now;
+    const guard = wait > 0 ? null : app.backend.guardFor(spot);
+    const health = currentHealth(state, now);
 
     let status: string;
     let button: HTMLElement;
     if (wait > 0) {
       status = 'Schon durchsucht';
       button = h('button', { class: 'btn wide', type: 'button', disabled: true }, svgEl(icon('clock', 18)), `Wieder voll in ${formatWait(wait)}`);
+    } else if (inRange && guard && health < MIN_HEALTH_TO_FIGHT) {
+      status = 'In Reichweite';
+      button = h('button', { class: 'btn wide', type: 'button', disabled: true }, `Zu angeschlagen · fit in ${formatWait(nextHealthIn(state, now) + (MIN_HEALTH_TO_FIGHT - health - 1) * HEALTH_REGEN_MIN * 60_000)}`);
+    } else if (inRange && guard) {
+      status = 'In Reichweite';
+      button = h('button', { class: 'btn wide danger', type: 'button', onclick: () => this.ctx.onFight(spot) }, 'Kämpfen');
     } else if (inRange) {
       status = 'In Reichweite';
       button = h('button', { class: 'btn wide', type: 'button', onclick: () => this.search(spot) }, 'Durchsuchen');
@@ -97,12 +103,12 @@ export class SpotSheet {
 
     const likely = RESOURCE_ORDER.filter((r) => def.loot.some((l) => l.res === r));
     clear(this.el);
-    this.el.append(
+    append(this.el, [
       h('button', { class: 'sheet-close iconbtn small', type: 'button', 'aria-label': 'Schließen', onclick: () => this.close() }, svgEl(icon('close', 18))),
       h(
         'div',
         { class: 'sheet-head' },
-        h('span', { class: 'sheet-badge', 'data-source': spot.source }, svgEl(spotIcon(spot.kind, 26))),
+        h('span', { class: 'sheet-badge', 'data-source': spot.source, 'data-guard': guard ? '1' : '0' }, svgEl(spotIcon(spot.kind, 26))),
         h(
           'div',
           null,
@@ -110,7 +116,19 @@ export class SpotSheet {
           h('h2', { class: 'sheet-title' }, spot.name),
         ),
       ),
-      h('p', { class: 'sheet-hint' }, def.hint),
+      guard
+        ? h(
+            'div',
+            { class: 'guard-box' },
+            svgEl(enemySvg(guard), 'guard-art'),
+            h(
+              'div',
+              null,
+              h('div', { class: 'guard-title' }, `Bewacht von einem ${ENEMIES[guard].name}`),
+              h('p', null, `${ENEMIES[guard].desc} Wer ihn erledigt, findet hier mehr.`),
+            ),
+          )
+        : h('p', { class: 'sheet-hint' }, def.hint),
       h(
         'div',
         { class: 'sheet-meta' },
@@ -118,7 +136,7 @@ export class SpotSheet {
         h('span', { class: 'sheet-status' + (inRange && wait <= 0 ? ' near' : '') }, status),
       ),
       button,
-    );
+    ]);
   }
 
   private async search(spot: Spot) {
@@ -152,7 +170,18 @@ export class SpotSheet {
     }
   }
 
-  private showReceipt(spot: Spot, ev: Extract<GameEvent, { type: 'loot' }>) {
+  /** Fundbeleg zeigen (nach Durchsuchen oder nach gewonnenem Kampf). */
+  showLoot(spot: Spot, ev: Extract<GameEvent, { type: 'loot' }>, note?: string) {
+    this.openId = spot.id;
+    if (!this.el) {
+      this.el = h('div', { class: 'sheet', role: 'dialog', 'aria-label': 'Fundstelle' });
+      this.ctx.host.append(this.el);
+    }
+    this.showReceipt(spot, ev, note);
+  }
+
+  private showReceipt(spot: Spot, ev: Extract<GameEvent, { type: 'loot' }>, note?: string) {
+    this.mode = 'receipt';
     const state = this.ctx.app.backend.current()!;
     if (!this.el) return;
     const memento = ev.memento ? MEMENTOS.find((m) => m.id === ev.memento) : undefined;
@@ -173,6 +202,7 @@ export class SpotSheet {
           ),
         ),
         ev.perk ? h('p', { class: 'receipt-note' }, `${perkBg.name}: +1 ${RESOURCES[ev.perk].name} extra`) : null,
+        note ? h('p', { class: 'receipt-note' }, note) : null,
         ev.bonus ? h('p', { class: 'receipt-note' }, 'Rückkehr-Bonus: alles doppelt') : null,
       ),
       memento

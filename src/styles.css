@@ -377,6 +377,8 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .sheet-head { display: flex; align-items: center; gap: 14px; padding-right: 44px; }
 .sheet-badge { flex: none; width: 52px; height: 52px; display: grid; place-items: center; border-radius: 50%; background: var(--amber); color: var(--ink); }
 .sheet-badge[data-source="poi"] { border-radius: 8px; background: var(--paper); color: #2f4a3c; box-shadow: inset 0 0 0 2px #2f4a3c; }
+.sheet-badge[data-guard="1"] { background: #d9482b; color: #1a0f0b; }
+.sheet-badge[data-source="poi"][data-guard="1"] { background: var(--paper); color: #8f2c1a; box-shadow: inset 0 0 0 3px #d9482b; }
 .sheet-kicker { font: 600 12px/1 var(--font-ui); letter-spacing: 0.14em; text-transform: uppercase; color: var(--dust); margin-bottom: 4px; }
 .sheet-title { margin: 0; font: 700 23px/1.1 var(--font-ui); text-wrap: balance; }
 .sheet-hint { margin: 0; color: var(--dust); }
@@ -483,3 +485,122 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* --- Kampf --------------------------------------------------------------------------- */
+.tabs button { font-size: 14px; letter-spacing: 0.05em; padding: 12px 2px; }
+.btn.danger { background: var(--rust); color: #fff4e6; }
+.btn.danger:hover:not(:disabled) { background: #cc6237; }
+
+/* HUD: Gesundheit unter dem Namen */
+.who-hp { display: flex; gap: 2px; margin-top: 3px; }
+.who-hp i { width: 6px; height: 4px; border-radius: 1px; background: var(--steel-3); }
+.who-hp i.on { background: var(--moss); }
+.who-hp[data-low="true"] i.on { background: var(--rust); }
+
+/* Bewachte Fundstellen auf der Karte */
+.spot-guard { display: none; }
+.spot[data-guard="1"] .spot-guard { display: grid; place-items: center; position: absolute; top: -5px; right: -3px; width: 17px; height: 17px; border-radius: 50%; background: #15130f; box-shadow: 0 0 0 1.5px #d9482b; }
+.spot[data-guard="1"] .spot-guard::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #d9482b; box-shadow: 0 0 6px #ff6a3d; }
+.spot[data-guard="1"][data-state] .spot-badge { background: #d9482b; color: #1a0f0b; box-shadow: 0 0 0 2px #15130f, 0 0 18px rgba(217, 72, 43, 0.6); }
+.spot[data-source="poi"][data-guard="1"] .spot-badge { background: var(--paper); color: #8f2c1a; box-shadow: 0 0 0 2px #15130f, inset 0 0 0 3px #d9482b, 0 0 18px rgba(217, 72, 43, 0.5); }
+
+/* Fundstellen-Karte: Hinweis auf den Wächter */
+.guard-box { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; background: rgba(217, 72, 43, 0.12); border: 1px solid rgba(217, 72, 43, 0.35); }
+.guard-art { flex: none; width: 54px; height: 64px; }
+.guard-art svg { width: 54px; height: 64px; }
+.guard-title { font: 700 16px/1.2 var(--font-ui); color: #f0a887; }
+.guard-box p { margin: 2px 0 0; font-size: 14px; color: var(--dust); }
+
+/* Kampfbildschirm */
+.overlay.combat { background: radial-gradient(ellipse at 50% 30%, #3b2a1f 0%, #1b1612 55%, #0d0b09 100%); z-index: 9; }
+.combat-inner {
+  position: relative;
+  max-width: 520px;
+  min-height: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: var(--gutter-l);
+  padding-right: var(--gutter-r);
+  padding-block: calc(var(--safe-t) + 16px) calc(var(--safe-b) + 16px);
+}
+.combat-head { text-align: center; }
+.combat-title { font: 900 30px/1 var(--font-display); color: var(--amber); text-transform: uppercase; letter-spacing: 0.06em; text-shadow: 0 0 14px var(--amber-glow); }
+.combat-sub { margin-top: 6px; font-size: 14px; color: var(--dust); }
+.combat-stage { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 0; }
+.combat-place { margin-top: 2px; font: 600 12px/1.2 var(--font-ui); letter-spacing: 0.14em; text-transform: uppercase; color: #8c8270; }
+.enemy { line-height: 0; }
+.enemy .svg { display: block; }
+.enemy-art { width: min(250px, 62vw); height: auto; max-height: 36vh; transform-origin: 50% 95%; animation: sway 2.6s ease-in-out infinite alternate; }
+.enemy-crawler { animation: crawl 1.3s ease-in-out infinite alternate; }
+.enemy-art .eye { filter: drop-shadow(0 0 3px #ffe9a8); }
+@keyframes sway { from { transform: rotate(-3deg) translateY(0); } to { transform: rotate(3deg) translateY(-4px); } }
+@keyframes crawl { from { transform: translateX(-6px) scaleY(1); } to { transform: translateX(6px) scaleY(0.96); } }
+.enemy.hit { animation: enemy-hit 0.4s ease-out; }
+@keyframes enemy-hit { 0% { transform: translateX(0); filter: brightness(2.2) saturate(0.3); } 30% { transform: translateX(10px); } 60% { transform: translateX(-6px); filter: brightness(1.3); } 100% { transform: none; filter: none; } }
+.enemy.defeated { animation: enemy-fall 0.9s ease-in forwards; }
+@keyframes enemy-fall { to { transform: translateY(30px) rotate(-14deg); opacity: 0; filter: grayscale(1); } }
+
+.hp-bar { display: flex; gap: 3px; }
+.hp-bar span { width: 18px; height: 8px; border-radius: 2px; background: rgba(255, 255, 255, 0.08); transition: background 0.3s ease; }
+.enemy-hp span.on { background: #d9482b; box-shadow: 0 0 6px rgba(217, 72, 43, 0.6); }
+.me-hp span { width: 14px; }
+.me-hp span.on { background: var(--moss); }
+.me-hp.big span { flex: 1; height: 10px; }
+
+.combat-log { min-height: 54px; display: grid; place-items: center; text-align: center; font: 700 21px/1.25 var(--font-ui); text-wrap: balance; color: var(--bone); }
+.combat-log[data-tone="good"] { color: var(--amber-hi); }
+.combat-log[data-tone="bad"] { color: #f0a887; }
+
+.combat-panel { display: flex; flex-direction: column; gap: 10px; min-height: 196px; }
+.moves { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.move { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 76px; padding: 12px; text-align: left; border-radius: 10px; border: 1px solid var(--line); background: rgba(27, 26, 23, 0.92); cursor: pointer; }
+.move:hover:not(:disabled) { border-color: var(--amber); }
+.move:first-child { background: var(--amber); color: var(--ink); border-color: var(--amber); }
+.move:first-child .move-hint { color: #4a3510; }
+.move:disabled { opacity: 0.4; cursor: default; }
+.move-label { font: 700 18px/1 var(--font-ui); text-transform: uppercase; letter-spacing: 0.05em; }
+.move-hint { font-size: 13px; line-height: 1.3; color: var(--dust); }
+.flee { align-self: center; }
+
+.timing-label { text-align: center; color: var(--dust); font-size: 14px; }
+.timing { padding: 8px 0; cursor: pointer; touch-action: manipulation; }
+.track { position: relative; height: 46px; border-radius: 10px; background: #1a1714; box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--line); overflow: hidden; }
+.zone { position: absolute; top: 0; bottom: 0; background: rgba(255, 178, 46, 0.28); border-left: 2px solid rgba(255, 178, 46, 0.7); border-right: 2px solid rgba(255, 178, 46, 0.7); }
+.zone-perfect { position: absolute; top: 0; bottom: 0; background: rgba(255, 200, 97, 0.85); box-shadow: 0 0 12px var(--amber-glow); }
+.needle { position: absolute; top: -4px; bottom: -4px; width: 5px; margin-left: -2.5px; border-radius: 3px; background: var(--bone); box-shadow: 0 0 10px rgba(255, 255, 255, 0.6); }
+.needle.stopped.q-perfect { background: #fff1c4; box-shadow: 0 0 18px #ffd27a; }
+.needle.stopped.q-good { background: var(--amber); }
+.needle.stopped.q-miss { background: #d9482b; box-shadow: 0 0 12px #d9482b; }
+.btn.now { min-height: 64px; font-size: 22px; }
+
+.combat-me { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: rgba(18, 17, 15, 0.8); border: 1px solid var(--line); }
+.combat-face { width: 40px; height: 40px; border-radius: 50%; overflow: hidden; flex: none; }
+.combat-me-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.weapon-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--dust); }
+.combat-flash { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, rgba(217, 72, 43, 0) 30%, rgba(217, 72, 43, 0.55) 100%); opacity: 0; z-index: 2; }
+.combat-flash.on { animation: flash 0.5s ease-out; }
+@keyframes flash { 0% { opacity: 1; } 100% { opacity: 0; } }
+.combat.shake .combat-inner { animation: shake 0.35s ease-in-out; }
+@keyframes shake { 20% { transform: translateX(-8px); } 40% { transform: translateX(7px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(3px); } }
+.combat-result { display: flex; flex-direction: column; gap: 10px; }
+.combat-result p { margin: 0; }
+.dropped { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; }
+.dropped li { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 14px; background: rgba(217, 72, 43, 0.15); color: #f0a887; }
+
+/* Bus: Waffen */
+.gear { display: flex; flex-direction: column; gap: 14px; }
+.gear-health { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 10px; background: var(--steel); border: 1px solid var(--line); }
+.gear-health .btn { align-self: flex-start; }
+.gear-row { display: flex; justify-content: space-between; align-items: baseline; }
+.gear-label { font: 700 17px var(--font-ui); text-transform: uppercase; letter-spacing: 0.04em; }
+.gear-row b { font: 700 20px var(--font-ui); font-variant-numeric: tabular-nums; }
+.gear-head { margin: 6px 0 0; font: 600 13px/1 var(--font-ui); letter-spacing: 0.16em; text-transform: uppercase; color: var(--dust); }
+.weapons { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.weapon { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; padding: 12px 14px; border-radius: 10px; background: var(--steel); border: 1px solid var(--line); }
+.weapon.active { border-color: var(--amber); }
+.weapon-dmg { color: var(--amber); font-weight: 600; }
+.dur { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--steel-3); overflow: hidden; }
+.dur span { display: block; height: 100%; background: var(--moss); }
+.weapon-left { grid-column: 1 / -1; font-size: 13px; color: var(--dust); }
