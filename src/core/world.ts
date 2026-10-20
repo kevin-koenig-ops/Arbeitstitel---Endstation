@@ -1,0 +1,92 @@
+// Wo liegen Fundstellen? Zwei Quellen:
+//
+// 1. Grid: Die Welt ist in Kacheln (~190 m in Deutschland) aufgeteilt. Pro Kachel
+//    entstehen aus (Welt-Seed + Kachel) 0–2 Fundstellen. Deterministisch, also für
+//    alle Spieler gleich, und überall vorhanden, auch im kleinsten Dorf.
+// 2. POI: Echte Orte aus OpenStreetMap (Supermarkt, Apotheke, Bushaltestelle …).
+
+import { GRID_KIND_WEIGHTS, POI_KINDS, POI_NAMES, SPOT_KINDS } from './content';
+import { distanceM, fromTile, toTile } from './geo';
+import { pick, pickWeighted, rngFrom } from './rng';
+import type { LatLon, Spot, SpotKind } from './types';
+
+export const GRID_ZOOM = 17;
+
+function gridSpotsInCell(seed: string, x: number, y: number): Spot[] {
+  const r = rngFrom(seed, 'cell', GRID_ZOOM, x, y);
+  const roll = r();
+  const count = roll < 0.2 ? 0 : roll < 0.78 ? 1 : 2;
+  const spots: Spot[] = [];
+  for (let i = 0; i < count; i++) {
+    // 10 % Rand lassen, damit Fundstellen nicht auf Kachelgrenzen kleben.
+    const fx = x + 0.1 + r() * 0.8;
+    const fy = y + 0.1 + r() * 0.8;
+    const kind = pickWeighted(r, GRID_KIND_WEIGHTS);
+    spots.push({
+      id: `g:${GRID_ZOOM}:${x}:${y}:${i}`,
+      kind,
+      source: 'grid',
+      pos: fromTile(fx, fy, GRID_ZOOM),
+      name: pick(r, SPOT_KINDS[kind].names),
+    });
+  }
+  return spots;
+}
+
+/** Alle Grid-Fundstellen im Umkreis. */
+export function gridSpotsAround(seed: string, center: LatLon, radiusM: number): Spot[] {
+  const t = toTile(center, GRID_ZOOM);
+  const cellM = 40075016 * Math.cos((center.lat * Math.PI) / 180) / 2 ** GRID_ZOOM;
+  const span = Math.ceil(radiusM / cellM) + 1;
+  const cx = Math.floor(t.x);
+  const cy = Math.floor(t.y);
+  const out: Spot[] = [];
+  for (let x = cx - span; x <= cx + span; x++) {
+    for (let y = cy - span; y <= cy + span; y++) {
+      for (const s of gridSpotsInCell(seed, x, y)) {
+        if (distanceM(center, s.pos) <= radiusM) out.push(s);
+      }
+    }
+  }
+  return out;
+}
+
+/** Eine Grid-Fundstelle aus ihrer ID neu berechnen (zum Prüfen, ob sie echt ist). */
+export function resolveGridSpot(seed: string, id: string): Spot | null {
+  const m = /^g:(\d+):(-?\d+):(-?\d+):(\d+)$/.exec(id);
+  if (!m || Number(m[1]) !== GRID_ZOOM) return null;
+  return gridSpotsInCell(seed, Number(m[2]), Number(m[3]))[Number(m[4])] ?? null;
+}
+
+// --- POIs -----------------------------------------------------------------------
+
+/** Ein Ort aus den Kartendaten, so wie die Karte ihn liefert. */
+export interface PoiCandidate {
+  id?: string | number;
+  pos: LatLon;
+  cls?: string;
+  subclass?: string;
+}
+
+export function classifyPoi(cls?: string, subclass?: string): SpotKind | null {
+  for (const value of [subclass, cls]) {
+    if (!value) continue;
+    for (const [kind, values] of POI_KINDS) if (values.includes(value)) return kind;
+  }
+  return null;
+}
+
+/** Kartenorte in Fundstellen umwandeln; doppelte (z. B. beide Haltestellenseiten) zusammenfassen. */
+export function poiSpots(seed: string, candidates: PoiCandidate[]): Spot[] {
+  const out: Spot[] = [];
+  for (const c of candidates) {
+    const kind = classifyPoi(c.cls, c.subclass);
+    if (!kind) continue;
+    if (out.some((s) => s.kind === kind && distanceM(s.pos, c.pos) < 35)) continue;
+    const id = c.id !== undefined && c.id !== '' ? `p:${c.id}` : `p:${kind}:${c.pos.lat.toFixed(5)}:${c.pos.lon.toFixed(5)}`;
+    const name =
+      (c.subclass && POI_NAMES[c.subclass]) || (c.cls && POI_NAMES[c.cls]) || pick(rngFrom(seed, id), SPOT_KINDS[kind].names);
+    out.push({ id, kind, source: 'poi', pos: c.pos, name });
+  }
+  return out;
+}
