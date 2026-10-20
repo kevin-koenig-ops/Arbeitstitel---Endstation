@@ -17,7 +17,19 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 
 **Draußen testen:** Fühlt sich der Kampf gut an? Mehr Action oder mehr Taktik? Sind die Gegner zu stark oder zu schwach?
 
-## Iteration 2: Überlebende (das Herzstück)
+## ✅ Iteration 1c: Karte freilaufen, Tageszeit, Wetter
+
+- Kartennebel, dauerhaft aufgedeckte Wege, Sektoren mit Belohnungen
+- Tag/Dämmerung/Nacht aus dem Sonnenstand, Nacht mit mehr Gefahr und mehr Beute
+- Echtes Wetter mit Regen, Schnee, Nebel, Gewitter
+
+## Iteration 2: Geschichte und Überlebende (Tiefe)
+
+- Hauptziel „Fahrt zur Küste“: Bus-Teile an bestimmten echten Orten (Batterie, Reifen, Treibstoff …)
+- Erinnerungsstücke als zusammenhängende Geschichten (Sets)
+- Funkaufträge zu echten Orten in der Nähe
+
+## Iteration 2b: Überlebende (das Herzstück)
 
 - Überlebende finden (seltenes Ereignis an Fundstellen oder durch Funksignale)
 - Jede Figur mit Name, kurzer Geschichte, Fähigkeit, Bedürfnissen

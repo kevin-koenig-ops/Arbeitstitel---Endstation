@@ -28,6 +28,30 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
   });
   vib.checked = s.get().vibration;
 
+  const weatherToggle = h('input', { id: 'set-weather', type: 'checkbox', class: 'toggle', onchange: () => s.set({ realWeather: weatherToggle.checked }) });
+  weatherToggle.checked = s.get().realWeather;
+
+  const select = <K extends 'testPhase' | 'testWeather'>(key: K, id: string, options: [Settings[K], string][]) => {
+    const sel = h('select', { id, class: 'select', onchange: () => s.set({ [key]: sel.value } as Partial<Settings>) }, options.map(([v, label]) => h('option', { value: String(v) }, label)));
+    sel.value = String(s.get()[key]);
+    return sel;
+  };
+  const phaseSelect = select('testPhase', 'set-phase', [
+    ['auto', 'Echt (Sonnenstand)'],
+    ['day', 'Tag'],
+    ['dusk', 'Dämmerung'],
+    ['night', 'Nacht'],
+  ]);
+  const weatherSelect = select('testWeather', 'set-wx', [
+    ['auto', 'Echt'],
+    ['clear', 'Klar'],
+    ['cloudy', 'Bewölkt'],
+    ['rain', 'Regen'],
+    ['storm', 'Gewitter'],
+    ['snow', 'Schnee'],
+    ['fog', 'Nebel'],
+  ]);
+
   let armed = false;
   let armTimer = 0;
   const del = h('button', { class: 'btn ghost danger-text', type: 'button' }, 'Spielstand löschen');
@@ -71,6 +95,15 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
       h('div', { class: 'set-row' }, h('div', { class: 'set-label', id: 'lbl-loc' }, 'Standort', h('small', null, 'GPS draußen, Simulation zum Testen drinnen')), segmented('location', 'lbl-loc', [['gps', 'GPS'], ['sim', 'Simulation']], IS_PREVIEW)),
       previewNote,
       h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-vibration' }, 'Vibration', h('small', null, 'Kurz vibrieren, wenn eine Fundstelle in Reichweite ist')), vib),
+      h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-weather' }, 'Echtes Wetter', h('small', null, 'Regen, Schnee und Nebel wie draußen. Dafür geht dein Standort, auf etwa 10 km gerundet, an Open-Meteo.')), weatherToggle),
+    ),
+    h(
+      'section',
+      { class: 'set-group' },
+      h('h2', null, 'Zum Ausprobieren'),
+      h('p', { class: 'note' }, 'Tageszeit und Wetter erzwingen, um die Stimmungen zu sehen. Ändert nur die Optik, nicht Beute oder Gegner.'),
+      h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-phase' }, 'Tageszeit'), phaseSelect),
+      h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-wx' }, 'Wetter'), weatherSelect),
     ),
     h(
       'section',
@@ -82,7 +115,7 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
       'section',
       { class: 'set-group' },
       h('h2', null, 'Datenschutz'),
-      h('p', { class: 'note' }, 'Dein Standort verlässt dein Gerät nicht. Für die echte Karte lädt die App Kartenkacheln von OpenFreeMap; dabei sieht der Kartenserver nur, welcher Kartenausschnitt geladen wird.'),
+      h('p', { class: 'note' }, 'Dein genauer Standort verlässt dein Gerät nicht. Für die echte Karte lädt die App Kartenkacheln von OpenFreeMap; dabei sieht der Kartenserver nur, welcher Kartenausschnitt geladen wird. Für echtes Wetter geht ein auf etwa 10 km gerundeter Ort an Open-Meteo. Das kannst du oben ausschalten.'),
     ),
     h('section', { class: 'set-group' }, h('h2', null, 'Spielstand'), del),
     h('p', { class: 'version' }, `Version ${GAME_VERSION} · Kartendaten © OpenStreetMap-Mitwirkende`),

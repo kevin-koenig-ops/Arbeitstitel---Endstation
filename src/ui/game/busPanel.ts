@@ -8,6 +8,7 @@ import { busSvg } from '../busArt';
 import { clear, h, svgEl } from '../dom';
 import { icon, resIcon } from '../icons';
 import { REJECT_TEXT } from '../texts';
+import { exploredStats } from '../../core/explore';
 import { formatWait } from './spotSheet';
 
 type Tab = 'build' | 'gear' | 'stock' | 'memories';
@@ -227,6 +228,10 @@ export function openBusPanel(app: App, host: HTMLElement, onClose: () => void, o
         h('dd', null, String(s.stats.searches)),
         h('dt', null, 'Erledigte Gegner'),
         h('dd', null, String(s.stats.kills)),
+        h('dt', null, 'Erkundete Fläche'),
+        h('dd', null, `${exploredStats(s.explored).km2.toFixed(2).replace('.', ',')} km²`),
+        h('dt', null, 'Sektoren erkundet / gesichert'),
+        h('dd', null, `${Object.values(s.sectors).filter((l) => l >= 1).length} / ${Object.values(s.sectors).filter((l) => l >= 2).length}`),
         h('dt', null, 'Ausbauten'),
         h('dd', null, `${Object.keys(s.bus.modules).length} von ${MODULE_ORDER.length}`),
       ),

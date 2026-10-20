@@ -8,6 +8,7 @@ import type { PoiCandidate } from '../core/world';
 import { h, svgEl } from '../ui/dom';
 import { icon, spotIcon } from '../ui/icons';
 import { generateDecor, type DecorInput, type RawLine, type RawPolygon } from './decor';
+import { FogOfWar } from './fogOfWar';
 import demoWorld from './demoWorld.json';
 import { patternImage } from './patterns';
 import { buildStyle, DECOR_MINZOOM, loadRealSource } from './style';
@@ -48,6 +49,7 @@ const ll = (p: LatLon): [number, number] => [p.lon, p.lat];
 export class GameMap {
   map!: MLMap;
   follow = true;
+  fog: FogOfWar | null = null;
   private markers = new Map<string, { marker: Marker; el: HTMLElement; state: string }>();
   private player: Marker | null = null;
   private playerEl: HTMLElement | null = null;
@@ -125,10 +127,12 @@ export class GameMap {
 
     await new Promise<void>((resolve) => this.map.once('load', () => resolve()));
     this.loaded = true;
+    this.fog = new FogOfWar(this.map);
     if (this.pendingRange) this.setRange(this.pendingRange.c, this.pendingRange.r);
   }
 
   setPlayer(pos: LatLon, avatarSvg: string) {
+    this.fog?.setPlayer(pos);
     if (!this.player) {
       this.playerEl = h('div', { class: 'player' }, h('div', { class: 'player-ring' }), svgEl(avatarSvg, 'player-face'));
       this.player = new maplibregl.Marker({ element: this.playerEl, anchor: 'center', pitchAlignment: 'viewport' })
@@ -355,6 +359,7 @@ export class GameMap {
 
   destroy() {
     clearTimeout(this.decorTimer);
+    this.fog?.destroy();
     this.markers.forEach((m) => m.marker.remove());
     this.markers.clear();
     this.map?.remove();

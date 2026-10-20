@@ -279,7 +279,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .hud-top {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  grid-template-areas: "who . menu" "res res res";
+  grid-template-areas: "who . menu" "res res res" "chips chips chips";
   gap: 10px;
   align-items: center;
   padding-left: var(--gutter-l);
@@ -288,7 +288,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 }
 .hud-top > .iconbtn { grid-area: menu; }
 @media (min-width: 640px) {
-  .hud-top { grid-template-areas: "who res menu"; }
+  .hud-top { grid-template-areas: "who res menu" "chips chips chips"; }
   .res-bar { justify-self: center; }
 }
 .who { grid-area: who; display: flex; align-items: center; gap: 10px; padding: 3px 14px 3px 3px; border-radius: 30px; border: 1px solid var(--line); background: rgba(27, 26, 23, 0.92); cursor: pointer; min-width: 0; }
@@ -470,7 +470,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .mem.found .mem-text { font: 400 18px/1.25 var(--font-hand); color: #2d3b5a; }
 
 /* Hinweise */
-.toasts { position: absolute; left: 0; right: 0; top: calc(var(--safe-t) + 120px); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; z-index: 20; padding-left: var(--gutter-l); padding-right: var(--gutter-r); }
+.toasts { position: absolute; left: 0; right: 0; top: calc(var(--safe-t) + 168px); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; z-index: 20; padding-left: var(--gutter-l); padding-right: var(--gutter-r); }
 .toast { max-width: 440px; padding: 10px 16px; border-radius: 22px; background: rgba(18, 17, 15, 0.95); border: 1px solid var(--line); font: 600 15px/1.3 var(--font-ui); text-align: center; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45); animation: toast-in 0.25s ease-out; transition: opacity 0.4s ease, transform 0.4s ease; }
 .toast-good { border-color: #5d6b42; color: #cfe0a8; }
 .toast-warn { border-color: #7d4126; color: #f0b090; }
@@ -604,3 +604,45 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .dur { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--steel-3); overflow: hidden; }
 .dur span { display: block; height: 100%; background: var(--moss); }
 .weapon-left { grid-column: 1 / -1; font-size: 13px; color: var(--dust); }
+
+/* --- Erkundung, Tageszeit, Wetter ------------------------------------------------- */
+.fow { position: absolute; top: 0; left: 0; pointer-events: none; }
+.hud-chips { grid-area: chips; display: flex; gap: 8px; flex-wrap: wrap; }
+.env-chip { pointer-events: auto; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; border-radius: 15px; border: 1px solid var(--line); background: rgba(18, 17, 15, 0.85); color: var(--bone); font: 600 13px/1 var(--font-ui); cursor: pointer; }
+.env-chip .temp { color: var(--dust); font-variant-numeric: tabular-nums; }
+.env-chip[data-phase="night"] .svg { color: #a9bce6; }
+.env-chip[data-phase="dusk"] .svg { color: #ff9a66; }
+.env-chip[data-phase="day"] .svg { color: var(--amber); }
+.sector-chip .svg { color: var(--dust); }
+.sector-chip[data-level="1"] .svg { color: var(--amber); }
+.sector-chip[data-level="2"] .svg { color: var(--moss); }
+.mini-bar { width: 34px; height: 4px; border-radius: 2px; background: var(--steel-3); overflow: hidden; }
+.mini-bar span { display: block; height: 100%; background: var(--amber); }
+.sector-chip[data-level="2"] .mini-bar span { background: var(--moss); }
+
+/* Farbstimmung und Taschenlampe (Variablen --px/--py setzt der Spielbildschirm) */
+.tint, .wfog { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 1.2s ease; }
+.game[data-phase="dusk"] .tint {
+  opacity: 1;
+  background: linear-gradient(to bottom, rgba(255, 128, 72, 0.26), rgba(150, 70, 100, 0.12) 45%, transparent 75%);
+}
+.game[data-phase="night"] .tint {
+  opacity: 1;
+  background: radial-gradient(circle at var(--px, 50%) var(--py, 55%), rgba(255, 214, 150, 0.16) 0, rgba(255, 200, 130, 0.07) 70px, rgba(8, 12, 28, 0.22) 140px, rgba(6, 9, 22, 0.66) 360px);
+}
+.game[data-weather="fog"] .wfog {
+  opacity: 1;
+  background: radial-gradient(circle at var(--px, 50%) var(--py, 55%), transparent 0, transparent 80px, rgba(196, 190, 178, 0.42) 230px, rgba(196, 190, 178, 0.72) 460px);
+}
+.game[data-weather="rain"] .wfog, .game[data-weather="storm"] .wfog { opacity: 1; background: linear-gradient(to bottom, rgba(26, 32, 42, 0.42), transparent 55%); }
+.game[data-weather="snow"] .wfog { opacity: 1; background: linear-gradient(to bottom, rgba(230, 232, 236, 0.28), transparent 60%); }
+.game[data-phase="night"] .fog { opacity: 0.6; }
+.bolt { position: absolute; inset: 0; pointer-events: none; background: rgba(232, 238, 255, 0.85); opacity: 0; }
+.bolt.on { animation: bolt 0.9s ease-out; }
+@keyframes bolt { 0% { opacity: 0.9; } 8% { opacity: 0.1; } 16% { opacity: 0.75; } 100% { opacity: 0; } }
+/* Nachts leuchten Fundstellen stärker */
+.game[data-phase="night"] .spot-badge { box-shadow: 0 0 0 2px #15130f, 0 0 26px rgba(255, 178, 46, 0.85); }
+.game[data-phase="night"] .spot[data-guard="1"] .spot-badge { box-shadow: 0 0 0 2px #15130f, 0 0 26px rgba(217, 72, 43, 0.9); }
+.game[data-phase="night"] .player-face { box-shadow: 0 0 0 3px var(--amber), 0 0 0 6px rgba(18, 17, 15, 0.8), 0 0 30px rgba(255, 210, 140, 0.6); }
+
+.select { height: 42px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--steel); color: var(--bone); font: 600 15px var(--font-ui); max-width: 100%; }

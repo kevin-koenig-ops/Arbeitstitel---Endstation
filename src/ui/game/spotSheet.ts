@@ -204,6 +204,7 @@ export class SpotSheet {
         ev.perk ? h('p', { class: 'receipt-note' }, `${perkBg.name}: +1 ${RESOURCES[ev.perk].name} extra`) : null,
         note ? h('p', { class: 'receipt-note' }, note) : null,
         ev.bonus ? h('p', { class: 'receipt-note' }, 'Rückkehr-Bonus: alles doppelt') : null,
+        ev.night ? h('p', { class: 'receipt-note' }, 'Nachtbonus: 30 % mehr') : null,
       ),
       memento
         ? h(

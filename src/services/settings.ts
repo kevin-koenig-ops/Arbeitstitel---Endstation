@@ -1,5 +1,7 @@
 import { IS_PREVIEW } from '../config';
+import type { DayPhase } from '../core/sun';
 import type { LatLon } from '../core/types';
+import type { WeatherKind } from './weather';
 import { readJson, writeJson } from './storage';
 
 export interface Settings {
@@ -8,15 +10,19 @@ export interface Settings {
   /** Echtes GPS oder Tippen-zum-Laufen. */
   location: 'gps' | 'sim';
   vibration: boolean;
+  /** Echtes Wetter abfragen (Position auf ~10 km gerundet). */
+  realWeather: boolean;
+  /** Zum Ausprobieren: Tageszeit und Wetter erzwingen (nur Optik). */
+  testPhase: 'auto' | DayPhase;
+  testWeather: 'auto' | WeatherKind;
   /** Letzter bekannter Standort, nur auf diesem Gerät gespeichert. */
   lastPos?: LatLon;
 }
 
 const KEY = 'endstation.settings';
 
-const DEFAULTS: Settings = IS_PREVIEW
-  ? { map: 'demo', location: 'sim', vibration: true }
-  : { map: 'real', location: 'gps', vibration: true };
+const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto' } as const;
+const DEFAULTS: Settings = IS_PREVIEW ? { ...COMMON, map: 'demo', location: 'sim' } : { ...COMMON, map: 'real', location: 'gps' };
 
 export class SettingsStore {
   private value: Settings;

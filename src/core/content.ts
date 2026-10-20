@@ -405,3 +405,12 @@ export const WEAPONS: Record<WeaponId, WeaponDef> = {
 };
 
 export const START_WEAPONS: Weapon[] = [{ kind: 'crowbar', dur: WEAPONS.crowbar.dur }];
+
+// --- Tageszeit ---------------------------------------------------------------------
+
+/** Nachts bewachen mehr Zombies die Fundstellen ... */
+export const NIGHT_GUARD_FACTOR = 1.6;
+/** ... dafür gibt es mehr Beute. */
+export const NIGHT_LOOT_FACTOR = 1.3;
+/** GPS-Positionen, die ungenauer sind, decken keine Karte auf. */
+export const EXPLORE_MAX_ACCURACY_M = 45;

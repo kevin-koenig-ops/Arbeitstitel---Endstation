@@ -98,6 +98,10 @@ export interface PlayerState {
   weapons: Weapon[];
   /** Laufender Kampf oder null. Bleibt beim Neuladen erhalten. */
   combat: Combat | null;
+  /** Aufgedeckte Zellen, als Bitfelder pro Block (siehe core/explore.ts). */
+  explored: Record<string, string>;
+  /** Erreichte Stufe pro Sektor (1 = erkundet, 2 = gesichert). */
+  sectors: Record<string, number>;
   stats: { searches: number; kills: number };
 }
 
@@ -111,7 +115,8 @@ export type Action =
   | { type: 'engage'; spot: Spot; at: LatLon; accuracyM: number }
   | { type: 'fight'; move: CombatMove; quality: Quality }
   | { type: 'craft'; weapon: WeaponId }
-  | { type: 'heal' };
+  | { type: 'heal' }
+  | { type: 'explore'; at: LatLon; accuracyM: number };
 
 export type RejectReason =
   | 'too_far'
@@ -129,7 +134,9 @@ export type RejectReason =
   | 'full_health';
 
 export type GameEvent =
-  | { type: 'loot'; spotId: string; items: Partial<Inventory>; memento?: string; bonus: boolean; perk?: Resource }
+  | { type: 'loot'; spotId: string; items: Partial<Inventory>; memento?: string; bonus: boolean; perk?: Resource; night?: boolean }
+  | { type: 'explored'; added: number }
+  | { type: 'sector'; key: string; level: number; reward: Partial<Inventory> }
   | { type: 'built'; module: ModuleId }
   | { type: 'harvested'; items: Partial<Inventory> }
   | { type: 'returnBonus' }

@@ -12,6 +12,7 @@ import { avatarSvg } from '../avatar';
 import { clear, h, sleep, svgEl } from '../dom';
 import { icon, resIcon } from '../icons';
 import { REJECT_TEXT } from '../texts';
+import { timingFactor } from './ambience';
 import { enemySvg } from '../zombies';
 
 type LootEvent = Extract<GameEvent, { type: 'loot' }>;
@@ -131,7 +132,7 @@ export function openCombat(app: App, host: HTMLElement, onEnd: (end: CombatEnd) 
       let last = performance.now();
       let raf = 0;
       let done = false;
-      const speed = 0.85 * def.speed; // Balkenlängen pro Sekunde
+      const speed = 0.85 * def.speed * timingFactor(); // Balkenlängen pro Sekunde
       const finish = () => {
         if (done) return;
         done = true;

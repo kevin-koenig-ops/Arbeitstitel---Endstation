@@ -17,6 +17,11 @@ const MIGRATIONS: Record<number, (s: Raw) => void> = {
     s.combat = null;
     s.stats = { kills: 0, ...(s.stats as object) };
   },
+  // Version 2 -> 3: Erkundung (Kartennebel) kam dazu
+  2: (s) => {
+    s.explored = {};
+    s.sectors = {};
+  },
 };
 
 export function migrate(raw: unknown): PlayerState | null {

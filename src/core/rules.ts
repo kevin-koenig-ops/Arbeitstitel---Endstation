@@ -22,6 +22,9 @@ import {
   MEMENTOS,
   MIN_HEALTH_TO_FIGHT,
   MODULES,
+  EXPLORE_MAX_ACCURACY_M,
+  NIGHT_GUARD_FACTOR,
+  NIGHT_LOOT_FACTOR,
   PERK_CHANCE,
   QUALITY_FACTOR,
   RESOURCE_ORDER,
@@ -31,7 +34,9 @@ import {
   START_WEAPONS,
   WEAPONS,
 } from './content';
+import { ExploredView, revealAround, SECTOR_LEVELS } from './explore';
 import { distanceM } from './geo';
+import { dayPhase } from './sun';
 import { pickWeighted, randInt, rngFrom } from './rng';
 import type {
   Action,
@@ -50,7 +55,7 @@ import type {
 } from './types';
 import { resolveGridSpot } from './world';
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 const HOUR = 3600_000;
 const REGEN_MS = HEALTH_REGEN_MIN * 60_000;
 const MAX_GPS_SLACK_M = 25;
@@ -71,6 +76,8 @@ export function createPlayer(playerId: string, character: Character, now: number
     healthAt: now,
     weapons: START_WEAPONS.map((w) => ({ ...w })),
     combat: null,
+    explored: {},
+    sectors: {},
     stats: { searches: 0, kills: 0 },
   };
 }
@@ -132,7 +139,9 @@ export function guardWindow(spot: Spot, now: number): number {
  */
 export function guardOf(seed: string, spot: Spot, now: number): EnemyId | null {
   const r = rngFrom(seed, 'wache', spot.id, guardWindow(spot, now));
-  if (r() >= GUARD_CHANCE[spot.source]) return null;
+  const night = dayPhase(spot.pos, now) === 'night';
+  const chance = Math.min(0.75, GUARD_CHANCE[spot.source] * (night ? NIGHT_GUARD_FACTOR : 1));
+  if (r() >= chance) return null;
   return pickWeighted(r, ENEMY_WEIGHTS);
 }
 
@@ -279,6 +288,29 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       break;
     }
 
+    case 'explore': {
+      if (action.accuracyM > EXPLORE_MAX_ACCURACY_M) return { state: prev, events: [] };
+      const res = revealAround(state.explored, action.at);
+      if (!res.added) return { state: prev, events: [] };
+      state.explored = res.explored;
+      events.push({ type: 'explored', added: res.added });
+      // Sektor-Meilensteine: einmalige Belohnung bei 25 % und 50 %
+      const view = new ExploredView(state.explored);
+      for (const key of res.sectors) {
+        const [sx, sy] = key.split(':').map(Number);
+        const pct = view.sectorProgress(sx, sy);
+        const reached = state.sectors[key] ?? 0;
+        for (let lvl = reached; lvl < SECTOR_LEVELS.length; lvl++) {
+          if (pct < SECTOR_LEVELS[lvl].pct) break;
+          state.sectors[key] = lvl + 1;
+          const reward = SECTOR_LEVELS[lvl].reward;
+          for (const k of RESOURCE_ORDER) state.inventory[k] += reward[k] ?? 0;
+          events.push({ type: 'sector', key, level: lvl + 1, reward });
+        }
+      }
+      break;
+    }
+
     case 'build': {
       const def = MODULES[action.module];
       if (state.bus.modules[action.module]) return reject('already_built');
@@ -343,6 +375,8 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, guarded: boo
   // Nie ganz leer ausgehen.
   if (Object.keys(items).length === 0) items[def.loot[0].res] = def.loot[0].min;
   if (guarded) for (const k of Object.keys(items) as Resource[]) items[k] = Math.ceil((items[k] ?? 0) * GUARD_LOOT_FACTOR);
+  const night = dayPhase(spot.pos, ctx.now) === 'night';
+  if (night) for (const k of Object.keys(items) as Resource[]) items[k] = Math.ceil((items[k] ?? 0) * NIGHT_LOOT_FACTOR);
   // Vorgeschichte
   let perk: Resource | undefined;
   const bonusRes = BACKGROUNDS[state.character.background].bonusRes;
@@ -370,7 +404,7 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, guarded: boo
   state.returnBonus = false;
   state.stats.searches += 1;
   pruneSpots(state, ctx.now);
-  return { type: 'loot', spotId: spot.id, items, memento, bonus, perk };
+  return { type: 'loot', spotId: spot.id, items, memento, bonus, perk, night };
 }
 
 /** Bei einer Niederlage fällt etwas aus dem Rucksack. Nie viel, nie der Bus. */

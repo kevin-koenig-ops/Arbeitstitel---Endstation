@@ -18,6 +18,14 @@ Ein Endzeit-Spiel auf der echten Karte, das man nebenbei im Alltag spielt: Handy
 3. **Ausbauen:** Mit Material wird der Bus ausgebaut. Manche Ausbauten produzieren von allein (Regenfass, Dachgarten).
 4. **Entdecken:** Selten findet man Erinnerungsstücke, kleine Notizen und Fundsachen, die nach und nach erzählen, was passiert ist.
 
+## Karte freilaufen, Tageszeit, Wetter
+
+- **Nebel:** Unbekanntes Gebiet liegt unter Nebel. Was du gerade siehst (~140 m), ist frei. Wo du gegangen bist (~55 m Umkreis), bleibt dauerhaft aufgedeckt.
+- **Sektoren** (~750 m × 750 m): Bei 25 % aufgedeckt gilt ein Sektor als *erkundet*, bei 50 % als *gesichert*. Beides gibt einmalig eine Belohnung.
+- **Echte Tageszeit** aus dem Sonnenstand: Tag, Dämmerung, Nacht. Nachts mehr Wächter, dafür 30 % mehr Beute, dazu Taschenlampe und glühende Funken.
+- **Echtes Wetter** (Open-Meteo, Position auf ~10 km gerundet): Regen und Schnee machen Zombies träge (Timing leichter), bei Nebel sieht man Wächter erst aus der Nähe, Gewitter mit Blitzen.
+- In den Einstellungen kann man Tageszeit und Wetter zum Ausprobieren erzwingen (nur Optik).
+
 ## Bedrohung und Kampf
 
 - **Streuner bewachen Fundstellen** (etwa jede vierte, an echten Orten öfter). Wer sie erledigt, bekommt mehr Beute und öfter ein Erinnerungsstück. Man kann sie auch einfach links liegen lassen.

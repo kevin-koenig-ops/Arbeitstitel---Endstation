@@ -2,6 +2,7 @@
 
 import { FALLBACK_START, IS_PREVIEW, VIEW_RADIUS_M } from '../../config';
 import { ENEMIES, MAX_HEALTH, RESOURCE_ORDER, RESOURCES } from '../../core/content';
+import { ExploredView, SECTOR_LEVELS, sectorOf } from '../../core/explore';
 import { distanceM } from '../../core/geo';
 import { currentHealth, dayNumber, pendingHarvest, readyAt, searchRangeM } from '../../core/rules';
 import type { LatLon, Resource, Spot } from '../../core/types';
@@ -19,7 +20,8 @@ import { avatarSvg } from '../avatar';
 import { append, clear, h, svgEl } from '../dom';
 import { openBusPanel } from '../game/busPanel';
 import { openCombat } from '../game/combat';
-import { mountDust } from '../game/dust';
+import { AmbienceController, ambienceEffects, currentAmbience, guardSightM, PHASE_NAMES, WEATHER_NAMES, type Ambience } from '../game/ambience';
+import { Particles } from '../game/dust';
 import { SpotSheet } from '../game/spotSheet';
 import { icon, resIcon } from '../icons';
 import { settingsPanel } from '../settingsPanel';
@@ -42,7 +44,13 @@ export function gameScreen(app: App): Screen {
   const fog = h('div', { class: 'fog', 'aria-hidden': 'true' });
   const tilt = h('div', { class: 'tilt', 'aria-hidden': 'true' });
   const dust = h('canvas', { class: 'dust', 'aria-hidden': 'true' });
-  let unmountDust = () => {};
+  const tint = h('div', { class: 'tint', 'aria-hidden': 'true' });
+  const wfog = h('div', { class: 'wfog', 'aria-hidden': 'true' });
+  const bolt = h('div', { class: 'bolt', 'aria-hidden': 'true' });
+  let particles: Particles | null = null;
+  let ambience: AmbienceController | null = null;
+  const sectorChip = h('button', { class: 'env-chip sector-chip', type: 'button', onclick: () => explainSector() });
+  const envChip = h('button', { class: 'env-chip', type: 'button', onclick: () => app.toast(ambienceEffects(currentAmbience())) });
   const overlayHost = h('div', { class: 'overlay-host' });
   const sheetHost = h('div', { class: 'sheet-host' });
 
@@ -77,6 +85,7 @@ export function gameScreen(app: App): Screen {
       ),
       resBar,
       h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Pause', onclick: () => openPause() }, svgEl(icon('menu'))),
+      h('div', { class: 'hud-chips' }, sectorChip, envChip),
     ),
     banners,
     h(
@@ -87,7 +96,7 @@ export function gameScreen(app: App): Screen {
       locateBtn,
     ),
   );
-  const el = h('div', { class: 'screen game' }, mapEl, tilt, fog, dust, hud, sheetHost, overlayHost);
+  const el = h('div', { class: 'screen game' }, mapEl, tilt, fog, tint, wfog, dust, bolt, hud, sheetHost, overlayHost);
 
   // --- Zustand -------------------------------------------------------------------
   let gm: GameMap | null = null;
@@ -101,6 +110,7 @@ export function gameScreen(app: App): Screen {
   let ticker = 0;
   let overlay: HTMLElement | null = null;
   let destroyed = false;
+  let lastExplorePos: LatLon | null = null;
 
   const sheet = new SpotSheet({
     app,
@@ -160,6 +170,66 @@ export function gameScreen(app: App): Screen {
     }
   };
 
+  // --- Erkundung & Stimmung ----------------------------------------------------------
+  const sectorInfo = () => {
+    const s = app.backend.current();
+    if (!s || !fix) return null;
+    const { sx, sy, key } = sectorOf(fix.pos);
+    return { pct: new ExploredView(s.explored).sectorProgress(sx, sy), level: s.sectors[key] ?? 0 };
+  };
+
+  const renderSectorChip = () => {
+    const info = sectorInfo();
+    clear(sectorChip);
+    if (!info) return;
+    const pct = Math.round(info.pct * 100);
+    sectorChip.dataset.level = String(info.level);
+    sectorChip.append(svgEl(icon('compass', 15)), `Sektor ${pct} %`, h('span', { class: 'mini-bar' }, h('span', { style: `width:${Math.min(100, pct * 2)}%` })));
+  };
+
+  const explainSector = () => {
+    const info = sectorInfo();
+    if (!info) return;
+    const pct = Math.round(info.pct * 100);
+    const next = SECTOR_LEVELS[info.level];
+    app.toast(
+      next
+        ? `Dieser Sektor ist zu ${pct} % erkundet. Ab ${Math.round(next.pct * 100)} % gilt er als ${next.name} und es gibt eine Belohnung.`
+        : `Dieser Sektor ist gesichert (${pct} %). Such dir den nächsten!`,
+    );
+  };
+
+  const renderEnvChip = (a: Ambience) => {
+    clear(envChip);
+    const ic = a.weather !== 'clear' && a.weather !== 'cloudy' ? a.weather : a.phase === 'night' ? 'moon' : a.phase === 'dusk' ? 'sunset' : a.weather === 'cloudy' ? 'cloud' : 'sun';
+    const label = a.weather === 'clear' || a.weather === 'cloudy' ? PHASE_NAMES[a.phase] : `${a.phase === 'day' ? '' : PHASE_NAMES[a.phase] + ', '}${WEATHER_NAMES[a.weather]}`;
+    envChip.dataset.phase = a.phase;
+    append(envChip, [svgEl(icon(ic, 15)), label, a.tempC !== null ? h('span', { class: 'temp' }, `${Math.round(a.tempC)}°`) : null]);
+  };
+
+  const explore = async (f: Fix) => {
+    if (lastExplorePos && distanceM(lastExplorePos, f.pos) < 12) return;
+    lastExplorePos = f.pos;
+    const res = await app.backend.dispatch({ type: 'explore', at: f.pos, accuracyM: f.accuracyM });
+    if (!res.events.length || destroyed) return;
+    gm?.fog?.setExplored(res.state.explored);
+    for (const e of res.events) {
+      if (e.type !== 'sector') continue;
+      const lvl = SECTOR_LEVELS[e.level - 1];
+      const reward = RESOURCE_ORDER.filter((k) => e.reward[k]).map((k) => `${e.reward[k]} ${RESOURCES[k].name}`).join(', ');
+      app.toast(`Sektor ${lvl.name}! Belohnung: ${reward}`, 'good');
+      if (app.settings.get().vibration) {
+        try {
+          navigator.vibrate?.([40, 50, 40, 50, 120]);
+        } catch {
+          /* egal */
+        }
+      }
+      renderHud();
+    }
+    renderSectorChip();
+  };
+
   // Hinweise oben: einer für GPS, einer für die Karte. So verdrängen sie sich nicht.
   const bannerEls: Partial<Record<'gps' | 'map', HTMLElement>> = {};
   const showBanner = (key: 'gps' | 'map', title: string, text: string, actions: [string, () => void][]) => {
@@ -186,11 +256,11 @@ export function gameScreen(app: App): Screen {
     const p = gm.project(fix.pos);
     // Sicht: klar bis ~150 m, dann Dunst, ab ~500 m fast nur noch Nebel.
     const px = (m: number) => Math.max(m / 2.2, gm!.metersToPixels(m, fix!.pos));
-    fog.style.setProperty('--px', `${p.x}px`);
-    fog.style.setProperty('--py', `${p.y}px`);
-    fog.style.setProperty('--r1', `${px(150)}px`);
-    fog.style.setProperty('--r2', `${px(300)}px`);
-    fog.style.setProperty('--r3', `${px(520)}px`);
+    el.style.setProperty('--px', `${p.x}px`);
+    el.style.setProperty('--py', `${p.y}px`);
+    el.style.setProperty('--r1', `${px(150)}px`);
+    el.style.setProperty('--r2', `${px(300)}px`);
+    el.style.setProperty('--r3', `${px(520)}px`);
   };
 
   const refreshSpots = async (force = false) => {
@@ -213,7 +283,8 @@ export function gameScreen(app: App): Screen {
       const wait = readyAt(s, spot) - now;
       const d = fix ? distanceM(fix.pos, spot.pos) : Infinity;
       const st = wait > 0 ? 'cooldown' : d <= range ? 'inrange' : 'ready';
-      const guard = wait > 0 ? null : app.backend.guardFor(spot);
+      // Bei Nebel sieht man Wächter erst aus der Nähe
+      const guard = wait > 0 || d > guardSightM() ? null : app.backend.guardFor(spot);
       if (st === 'inrange') {
         if (!notified.has(spot.id)) {
           notified.add(spot.id);
@@ -275,6 +346,9 @@ export function gameScreen(app: App): Screen {
       if (!last || distanceM(last, f.pos) > 300) app.settings.set({ lastPos: f.pos });
     }
     if (first || !f.simulated) renderLocChip();
+    ambience?.setPosition(f.pos);
+    void explore(f);
+    if (first) renderSectorChip();
     updateFog();
     void refreshSpots(first);
     updateSpots();
@@ -396,7 +470,6 @@ export function gameScreen(app: App): Screen {
     async mount() {
       renderHud();
       renderLocChip();
-      unmountDust = mountDust(dust);
       void onVisible();
       // Ein laufender Kampf geht nach dem Neuladen weiter.
       if (app.backend.current()?.combat) openFight();
@@ -435,6 +508,14 @@ export function gameScreen(app: App): Screen {
         return;
       }
       if (destroyed) return;
+      gm.fog?.setExplored(app.backend.current()?.explored ?? {});
+      particles = new Particles(dust);
+      ambience = new AmbienceController(app, el, gm.map, gm.fog?.canvas ?? null, particles, bolt);
+      ambience.onChange((a) => {
+        renderEnvChip(a);
+        updateSpots();
+      });
+      ambience.refresh();
 
       if (locMode === 'sim') provider = new SimulatedLocation(start);
       else if (mapMode === 'demo') provider = new AnchoredLocation(new GpsLocation(), DEMO.start);
@@ -450,7 +531,8 @@ export function gameScreen(app: App): Screen {
     },
     destroy() {
       destroyed = true;
-      unmountDust();
+      particles?.destroy();
+      ambience?.destroy();
       clearInterval(ticker);
       document.removeEventListener('visibilitychange', onVisible);
       provider?.stop();
