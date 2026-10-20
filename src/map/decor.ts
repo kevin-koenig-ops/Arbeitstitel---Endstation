@@ -57,6 +57,10 @@ const TRUNK = '#4a3a2b';
 const DEAD = '#6a6157';
 const CARS = ['#6e3f28', '#7a3a2e', '#3f4b57', '#8a857a', '#2f2b28', '#5a5a4e', '#4e5a4a'];
 const CABIN = '#26272a';
+const PLINTH = '#3a352f';
+const CHIMNEY = ['#5a3a2e', '#3a3633', '#6b4a3a'];
+const RUBBLE = ['#5a5246', '#4a443c', '#615848', '#3f3a33'];
+const POLE = '#4a3f33';
 
 const pick = <T>(r: Rng, a: readonly T[]) => a[Math.floor(r() * a.length)];
 
@@ -179,7 +183,7 @@ class Grid<T> {
 
 // --- Hauptfunktion ---------------------------------------------------------------------
 
-export const DECOR_LIMITS = { trees: 4500, cars: 220 };
+export const DECOR_LIMITS = { trees: 4500, cars: 220, poles: 260 };
 
 export function generateDecor(input: DecorInput, center: LatLon, radiusM: number): DecorResult {
   const P = new Proj(center);
@@ -222,13 +226,24 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
     const k = state === 'ruin' ? 0.4 + 0.25 * r() : state === 'burnt' ? 0.6 : 0.82 + 0.18 * r();
     const wallTop = Math.max(2.4, h0 * k);
     const wall = state === 'burnt' ? pick(r, SOOT) : pick(r, WALLS);
+    const simple = ring.length <= 9 && inRing(c, ring);
     add(ring, minH * k, wallTop, wall);
+    // Sockel: dunkler Streifen unten, das Haus steht damit sichtbar auf dem Boden
+    if (minH === 0 && simple && area < 450) add(scaleRing(ring, c, 1.04), 0, 0.55, PLINTH);
     if (minH > 0 || state !== 'intact') {
-      // Ruine: ein stehengebliebener Mauerrest
-      if (state === 'ruin' && area < 400 && r() < 0.6) add(scaleRing(ring, ring[0], 0.35), wallTop, wallTop + 1.6 + r() * 1.8, wall);
+      if (state === 'ruin') {
+        // Ruine: eine stehengebliebene Ecke und Schutt drumherum
+        if (area < 400 && r() < 0.6) add(scaleRing(ring, ring[0], 0.35), wallTop, wallTop + 1.6 + r() * 1.8, wall);
+        const piles = 2 + Math.floor(r() * 4);
+        for (let i = 0; i < piles; i++) {
+          const v = ring[Math.floor(r() * (ring.length - 1))];
+          const px = v[0] + (v[0] - c[0]) * (0.12 + r() * 0.2) + (r() - 0.5) * 2;
+          const py = v[1] + (v[1] - c[1]) * (0.12 + r() * 0.2) + (r() - 0.5) * 2;
+          add(ngon(px, py, 0.7 + r() * 1.1, 5, r() * 3), 0, 0.3 + r() * 0.7, pick(r, RUBBLE));
+        }
+      }
       continue;
     }
-    const simple = ring.length <= 9 && inRing(c, ring);
     if (area > 450 || !simple) {
       add(scaleRing(ring, c, 0.93), wallTop, wallTop + 0.45, pick(r, FLAT_ROOF));
     } else {
@@ -237,6 +252,12 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
       const pitch = Math.min(3.2, 0.9 + Math.sqrt(area) * 0.18);
       add(scaleRing(ring, c, 0.8), wallTop, wallTop + pitch * 0.5, roof);
       add(scaleRing(ring, c, 0.48), wallTop + pitch * 0.5, wallTop + pitch, roof);
+      // Schornstein bei gut der Hälfte der Häuser
+      if (r() < 0.6) {
+        const v = ring[Math.floor(r() * (ring.length - 1))];
+        const ang = Math.atan2(ring[1][1] - ring[0][1], ring[1][0] - ring[0][0]);
+        add(box(c[0] + (v[0] - c[0]) * 0.42, c[1] + (v[1] - c[1]) * 0.42, 0.8, 0.8, ang), wallTop, wallTop + pitch + 1.1, pick(r, CHIMNEY));
+      }
     }
   }
 
@@ -369,6 +390,47 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
     add(box(x, y, 4.3, 1.8, a), 0.25, 1.05, body);
     add(box(x, y, 2.2, 1.6, a, -0.25), 1.05, 1.55, r() < 0.3 ? body : CABIN);
     cars++;
+  }
+
+  // Strommasten ---------------------------------------------------------------------
+  // Holzmasten am Straßenrand, etwa alle 45 m, wie in Dörfern und Vororten.
+  const poleCell = 45;
+  const poleBest = new Map<string, { d: number; p: Pt; ang: number }>();
+  for (const m of roadsM) {
+    for (let i = 0; i < m.length - 1; i++) {
+      const a = m[i];
+      const b = m[i + 1];
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      for (let t = 0; t < len; t += 8) {
+        const p: Pt = [a[0] + ((b[0] - a[0]) * t) / len, a[1] + ((b[1] - a[1]) * t) / len];
+        if (!near(p)) continue;
+        const ll = P.toLL(p);
+        const gx = Math.floor(ll[0] / (poleCell * degLon));
+        const gy = Math.floor(ll[1] / (poleCell * degLat));
+        const key = `${gx}:${gy}`;
+        const r = rngFrom('mast', key);
+        if (r() > 0.55) continue;
+        const target = P.toM([(gx + r()) * poleCell * degLon, (gy + r()) * poleCell * degLat]);
+        const d = Math.hypot(p[0] - target[0], p[1] - target[1]);
+        const cur = poleBest.get(key);
+        if (!cur || d < cur.d) poleBest.set(key, { d, p, ang });
+      }
+    }
+  }
+  let poles = 0;
+  for (const [key, { p, ang }] of poleBest) {
+    if (poles >= DECOR_LIMITS.poles) break;
+    const r = rngFrom('mastform', key);
+    const side = r() < 0.5 ? -1 : 1;
+    const off = side * (5 + r());
+    const x = p[0] - Math.sin(ang) * off;
+    const y = p[1] + Math.cos(ang) * off;
+    if (bGrid.near([x, y]).some((ring) => inRing([x, y], ring))) continue;
+    const h = 7 + r() * 1.5;
+    add(box(x, y, 0.3, 0.3, ang), 0, h, POLE);
+    add(box(x, y, 0.22, 1.7, ang), h - 0.7, h - 0.45, POLE);
+    poles++;
   }
 
   return { parts, counts: { buildings, trees: trees.length, cars } };

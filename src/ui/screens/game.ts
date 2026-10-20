@@ -18,6 +18,7 @@ import type { App, Screen } from '../app';
 import { avatarSvg } from '../avatar';
 import { append, clear, h, svgEl } from '../dom';
 import { openBusPanel } from '../game/busPanel';
+import { mountDust } from '../game/dust';
 import { SpotSheet } from '../game/spotSheet';
 import { icon, resIcon } from '../icons';
 import { settingsPanel } from '../settingsPanel';
@@ -37,6 +38,9 @@ export function gameScreen(app: App): Screen {
   // --- DOM ---------------------------------------------------------------------
   const mapEl = h('div', { class: 'map' });
   const fog = h('div', { class: 'fog', 'aria-hidden': 'true' });
+  const tilt = h('div', { class: 'tilt', 'aria-hidden': 'true' });
+  const dust = h('canvas', { class: 'dust', 'aria-hidden': 'true' });
+  let unmountDust = () => {};
   const overlayHost = h('div', { class: 'overlay-host' });
   const sheetHost = h('div', { class: 'sheet-host' });
 
@@ -80,7 +84,7 @@ export function gameScreen(app: App): Screen {
       locateBtn,
     ),
   );
-  const el = h('div', { class: 'screen game' }, mapEl, fog, hud, sheetHost, overlayHost);
+  const el = h('div', { class: 'screen game' }, mapEl, tilt, fog, dust, hud, sheetHost, overlayHost);
 
   // --- Zustand -------------------------------------------------------------------
   let gm: GameMap | null = null;
@@ -354,6 +358,7 @@ export function gameScreen(app: App): Screen {
     async mount() {
       renderHud();
       renderLocChip();
+      unmountDust = mountDust(dust);
       void onVisible();
       document.addEventListener('visibilitychange', onVisible);
 
@@ -405,6 +410,7 @@ export function gameScreen(app: App): Screen {
     },
     destroy() {
       destroyed = true;
+      unmountDust();
       clearInterval(ticker);
       document.removeEventListener('visibilitychange', onVisible);
       provider?.stop();

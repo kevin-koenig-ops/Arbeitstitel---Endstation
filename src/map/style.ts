@@ -82,7 +82,7 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
     },
     { id: 'landcover-wood-edge', type: 'line', ...from('landcover', cls('wood', 'forest')), paint: { 'line-color': '#1c2217', 'line-width': 2, 'line-blur': 2 } },
 
-    { id: 'water', type: 'fill', ...from('water'), paint: { 'fill-color': C.water } },
+    { id: 'water', type: 'fill', ...from('water'), paint: { 'fill-pattern': 'pat-water' } },
     { id: 'water-edge', type: 'line', ...from('water'), paint: { 'line-color': C.waterEdge, 'line-width': 1.4, 'line-opacity': 0.7 } },
     {
       id: 'waterway',
@@ -99,11 +99,44 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
     { id: 'road-major-casing', type: 'line', ...from('transportation', road(MAJOR)), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': C.casing, 'line-width': z([[12, 2.4], [15, 8], [17, 20], [19, 54], [21, 164]]) } },
     { id: 'road-minor', type: 'line', ...from('transportation', road(MINOR)), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': C.roadMinor, 'line-width': wMinor } },
     { id: 'road-major', type: 'line', ...from('transportation', road(MAJOR)), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': C.roadMajor, 'line-width': wMajor } },
+    {
+      id: 'road-cracks',
+      type: 'line',
+      minzoom: 16.3,
+      ...from('transportation', road([...MAJOR, ...MINOR])),
+      layout: { 'line-join': 'round' },
+      paint: {
+        'line-pattern': 'pat-cracks',
+        'line-opacity': 0.6,
+        'line-width': [
+          'interpolate', ['exponential', 1.6], ['zoom'],
+          15, ['match', ['get', 'class'], MAJOR, 6, 3],
+          17, ['match', ['get', 'class'], MAJOR, 16, 10],
+          19, ['match', ['get', 'class'], MAJOR, 46, 30],
+          21, ['match', ['get', 'class'], MAJOR, 150, 100],
+        ] as ExpressionSpecification,
+      },
+    },
     { id: 'road-marking', type: 'line', minzoom: 16, ...from('transportation', road(MAJOR)), paint: { 'line-color': C.marking, 'line-opacity': 0.45, 'line-width': z([[16, 0.8], [19, 2.4]]), 'line-dasharray': [4, 6] } },
 
     // Suchradius liegt auf dem Boden, Häuser und Bäume verdecken ihn
     { id: 'range-fill', type: 'fill', source: 'range', paint: { 'fill-color': '#ffb22e', 'fill-opacity': 0.08 } },
     { id: 'range-line', type: 'line', source: 'range', paint: { 'line-color': '#ffb22e', 'line-width': 2, 'line-opacity': 0.8, 'line-dasharray': [2, 2] } },
+
+    // Warmes Leuchten am Boden unter Fundstellen
+    {
+      id: 'spot-glow',
+      type: 'circle',
+      source: 'glow',
+      paint: {
+        'circle-pitch-alignment': 'map',
+        'circle-pitch-scale': 'map',
+        'circle-blur': 1,
+        'circle-radius': ['interpolate', ['exponential', 2], ['zoom'], 15, 7, 17, 26, 19, 100],
+        'circle-color': ['match', ['get', 's'], 'inrange', '#ffd27a', ['match', ['get', 'src'], 'poi', '#f1e2bd', '#ffb22e']],
+        'circle-opacity': ['match', ['get', 's'], 'cooldown', 0, 'inrange', 0.75, 0.5],
+      },
+    },
 
     // Weit weg (herausgezoomt): einfache 3D-Blöcke aus den Kartendaten
     {
@@ -173,7 +206,7 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
   }
 
   const empty: SourceSpecification = { type: 'geojson', data: { type: 'FeatureCollection', features: [] } };
-  const sources: Record<string, SourceSpecification> = { range: empty, decor: { ...empty } };
+  const sources: Record<string, SourceSpecification> = { range: empty, decor: { ...empty }, glow: { ...empty } };
   if (mode === 'real' && real) sources.omt = real.source;
 
   const style: StyleSpecification = {

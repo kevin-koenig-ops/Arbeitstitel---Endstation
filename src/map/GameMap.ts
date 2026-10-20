@@ -178,7 +178,22 @@ export class GameMap {
     return m / mpp;
   }
 
+  private glowSig = '';
+
   setSpots(views: SpotView[]) {
+    // Bodenleuchten nur neu setzen, wenn sich Fundstellen oder ihr Zustand ändern
+    const sig = views.map((v) => v.spot.id + v.state).join('|');
+    if (sig !== this.glowSig && this.loaded) {
+      this.glowSig = sig;
+      (this.map.getSource('glow') as GeoJSONSource | undefined)?.setData({
+        type: 'FeatureCollection',
+        features: views.map((v) => ({
+          type: 'Feature',
+          properties: { s: v.state, src: v.spot.source },
+          geometry: { type: 'Point', coordinates: ll(v.spot.pos) },
+        })),
+      });
+    }
     const seen = new Set<string>();
     for (const v of views) {
       seen.add(v.spot.id);

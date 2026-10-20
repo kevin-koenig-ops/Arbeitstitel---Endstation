@@ -98,6 +98,58 @@ const PAINTERS: Record<string, [number, Painter]> = {
       }
     },
   ],
+  // Risse und Schlaglöcher für Straßen. Die Bildhöhe entspricht der Straßenbreite,
+  // deshalb nur wenige, diagonale Risse (sonst wirkt es wie Bahngleise).
+  'pat-cracks': [
+    96,
+    (ctx, s) => {
+      ctx.clearRect(0, 0, s, s);
+      const r = rngFrom('risse2');
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = 'rgba(30, 27, 22, 0.7)';
+      for (const [sx, sy] of [[8, 30], [52, 66], [70, 20]]) {
+        let x = sx;
+        let y = sy;
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        for (let k = 0; k < 4; k++) {
+          x += 3 + r() * 6;
+          y += (r() < 0.5 ? -1 : 1) * (4 + r() * 6);
+          ctx.lineTo(x, Math.max(10, Math.min(s - 10, y)));
+        }
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(30, 27, 23, 0.55)';
+      ctx.beginPath();
+      ctx.ellipse(s * 0.33, s * 0.6, 5, 3.4, 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(170, 160, 138, 0.1)';
+      ctx.fillRect(s * 0.62, s * 0.4, 16, 12);
+    },
+  ],
+  'pat-water': [
+    64,
+    (ctx, s) => {
+      ctx.fillStyle = '#1f2b29';
+      ctx.fillRect(0, 0, s, s);
+      const r = rngFrom('wasser');
+      ctx.strokeStyle = 'rgba(120, 140, 128, 0.18)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 9; i++) {
+        const x = r() * s;
+        const y = r() * s;
+        const w = 6 + r() * 10;
+        wrap(s, (dx, dy) => {
+          ctx.beginPath();
+          ctx.moveTo(x + dx, y + dy);
+          ctx.quadraticCurveTo(x + dx + w / 2, y + dy - 2, x + dx + w, y + dy);
+          ctx.stroke();
+        });
+      }
+    },
+  ],
   'pat-farm': [
     24,
     (ctx, s) => {
