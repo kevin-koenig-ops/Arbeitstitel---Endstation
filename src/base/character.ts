@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { HAIR_COLOR, JACKET_COLORS, SKIN_TONES } from '../core/content';
-import type { Character } from '../core/types';
+import type { Character, WeaponId } from '../core/types';
 
 type Look = Character['look'];
 
@@ -43,6 +43,8 @@ function pivot(parent: THREE.Object3D, x: number, y: number, z = 0): THREE.Group
   return g;
 }
 
+export type CharacterAction = 'swing' | 'power' | 'shove' | 'hurt' | 'bandage' | 'dodge';
+
 const TROUSERS = '#3a3f4a';
 const SHOES = '#2e241b';
 const PACK = '#56603f';
@@ -61,6 +63,8 @@ export class CharacterRig {
   private phase = 0;
   private speed = 0;
   private waveT = -1;
+  private action: { kind: CharacterAction; t: number; dur: number } | null = null;
+  private held: THREE.Group | null = null;
 
   constructor(look: Look) {
     this.root.add(this.body);
@@ -183,6 +187,45 @@ export class CharacterRig {
     this.waveT = 0;
   }
 
+  /** Waffe in die rechte Hand nehmen (null = Fäuste). */
+  holdWeapon(kind: WeaponId | null) {
+    if (this.held) {
+      this.foreR.remove(this.held);
+      this.held.traverse((o) => (o as THREE.Mesh).isMesh && (o as THREE.Mesh).geometry.dispose());
+      this.held = null;
+    }
+    if (!kind) return;
+    const g = new THREE.Group();
+    const add = (geo: THREE.BufferGeometry, color: string, x: number, y: number, z: number, rx = 0, rz = 0) => {
+      const mesh = new THREE.Mesh(geo, m(color, 0.6));
+      mesh.position.set(x, y, z);
+      mesh.rotation.set(rx, 0, rz);
+      mesh.castShadow = true;
+      g.add(mesh);
+    };
+    if (kind === 'crowbar') {
+      add(new THREE.BoxGeometry(0.035, 0.8, 0.035), '#6e2e22', 0, -0.25, 0.06);
+      add(new THREE.BoxGeometry(0.035, 0.14, 0.035), '#6e2e22', 0, 0.16, 0.11, 0.9);
+    } else if (kind === 'bat') {
+      add(new THREE.CylinderGeometry(0.05, 0.025, 0.85, 10), '#8a6a45', 0, -0.22, 0.06);
+      for (let i = 0; i < 5; i++) add(new THREE.BoxGeometry(0.11, 0.012, 0.012), '#9a9a94', 0, -0.4 - i * 0.05, 0.06, 0, i * 0.7);
+    } else {
+      add(new THREE.BoxGeometry(0.06, 0.06, 0.6), '#5a3f28', 0, -0.06, 0.2);
+      add(new THREE.BoxGeometry(0.62, 0.035, 0.05), '#3b3f3a', 0, -0.06, 0.45);
+      add(new THREE.BoxGeometry(0.6, 0.008, 0.008), '#d8d2c2', 0, -0.06, 0.42);
+    }
+    g.position.set(0, -0.32, 0);
+    g.rotation.x = kind === 'crossbow' ? 1.4 : 1.2;
+    this.foreR.add(g);
+    this.held = g;
+  }
+
+  /** Eine Bewegung abspielen (Kampf). */
+  play(kind: CharacterAction) {
+    const dur = { swing: 0.32, power: 0.5, shove: 0.38, hurt: 0.3, bandage: 2, dodge: 0.45 }[kind];
+    this.action = { kind, t: 0, dur };
+  }
+
   /**
    * Animation fortschreiben.
    * @param t Zeit in Sekunden
@@ -209,6 +252,42 @@ export class CharacterRig {
     const look = Math.sin(t * 0.43) * Math.sin(t * 0.17 + 1.3);
     this.head.rotation.y = look * 0.55 * (1 - sp);
     this.head.rotation.x = Math.sin(t * 0.31) * 0.05 * (1 - sp);
+    // Kampfbewegungen über die Grundhaltung legen
+    if (this.action) {
+      const a = this.action;
+      a.t += dt;
+      const k = Math.min(1, a.t / a.dur);
+      switch (a.kind) {
+        case 'swing':
+          this.armR.rotation.x = k < 0.35 ? -2.7 * (k / 0.35) : -2.7 + 3.2 * ((k - 0.35) / 0.65);
+          this.torso.rotation.y = k < 0.35 ? -0.4 * (k / 0.35) : 0.5 * Math.sin(((k - 0.35) / 0.65) * Math.PI);
+          this.foreR.rotation.x = -0.6;
+          break;
+        case 'power':
+          this.armR.rotation.x = k < 0.45 ? -3.0 * (k / 0.45) : -3.0 + 3.6 * ((k - 0.45) / 0.55);
+          this.armL.rotation.x = this.armR.rotation.x * 0.8;
+          this.torso.rotation.x = k < 0.45 ? -0.2 : 0.35 * Math.sin(((k - 0.45) / 0.55) * Math.PI);
+          break;
+        case 'shove':
+          this.armL.rotation.x = this.armR.rotation.x = -1.5 * Math.sin(k * Math.PI);
+          this.torso.rotation.x = 0.3 * Math.sin(k * Math.PI);
+          break;
+        case 'hurt':
+          this.torso.rotation.x = -0.35 * Math.sin(k * Math.PI);
+          this.head.rotation.x = -0.4 * Math.sin(k * Math.PI);
+          break;
+        case 'bandage':
+          this.armL.rotation.x = this.armR.rotation.x = -0.9 + Math.sin(a.t * 12) * 0.1;
+          this.foreL.rotation.x = this.foreR.rotation.x = -1.2;
+          this.head.rotation.x = 0.4;
+          break;
+        case 'dodge':
+          this.body.position.y = -0.25 * Math.sin(k * Math.PI);
+          this.torso.rotation.x = 0.5 * Math.sin(k * Math.PI);
+          break;
+      }
+      if (a.t >= a.dur) this.action = null;
+    }
     // Winken mit dem rechten Arm
     if (this.waveT >= 0) {
       this.waveT += dt;

@@ -161,6 +161,8 @@ export type Action =
   | { type: 'harvest' }
   | { type: 'engage'; spot: Spot; at: LatLon; accuracyM: number }
   | { type: 'fight'; move: CombatMove; quality: Quality }
+  /** Ergebnis eines Echtzeitkampfs (Kampf 2.0). Später prüft der Server es anhand der Eingaben nach. */
+  | { type: 'battleResult'; outcome: 'won' | 'lost' | 'fled'; health: number; kills: number; usedMedicine: number }
   | { type: 'craft'; weapon: WeaponId }
   | { type: 'heal' }
   | { type: 'explore'; at: LatLon; accuracyM: number }
@@ -228,9 +230,9 @@ export type GameEvent =
       healed: number;
       weaponBroke?: WeaponId;
     }
-  | { type: 'combatWon'; enemy: EnemyId }
-  | { type: 'combatLost'; enemy: EnemyId; dropped: Partial<Inventory> }
-  | { type: 'fled' }
+  | { type: 'combatWon'; enemy: EnemyId; kills?: number; weaponBroke?: WeaponId }
+  | { type: 'combatLost'; enemy: EnemyId; dropped: Partial<Inventory>; weaponBroke?: WeaponId }
+  | { type: 'fled'; weaponBroke?: WeaponId }
   | { type: 'crafted'; weapon: WeaponId }
   | { type: 'healed'; amount: number }
   | { type: 'rejected'; reason: RejectReason };

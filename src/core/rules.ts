@@ -349,6 +349,51 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       break;
     }
 
+    case 'battleResult': {
+      const c = state.combat;
+      if (!c) return reject('no_combat');
+      const used = Math.max(0, Math.min(Math.floor(action.usedMedicine), state.inventory.medicine));
+      state.inventory.medicine -= used;
+      // Mehr als vorher plus Verbinden geht nicht
+      const cap = Math.min(MAX_HEALTH, state.health + used * HEAL_AMOUNT);
+      const health = Math.max(0, Math.min(cap, Math.round(action.health)));
+      state.combat = null;
+      // Die Waffe nutzt sich pro Kampf ab (nicht pro Schlag)
+      let weaponBroke: Weapon['kind'] | undefined;
+      const w = action.outcome !== 'fled' ? bestWeapon(state) : null;
+      if (w) {
+        w.dur -= 1;
+        if (w.dur <= 0) {
+          weaponBroke = w.kind;
+          state.weapons = state.weapons.filter((x) => x.dur > 0);
+        }
+      }
+      if (action.outcome === 'won') {
+        const kills = Math.max(1, Math.min(6, Math.floor(action.kills)));
+        state.health = Math.max(1, health);
+        if (state.health < MAX_HEALTH) state.healthAt = ctx.now;
+        state.stats.kills += kills;
+        events.push({ type: 'combatWon', enemy: c.enemy, kills, weaponBroke });
+        const loot = lootSpot(state, c.spot, ctx, true);
+        // Jeder weitere erledigte Gegner bringt etwas Material
+        if (kills > 1) {
+          loot.items.material = (loot.items.material ?? 0) + (kills - 1);
+          state.inventory.material += kills - 1;
+        }
+        events.push(loot);
+      } else if (action.outcome === 'lost') {
+        state.health = 0;
+        state.healthAt = ctx.now;
+        const r = rngFrom(ctx.worldSeed, state.playerId, 'niederlage', c.spot.id, c.window);
+        events.push({ type: 'combatLost', enemy: c.enemy, dropped: dropSome(state, r), weaponBroke });
+      } else {
+        state.health = Math.max(1, health);
+        if (state.health < MAX_HEALTH) state.healthAt = ctx.now;
+        events.push({ type: 'fled', weaponBroke });
+      }
+      break;
+    }
+
     case 'craft': {
       const def = WEAPONS[action.weapon];
       if (def.requires && !state.bus.modules[def.requires]) return reject('locked');

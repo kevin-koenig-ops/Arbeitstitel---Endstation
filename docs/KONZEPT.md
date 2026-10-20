@@ -50,19 +50,22 @@ Die Figur aus der Charaktererstellung ist ein Low-Poly-Modell (Frisur, Hautton, 
 - **Nebel:** Unbekanntes Gebiet liegt unter Nebel. Was du gerade siehst (~140 m), ist frei. Wo du gegangen bist (~55 m Umkreis), bleibt dauerhaft aufgedeckt.
 - **Sektoren** (~750 m × 750 m): Bei 25 % aufgedeckt gilt ein Sektor als *erkundet*, bei 50 % als *gesichert*. Beides gibt einmalig eine Belohnung.
 - **Echte Tageszeit** aus dem Sonnenstand: Tag, Dämmerung, Nacht. Nachts mehr Wächter, dafür 30 % mehr Beute, dazu Taschenlampe und glühende Funken.
-- **Echtes Wetter** (Open-Meteo, Position auf ~10 km gerundet): Regen und Schnee machen Zombies träge (Timing leichter), bei Nebel sieht man Wächter erst aus der Nähe, Gewitter mit Blitzen.
+- **Echtes Wetter** (Open-Meteo, Position auf ~10 km gerundet): Regen und Schnee machen Zombies träge (langsamer, Ausweichen leichter), bei Nebel sieht man Wächter erst aus der Nähe, Gewitter mit Blitzen.
 - In den Einstellungen kann man Tageszeit und Wetter zum Ausprobieren erzwingen (nur Optik).
 
 ## Bedrohung und Kampf
 
-- **Streuner bewachen Fundstellen** (etwa jede vierte, an echten Orten öfter). Wer sie erledigt, bekommt mehr Beute und öfter ein Erinnerungsstück. Man kann sie auch einfach links liegen lassen.
-- **Kampf in Runden mit Timing-Moment:** Zuschlagen, Ausweichen, Ablenken (1 Material) oder Verbinden (1 Medizin). Bei Zuschlagen, Ausweichen und Ablenken entscheidet ein kurzer Timing-Balken, wie gut es klappt. Ein Kampf dauert etwa 20 Sekunden und wird im Stehen gespielt.
-- **Gegner:** Streuner (normal), Kriecher (flink, schwer zu treffen), Brocken (zäh, in Warnweste).
-- **Waffen** aus der Werkbank: Brechstange, Nagelschläger, Armbrust. Sie nutzen sich ab.
-- **Niederlage ist kein Drama:** Man flieht, ein paar Sachen fallen aus dem Rucksack. Der Bus bleibt sicher, Gesundheit kommt von selbst zurück (1 Punkt alle 20 Minuten).
-- **Fliehen geht immer** und kostet nichts.
+- **Streuner bewachen Fundstellen** (etwa jede vierte, an echten Orten öfter, nachts mehr). Wer sie erledigt, bekommt mehr Beute. Man kann sie auch einfach links liegen lassen.
+- **Kampf 2.0 (Echtzeit mit Zielwahl):** eine kleine 3D-Straßenecke, deine Figur gegen 2–4 Zombies. Zombie antippen = Ziel, die Figur läuft hin und schlägt automatisch zu.
+- **Fähigkeiten mit Abklingzeit:** Wuchtschlag (doppelter Schaden, Gegner taumelt), Ausweichen (kurz unverwundbar), Stoß (alle zurück, Ausholen unterbrochen), Verbinden (kostet 1 Medizin).
+- **Angekündigte Angriffe:** Ein roter Kreis füllt sich unter dem Zombie. Leuchtet er hell auf und man weicht genau dann aus, gibt es einen Konter mit Zeitlupe.
+- **Gegner mit Rollen:** Streuner (normal), Kriecher (flink, holt schnell aus), Brocken (zäh, schlägt hart), Kreischer (bleibt hinten und ruft Verstärkung, zuerst ausschalten).
+- **Wumms:** Schadenszahlen, Treffer-Stopp, Rückstoß, Funken, Zeitlupe beim letzten Treffer, Vibration.
+- Ein Kampf dauert etwa 20–40 Sekunden. Waffen nutzen sich pro Kampf ab.
+- **Niederlage ist kein Drama:** Ein paar Sachen fallen aus dem Rucksack, die Gesundheit kommt von selbst zurück. **Fliehen geht immer.**
+- Die Simulation (`core/battle.ts`) ist deterministisch: Ein Server kann einen Kampf später aus den Eingaben nachrechnen.
 
-Später: Horden, die durch echte Straßen ziehen (nie als Mauer, Stammwege werden sicher), Nester als Raids für mehrere Spieler, Lärm beim Durchsuchen.
+Später: Gefahrenstufe pro Expedition, Horden, die durch echte Straßen ziehen, Nester als Raids für mehrere Spieler.
 
 ## Langfristiges Ziel (geplant)
 

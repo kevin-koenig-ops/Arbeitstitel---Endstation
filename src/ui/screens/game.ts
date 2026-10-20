@@ -22,7 +22,7 @@ import { Joystick, useButton } from '../joystick';
 import { append, clear, h, svgEl } from '../dom';
 import { openBusPanel } from '../game/busPanel';
 import { getBasePlace } from '../../services/basePlace';
-import { openCombat } from '../game/combat';
+import { openBattle } from '../game/battle';
 import { AmbienceController, ambienceEffects, currentAmbience, guardSightM, PHASE_NAMES, WEATHER_NAMES, type Ambience } from '../game/ambience';
 import { Particles } from '../game/dust';
 import { SpotSheet } from '../game/spotSheet';
@@ -494,11 +494,11 @@ export function gameScreen(app: App): Screen {
   const openFight = () => {
     sheet.close();
     closeOverlay();
-    overlay = openCombat(app, overlayHost, (end) => {
+    overlay = openBattle(app, overlayHost, currentAmbience().phase, (end) => {
       overlay = null;
       renderHud();
       updateSpots();
-      if (end.outcome === 'won' && end.loot) sheet.showLoot(end.spot, end.loot, `${ENEMIES[end.enemy].name} erledigt`);
+      if (end.outcome === 'won' && end.loot) sheet.showLoot(end.spot, end.loot, end.kills && end.kills > 1 ? `${end.kills} Zombies erledigt` : `${ENEMIES[end.enemy].name} erledigt`);
       else if (end.outcome === 'fled') app.toast('Du hast dich zurückgezogen.');
     });
   };

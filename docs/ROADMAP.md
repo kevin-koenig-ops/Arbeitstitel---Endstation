@@ -49,9 +49,13 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - Steuerung wählbar: Antippen oder Joystick mit Benutzen-Taste (Basis und Simulation)
 - Baumodus an/aus mit Seitenleiste, feinere Polygone, Laterne an der Figur bei Nacht
 
-## Iteration 1g: Kampf 2.0 (Prototyp, als Nächstes)
+## ✅ Iteration 1g: Kampf 2.0 (Prototyp)
 
-- Tab-Targeting in 3D, siehe Ideen unten
+- Tab-Targeting in 3D: Ziel antippen, automatisch angreifen, Wuchtschlag, Ausweichen, Stoß, Verbinden
+- Angekündigte Angriffe mit perfektem Ausweichen und Konter, Kreischer ruft Verstärkung
+- Treffer-Feedback (Zahlen, Stopp, Rückstoß, Zeitlupe), deterministische Simulation mit Tests
+
+**Testen:** Macht es Spaß? Zu leicht, zu schwer? Zu lang, zu kurz? Welche Fähigkeit fehlt?
 
 ## Iteration 1h: Werkstätten und Wetter
 
@@ -138,6 +142,7 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - Fotomodus für die Basis: freie Kamera, Filter, ohne Bedienelemente, zum Teilen (z. B. TikTok).
 
 **Draußen**
+- Selbst gewählte Gefahr statt Level-Zwang: vor jeder Expedition eine Gefahrenstufe wählen, höheres Risiko bringt bessere Beute. Herausforderung für Profis, Neulinge werden nicht abgehängt, Stadt und Land gleich fair.
 - Rucksack mit Risiko: Beute ist erst sicher, wenn sie in der Basis ist. Eine Niederlage kostet einen Teil davon, nie alles.
 - Jagd: zufällige Tiere auf der Karte, manchmal seltene.
 - Echte Orte werden Spielorte: Supermarkt = Vorratslager, Apotheke = Medizin, Baumarkt = Baumaterial, Tankstelle = Treibstoff, Parks und Wälder = Holz und Kräuter, Gewässer = Wasser und Fische, Funkmasten fangen Signale (Quests), Bahnhöfe = Handelsposten mit wandernden Händlern.

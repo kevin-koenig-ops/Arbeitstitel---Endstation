@@ -408,6 +408,70 @@ export const WEAPONS: Record<WeaponId, WeaponDef> = {
 
 export const START_WEAPONS: Weapon[] = [{ kind: 'crowbar', dur: WEAPONS.crowbar.dur }];
 
+// --- Kampf 2.0: Echtzeit mit Zielwahl (Werte in Kampf-Punkten, 10 pro Gesundheit) --------
+
+export type FoeKind = EnemyId | 'screamer';
+
+export interface FoeDef {
+  name: string;
+  hp: number;
+  dmg: [number, number];
+  armor: number;
+  /** Meter pro Sekunde */
+  speed: number;
+  /** Angriffsreichweite in Metern */
+  reach: number;
+  /** Ausholen in Sekunden (so lange kann man ausweichen) */
+  windup: number;
+  /** Pause zwischen zwei Angriffen */
+  interval: number;
+  /** Hält Abstand (der Kreischer bleibt hinten) */
+  keepDistance?: number;
+  desc: string;
+}
+
+export const FOES: Record<FoeKind, FoeDef> = {
+  walker: { name: 'Streuner', hp: 130, dmg: [7, 11], armor: 0, speed: 1.15, reach: 1.3, windup: 1.1, interval: 2.4, desc: 'Schlurft langsam, beißt aber zu.' },
+  crawler: { name: 'Kriecher', hp: 90, dmg: [5, 8], armor: 0, speed: 2.3, reach: 1.1, windup: 0.75, interval: 1.8, desc: 'Flink und tief am Boden. Holt schnell aus.' },
+  brute: { name: 'Brocken', hp: 240, dmg: [14, 20], armor: 5, speed: 0.85, reach: 1.7, windup: 1.6, interval: 3.0, desc: 'Groß, zäh und in Warnweste. Schlägt hart, aber langsam.' },
+  screamer: { name: 'Kreischer', hp: 70, dmg: [5, 8], armor: 0, speed: 1.4, reach: 1.2, windup: 1.4, interval: 6.5, keepDistance: 6.5, desc: 'Bleibt hinten und ruft Verstärkung. Zuerst ausschalten!' },
+};
+
+/** Waffen im Echtzeitkampf. */
+export const BATTLE_WEAPONS: Record<WeaponId | 'fists', { dmg: [number, number]; interval: number; reach: number; ranged?: boolean }> = {
+  fists: { dmg: [7, 11], interval: 0.95, reach: 1.4 },
+  crowbar: { dmg: [16, 22], interval: 1.05, reach: 1.6 },
+  bat: { dmg: [24, 32], interval: 1.25, reach: 1.8 },
+  crossbow: { dmg: [30, 38], interval: 1.6, reach: 11, ranged: true },
+};
+
+export type Ability = 'power' | 'dodge' | 'shove' | 'bandage';
+
+export const ABILITIES: Record<Ability, { name: string; cd: number; desc: string; cost?: Partial<Inventory> }> = {
+  power: { name: 'Wuchtschlag', cd: 7, desc: 'Doppelter Schaden, der Gegner taumelt und hört auf auszuholen.' },
+  dodge: { name: 'Ausweichen', cd: 2.2, desc: 'Kurz unverwundbar. Kurz vor dem Treffer gibt es einen Konter!' },
+  shove: { name: 'Stoß', cd: 10, desc: 'Stößt alle nahen Gegner zurück und unterbricht ihr Ausholen.' },
+  bandage: { name: 'Verbinden', cd: 12, cost: { medicine: 1 }, desc: 'Heilt dich in zwei Sekunden um 35 (kostet 1 Medizin).' },
+};
+export const ABILITY_ORDER: Ability[] = ['power', 'dodge', 'shove', 'bandage'];
+
+export const BATTLE = {
+  /** Kampf-Punkte pro Gesundheitspunkt */
+  hpPerHealth: 10,
+  crit: 0.12,
+  critMult: 1.6,
+  counterMult: 2.2,
+  powerMult: 2.1,
+  /** So kurz vor dem Treffer gilt Ausweichen als perfekt */
+  perfectWindow: 0.4,
+  dodgeTime: 0.55,
+  counterTime: 3,
+  healAmount: 35,
+  healTime: 2,
+  maxSummons: 2,
+  playerSpeed: 3.2,
+};
+
 // --- Tageszeit ---------------------------------------------------------------------
 
 /** Nachts bewachen mehr Zombies die Fundstellen ... */

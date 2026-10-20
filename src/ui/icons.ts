@@ -61,6 +61,8 @@ const P: Record<string, string> = {
   cutaway: '<path d="M3 20V9l9-5 9 5v11"/><path d="M3 14h18" stroke-dasharray="2 2"/><path d="M8 20v-4h8v4"/>',
   fit: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/><rect x="8.5" y="8.5" width="7" height="7" rx="1"/>',
   map: '<path d="M3 6.5l6-2.5 6 2.5 6-2.5v13.5l-6 2.5-6-2.5-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/>',
+  dodge: '<path d="M4 17c3-7 9-10 16-10"/><path d="M16 3.5L20 7l-4 3.5"/><path d="M4 21h6" stroke-dasharray="2 2"/>',
+  shove: '<path d="M9 12h9"/><path d="M15 8l4 4-4 4"/><path d="M5 6v12"/><path d="M3 9l-1-1M3 15l-1 1M5 4V2.5M5 20v1.5"/>',
   wrench: '<path d="M15 3.5a5 5 0 0 0-4.8 6.4L3.5 16.6l3.9 3.9 6.7-6.7A5 5 0 0 0 20.5 9l-3 3-3.5-3.5 3-3a5 5 0 0 0-2-2z"/>',
 };
 

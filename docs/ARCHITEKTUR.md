@@ -56,6 +56,8 @@ Ohne Framework, kleine Hilfsfunktion `h()` in `ui/dom.ts`. Jeder Bildschirm ist 
 
 **Bauen ist serverfähig.** `core/building.ts` enthält Gelände, Abschnitte, Hindernisse (deterministisch aus Spieler-ID, Schauplatz und Abschnitt), Bauteile, Kanten-Logik, Raumerkennung und Gemütlichkeit. Die Oberfläche rechnet die Vorschau mit denselben Funktionen (`planWalls`, `planPaint` …), die Regeln wenden sie an. Wände liegen auf Kanten zwischen Feldern (`h3,4` / `v3,4`), Böden und Dächer auf Feldern. Möbel stehen in `core/furniture.ts`.
 
+**Kampf 2.0 ist nachrechenbar.** `core/battle.ts` simuliert den Echtzeitkampf in festen Zeitschritten mit eigenem Zufallszustand. Gleiche Eingaben zur gleichen Kampfzeit ergeben denselben Ausgang. Heute meldet das Gerät das Ergebnis (`battleResult`), später kann der Server es aus der Eingabeliste nachrechnen. Die 3D-Anzeige steht in `src/base/CombatScene.ts` und `zombie.ts`, die Bedienung in `src/ui/game/battle.ts`.
+
 **Kampf ist ebenfalls serverfähig.** Wer eine Fundstelle bewacht, berechnet `guardOf(Seed, Fundstelle, Zeitfenster)`. Der Client schickt pro Runde nur `{ move, quality }`; Schaden, Gegenangriff und Ausgang würfeln die Regeln. Die Timing-Qualität kommt vom Client und lässt sich nicht prüfen, deshalb wirkt sie bewusst begrenzt (höchstens ×1,5).
 
 ## Was für Mehrspieler noch fehlt
