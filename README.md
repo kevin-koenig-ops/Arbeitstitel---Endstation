@@ -1,6 +1,6 @@
 # Endstation (Arbeitstitel)
 
-Ein Endzeit-Erkundungsspiel auf der echten Karte. Tagsüber gehst du draußen herum, findest Vorräte und Baupläne an echten Orten. Abends richtest du deine Endstation ein, eine alte Bus-Wartehalle in 3D. Kein Zwang, kein Stress: Wer eine Pause macht, verliert nichts.
+Ein Endzeit-Erkundungsspiel auf der echten Karte. Tagsüber gehst du draußen herum, findest Vorräte und Baupläne an echten Orten. Abends baust du deine Endstation aus: ein eigenes Gelände in 3D, das du Stück für Stück zurückeroberst. Kein Zwang, kein Stress: Wer eine Pause macht, verliert nichts.
 
 **Stand:** Prototyp 0.1 (Einzelspieler, läuft im Handy-Browser)
 
@@ -15,7 +15,8 @@ Ein Endzeit-Erkundungsspiel auf der echten Karte. Tagsüber gehst du draußen he
 - Bus-Ausbau (Regenfass, Werkbank, Dachgarten, Sanitätsecke, Funkgerät) mit passiver Produktion
 - Kartennebel zum Freilaufen, Sektoren, echte Tageszeit und echtes Wetter
 - Bewachte Fundstellen, Rundenkampf mit Timing, Waffen
-- **Endstation:** eigener Ort (bleibt auf dem Gerät), 3D-Halle zum Einrichten, 20 Möbel und Deko-Teile, Baupläne, Gemütlichkeit
+- **Endstation:** eigener Ort (bleibt auf dem Gerät), fünf Schauplätze mit eigener Umgebung, großes Gelände zum Zurückerobern, frei bauen (Wände, Türen, Fenster, Böden, Dächer), 36 Möbel, Räume, Gemütlichkeit, echtes Wetter
+- **Low-Poly-Spielfigur** bei der Charaktererstellung, auf der Karte und in der Basis
 - 12 Erinnerungsstücke zum Sammeln
 - Rückkehr-Bonus nach einer Pause, Vibration bei Fundstellen in Reichweite
 - Spielstand wird automatisch auf dem Gerät gespeichert

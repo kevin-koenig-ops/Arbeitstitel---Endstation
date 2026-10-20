@@ -36,17 +36,41 @@ import {
 } from './content';
 import { ExploredView, revealAround, SECTOR_LEVELS } from './explore';
 import {
+  applyPlan,
   BLUEPRINT_CHANCE,
   BLUEPRINT_SOURCES,
-  COMFORT_TIERS,
-  FURNITURE,
-  footprint,
-  HALL_D,
-  HALL_W,
-  RUBBLE,
-  RUBBLE_REWARD,
-  type FurnitureId,
-} from './furniture';
+  canReclaim,
+  comfortTier,
+  indexPlot,
+  isStarter,
+  itemProblem,
+  lineEdges,
+  newPlot,
+  OBSTACLES,
+  PIECES,
+  planAffordable,
+  planDemolish,
+  planOpening,
+  planPaint,
+  planWalls,
+  plotComfort,
+  reclaimCost,
+  rectCells,
+  roomEdges,
+  cellKey,
+  sectionKey,
+  SITE_ORDER,
+  SITE_PLAN_CHANCE,
+  SITES,
+  type BlueprintId,
+  type FloorId,
+  type OpeningId,
+  type PlotIndex,
+  type RoofId,
+  type SiteId,
+  type WallId,
+} from './building';
+import { FURNITURE, type FurnitureId } from './furniture';
 import { distanceM } from './geo';
 import { dayPhase } from './sun';
 import { pickWeighted, randInt, rngFrom } from './rng';
@@ -58,6 +82,7 @@ import type {
   GameEvent,
   Inventory,
   ModuleId,
+  Plot,
   PlayerState,
   RejectReason,
   Resource,
@@ -67,7 +92,7 @@ import type {
 } from './types';
 import { resolveGridSpot } from './world';
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 const HOUR = 3600_000;
 const REGEN_MS = HEALTH_REGEN_MIN * 60_000;
 const MAX_GPS_SLACK_M = 25;
@@ -90,7 +115,7 @@ export function createPlayer(playerId: string, character: Character, now: number
     combat: null,
     explored: {},
     sectors: {},
-    base: { items: [], rubble: RUBBLE.map((r) => r.id), nextUid: 1 },
+    base: { active: null, plots: {}, found: {} },
     blueprints: {},
     stats: { searches: 0, kills: 0 },
   };
@@ -161,47 +186,44 @@ export function guardOf(seed: string, spot: Spot, now: number): EnemyId | null {
 
 // --- Basis ---------------------------------------------------------------------------
 
-export function knowsBlueprint(state: PlayerState, kind: FurnitureId): boolean {
-  return !!FURNITURE[kind].starter || !!state.blueprints[kind];
+export { comfortTier };
+
+export function knowsBlueprint(state: PlayerState, id: BlueprintId): boolean {
+  return isStarter(id) || !!state.blueprints[id];
 }
 
-/** Gemütlichkeit: jedes Teil zählt, doppelte Teile nur halb. */
+/** Das Gelände am gerade bewohnten Schauplatz (oder null). */
+export function activePlot(state: PlayerState): Plot | null {
+  const a = state.base.active;
+  return a ? (state.base.plots[a] ?? null) : null;
+}
+
+/** Übersicht über das aktive Gelände (Hindernisse, belegte Felder). */
+export function plotIndexOf(state: PlayerState): PlotIndex | null {
+  const plot = activePlot(state);
+  return plot && state.base.active ? indexPlot(state.playerId, state.base.active, plot) : null;
+}
+
+/** Gemütlichkeit am aktiven Schauplatz. */
 export function comfort(state: PlayerState): number {
-  const seen = new Set<FurnitureId>();
-  let c = 0;
-  for (const it of state.base.items) {
-    c += seen.has(it.kind) ? FURNITURE[it.kind].comfort / 2 : FURNITURE[it.kind].comfort;
-    seen.add(it.kind);
-  }
-  return Math.round(c);
-}
-
-export function comfortTier(value: number): { name: string; next: number | null } {
-  let name = COMFORT_TIERS[0][1];
-  let next: number | null = null;
-  for (const [min, n] of COMFORT_TIERS) {
-    if (value >= min) name = n;
-    else if (next === null) next = min;
-  }
-  return { name, next };
+  const plot = activePlot(state);
+  return plot ? plotComfort(plot).value : 0;
 }
 
 /** Darf ein Teil hier stehen? Gibt den Grund zurück, falls nicht. */
 export function placementProblem(state: PlayerState, kind: FurnitureId, x: number, y: number, rot: number, ignoreUid?: number): RejectReason | null {
-  const { w, d } = footprint(kind, rot);
-  if (x < 0 || y < 0 || x + w > HALL_W || y + d > HALL_D || !Number.isInteger(x) || !Number.isInteger(y)) return 'blocked';
-  const layer = FURNITURE[kind].layer;
-  const overlaps = (ax: number, ay: number, aw: number, ad: number) => x < ax + aw && ax < x + w && y < ay + ad && ay < y + d;
-  for (const it of state.base.items) {
-    if (it.uid === ignoreUid || FURNITURE[it.kind].layer !== layer) continue;
-    const f = footprint(it.kind, it.rot);
-    if (overlaps(it.x, it.y, f.w, f.d)) return 'blocked';
-  }
-  for (const id of state.base.rubble) {
-    const r = RUBBLE.find((x) => x.id === id);
-    if (r && overlaps(r.x, r.y, r.w, r.d)) return 'blocked';
-  }
-  return null;
+  const plot = activePlot(state);
+  const idx = plotIndexOf(state);
+  if (!plot || !idx) return 'no_site';
+  return itemProblem(idx, plot, kind, x, y, rot, ignoreUid);
+}
+
+/** Welche Schauplätze stehen zur Wahl? (start = Erstwahl, found = gefunden, home = schon bewohnt) */
+export function siteStatus(state: PlayerState, site: SiteId): 'home' | 'found' | 'start' | 'hidden' {
+  if (state.base.plots[site]) return 'home';
+  if (state.base.found[site]) return 'found';
+  if (Object.keys(state.base.plots).length === 0 && SITES[site].start) return 'start';
+  return 'hidden';
 }
 
 /** Was liegt im Bus zum Abholen bereit (Regenfass, Dachgarten)? */
@@ -370,31 +392,67 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       break;
     }
 
-    case 'clearRubble': {
-      if (!state.base.rubble.includes(action.id)) return reject('not_found');
-      state.base.rubble = state.base.rubble.filter((id) => id !== action.id);
-      for (const k of RESOURCE_ORDER) state.inventory[k] += RUBBLE_REWARD[k] ?? 0;
-      events.push({ type: 'rubbleCleared', id: action.id, reward: RUBBLE_REWARD });
+    case 'chooseSite': {
+      const b = state.base;
+      const site = action.site;
+      if (!SITES[site]) return reject('not_found');
+      const status = siteStatus(state, site);
+      if (status === 'hidden') return reject('locked');
+      const first = Object.keys(b.plots).length === 0;
+      if (!b.plots[site]) b.plots[site] = newPlot();
+      b.active = site;
+      events.push({ type: 'siteChosen', site, first });
+      break;
+    }
+
+    case 'reclaim': {
+      const plot = activePlot(state);
+      if (!plot) return reject('no_site');
+      const key = sectionKey(action.sx, action.sy);
+      if (plot.sections.includes(key)) return reject('nothing');
+      if (!canReclaim(plot, action.sx, action.sy)) return reject('not_adjacent');
+      const cost = reclaimCost(plot);
+      if (!canAfford(state.inventory, cost)) return reject('cost');
+      for (const k of RESOURCE_ORDER) state.inventory[k] -= cost[k] ?? 0;
+      plot.sections.push(key);
+      events.push({ type: 'reclaimed', section: key, cost });
+      break;
+    }
+
+    case 'clearObstacle': {
+      const plot = activePlot(state);
+      const idx = plotIndexOf(state);
+      if (!plot || !idx) return reject('no_site');
+      const o = idx.obstacles.find((x) => x.id === action.id);
+      if (!o) return reject('not_found');
+      plot.cleared.push(o.id);
+      const reward = OBSTACLES[o.kind].reward;
+      for (const k of RESOURCE_ORDER) state.inventory[k] += reward[k] ?? 0;
+      events.push({ type: 'obstacleCleared', id: o.id, kind: o.kind, reward });
       break;
     }
 
     case 'place': {
       const def = FURNITURE[action.kind];
       if (!def) return reject('not_found');
+      const plot = activePlot(state);
+      if (!plot) return reject('no_site');
       if (!knowsBlueprint(state, action.kind)) return reject('no_blueprint');
       if (!canAfford(state.inventory, def.cost)) return reject('cost');
       const rot = ((action.rot % 4) + 4) % 4;
       const problem = placementProblem(state, action.kind, action.x, action.y, rot);
       if (problem) return reject(problem);
       for (const k of RESOURCE_ORDER) state.inventory[k] -= def.cost[k] ?? 0;
-      const uid = state.base.nextUid++;
-      state.base.items.push({ uid, kind: action.kind, x: action.x, y: action.y, rot });
+      const uid = plot.nextUid++;
+      plot.items.push({ uid, kind: action.kind, x: action.x, y: action.y, rot });
       events.push({ type: 'placed', uid, kind: action.kind });
       break;
     }
 
     case 'move': {
-      const it = state.base.items.find((i) => i.uid === action.uid);
+      const plot = activePlot(state);
+      if (!plot) return reject('no_site');
+      const it = plot.items.find((i) => i.uid === action.uid);
       if (!it) return reject('not_found');
       const rot = ((action.rot % 4) + 4) % 4;
       const problem = placementProblem(state, it.kind, action.x, action.y, rot, it.uid);
@@ -407,13 +465,102 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
     }
 
     case 'store': {
-      const it = state.base.items.find((i) => i.uid === action.uid);
+      const plot = activePlot(state);
+      if (!plot) return reject('no_site');
+      const it = plot.items.find((i) => i.uid === action.uid);
       if (!it) return reject('not_found');
       // Einlagern gibt alles zurück: Umräumen soll nie etwas kosten.
       const refund = FURNITURE[it.kind].cost;
       for (const k of RESOURCE_ORDER) state.inventory[k] += refund[k] ?? 0;
-      state.base.items = state.base.items.filter((i) => i.uid !== it.uid);
+      plot.items = plot.items.filter((i) => i.uid !== it.uid);
       events.push({ type: 'stored', uid: it.uid, refund });
+      break;
+    }
+
+    case 'buildWalls': {
+      const plot = activePlot(state);
+      const idx = plotIndexOf(state);
+      if (!plot || !idx) return reject('no_site');
+      const piece = action.piece;
+      const def = PIECES[piece as WallId];
+      if (!def || (def.group !== 'wall' && def.group !== 'fence')) return reject('not_found');
+      if (!knowsBlueprint(state, piece)) return reject('no_blueprint');
+      const edges = action.shape === 'room' ? roomEdges(action.x1, action.y1, action.x2, action.y2) : lineEdges(action.x1, action.y1, action.x2, action.y2);
+      if (!edges.length) return reject('nothing');
+      const plan = planWalls(idx, plot, piece, edges);
+      if (plan.blocked.length) return reject('blocked');
+      if (!plan.keys.length) return reject('nothing');
+      if (!planAffordable(state.inventory, plan)) return reject('cost');
+      const stored = applyPlan(state.inventory, plot, plan, (k) => {
+        const old = plot.walls[k];
+        const keep = old && PIECES[old.k].group === def.group ? old.o : undefined;
+        plot.walls[k] = keep ? { k: piece, o: keep } : { k: piece };
+      });
+      events.push({ type: 'constructed', layer: 'walls', count: plan.keys.length, cost: plan.cost, refund: sumInv(plan.refund, stored), stored: new Set(plan.store).size });
+      break;
+    }
+
+    case 'setOpening': {
+      const plot = activePlot(state);
+      const idx = plotIndexOf(state);
+      if (!plot || !idx) return reject('no_site');
+      const piece = action.piece;
+      const def = PIECES[piece as OpeningId];
+      if (!def || def.group !== 'opening') return reject('not_found');
+      if (!knowsBlueprint(state, piece)) return reject('no_blueprint');
+      const edges = lineEdges(action.x1, action.y1, action.x2, action.y2);
+      if (!edges.length) return reject('nothing');
+      const plan = planOpening(idx, plot, piece, edges);
+      if (plan.blocked.length) return reject('no_wall');
+      if (!plan.keys.length) return reject('nothing');
+      if (!planAffordable(state.inventory, plan)) return reject('cost');
+      const stored = applyPlan(state.inventory, plot, plan, (k) => {
+        plot.walls[k] = { ...plot.walls[k], o: piece };
+      });
+      events.push({ type: 'constructed', layer: 'openings', count: plan.keys.length, cost: plan.cost, refund: sumInv(plan.refund, stored), stored: new Set(plan.store).size });
+      break;
+    }
+
+    case 'paint': {
+      const plot = activePlot(state);
+      const idx = plotIndexOf(state);
+      if (!plot || !idx) return reject('no_site');
+      const piece = action.piece;
+      const def = PIECES[piece];
+      const group = action.layer === 'floors' ? 'floor' : 'roof';
+      if (!def || def.group !== group) return reject('not_found');
+      if (!knowsBlueprint(state, piece)) return reject('no_blueprint');
+      // Hindernisse und gesperrte Felder werden einfach ausgelassen
+      const plan = planPaint(idx, plot, action.layer, piece as FloorId | RoofId, rectCells(action.x1, action.y1, action.x2, action.y2));
+      if (!plan.keys.length) return reject(plan.blocked.length ? 'blocked' : 'nothing');
+      if (!planAffordable(state.inventory, plan)) return reject('cost');
+      const layer = action.layer;
+      applyPlan(state.inventory, plot, plan, (k) => {
+        (plot[layer] as Record<string, string>)[k] = piece;
+      });
+      events.push({ type: 'constructed', layer, count: plan.keys.length, cost: plan.cost, refund: plan.refund, stored: 0 });
+      break;
+    }
+
+    case 'demolish': {
+      const plot = activePlot(state);
+      const idx = plotIndexOf(state);
+      if (!plot || !idx) return reject('no_site');
+      const { layer, shape, x1, y1, x2, y2 } = action;
+      const keys =
+        layer === 'walls' || layer === 'openings'
+          ? shape === 'room'
+            ? roomEdges(x1, y1, x2, y2)
+            : lineEdges(x1, y1, x2, y2)
+          : rectCells(x1, y1, x2, y2).map(([x, y]) => cellKey(x, y));
+      const plan = planDemolish(idx, plot, layer, keys);
+      if (!plan.keys.length) return reject('nothing');
+      const stored = applyPlan(state.inventory, plot, plan, (k) => {
+        if (layer === 'walls') delete plot.walls[k];
+        else if (layer === 'openings') plot.walls[k] = { k: plot.walls[k].k };
+        else delete plot[layer][k];
+      });
+      events.push({ type: 'demolished', layer, count: plan.keys.length, refund: sumInv(plan.refund, stored), stored: new Set(plan.store).size });
       break;
     }
 
@@ -470,6 +617,15 @@ function inRange(state: PlayerState, spot: Spot, at: Spot['pos'], accuracyM: num
   return distanceM(at, spot.pos) <= searchRangeM(state) + slack;
 }
 
+function sumInv(a: Partial<Inventory>, b: Partial<Inventory>): Partial<Inventory> {
+  const out: Partial<Inventory> = {};
+  for (const k of RESOURCE_ORDER) {
+    const v = (a[k] ?? 0) + (b[k] ?? 0);
+    if (v) out[k] = v;
+  }
+  return out;
+}
+
 /** Beute für eine Fundstelle würfeln und gutschreiben. */
 function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, guarded: boolean): Extract<GameEvent, { type: 'loot' }> {
   const def = SPOT_KINDS[spot.kind];
@@ -507,18 +663,28 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, guarded: boo
   if (memento) state.collection[memento] = ctx.now;
 
   // Bauplan
-  let blueprint: FurnitureId | undefined;
+  let blueprint: BlueprintId | undefined;
   const sources = (BLUEPRINT_SOURCES[spot.kind] ?? []).filter((id) => !state.blueprints[id]);
   if (sources.length && r() < BLUEPRINT_CHANCE[spot.source]) {
     blueprint = sources[Math.floor(r() * sources.length)];
     state.blueprints[blueprint] = ctx.now;
   }
 
+  // Lageplan für einen neuen Schauplatz (erst, wenn man schon irgendwo wohnt)
+  let site: SiteId | undefined;
+  if (state.base.active) {
+    const cands = SITE_ORDER.filter((id) => !state.base.plots[id] && !state.base.found[id] && SITES[id].findAt.includes(spot.kind));
+    if (cands.length && r() < SITE_PLAN_CHANCE[spot.source]) {
+      site = cands[Math.floor(r() * cands.length)];
+      state.base.found[site] = ctx.now;
+    }
+  }
+
   state.spots[spot.id] = ctx.now;
   state.returnBonus = false;
   state.stats.searches += 1;
   pruneSpots(state, ctx.now);
-  return { type: 'loot', spotId: spot.id, items, memento, bonus, perk, night, blueprint };
+  return { type: 'loot', spotId: spot.id, items, memento, bonus, perk, night, blueprint, site };
 }
 
 /** Bei einer Niederlage fällt etwas aus dem Rucksack. Nie viel, nie der Bus. */

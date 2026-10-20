@@ -8,7 +8,7 @@ import { ENEMIES, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, WEAPONS } from '../../c
 import { bestWeapon } from '../../core/rules';
 import type { CombatMove, EnemyId, GameEvent, Inventory, Quality, Spot } from '../../core/types';
 import type { App } from '../app';
-import { avatarSvg } from '../avatar';
+import { faceEl } from '../portrait';
 import { clear, h, sleep, svgEl } from '../dom';
 import { icon, resIcon } from '../icons';
 import { REJECT_TEXT } from '../texts';
@@ -69,7 +69,7 @@ export function openCombat(app: App, host: HTMLElement, onEnd: (end: CombatEnd) 
       h(
         'footer',
         { class: 'combat-me' },
-        svgEl(avatarSvg(app.backend.current()!.character.look, 40), 'combat-face'),
+        faceEl(app.backend.current()!.character.look, 40, 'combat-face'),
         h('div', { class: 'combat-me-main' }, meBar, weaponChip),
       ),
     ),

@@ -54,6 +54,7 @@ export class GameMap {
   private markers = new Map<string, { marker: Marker; el: HTMLElement; state: string }>();
   private player: Marker | null = null;
   private playerEl: HTMLElement | null = null;
+  private figure: { el: HTMLElement; anchorY: number; h: number } | null = null;
   private target: Marker | null = null;
   private baseMarker: Marker | null = null;
   private lastMarkerTap = 0;
@@ -137,12 +138,33 @@ export class GameMap {
     this.fog?.setPlayer(pos);
     if (!this.player) {
       this.playerEl = h('div', { class: 'player' }, h('div', { class: 'player-ring' }), svgEl(avatarSvg, 'player-face'));
+      if (this.figure) this.attachFigure();
       this.player = new maplibregl.Marker({ element: this.playerEl, anchor: 'center', pitchAlignment: 'viewport' })
         .setLngLat(ll(pos))
         .addTo(this.map);
     } else {
       this.player.setLngLat(ll(pos));
     }
+  }
+
+  /** 3D-Spielfigur statt des runden Gesichts. Die Füße stehen genau auf dem Standort. */
+  setPlayerFigure(el: HTMLElement, anchorY: number, height: number) {
+    this.figure = { el, anchorY, h: height };
+    if (this.playerEl) this.attachFigure();
+  }
+
+  private attachFigure() {
+    if (!this.playerEl || !this.figure) return;
+    const f = this.figure;
+    f.el.classList.add('player-figure');
+    f.el.style.top = `${25 - f.anchorY * f.h}px`;
+    this.playerEl.classList.add('has-figure');
+    this.playerEl.append(f.el);
+  }
+
+  /** Drehung der Karte in Grad. */
+  get bearing(): number {
+    return this.map.getBearing();
   }
 
   /** Die eigene Endstation auf der Karte (nur für dich sichtbar). */

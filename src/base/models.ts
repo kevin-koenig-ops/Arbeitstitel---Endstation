@@ -12,16 +12,16 @@ export function mat(color: string, opts: { emissive?: string; emissiveIntensity?
   const key = `${color}|${opts.emissive ?? ''}|${opts.emissiveIntensity ?? ''}|${opts.opacity ?? ''}`;
   let m = mats.get(key);
   if (!m) {
-    m = new THREE.MeshStandardMaterial({
-      color,
-      roughness: 0.88,
-      metalness: 0.02,
-      flatShading: true,
-      emissive: opts.emissive ? new THREE.Color(opts.emissive) : undefined,
-      emissiveIntensity: opts.emissiveIntensity ?? 1,
-      transparent: opts.transparent,
-      opacity: opts.opacity ?? 1,
-    });
+    const params: THREE.MeshStandardMaterialParameters = { color, roughness: 0.88, metalness: 0.02, flatShading: true };
+    if (opts.emissive) {
+      params.emissive = new THREE.Color(opts.emissive);
+      params.emissiveIntensity = opts.emissiveIntensity ?? 1;
+    }
+    if (opts.transparent) {
+      params.transparent = true;
+      params.opacity = opts.opacity ?? 1;
+    }
+    m = new THREE.MeshStandardMaterial(params);
     mats.set(key, m);
   }
   return m;
@@ -40,7 +40,7 @@ export function glow(color: string) {
 
 type M = THREE.Material;
 
-function add(g: THREE.Object3D, mesh: THREE.Mesh, x = 0, y = 0, z = 0, ry = 0) {
+export function add(g: THREE.Object3D, mesh: THREE.Mesh, x = 0, y = 0, z = 0, ry = 0) {
   mesh.position.set(x, y, z);
   mesh.rotation.y = ry;
   mesh.castShadow = true;
@@ -59,15 +59,28 @@ export function cyl(g: THREE.Object3D, rTop: number, rBot: number, h: number, m:
   return add(g, new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, h, seg), m), x, y + h / 2, z);
 }
 
-function blob(g: THREE.Object3D, r: number, m: M, x: number, y: number, z: number) {
+export function blob(g: THREE.Object3D, r: number, m: M, x: number, y: number, z: number) {
   const mesh = add(g, new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), m), x, y, z);
   mesh.rotation.set(x * 3.1, y * 2.3, z * 1.7);
   return mesh;
 }
 
-const WOOD = '#8a6a45';
-const WOOD_DARK = '#6b5034';
-const METAL = '#3b3f3a';
+export const WOOD = '#8a6a45';
+export const WOOD_DARK = '#6b5034';
+export const METAL = '#3b3f3a';
+
+/** Kegel (Flamme, Blatt, Hut); y ist die Unterkante. */
+export function cone(g: THREE.Object3D, r: number, h: number, m: M, x = 0, y = 0, z = 0, seg = 6) {
+  return add(g, new THREE.Mesh(new THREE.ConeGeometry(r, h, seg), m), x, y + h / 2, z);
+}
+
+/** Flamme, die flackert (wird nicht mit verschmolzen). */
+function flame(g: THREE.Object3D, x: number, y: number, z: number, s = 1) {
+  const f1 = add(g, new THREE.Mesh(new THREE.ConeGeometry(0.2 * s, 0.5 * s, 5), glow('#ff8a2a')), x, y + 0.25 * s, z);
+  const f2 = add(g, new THREE.Mesh(new THREE.ConeGeometry(0.1 * s, 0.32 * s, 5), glow('#ffd27a')), x + 0.05 * s, y + 0.16 * s, z + 0.03 * s);
+  f1.castShadow = f2.castShadow = false;
+  f1.name = f2.name = 'flame';
+}
 
 export interface LightSpec {
   color: string;
@@ -101,13 +114,7 @@ const BUILDERS: Record<FurnitureId, (g: THREE.Group) => LightSpec | void> = {
   fireBarrel(g) {
     cyl(g, 0.32, 0.3, 0.88, mat('#7a3b24'), 0, 0, 0, 10);
     for (const y of [0.2, 0.62]) cyl(g, 0.335, 0.335, 0.05, mat('#5a2a18'), 0, y, 0, 10);
-    const flame = glow('#ff8a2a');
-    const core = glow('#ffd27a');
-    const f1 = add(g, new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 5), flame), 0, 1.1, 0);
-    f1.castShadow = false;
-    const f2 = add(g, new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.32, 5), core), 0.06, 1.04, 0.04);
-    f2.castShadow = false;
-    f1.name = f2.name = 'flame';
+    flame(g, 0, 0.86, 0);
     return { color: '#ff9a4a', intensity: 9, distance: 7, y: 1.3, flicker: true };
   },
   mattress(g) {
@@ -179,9 +186,8 @@ const BUILDERS: Record<FurnitureId, (g: THREE.Group) => LightSpec | void> = {
   lamp(g) {
     cyl(g, 0.2, 0.22, 0.04, mat(METAL), 0, 0, 0, 10);
     cyl(g, 0.025, 0.025, 1.45, mat(METAL), 0, 0.04, 0, 6);
-    const shade = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.3, 0.32, 10, 1, true), mat('#c9a86a', { emissive: '#ffcf7a', emissiveIntensity: 0.6 })), 0, 1.5, 0);
+    const shade = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.3, 0.32, 10, 1), mat('#c9a86a', { emissive: '#ffcf7a', emissiveIntensity: 0.6 })), 0, 1.5, 0);
     shade.castShadow = false;
-    (shade.material as THREE.MeshStandardMaterial).side = THREE.DoubleSide;
     add(g, new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), glow('#fff1c4')), 0, 1.42, 0).castShadow = false;
     return { color: '#ffd59a', intensity: 8, distance: 7, y: 1.4 };
   },
@@ -279,6 +285,192 @@ const BUILDERS: Record<FurnitureId, (g: THREE.Group) => LightSpec | void> = {
     box(g, 0.02, 1.0, 0.01, mat('#bdb7ab'), 0, 0.55, 0.195);
     box(g, 0.32, 0.09, 0.01, mat('#a63a2a'), 0, 1.05, 0.2);
     box(g, 0.09, 0.32, 0.01, mat('#a63a2a'), 0, 0.94, 0.2);
+  },
+  bed(g) {
+    box(g, 1.9, 0.3, 1.9, mat(WOOD_DARK), 0, 0, 0);
+    box(g, 1.8, 0.2, 1.8, mat('#d8d2c2'), 0, 0.3, 0.02);
+    box(g, 1.9, 0.95, 0.1, mat(WOOD), 0, 0, -0.92);
+    for (const x of [-0.45, 0.45]) box(g, 0.7, 0.12, 0.38, mat('#ece6d8'), x, 0.5, -0.62);
+    box(g, 1.84, 0.1, 1.15, mat('#5d6b8a'), 0, 0.48, 0.34);
+    box(g, 1.86, 0.06, 0.2, mat('#7a8aa8'), 0, 0.56, -0.18);
+    for (const x of [-0.9, 0.9]) box(g, 0.08, 0.5, 0.08, mat(WOOD_DARK), x, 0, 0.9);
+  },
+  workbench(g) {
+    box(g, 1.85, 0.08, 0.72, mat(WOOD), 0, 0.84, 0);
+    for (const x of [-0.82, 0.82]) for (const z of [-0.28, 0.28]) box(g, 0.08, 0.84, 0.08, mat(WOOD_DARK), x, 0, z);
+    box(g, 1.7, 0.04, 0.6, mat(WOOD_DARK), 0, 0.25, 0);
+    box(g, 0.22, 0.14, 0.2, mat(METAL), -0.68, 0.92, 0.18);
+    box(g, 0.5, 0.012, 0.16, mat('#b5b5ad'), 0.15, 0.93, 0.05, 0.3);
+    box(g, 0.12, 0.03, 0.04, mat('#9b3d27'), 0.48, 0.93, 0.08, 0.3);
+    box(g, 0.05, 0.03, 0.3, mat('#6e5a3a'), 0.6, 0.93, -0.15);
+    box(g, 0.14, 0.06, 0.06, mat(METAL), 0.6, 0.94, -0.3);
+    for (let i = 0; i < 3; i++) box(g, 0.35, 0.18, 0.4, mat(i % 2 ? '#7a5a3a' : '#8a6b40'), -0.5 + i * 0.5, 0.29, 0);
+  },
+  hammock(g) {
+    for (const x of [-1.35, 1.35]) {
+      box(g, 0.12, 1.7, 0.12, mat(WOOD_DARK), x, 0, 0);
+      const st = box(g, 0.08, 0.9, 0.08, mat(WOOD_DARK), x - Math.sign(x) * 0.25, 0, 0);
+      st.rotation.z = Math.sign(x) * 0.5;
+    }
+    const cols = ['#c4772e', '#e6d6b0', '#3f5a7a'];
+    const N = 7;
+    for (let i = 0; i < N; i++) {
+      const t0 = i / N;
+      const t1 = (i + 1) / N;
+      const x0 = -1.25 + 2.5 * t0;
+      const x1 = -1.25 + 2.5 * t1;
+      const y0 = 1.45 - Math.sin(t0 * Math.PI) * 0.6;
+      const y1 = 1.45 - Math.sin(t1 * Math.PI) * 0.6;
+      const seg = add(g, new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(x1 - x0, y1 - y0) + 0.02, 0.04, 0.7), mat(cols[i % cols.length])), (x0 + x1) / 2, (y0 + y1) / 2, 0);
+      seg.rotation.z = Math.atan2(y1 - y0, x1 - x0);
+    }
+  },
+  kitchen(g) {
+    box(g, 1.9, 0.82, 0.62, mat('#d8cfb8'), 0, 0, -0.15);
+    box(g, 1.96, 0.05, 0.68, mat(WOOD), 0, 0.82, -0.14);
+    for (const x of [-0.62, 0, 0.62]) box(g, 0.56, 0.68, 0.01, mat('#c4b99e'), x, 0.08, 0.165);
+    for (const x of [-0.62, 0, 0.62]) box(g, 0.14, 0.03, 0.03, mat(METAL), x, 0.66, 0.18);
+    box(g, 0.55, 0.06, 0.42, mat('#5a5e5c'), 0.45, 0.83, -0.14);
+    cyl(g, 0.02, 0.02, 0.28, mat('#9a9a94'), 0.45, 0.86, -0.38, 6);
+    box(g, 1.6, 0.04, 0.24, mat(WOOD), 0, 1.45, -0.36);
+    const jars = ['#b0472f', '#c9a23a', '#4f6b4f', '#e8e2d0', '#7a3a2e'];
+    for (let i = 0; i < 6; i++) cyl(g, 0.05, 0.05, 0.14 + (i % 2) * 0.04, mat(jars[i % jars.length]), -0.65 + i * 0.26, 1.49, -0.36, 6);
+    box(g, 0.3, 0.1, 0.2, mat('#3a3833'), -0.5, 0.87, -0.2);
+  },
+  campfire(g) {
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * Math.PI * 2;
+      blob(g, 0.1 + (i % 3) * 0.015, mat(i % 2 ? '#7a7062' : '#5a5246'), Math.cos(a) * 0.36, 0.06, Math.sin(a) * 0.36);
+    }
+    for (let i = 0; i < 4; i++) {
+      const log = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.55, 6), mat(i % 2 ? '#5a3f28' : '#6b4a2e')), 0, 0.12, 0);
+      log.rotation.set(Math.PI / 2 - 0.35, (i / 4) * Math.PI * 2, 0);
+    }
+    box(g, 0.3, 0.02, 0.3, glow('#ff7a2a'), 0, 0.02, 0).castShadow = false;
+    flame(g, 0, 0.08, 0, 0.9);
+    return { color: '#ff9a4a', intensity: 8, distance: 7, y: 0.7, flicker: true };
+  },
+  stove(g) {
+    for (const x of [-0.22, 0.22]) for (const z of [-0.18, 0.18]) box(g, 0.05, 0.14, 0.05, mat('#2a2826'), x, 0, z);
+    box(g, 0.6, 0.62, 0.52, mat('#33312e'), 0, 0.14, 0);
+    box(g, 0.64, 0.05, 0.56, mat('#4a4743'), 0, 0.76, 0);
+    box(g, 0.3, 0.22, 0.02, glow('#ff8a3a'), 0, 0.3, 0.265).castShadow = false;
+    box(g, 0.36, 0.03, 0.03, mat('#4a4743'), 0, 0.54, 0.27);
+    cyl(g, 0.07, 0.07, 1.9, mat('#2a2826'), 0.12, 0.81, -0.12, 8);
+    cyl(g, 0.085, 0.085, 0.06, mat('#4a4743'), 0.12, 1.3, -0.12, 8);
+    box(g, 0.14, 0.18, 0.14, mat('#5a3a28'), -0.42, 0, 0.1);
+    return { color: '#ff9a4a', intensity: 5, distance: 6, y: 0.5, flicker: true };
+  },
+  streetLamp(g) {
+    cyl(g, 0.12, 0.14, 0.2, mat(METAL), 0, 0, 0, 8);
+    cyl(g, 0.05, 0.065, 3.1, mat('#4a524a'), 0, 0.2, 0, 8);
+    box(g, 0.06, 0.06, 0.75, mat('#4a524a'), 0, 3.2, 0.3);
+    box(g, 0.3, 0.12, 0.45, mat('#3b3f3a'), 0, 3.12, 0.62);
+    box(g, 0.24, 0.02, 0.36, glow('#fff1c4'), 0, 3.1, 0.62).castShadow = false;
+    return { color: '#ffe2a8', intensity: 12, distance: 10, y: 2.9 };
+  },
+  solarPanel(g) {
+    for (const x of [-0.35, 0.35]) {
+      box(g, 0.05, 0.8, 0.05, mat(METAL), x, 0, 0.25);
+      box(g, 0.05, 0.4, 0.05, mat(METAL), x, 0, -0.25);
+    }
+    const p = box(g, 0.9, 0.04, 0.95, mat('#24324a'), 0, 0.55, 0);
+    p.rotation.x = 0.5;
+    for (let i = -1; i <= 1; i++) {
+      const l = box(g, 0.012, 0.045, 0.92, mat('#8fa2b8'), i * 0.22, 0.555, 0);
+      l.rotation.x = 0.5;
+    }
+    box(g, 0.25, 0.18, 0.15, mat('#5a5e5c'), 0, 0, -0.2);
+  },
+  poster(g) {
+    box(g, 0.62, 0.86, 0.02, mat('#e8dcc0'), 0, 1.1, -0.43);
+    box(g, 0.5, 0.36, 0.012, mat('#b0472f'), 0, 1.5, -0.418);
+    box(g, 0.34, 0.08, 0.012, mat('#2a2826'), 0, 1.3, -0.418);
+    box(g, 0.44, 0.05, 0.012, mat('#3f5a7a'), 0, 1.2, -0.418);
+    box(g, 0.2, 0.2, 0.014, mat('#e6c13a'), 0.1, 1.55, -0.414);
+  },
+  picture(g) {
+    box(g, 0.56, 0.44, 0.04, mat(WOOD_DARK), 0, 1.3, -0.43);
+    box(g, 0.46, 0.34, 0.012, mat('#c8c0a8'), 0, 1.35, -0.405);
+    box(g, 0.46, 0.14, 0.013, mat('#7a9aa8'), 0, 1.55, -0.404);
+    const people = ['#7d3b2c', '#3d4b5c', '#c9a23a'];
+    people.forEach((c, i) => {
+      const x = -0.13 + i * 0.13;
+      box(g, 0.08, 0.13, 0.014, mat(c), x, 1.36, -0.402);
+      box(g, 0.05, 0.05, 0.014, mat('#d9b08a'), x, 1.5, -0.402);
+    });
+  },
+  dartboard(g) {
+    const rings: [number, string][] = [
+      [0.24, '#2a2420'],
+      [0.21, '#e8dcc0'],
+      [0.16, '#2a2826'],
+      [0.11, '#b0472f'],
+      [0.06, '#4f6b4f'],
+      [0.025, '#b0472f'],
+    ];
+    rings.forEach(([r, c], i) => {
+      const d = add(g, new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.03, 16), mat(c)), 0, 1.6, -0.44 + i * 0.006);
+      d.rotation.x = Math.PI / 2;
+    });
+    const dart = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.16, 4), mat('#e6c13a')), 0.05, 1.63, -0.34);
+    dart.rotation.x = Math.PI / 2;
+  },
+  gnome(g) {
+    cyl(g, 0.1, 0.12, 0.05, mat('#7a7062'), 0, 0, 0, 8);
+    cyl(g, 0.09, 0.11, 0.2, mat('#3f5a7a'), 0, 0.05, 0, 8);
+    cyl(g, 0.11, 0.1, 0.06, mat('#5a3a28'), 0, 0.23, 0, 8);
+    blob(g, 0.075, mat('#e2b896'), 0, 0.33, 0.01);
+    cone(g, 0.07, 0.14, mat('#ece6d8'), 0, 0.2, 0.06, 6).rotation.x = Math.PI;
+    cone(g, 0.085, 0.24, mat('#b0472f'), 0, 0.37, -0.01, 6);
+    box(g, 0.03, 0.03, 0.03, mat('#c46a5a'), 0, 0.33, 0.08);
+  },
+  washline(g) {
+    for (const x of [-0.9, 0.9]) {
+      box(g, 0.07, 1.7, 0.07, mat(WOOD_DARK), x, 0, 0);
+      box(g, 0.07, 0.07, 0.5, mat(WOOD_DARK), x, 1.62, 0);
+    }
+    for (const z of [-0.18, 0.18]) box(g, 1.8, 0.012, 0.012, mat('#d8d2c2'), 0, 1.66, z).castShadow = false;
+    const clothes: [number, number, number, number, string][] = [
+      [-0.55, -0.18, 0.4, 0.5, '#c4772e'],
+      [-0.05, -0.18, 0.3, 0.35, '#e8e2d0'],
+      [0.45, -0.18, 0.45, 0.6, '#3f5a7a'],
+      [-0.3, 0.18, 0.5, 0.42, '#7d3b2c'],
+      [0.35, 0.18, 0.28, 0.3, '#9fbf8a'],
+    ];
+    for (const [x, z, w, h, c] of clothes) box(g, w, h, 0.02, mat(c), x, 1.66 - h, z);
+  },
+  rainBarrel(g) {
+    cyl(g, 0.34, 0.31, 0.9, mat('#3f6b5a'), 0, 0, 0, 10);
+    for (const y of [0.22, 0.65]) cyl(g, 0.35, 0.35, 0.04, mat('#335a4a'), 0, y, 0, 10);
+    cyl(g, 0.36, 0.36, 0.05, mat('#2c4a3d'), 0, 0.9, 0, 10);
+    box(g, 0.06, 0.06, 0.1, mat(METAL), 0, 0.15, 0.34);
+    cyl(g, 0.05, 0.05, 1.1, mat('#6e7470'), 0.22, 0.9, -0.22, 6);
+  },
+  flowerBed(g) {
+    const wood = mat('#7a5a3a');
+    box(g, 1.85, 0.25, 0.06, wood, 0, 0, -0.4);
+    box(g, 1.85, 0.25, 0.06, wood, 0, 0, 0.4);
+    box(g, 0.06, 0.25, 0.86, wood, -0.9, 0, 0);
+    box(g, 0.06, 0.25, 0.86, wood, 0.9, 0, 0);
+    box(g, 1.74, 0.04, 0.74, mat('#3b2f22'), 0, 0.2, 0);
+    const petals = ['#e6c13a', '#c4772e', '#b0472f', '#8a5aa8', '#ece6d8'];
+    for (let i = 0; i < 14; i++) {
+      const x = -0.75 + (i % 7) * 0.25 + (i > 6 ? 0.12 : 0);
+      const z = i > 6 ? 0.18 : -0.15;
+      cyl(g, 0.012, 0.012, 0.2, mat('#4f6b3a'), x, 0.22, z, 4);
+      blob(g, 0.06, mat(petals[i % petals.length]), x, 0.45, z);
+      blob(g, 0.06, mat('#5d7a42'), x + 0.05, 0.28, z - 0.04);
+    }
+  },
+  appleTree(g) {
+    cyl(g, 0.06, 0.09, 1.2, mat('#5a3f28'), 0, 0, 0, 6);
+    blob(g, 0.5, mat('#4f6b3a'), 0, 1.55, 0);
+    blob(g, 0.36, mat('#5d7a42'), 0.3, 1.35, 0.15);
+    blob(g, 0.34, mat('#46603a'), -0.28, 1.4, -0.12);
+    for (const [x, y, z] of [[0.3, 1.2, 0.4], [-0.35, 1.3, 0.3], [0.1, 1.85, 0.35], [-0.2, 1.65, -0.4], [0.45, 1.5, -0.2]])
+      add(g, new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), mat('#b0472f')), x, y, z);
+    blob(g, 0.2, mat('#3b2f22'), 0, 0.02, 0).scale.set(1.4, 0.25, 1.4);
   },
 };
 

@@ -3,7 +3,7 @@
 import { FALLBACK_START, IS_PREVIEW, VIEW_RADIUS_M } from '../../config';
 import { ENEMIES, MAX_HEALTH, RESOURCE_ORDER, RESOURCES } from '../../core/content';
 import { ExploredView, SECTOR_LEVELS, sectorOf } from '../../core/explore';
-import { distanceM } from '../../core/geo';
+import { bearingDeg, distanceM } from '../../core/geo';
 import { currentHealth, dayNumber, pendingHarvest, readyAt, searchRangeM } from '../../core/rules';
 import type { LatLon, Resource, Spot } from '../../core/types';
 import { DEMO, GameMap, type SpotView } from '../../map/GameMap';
@@ -17,6 +17,7 @@ import {
 } from '../../services/location';
 import type { App, Screen } from '../app';
 import { avatarSvg } from '../avatar';
+import { faceEl, loadPortraits } from '../portrait';
 import { append, clear, h, svgEl } from '../dom';
 import { openBusPanel } from '../game/busPanel';
 import { getBasePlace } from '../../services/basePlace';
@@ -39,6 +40,52 @@ export function gameScreen(app: App): Screen {
     return { el: h('div', { class: 'screen' }) };
   }
   const avatar = avatarSvg(state0.character.look, 64);
+  const whoFace = svgEl(avatar, 'who-face');
+  // 3D-Spielfigur auf der Karte (wird nachgeladen)
+  let figure: import('../../base/figureView').FigureView | null = null;
+  let figPos: LatLon | null = null;
+  let heading = 180;
+  let walkTimer = 0;
+  const applyFigureYaw = () => {
+    if (!figure || !gm) return;
+    const rel = ((heading - gm.bearing) * Math.PI) / 180;
+    figure.setYaw(Math.PI - rel);
+  };
+  const updateFigure = (f: Fix) => {
+    if (!figure) return;
+    if (!figPos) figPos = f.pos;
+    const d = distanceM(figPos, f.pos);
+    if (d > 1.2) {
+      heading = bearingDeg(figPos, f.pos);
+      figPos = f.pos;
+      figure.setMoving(true);
+      clearTimeout(walkTimer);
+      walkTimer = window.setTimeout(() => figure?.setMoving(false), f.simulated ? 600 : 2500);
+    }
+    applyFigureYaw();
+  };
+  const loadFigure = async () => {
+    let fv: typeof import('../../base/figureView');
+    try {
+      fv = await import('../../base/figureView');
+    } catch {
+      return;
+    }
+    if (destroyed || !gm) return;
+    try {
+      const look = app.backend.current()!.character.look;
+      figure = new fv.FigureView({ mode: 'marker', width: 72, height: 96 });
+      figure.setLook(look);
+      gm.setPlayerFigure(figure.canvas, figure.anchorY(), 96);
+      applyFigureYaw();
+      figure.start();
+      gm.map.on('rotate', applyFigureYaw);
+      await loadPortraits();
+      whoFace.replaceWith(faceEl(look, 64, 'who-face'));
+    } catch {
+      figure = null;
+    }
+  };
 
   // --- DOM ---------------------------------------------------------------------
   const mapEl = h('div', { class: 'map' });
@@ -83,7 +130,7 @@ export function gameScreen(app: App): Screen {
       h(
         'button',
         { class: 'who', type: 'button', 'aria-label': 'Bus und Vorräte öffnen', onclick: () => openBus() },
-        svgEl(avatar, 'who-face'),
+        whoFace,
         h('span', { class: 'who-text' }, h('span', { class: 'who-name' }, state0.character.name), dayEl, hpEl),
       ),
       resBar,
@@ -341,6 +388,7 @@ export function gameScreen(app: App): Screen {
     if (!gm || !s) return;
     hideBanner('gps');
     gm.setPlayer(f.pos, avatar);
+    updateFigure(f);
     gm.setRange(f.pos, searchRangeM(s));
     if (first) gm.centerOn(f.pos, false);
     else if (gm.follow) gm.centerOn(f.pos, !f.simulated);
@@ -431,7 +479,7 @@ export function gameScreen(app: App): Screen {
     } finally {
       baseLoading = false;
     }
-    const { openBaseView, openSetBase } = mod;
+    const { openBaseView, openSetBase, openSitePicker } = mod;
     sheet.close();
     closeOverlay();
     if (!getBasePlace()) {
@@ -442,9 +490,23 @@ export function gameScreen(app: App): Screen {
       });
       return;
     }
+    if (!app.backend.current()!.base.active) {
+      // Erster Besuch: Schauplatz aussuchen
+      overlay = openSitePicker(app, overlayHost, {
+        first: true,
+        onChosen: async (site) => {
+          overlay = null;
+          await app.backend.dispatch({ type: 'chooseSite', site });
+          app.toast('Deine Endstation steht. Räum erst mal auf, darin steckt Material!', 'good');
+          void openBase();
+        },
+      });
+      return;
+    }
     overlay = openBaseView(app, overlayHost, {
       getFix: () => fix,
       phase: () => currentAmbience().phase,
+      weather: () => currentAmbience().weather,
       onClose: () => {
         overlay = null;
         refreshBaseMarker();
@@ -576,6 +638,7 @@ export function gameScreen(app: App): Screen {
       if (locMode === 'gps') showBanner('gps', 'Suche GPS-Signal …', 'Einen Moment. Draußen geht es schneller.', []);
       provider.start(onFix, onLocError);
       renderLocChip();
+      void loadFigure();
 
       ticker = window.setInterval(() => {
         renderHud();
@@ -586,6 +649,8 @@ export function gameScreen(app: App): Screen {
       destroyed = true;
       particles?.destroy();
       ambience?.destroy();
+      figure?.dispose();
+      clearTimeout(walkTimer);
       clearInterval(ticker);
       document.removeEventListener('visibilitychange', onVisible);
       provider?.stop();

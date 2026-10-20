@@ -21,13 +21,22 @@ Ein Endzeit-Spiel auf der echten Karte, das man nebenbei im Alltag spielt: Handy
 
 ## Die Endstation (Basisbau, das Herzstück für abends)
 
-- **Ort festlegen:** Beim ersten Tippen auf das Haus-Symbol errichtest du deine Endstation dort, wo du gerade bist. Bauen kannst du nur in ihrer Nähe (~150 m, drinnen ist GPS ungenau). Umziehen geht jederzeit, die Einrichtung kommt mit.
-- **Nur auf dem Gerät:** Der Ort steht nicht im Spielstand. Bau-Aktionen schicken keine Position mit, nur „stelle Bank auf Feld 3/2“.
-- **Die Halle:** eine verlassene Bus-Wartehalle (9 × 7 Felder) in 3D, drehbar und zoombar. Am Anfang liegt Schutt herum, Wegräumen bringt Material.
-- **Einrichten:** ~20 Möbel- und Deko-Teile (Möbel, Licht, Deko, Garten). Jedes Teil kostet Material und bringt **Gemütlichkeit**. Doppelte Teile zählen nur halb, Abwechslung lohnt sich. Stufen: Ruine → Notlager → Unterschlupf → Zuhause → Gemütliches Zuhause.
-- **Baupläne** findest du draußen an passenden Orten: Bahnhofsuhr an Haltestellen, Werkzeugwand im Baumarkt, Kühlschrank im Supermarkt, Medizinschrank in der Apotheke …
-- **Licht:** Tag, Dämmerung und Nacht gelten auch zu Hause. Nachts leuchten Feuertonne, Lampen und Lichterketten.
-- **Einlagern** gibt das Material komplett zurück. Nichts geht verloren.
+- **Ort festlegen:** Beim ersten Tippen auf das Haus-Symbol errichtest du deine Endstation dort, wo du gerade bist. Bauen kannst du nur in ihrer Nähe (~150 m, drinnen ist GPS ungenau). Umziehen geht jederzeit, alles kommt mit.
+- **Nur auf dem Gerät:** Der Ort steht nicht im Spielstand. Bau-Aktionen schicken keine Position mit.
+- **Schauplatz:** Zum Start wählst du Busdepot, Bauernhof oder Seeufer. Tankstelle, Schrebergarten und die beiden nicht gewählten findest du draußen als Lageplan. Jeder Schauplatz ist ein eigenes Gelände mit eigener Umgebung (Depothalle und Buswracks, Felder und Silo, See mit Steg und Wald …). Was du baust, bleibt stehen, auch wenn du wechselst.
+- **Gelände zurückerobern:** 36 × 36 m in 6 × 6 Abschnitten. Am Anfang sind die mittleren 12 × 12 m frei, drumherum Gestrüpp und Schrott. Jeder angrenzende Abschnitt kostet etwas mehr Material und Nahrung. Darin liegen Hindernisse (Schutt, Wracks, Bäume …), die beim Wegräumen etwas bringen. Bäume darf man auch stehen lassen.
+- **Frei bauen:** Wände und Zäune von Ecke zu Ecke ziehen (als Linie oder gleich als Raum), Türen, Fenster und Durchgänge einsetzen, Böden und Dächer aufziehen. Abreißen gibt immer alles zurück.
+- **Räume:** Rundum Wände und ein Dach machen einen Raum. Möbel drinnen zählen anderthalbfach, jeder Raum bringt Bonus-Gemütlichkeit (mehr mit Boden).
+- **Einrichten:** 36 Möbel- und Deko-Teile (Möbel, Licht, Deko, Garten), manche hängen an der Wand. Doppelte Teile zählen nur halb.
+- **Gemütlichkeit:** Ruine → Notlager → Unterschlupf → Zuhause → Gemütliches Zuhause → Schmuckstück → Oase.
+- **Baupläne** findest du draußen an passenden Orten: Bahnhofsuhr an Haltestellen, Ziegelmauer und Holzofen im Baumarkt, Küchenzeile im Supermarkt …
+- **Deine Figur** wohnt dort und läuft hin, wo du hintippst.
+- **Echte Tageszeit und echtes Wetter** auch zu Hause: Regen, Schnee, Nebel, Gewitter. Nachts leuchten Feuer, Lampen und Lichterketten.
+- **Grundsatz:** Draußen ist es gefährlich, die Basis nie. Sie wird nicht angegriffen und ist ein echter Rückzugsort.
+
+## Spielfigur
+
+Die Figur aus der Charaktererstellung ist ein Low-Poly-Modell (Frisur, Hautton, Jacke, Rucksack). Sie steht bei der Erstellung zum Drehen auf einem Sockel, läuft auf der Karte in Laufrichtung und wohnt in der Endstation.
 
 ## Karte freilaufen, Tageszeit, Wetter
 

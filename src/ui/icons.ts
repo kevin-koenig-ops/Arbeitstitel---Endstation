@@ -49,6 +49,18 @@ const P: Record<string, string> = {
   rotr: '<path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v4.5h-4.5"/>',
   blueprint: '<rect x="3.5" y="4.5" width="17" height="15" rx="1.5"/><path d="M7 15l3-4 3 3 4-6"/><path d="M3.5 9h17"/>',
   compass: '<circle cx="12" cy="12" r="8.5"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>',
+  hammer: '<path d="M14 6.5l3.5-3.5 3.5 3.5-3.5 3.5z"/><path d="M15.7 8.3L4.5 19.5"/><path d="M11 5.5l3-1.5 3.5 3.5"/>',
+  sofa: '<path d="M4 11V8.5A2.5 2.5 0 0 1 6.5 6h11A2.5 2.5 0 0 1 20 8.5V11"/><path d="M2.5 12.5a1.5 1.5 0 0 1 3 0V15h13v-2.5a1.5 1.5 0 0 1 3 0V18h-19z"/><path d="M5 18v2M19 18v2"/>',
+  land: '<path d="M3 9l9-5 9 5-9 5z"/><path d="M3 14l9 5 9-5"/><path d="M12 14v5"/>',
+  wall: '<path d="M3 6h18v12H3z"/><path d="M3 10h18M3 14h18M8 6v4M15 6v4M11 10v4M6 14v4M17 14v4"/>',
+  fence: '<path d="M5 20V7l1.5-2L8 7v13M11 20V7l1.5-2L14 7v13M17 20V7l1.5-2L20 7v13"/><path d="M3 10h18M3 16h18"/>',
+  door: '<path d="M5 21V3h11v18"/><path d="M16 4l3 1v15l-3 1"/><path d="M13 12h.01" stroke-width="2.6"/>',
+  floor: '<path d="M3 15l9-5 9 5-9 5z"/><path d="M7.5 12.5l9 5M12 10l-4.5 7.5M16.5 12.5L12 20"/>',
+  roof: '<path d="M2.5 12L12 4.5l9.5 7.5"/><path d="M5 10v9h14v-9"/><path d="M5 13.5h14"/>',
+  eraser: '<path d="M8.5 20.5h12"/><path d="M4.4 15.6l9.2-9.2a2 2 0 0 1 2.8 0l3.2 3.2a2 2 0 0 1 0 2.8L12 20.5H8.5l-4.1-4.1a.6.6 0 0 1 0-.8z"/><path d="M9 11l6 6"/>',
+  cutaway: '<path d="M3 20V9l9-5 9 5v11"/><path d="M3 14h18" stroke-dasharray="2 2"/><path d="M8 20v-4h8v4"/>',
+  fit: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/><rect x="8.5" y="8.5" width="7" height="7" rx="1"/>',
+  map: '<path d="M3 6.5l6-2.5 6 2.5 6-2.5v13.5l-6 2.5-6-2.5-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/>',
   wrench: '<path d="M15 3.5a5 5 0 0 0-4.8 6.4L3.5 16.6l3.9 3.9 6.7-6.7A5 5 0 0 0 20.5 9l-3 3-3.5-3.5 3-3a5 5 0 0 0-2-2z"/>',
 };
 

@@ -9,7 +9,7 @@ import type { App } from '../app';
 import { append, clear, h, reducedMotion, sleep, svgEl } from '../dom';
 import { icon, resIcon, spotIcon } from '../icons';
 import { REJECT_TEXT } from '../texts';
-import { FURNITURE } from '../../core/furniture';
+import { blueprintName, SITES } from '../../core/building';
 import { enemySvg } from '../zombies';
 
 
@@ -206,7 +206,8 @@ export class SpotSheet {
         note ? h('p', { class: 'receipt-note' }, note) : null,
         ev.bonus ? h('p', { class: 'receipt-note' }, 'Rückkehr-Bonus: alles doppelt') : null,
         ev.night ? h('p', { class: 'receipt-note' }, 'Nachtbonus: 30 % mehr') : null,
-        ev.blueprint ? h('p', { class: 'receipt-blueprint' }, svgEl(icon('blueprint', 18)), `Bauplan gefunden: ${FURNITURE[ev.blueprint].name}`) : null,
+        ev.blueprint ? h('p', { class: 'receipt-blueprint' }, svgEl(icon('blueprint', 18)), `Bauplan gefunden: ${blueprintName(ev.blueprint)}`) : null,
+        ev.site ? h('p', { class: 'receipt-blueprint site' }, svgEl(icon('map', 18)), `Lageplan gefunden: ${SITES[ev.site].name}! Ein neuer Ort für deine Endstation.`) : null,
       ),
       memento
         ? h(

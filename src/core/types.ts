@@ -1,6 +1,7 @@
 // Kern-Datentypen des Spiels.
 import type { FurnitureId } from './furniture';
-export type { FurnitureId };
+import type { BlueprintId, FloorId, ObstacleKind, OpeningId, RoofId, SiteId, WallId } from './building';
+export type { FurnitureId, SiteId };
 //
 // Wichtig für später (Mehrspieler): Alles in src/core ist reine Spiellogik ohne
 // Browser-Abhängigkeiten. Derselbe Code kann später unverändert auf einem Server
@@ -81,11 +82,35 @@ export interface PlacedItem {
   rot: number;
 }
 
-export interface BaseState {
+export interface WallPiece {
+  k: WallId;
+  /** Tür, Fenster, Durchgang oder Tor in dieser Wand. */
+  o?: OpeningId;
+}
+
+/** Ein Gelände (pro Schauplatz eins). */
+export interface Plot {
+  /** Zurückeroberte Abschnitte "sx,sy". */
+  sections: string[];
+  /** Weggeräumte Hindernisse. */
+  cleared: string[];
+  /** Kante ("h3,4" / "v3,4") -> Wand. */
+  walls: Record<string, WallPiece>;
+  /** Feld "x,y" -> Boden. */
+  floors: Record<string, FloorId>;
+  /** Feld "x,y" -> Dach. */
+  roofs: Record<string, RoofId>;
   items: PlacedItem[];
-  /** Noch nicht weggeräumter Schutt. */
-  rubble: string[];
   nextUid: number;
+}
+
+/** Die Endstation. Ihr echter Ort steht NICHT hier, sondern nur auf dem Gerät. */
+export interface BaseState {
+  /** Gerade bewohnter Schauplatz (null = noch keiner gewählt). */
+  active: SiteId | null;
+  plots: Partial<Record<SiteId, Plot>>;
+  /** Gefundene Lagepläne: Schauplatz -> Fundzeitpunkt. */
+  found: Partial<Record<SiteId, number>>;
 }
 
 export interface BuiltModule {
@@ -123,7 +148,7 @@ export interface PlayerState {
   /** Die Endstation (Basis). Ihr Ort steht NICHT hier, sondern nur auf dem Gerät. */
   base: BaseState;
   /** Gefundene Baupläne: id -> Fundzeitpunkt. */
-  blueprints: Partial<Record<FurnitureId, number>>;
+  blueprints: Partial<Record<BlueprintId, number>>;
   stats: { searches: number; kills: number };
 }
 
@@ -140,10 +165,20 @@ export type Action =
   | { type: 'heal' }
   | { type: 'explore'; at: LatLon; accuracyM: number }
   // Basis: bewusst ohne Position, damit der Ort der Endstation privat bleibt
-  | { type: 'clearRubble'; id: string }
+  | { type: 'chooseSite'; site: SiteId }
+  | { type: 'reclaim'; sx: number; sy: number }
+  | { type: 'clearObstacle'; id: string }
   | { type: 'place'; kind: FurnitureId; x: number; y: number; rot: number }
   | { type: 'move'; uid: number; x: number; y: number; rot: number }
-  | { type: 'store'; uid: number };
+  | { type: 'store'; uid: number }
+  /** Wände/Zäune von Ecke zu Ecke: als Linie oder als Rechteck (Raum). */
+  | { type: 'buildWalls'; piece: WallId; shape: 'line' | 'room'; x1: number; y1: number; x2: number; y2: number }
+  /** Tür, Fenster usw. in vorhandene Wände entlang einer Linie. */
+  | { type: 'setOpening'; piece: OpeningId; x1: number; y1: number; x2: number; y2: number }
+  /** Böden oder Dächer in einem Rechteck (Felder). */
+  | { type: 'paint'; layer: 'floors' | 'roofs'; piece: FloorId | RoofId; x1: number; y1: number; x2: number; y2: number }
+  /** Abreißen: Wände/Öffnungen als Linie oder Rechteck (Ecken), Böden/Dächer als Rechteck (Felder). */
+  | { type: 'demolish'; layer: 'walls' | 'openings' | 'floors' | 'roofs'; shape: 'line' | 'room' | 'rect'; x1: number; y1: number; x2: number; y2: number };
 
 export type RejectReason =
   | 'too_far'
@@ -161,14 +196,21 @@ export type RejectReason =
   | 'full_health'
   | 'blocked'
   | 'no_blueprint'
-  | 'not_found';
+  | 'not_found'
+  | 'no_site'
+  | 'no_wall'
+  | 'not_adjacent';
 
 export type GameEvent =
-  | { type: 'loot'; spotId: string; items: Partial<Inventory>; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: FurnitureId }
-  | { type: 'rubbleCleared'; id: string; reward: Partial<Inventory> }
+  | { type: 'loot'; spotId: string; items: Partial<Inventory>; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: BlueprintId; site?: SiteId }
+  | { type: 'siteChosen'; site: SiteId; first: boolean }
+  | { type: 'reclaimed'; section: string; cost: Partial<Inventory> }
+  | { type: 'obstacleCleared'; id: string; kind: ObstacleKind; reward: Partial<Inventory> }
   | { type: 'placed'; uid: number; kind: FurnitureId }
   | { type: 'moved'; uid: number }
   | { type: 'stored'; uid: number; refund: Partial<Inventory> }
+  | { type: 'constructed'; layer: 'walls' | 'openings' | 'floors' | 'roofs'; count: number; cost: Partial<Inventory>; refund: Partial<Inventory>; stored: number }
+  | { type: 'demolished'; layer: 'walls' | 'openings' | 'floors' | 'roofs'; count: number; refund: Partial<Inventory>; stored: number }
   | { type: 'explored'; added: number }
   | { type: 'sector'; key: string; level: number; reward: Partial<Inventory> }
   | { type: 'built'; module: ModuleId }

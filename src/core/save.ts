@@ -3,7 +3,7 @@
 // Umzug vom Gerät in ein Konto).
 
 import { MAX_HEALTH, START_WEAPONS } from './content';
-import { RUBBLE } from './furniture';
+import { FURNITURE, type FurnitureId } from './furniture';
 import { SCHEMA_VERSION } from './rules';
 import type { PlayerState } from './types';
 
@@ -25,8 +25,20 @@ const MIGRATIONS: Record<number, (s: Raw) => void> = {
   },
   // Version 3 -> 4: Basisbau (Endstation) und Baupläne
   3: (s) => {
-    s.base = { items: [], rubble: RUBBLE.map((r) => r.id), nextUid: 1 };
+    s.base = { items: [], rubble: [], nextUid: 1 };
     s.blueprints = {};
+  },
+  // Version 4 -> 5: großes Gelände, freies Bauen, Schauplätze.
+  // Die alte Wartehalle gibt es nicht mehr: aufgestellte Möbel gehen als Material zurück.
+  4: (s) => {
+    const old = s.base as { items?: { kind: string }[] } | undefined;
+    const inv = s.inventory as Record<string, number>;
+    for (const it of old?.items ?? []) {
+      const def = FURNITURE[it.kind as FurnitureId];
+      if (!def) continue;
+      for (const [k, v] of Object.entries(def.cost)) inv[k] = (inv[k] ?? 0) + (v ?? 0);
+    }
+    s.base = { active: null, plots: {}, found: {} };
   },
 };
 

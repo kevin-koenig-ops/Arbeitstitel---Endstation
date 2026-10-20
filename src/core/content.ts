@@ -267,6 +267,8 @@ export const PERK_CHANCE = 0.4;
 
 export const HAIR_STYLES = ['Kurz', 'Lang', 'Zopf', 'Mütze'] as const;
 export const JACKET_COLORS = ['#7a5a3a', '#4f5d3a', '#3d4b5c', '#7d3b2c', '#8a8070'] as const;
+export const SKIN_TONES = ['#e2b896', '#c18f6a', '#8d5f42', '#5c3d2b'] as const;
+export const HAIR_COLOR = '#2a211a';
 
 // --- Bus-Ausbau ----------------------------------------------------------------
 

@@ -48,11 +48,13 @@ Ohne Framework, kleine Hilfsfunktion `h()` in `ui/dom.ts`. Jeder Bildschirm ist 
 
 **Aktionen statt Zustandsänderungen.** Der Client sagt „ich durchsuche X an Position P“, nicht „ich habe jetzt 5 Wasser“. Genau das wird später zur API.
 
-**Spielstand mit Versionsnummer.** `schema` im Spielstand plus `core/save.ts` für Migrationen. Wichtig, wenn Spielstände vom Gerät ins Konto umziehen. Beispiel: Version 1 → 2 hat Gesundheit, Waffen und Kampf ergänzt, 3 → 4 die Endstation und Baupläne.
+**Spielstand mit Versionsnummer.** `schema` im Spielstand plus `core/save.ts` für Migrationen. Wichtig, wenn Spielstände vom Gerät ins Konto umziehen. Beispiel: Version 1 → 2 hat Gesundheit, Waffen und Kampf ergänzt, 3 → 4 die Endstation, 4 → 5 das große Gelände (die alte Wartehalle wurde dabei zu Material).
 
 **Erkundung ist serverfähig.** Aufgedeckte Zellen (Zoom 19, ~50 m) liegen als Bitfelder pro Block (Zoom 13, 64×64 Zellen) im Spielstand (`core/explore.ts`), wenige Kilobyte auch nach viel Herumlaufen. Die Tageszeit rechnet `core/sun.ts` aus dem Sonnenstand, ohne Netzwerk, also kann der Server sie genauso bestimmen. Das Wetter ist nur Optik und Timing auf dem Gerät.
 
-**Die Endstation verrät keinen Ort.** Wo sie steht, liegt nur im Gerätespeicher (`services/basePlace.ts`, eigener Schlüssel, nicht im Spielstand). Die Bau-Aktionen (`clearRubble`, `place`, `move`, `store`) enthalten keine Position, die Regeln in `core/rules.ts` prüfen nur Material, Bauplan und ob das Feld frei ist. Ob du gerade „zu Hause“ bist, prüft allein das Gerät. Später sieht der Server also nur die Einrichtung, nie die Adresse. Möbel und Baupläne stehen als Daten in `core/furniture.ts`.
+**Die Endstation verrät keinen Ort.** Wo sie steht, liegt nur im Gerätespeicher (`services/basePlace.ts`, eigener Schlüssel, nicht im Spielstand). Die Bau-Aktionen (`chooseSite`, `reclaim`, `clearObstacle`, `buildWalls`, `setOpening`, `paint`, `demolish`, `place`, `move`, `store`) enthalten keine Position, nur Rasterkoordinaten auf dem eigenen Gelände. Ob du gerade „zu Hause“ bist, prüft allein das Gerät. Später sieht der Server also nur die Einrichtung, nie die Adresse.
+
+**Bauen ist serverfähig.** `core/building.ts` enthält Gelände, Abschnitte, Hindernisse (deterministisch aus Spieler-ID, Schauplatz und Abschnitt), Bauteile, Kanten-Logik, Raumerkennung und Gemütlichkeit. Die Oberfläche rechnet die Vorschau mit denselben Funktionen (`planWalls`, `planPaint` …), die Regeln wenden sie an. Wände liegen auf Kanten zwischen Feldern (`h3,4` / `v3,4`), Böden und Dächer auf Feldern. Möbel stehen in `core/furniture.ts`.
 
 **Kampf ist ebenfalls serverfähig.** Wer eine Fundstelle bewacht, berechnet `guardOf(Seed, Fundstelle, Zeitfenster)`. Der Client schickt pro Runde nur `{ move, quality }`; Schaden, Gegenangriff und Ausgang würfeln die Regeln. Die Timing-Qualität kommt vom Client und lässt sich nicht prüfen, deshalb wirkt sie bewusst begrenzt (höchstens ×1,5).
 
@@ -75,6 +77,13 @@ Ohne Framework, kleine Hilfsfunktion `h()` in `ui/dom.ts`. Jeder Bildschirm ist 
 - `npm run build`: normale Web-App für GitHub Pages (MapLibre gebündelt, PWA-Manifest).
 - `npm run build:preview`: eine einzige HTML-Datei für die Vorschau in Claude (MapLibre per CDN, nur Demo-Dorf und Simulation).
 
-## 3D-Endstation
+## 3D-Endstation und Spielfigur
 
-`src/base/BaseScene.ts` zeichnet die Halle mit three.js, `src/base/models.ts` baut alle Möbel aus einfachen Formen (Low-Poly, keine Bilddateien). Die Oberfläche dazu ist `src/ui/base/baseView.ts`. three.js wird erst geladen, wenn man die Endstation öffnet, damit die Karte schnell startet.
+- `src/base/BaseScene.ts`: Szene, Kamera (ein Finger schiebt, zwei zoomen, Drehen per Knopf), Antippen über Strahl und Raster, Vorschau, Wetter.
+- `src/base/models.ts`, `structures.ts`, `environment.ts`: alle Modelle aus einfachen Formen (Low-Poly, keine Bilddateien).
+- `src/base/bake.ts`: verschmilzt alles zu wenigen großen Meshes mit Farben pro Ecke. Ein Gelände mit Hunderten Teilen braucht so nur eine Handvoll Zeichenaufrufe.
+- `src/base/character.ts`: die Spielfigur, `figureView.ts` zeigt sie bei der Erstellung, auf der Karte und als Porträt.
+- `src/base/path.ts`: Wegfindung der Figur (Wände sperren, Türen lassen durch).
+- Oberfläche: `src/ui/base/baseView.ts`, `sitePicker.ts`.
+
+three.js wird erst nachgeladen, wenn es gebraucht wird (Figur, Endstation), damit die Karte schnell startet.

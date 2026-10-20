@@ -18,13 +18,33 @@ export function characterScreen(app: App): Screen {
   const placeholder = NAMES[Math.floor(Math.random() * NAMES.length)];
 
   const cardFace = h('div', { class: 'id-photo' });
+  // 3D-Figur (three.js wird nachgeladen, bis dahin die einfache Zeichnung)
+  const stageEl = h('div', { class: 'figure-stage', role: 'img', 'aria-label': 'Deine Figur. Mit dem Finger drehen.' }, h('span', { class: 'figure-hint' }, 'Zum Drehen wischen'));
+  let fv: typeof import('../../base/figureView') | null = null;
+  let fig: import('../../base/figureView').FigureView | null = null;
+  let destroyed = false;
+  const hairImgs: HTMLElement[] = [];
+  const portrait = (look: Character['look'], size: number) => {
+    if (!fv) return svgEl(avatarSvg(look, size));
+    try {
+      return h('img', { src: fv.renderPortrait(look, size * 2), alt: '', width: String(size), height: String(size) });
+    } catch {
+      return svgEl(avatarSvg(look, size));
+    }
+  };
+  const refreshHair = () =>
+    hairImgs.forEach((slot, i) => {
+      clear(slot);
+      slot.append(portrait({ ...draft.look, hair: i }, 44));
+    });
   const cardName = h('div', { class: 'id-name' });
   const cardRole = h('div', { class: 'id-role' });
   const cardPerk = h('div', { class: 'id-perk' });
 
   const renderCard = () => {
     clear(cardFace);
-    cardFace.append(svgEl(avatarSvg(draft.look, 96)));
+    cardFace.append(portrait(draft.look, 96));
+    fig?.setLook(draft.look);
     cardName.textContent = draft.name.trim() || placeholder;
     cardRole.textContent = BACKGROUNDS[draft.background].name;
     cardPerk.textContent = BACKGROUNDS[draft.background].perk;
@@ -50,7 +70,7 @@ export function characterScreen(app: App): Screen {
         c.setAttribute('aria-checked', String(i === get()));
       });
     options.forEach((o, i) => {
-      const b = h('button', { type: 'button', role: 'radio', class: 'choice', onclick: () => (set(i), paint(), renderCard()) }, render(o, i));
+      const b = h('button', { type: 'button', role: 'radio', class: 'choice', onclick: () => (set(i), paint(), renderCard(), refreshHair()) }, render(o, i));
       row.append(b);
     });
     paint();
@@ -61,7 +81,11 @@ export function characterScreen(app: App): Screen {
     'Frisur',
     'lbl-hair',
     [...HAIR_STYLES],
-    (name, i) => h('span', { class: 'choice-hair' }, svgEl(avatarSvg({ ...draft.look, hair: i }, 44)), h('small', null, name)),
+    (name, i) => {
+      const slot = h('span', { class: 'hair-face' }, svgEl(avatarSvg({ ...draft.look, hair: i }, 44)));
+      hairImgs[i] = slot;
+      return h('span', { class: 'choice-hair' }, slot, h('small', null, name));
+    },
     () => draft.look.hair,
     (i) => (draft.look.hair = i),
   );
@@ -117,6 +141,7 @@ export function characterScreen(app: App): Screen {
         h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Zurück', onclick: () => app.go('menu') }, svgEl(icon('back'))),
         h('h1', { class: 'sign-title' }, 'Wer bist du?'),
       ),
+      stageEl,
       h(
         'section',
         { class: 'id-card', 'aria-label': 'Vorschau' },
@@ -132,5 +157,32 @@ export function characterScreen(app: App): Screen {
     ),
   );
 
-  return { el, mount: renderCard };
+  const mount = async () => {
+    renderCard();
+    try {
+      fv = await import('../../base/figureView');
+    } catch {
+      return;
+    }
+    if (destroyed) return;
+    try {
+      fig = new fv.FigureView({ mode: 'stage', width: Math.max(260, stageEl.clientWidth || 320), height: 300 });
+      fig.setLook(draft.look);
+      stageEl.prepend(fig.canvas);
+      fig.start();
+    } catch {
+      fig = null;
+    }
+    renderCard();
+    refreshHair();
+  };
+
+  return {
+    el,
+    mount,
+    destroy: () => {
+      destroyed = true;
+      fig?.dispose();
+    },
+  };
 }

@@ -19,4 +19,7 @@ export const REJECT_TEXT: Record<RejectReason, string> = {
   blocked: 'Da ist kein Platz.',
   no_blueprint: 'Dafür fehlt dir noch der Bauplan.',
   not_found: 'Das gibt es hier nicht (mehr).',
+  no_site: 'Such dir zuerst einen Schauplatz für deine Endstation aus.',
+  no_wall: 'Das geht nur an einer passenden Wand.',
+  not_adjacent: 'Nur Abschnitte direkt neben deinem Gelände.',
 };

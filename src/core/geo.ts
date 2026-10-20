@@ -11,6 +11,13 @@ export function distanceM(a: LatLon, b: LatLon): number {
   return 2 * EARTH_R * Math.asin(Math.min(1, Math.sqrt(s)));
 }
 
+/** Richtung von a nach b in Grad (0 = Norden, im Uhrzeigersinn). */
+export function bearingDeg(a: LatLon, b: LatLon): number {
+  const y = Math.sin(toRad(b.lon - a.lon)) * Math.cos(toRad(b.lat));
+  const x = Math.cos(toRad(a.lat)) * Math.sin(toRad(b.lat)) - Math.sin(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.cos(toRad(b.lon - a.lon));
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
 /** Punkt um dx Meter nach Osten und dy Meter nach Norden verschieben. */
 export function offsetM(p: LatLon, dx: number, dy: number): LatLon {
   const lat = p.lat + (dy / EARTH_R) * (180 / Math.PI);

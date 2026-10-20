@@ -1,10 +1,9 @@
 // Einfache Figur aus Formen: Frisur, Jackenfarbe, Hautton.
 
-import { JACKET_COLORS } from '../core/content';
+import { HAIR_COLOR as HAIR, JACKET_COLORS, SKIN_TONES } from '../core/content';
 import type { Character } from '../core/types';
 
-export const SKIN_TONES = ['#e2b896', '#c18f6a', '#8d5f42', '#5c3d2b'] as const;
-const HAIR = '#2a211a';
+export { SKIN_TONES };
 
 function shade(hex: string, f: number): string {
   const n = parseInt(hex.slice(1), 16);
