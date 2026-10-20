@@ -52,6 +52,7 @@ export class CombatScene {
   private camTarget = new THREE.Vector3();
   private ro: ResizeObserver;
   private lastPlayer = new THREE.Vector2();
+  private chargeRing: THREE.Mesh;
 
   constructor(
     private host: HTMLElement,
@@ -103,6 +104,11 @@ export class CombatScene {
     this.targetArrow = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.26, 4), new THREE.MeshBasicMaterial({ color: '#ffb22e' }));
     this.targetArrow.rotation.x = Math.PI;
     this.scene.add(this.targetArrow);
+
+    this.chargeRing = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.7, 48, 1, 0, Math.PI * 2), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false, depthTest: false }));
+    this.chargeRing.rotation.x = -Math.PI / 2;
+    this.chargeRing.renderOrder = 5;
+    this.scene.add(this.chargeRing);
 
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(host);
@@ -224,6 +230,19 @@ export class CombatScene {
     this.player.root.position.set(b.x + this.dodgeOffset.x, 0, b.z + this.dodgeOffset.y);
     const tgt = b.target !== null ? b.foes.find((f) => f.id === b.target) : undefined;
     if (tgt) this.player.root.rotation.y = Math.atan2(tgt.x - b.x, tgt.z - b.z);
+    // Aufladen: Waffe hoch, Ring an den Füßen füllt sich
+    const lvl = b.charge !== null ? Math.min(1, b.charge / BATTLE.chargeTime) : null;
+    this.player.charging = lvl;
+    const cm = this.chargeRing.material as THREE.MeshBasicMaterial;
+    if (lvl !== null) {
+      const full = lvl >= 0.95;
+      this.chargeRing.geometry.dispose();
+      // Weiß, außen um die Figur, damit man ihn nicht mit dem Zielkreis verwechselt
+      this.chargeRing.geometry = new THREE.RingGeometry(0.9, 1.08, 56, 1, Math.PI / 2, Math.max(0.01, lvl * Math.PI * 2));
+      this.chargeRing.position.set(b.x, 0.05, b.z);
+      cm.color.set(full ? '#ffe070' : '#ffffff');
+      cm.opacity = full ? 0.75 + 0.25 * Math.sin(t * 30) : 0.8;
+    } else cm.opacity = 0;
     this.player.update(t, dt, moved ? 1 : 0);
 
     // Gegner
@@ -337,6 +356,7 @@ export class CombatScene {
           break;
         case 'dodge': {
           this.player.play('dodge');
+          if (b.rollX || b.rollZ) break; // Die Rolle bewegt die Figur schon selbst
           // kleiner Hüpfer zur Seite
           const tgt = b.foes.find((x) => x.id === b.target);
           const dir = tgt ? Math.atan2(tgt.x - b.x, tgt.z - b.z) : 0;

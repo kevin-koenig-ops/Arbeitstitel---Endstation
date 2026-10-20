@@ -60,6 +60,9 @@ Die Figur aus der Charaktererstellung ist ein Low-Poly-Modell (Frisur, Hautton, 
 - **Fähigkeiten mit Abklingzeit:** Wuchtschlag (doppelter Schaden, Gegner taumelt), Ausweichen (kurz unverwundbar), Stoß (alle zurück, Ausholen unterbrochen), Verbinden (kostet 1 Medizin).
 - **Angekündigte Angriffe:** Ein roter Kreis füllt sich unter dem Zombie. Leuchtet er hell auf und man weicht genau dann aus, gibt es einen Konter mit Zeitlupe.
 - **Gegner mit Rollen:** Streuner (normal), Kriecher (flink, holt schnell aus), Brocken (zäh, schlägt hart), Kreischer (bleibt hinten und ruft Verstärkung, zuerst ausschalten).
+- **Zwei Steuerungen zum Vergleichen** (Einstellungen → Kampfsteuerung):
+  - *Tasten:* wie oben, die Figur schlägt automatisch zu.
+  - *Gesten (wie Monster Hunter):* Tippen = Schlag (drei in Folge = Kombo mit starkem Abschluss), Halten = Aufladen (ein weißer Ring füllt sich, voll = Volle Wucht, ein Treffer bricht es ab), Wischen = Ausweichrolle in diese Richtung. Gefahr zeigt ein gelber Bildschirmrand.
 - **Wumms:** Schadenszahlen, Treffer-Stopp, Rückstoß, Funken, Zeitlupe beim letzten Treffer, Vibration.
 - Ein Kampf dauert etwa 20–40 Sekunden. Waffen nutzen sich pro Kampf ab.
 - **Niederlage ist kein Drama:** Ein paar Sachen fallen aus dem Rucksack, die Gesundheit kommt von selbst zurück. **Fliehen geht immer.**

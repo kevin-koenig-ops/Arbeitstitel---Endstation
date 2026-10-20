@@ -470,6 +470,19 @@ export const BATTLE = {
   healTime: 2,
   maxSummons: 2,
   playerSpeed: 3.2,
+  // Gesten-Steuerung
+  /** Weite der Ausweichrolle in Metern */
+  rollDistance: 1.6,
+  /** Sekunden bis voll aufgeladen */
+  chargeTime: 1.1,
+  /** Voll aufgeladen: Schaden × (1 + chargeBonus) */
+  chargeBonus: 1.6,
+  /** Zeitfenster für die nächste Kombo-Stufe */
+  comboWindow: 1.0,
+  /** Der dritte Kombo-Schlag */
+  comboFinisher: 1.6,
+  /** Selbst getippte Schläge kommen schneller als automatische */
+  manualSpeed: 0.75,
 };
 
 // --- Tageszeit ---------------------------------------------------------------------

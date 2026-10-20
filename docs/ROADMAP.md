@@ -55,7 +55,9 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - Angekündigte Angriffe mit perfektem Ausweichen und Konter, Kreischer ruft Verstärkung
 - Treffer-Feedback (Zahlen, Stopp, Rückstoß, Zeitlupe), deterministische Simulation mit Tests
 
-**Testen:** Macht es Spaß? Zu leicht, zu schwer? Zu lang, zu kurz? Welche Fähigkeit fehlt?
+- Zweite Steuerung „Gesten“ zum Vergleichen: Tippen = Schlag/Kombo, Halten = Aufladen, Wischen = Ausweichrolle
+
+**Testen:** Macht es Spaß? Tasten oder Gesten? Zu leicht, zu schwer? Zu lang, zu kurz? Wird Aufladen zu oft unterbrochen?
 
 ## Iteration 1h: Werkstätten und Wetter
 
@@ -124,6 +126,7 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - Tab-Targeting in einer kleinen 3D-Szene: Ziel antippen, Figur greift automatisch an, 3–4 Fähigkeiten mit Abklingzeit (Wuchtschlag, Ausweichen, Lärm, Verbinden), Waffen bringen eine Spezialfähigkeit mit.
 - Gegner kündigen Angriffe an (roter Kreis), richtig ausweichen = Konter. Mehrere Gegner mit Rollen (Kreischer ruft Verstärkung, Brocken ist zäh).
 - Viel Wumms: Treffer-Feedback, Zahlen, Zeitlupe beim letzten Schlag, Beute mit Seltenheit. 30–60 Sekunden, nur im Stehen.
+- **Schusswaffen (gewünscht):** Pistole, Schrotflinte, Gewehr als seltene Funde. Munition knapp, Schüsse sind laut und locken weitere Zombies an, Nachladen ist ein riskanter Moment. Nahkampf bleibt der Alltag, die Waffe die Rettung im Notfall.
 
 ## Ideen-Sammlung für später
 

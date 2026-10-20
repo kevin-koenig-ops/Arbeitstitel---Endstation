@@ -96,6 +96,53 @@ describe('Kampf 2.0', () => {
   });
 });
 
+describe('Kampf 2.0 mit Gesten', () => {
+  const manual = (seed: string) => createBattle({ ...setup('walker', seed), manual: true });
+
+  it('ohne Tippen schlägt die Figur nicht zu', () => {
+    const b = manual('ruhig');
+    let hits = 0;
+    for (let i = 0; i < 300 && !b.over; i++) hits += stepBattle(b, DT).filter((e) => e.type === 'hit').length;
+    expect(hits).toBe(0);
+  });
+
+  it('Tippen gibt Kombos, der dritte Schlag sitzt; Wischen weicht aus', () => {
+    let wins = 0;
+    let finishers = 0;
+    for (let i = 0; i < 10; i++) {
+      const b = manual('geste-' + i);
+      let next = 0;
+      while (!b.over && b.t < 200) {
+        const inp: BattleInput[] = [];
+        const danger = alive(b).some((f) => windupLeft(f, b) <= BATTLE.perfectWindow - 0.05);
+        if (danger && b.cds.dodge <= 0) inp.push({ type: 'ability', ability: 'dodge', dx: 1, dz: 0 });
+        else if (b.t >= next) {
+          inp.push({ type: 'attack' });
+          next = b.t + 0.3;
+        }
+        for (const e of stepBattle(b, DT, inp)) if (e.type === 'hit' && e.combo === 3) finishers++;
+      }
+      if (b.over === 'won') wins++;
+    }
+    expect(wins).toBeGreaterThanOrEqual(8);
+    expect(finishers).toBeGreaterThan(5);
+  });
+
+  it('Aufladen: länger halten = härter, ein Treffer bricht es ab', () => {
+    const b = manual('laden');
+    // bis zum ersten Gegner warten
+    while (alive(b).every((f) => Math.hypot(f.x - b.x, f.z - b.z) > 1.5) && b.t < 20) stepBattle(b, DT, [{ type: 'attack' }]);
+    stepBattle(b, DT, [{ type: 'chargeStart' }]);
+    let lost = false;
+    for (let i = 0; i < 40; i++) if (stepBattle(b, DT).some((e) => e.type === 'chargeLost')) lost = true;
+    const ev = stepBattle(b, DT, [{ type: 'chargeRelease' }]).concat(stepBattle(b, DT), stepBattle(b, DT));
+    const hit = ev.find((e) => e.type === 'hit');
+    if (!lost) {
+      expect(hit && hit.type === 'hit' && (hit.charged ?? 0) > 0.9).toBe(true);
+    } else expect(hit).toBeUndefined();
+  });
+});
+
 describe('Kampfergebnis in den Regeln', () => {
   const hero: Character = { name: 'Kim', look: { hair: 0, color: 0, skin: 0 }, background: 'workshop' };
   const T0 = Date.UTC(2026, 9, 20, 12);

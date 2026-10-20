@@ -113,6 +113,15 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
           ['joystick', 'Joystick'],
         ]),
       ),
+      h(
+        'div',
+        { class: 'set-row' },
+        h('div', { class: 'set-label', id: 'lbl-cctrl' }, 'Kampfsteuerung', h('small', null, 'Tasten: Figur schlägt von selbst zu, Fähigkeiten per Taste. Gesten: Tippen = Schlag, Halten = Aufladen, Wischen = Ausweichen.')),
+        segmented('combatControl', 'lbl-cctrl', [
+          ['buttons', 'Tasten'],
+          ['gestures', 'Gesten'],
+        ]),
+      ),
       h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-full' }, 'Vollbild', h('small', null, 'Am Handy beim Spielen ins Vollbild und im Querformat bleiben (geht nicht in jedem Browser).')), fullToggle),
     ),
     h(

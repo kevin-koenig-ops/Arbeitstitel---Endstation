@@ -875,7 +875,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .ab kbd { position: absolute; top: 6px; right: 12px; font: 600 9px var(--font-ui); color: var(--dust); }
 @media (pointer: coarse) { .ab kbd { display: none; } }
 .ab .cd { position: absolute; inset: 0; border-radius: 50%; display: grid; place-items: center; font: 800 18px var(--font-ui); color: #fff; background: conic-gradient(rgba(0, 0, 0, 0.68) calc(var(--p, 0) * 360deg), transparent 0); pointer-events: none; }
-.ab-count { position: absolute; bottom: 8px; right: 10px; font: 700 11px var(--font-ui); color: var(--bone); }
+.ab-count { font: 700 10px/1 var(--font-ui); color: var(--dust); }
 .ab-dodge { right: 0; bottom: 0; width: 96px; height: 96px; background: var(--amber); color: var(--ink); }
 .ab-dodge .ab-name { font-size: 11px; }
 .ab-dodge.now { animation: dodge-now 0.25s ease-in-out infinite alternate; background: #fff2b0; }
@@ -912,3 +912,12 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .battle-result h2 { margin: 0; font: 700 22px var(--font-ui); }
 .battle-result p { margin: 0; }
 @keyframes pulse { from { opacity: 0.7; } to { opacity: 1; } }
+
+/* Gesten-Steuerung im Kampf */
+.battle-abilities.gestures { width: 150px; height: 90px; }
+.battle-abilities.gestures .ab-shove { right: 0; bottom: 6px; }
+.battle-abilities.gestures .ab-bandage { right: 80px; bottom: 10px; }
+.battle.danger::before { content: ''; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 4px rgba(255, 226, 112, 0.85), inset 0 0 60px rgba(255, 226, 112, 0.35); animation: pulse 0.2s ease-in-out infinite alternate; z-index: 1; }
+.battle-combo { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); font: 900 30px/1 var(--font-display); color: #ffd27a; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6); pointer-events: none; opacity: 0; }
+.battle-combo[data-n="3"] { color: #ffe070; font-size: 40px; }
+.battle-combo.pop { animation: callout-pop 0.8s ease-out forwards; }

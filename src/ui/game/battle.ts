@@ -33,6 +33,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
   const combat = s0.combat!;
   const spot = combat.spot;
   const weapon = bestWeapon(s0)?.kind ?? null;
+  const gestures = app.settings.get().combatControl === 'gestures';
   const battle: BattleState = createBattle({
     seed: `${WORLD_SEED}|${s0.playerId}|${spot.id}|${combat.window}`,
     guard: combat.enemy,
@@ -41,6 +42,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     maxHealth: MAX_HEALTH,
     medicine: s0.inventory.medicine,
     foeSpeed: timingFactor(),
+    manual: gestures,
   });
 
   // --- Oberfläche --------------------------------------------------------------------------
@@ -68,10 +70,12 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
   const callout = h('div', { class: 'battle-callout', 'aria-live': 'polite' });
   const floats = h('div', { class: 'battle-floats', 'aria-hidden': 'true' });
   const abilityBtns = {} as Record<Ability, { el: HTMLButtonElement; cd: HTMLElement; extra?: HTMLElement }>;
+  // Mit Gesten gibt es nur Stoß und Verbinden als Tasten (Schlag, Aufladen, Ausweichen sind Gesten)
+  const shown = gestures ? ABILITY_ORDER.filter((a) => a === 'shove' || a === 'bandage') : ABILITY_ORDER;
   const abilities = h(
     'div',
-    { class: 'battle-abilities' },
-    ABILITY_ORDER.map((a) => {
+    { class: 'battle-abilities' + (gestures ? ' gestures' : '') },
+    shown.map((a) => {
       const cd = h('span', { class: 'cd' });
       const extra = a === 'bandage' ? h('span', { class: 'ab-count' }) : undefined;
       const el = h(
@@ -88,7 +92,10 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     }),
   );
   const switchBtn = h('button', { class: 'btn ghost small battle-switch', type: 'button', onclick: () => cycleTarget() }, svgEl(icon('locate', 16)), 'Ziel wechseln');
-  const hint = h('div', { class: 'battle-hint' }, 'Tippe einen Zombie an. Deine Figur greift an. ', h('b', null, 'Leuchtet der Kreis hell: Ausweichen!'));
+  const hint = gestures
+    ? h('div', { class: 'battle-hint' }, h('b', null, 'Tippen'), ' = Schlag · ', h('b', null, 'Halten'), ' = Aufladen · ', h('b', null, 'Wischen'), ' = Ausweichen. Leuchtet der Kreis hell: jetzt wischen!')
+    : h('div', { class: 'battle-hint' }, 'Tippe einen Zombie an. Deine Figur greift an. ', h('b', null, 'Leuchtet der Kreis hell: Ausweichen!'));
+  const comboEl = h('div', { class: 'battle-combo', 'aria-hidden': 'true' });
   const loading = h('div', { class: 'battle-loading' }, 'Achtung …');
   const el = h(
     'div',
@@ -98,7 +105,8 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     h('div', { class: 'battle-top' }, meFrame, targetFrame, fleeBtn),
     callout,
     hint,
-    switchBtn,
+    comboEl,
+    gestures ? null : switchBtn,
     abilities,
     loading,
   );
@@ -109,6 +117,12 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
   const queue = (i: BattleInput) => {
     if (!battle.over) inputs.push(i);
   };
+  // Nur zum Testen: Kampfzustand von außen ansehen
+  try {
+    if (localStorage.getItem('endstation.debug')) (window as unknown as { __battle?: () => BattleState }).__battle = () => battle;
+  } catch {
+    /* egal */
+  }
   const cycleTarget = () => {
     const id = nextTarget(battle, true);
     if (id !== null) queue({ type: 'target', id });
@@ -163,6 +177,19 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
         const f = foeById(battle, e.id);
         if (!f) continue;
         floatAt(f.x, (scene?.foeHeight(f.id) ?? 2) + 0.2, f.z, e.counter ? `${e.dmg}!` : String(e.dmg), e.counter ? 'counter' : e.crit ? 'crit' : e.power ? 'power' : 'dmg');
+        if (e.combo) {
+          comboEl.textContent = e.combo >= 3 ? 'Kombo!' : `${e.combo}`;
+          comboEl.dataset.n = String(e.combo);
+          comboEl.classList.remove('pop');
+          void comboEl.offsetWidth;
+          comboEl.classList.add('pop');
+          if (e.combo >= 3) stop = Math.max(stop, 0.07);
+        }
+        if (e.charged !== undefined && e.charged >= 0.95) {
+          say('Volle Wucht!', 'gold');
+          stop = Math.max(stop, 0.1);
+          vibrate(50);
+        }
         if (e.counter) {
           say('KONTER!', 'gold');
           stop = 0.09;
@@ -186,6 +213,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
       else if (e.type === 'summon') say('Der Kreischer ruft Verstärkung!', 'bad');
       else if (e.type === 'heal') floatAt(battle.x, 2.1, battle.z, `+${e.amount}`, 'heal');
       else if (e.type === 'bandage') say('Verbinden …', 'good');
+      else if (e.type === 'chargeLost') say('Unterbrochen!', 'bad');
       else if (e.type === 'denied') {
         const b = abilityBtns[e.ability].el;
         b.classList.remove('shake');
@@ -214,7 +242,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
       tHp.style.width = `${(t.hp / t.maxHp) * 100}%`;
       tDesc.textContent = FOES[t.kind].desc;
     }
-    for (const a of ABILITY_ORDER) {
+    for (const a of shown) {
       const b = abilityBtns[a];
       const left = battle.cds[a];
       b.cd.style.setProperty('--p', String(left > 0 ? left / ABILITIES[a].cd : 0));
@@ -225,7 +253,8 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     }
     // Die Ausweichen-Taste leuchtet, wenn gleich ein Treffer kommt
     const danger = alive(battle).some((f) => windupLeft(f, battle) <= 0.4);
-    abilityBtns.dodge.el.classList.toggle('now', danger);
+    abilityBtns.dodge?.el.classList.toggle('now', danger);
+    el.classList.toggle('danger', gestures && danger);
     // Kleine Lebensbalken über den Zombies
     if (!scene) return;
     for (const f of battle.foes) {
@@ -296,7 +325,52 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
       hint.hidden = true;
     }
   };
-  stage.addEventListener('pointerdown', pointer);
+  if (!gestures) stage.addEventListener('pointerdown', pointer);
+  else {
+    // Tippen = Schlag, Halten = Aufladen, Wischen = Ausweichen in diese Richtung
+    let g: { id: number; x: number; y: number; t: number; charging: boolean; done: boolean; timer: number } | null = null;
+    stage.addEventListener('pointerdown', (e) => {
+      if (!scene || battle.over || g) return;
+      stage.setPointerCapture(e.pointerId);
+      const gg = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), charging: false, done: false, timer: 0 };
+      gg.timer = window.setTimeout(() => {
+        if (g === gg && !gg.done) {
+          gg.charging = true;
+          // Zielen auf den Zombie unter dem Finger
+          const id = scene?.pickFoe(battle, gg.x, gg.y);
+          if (id !== null && id !== undefined) queue({ type: 'target', id });
+          queue({ type: 'chargeStart' });
+        }
+      }, 200);
+      g = gg;
+    });
+    stage.addEventListener('pointermove', (e) => {
+      if (!g || e.pointerId !== g.id || g.done || g.charging) return;
+      const dx = e.clientX - g.x;
+      const dy = e.clientY - g.y;
+      if (Math.hypot(dx, dy) > 34 && performance.now() - g.t < 400) {
+        g.done = true;
+        clearTimeout(g.timer);
+        // Bildschirm -> Boden: rechts = +x, unten = +z (die Kamera schaut nach -z)
+        queue({ type: 'ability', ability: 'dodge', dx, dz: dy });
+        hint.hidden = true;
+      }
+    });
+    const up = (e: PointerEvent) => {
+      if (!g || e.pointerId !== g.id) return;
+      clearTimeout(g.timer);
+      if (g.charging) queue({ type: 'chargeRelease' });
+      else if (!g.done && e.type === 'pointerup') {
+        const id = scene?.pickFoe(battle, e.clientX, e.clientY);
+        if (id !== null && id !== undefined) queue({ type: 'target', id });
+        queue({ type: 'attack' });
+        hint.hidden = true;
+      }
+      g = null;
+    };
+    stage.addEventListener('pointerup', up);
+    stage.addEventListener('pointercancel', up);
+  }
 
   const used = () => battle.usedMedicine;
   const finish = async () => {

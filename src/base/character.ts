@@ -65,6 +65,8 @@ export class CharacterRig {
   private waveT = -1;
   private action: { kind: CharacterAction; t: number; dur: number } | null = null;
   private held: THREE.Group | null = null;
+  /** Aufladen (0..1) oder null: Waffe hoch über dem Kopf */
+  charging: number | null = null;
 
   constructor(look: Look) {
     this.root.add(this.body);
@@ -287,6 +289,14 @@ export class CharacterRig {
           break;
       }
       if (a.t >= a.dur) this.action = null;
+    }
+    if (this.charging !== null) {
+      const k = Math.min(1, this.charging * 1.6);
+      const tremble = this.charging >= 0.95 ? Math.sin(t * 60) * 0.04 : 0;
+      this.armR.rotation.x = -2.7 * k + tremble;
+      this.armL.rotation.x = -2.2 * k;
+      this.torso.rotation.y = -0.45 * k;
+      this.torso.rotation.x = -0.12 * k;
     }
     // Winken mit dem rechten Arm
     if (this.waveT >= 0) {

@@ -60,13 +60,35 @@ export interface BattleState {
   over: null | 'won' | 'lost' | 'fled';
   /** Tempo der Zombies (Wetter) */
   foeSpeed: number;
+  /** true = Figur schlägt von selbst zu (Tasten-Steuerung), false = selbst tippen (Gesten) */
+  auto: boolean;
+  /** Gesten: ein Schlag ist bestellt (Figur läuft notfalls erst hin) */
+  wantHit: number;
+  /** Kombo-Zähler und Zeit seit dem letzten Schlag */
+  combo: number;
+  sinceHit: number;
+  /** Aufladen läuft seit so vielen Sekunden (null = nicht) */
+  charge: number | null;
+  /** Aufgeladener Schlag wartet (Stärke 0..1), Figur läuft notfalls hin */
+  charged: number | null;
+  /** Ausweichrolle: Bewegung pro Sekunde */
+  rollX: number;
+  rollZ: number;
 }
 
-export type BattleInput = { type: 'target'; id: number } | { type: 'ability'; ability: Ability } | { type: 'flee' };
+export type BattleInput =
+  | { type: 'target'; id: number }
+  | { type: 'ability'; ability: Ability; dx?: number; dz?: number }
+  | { type: 'attack' }
+  | { type: 'chargeStart' }
+  | { type: 'chargeRelease' }
+  | { type: 'flee' };
 
 export type BattleEvent =
   | { type: 'swing'; target: number }
-  | { type: 'hit'; id: number; dmg: number; crit: boolean; counter: boolean; power: boolean; kill: boolean }
+  | { type: 'hit'; id: number; dmg: number; crit: boolean; counter: boolean; power: boolean; kill: boolean; combo?: number; charged?: number }
+  | { type: 'charge' }
+  | { type: 'chargeLost' }
   | { type: 'hurt'; dmg: number; by: number }
   | { type: 'dodged'; by: number; perfect: boolean }
   | { type: 'dodge' }
@@ -133,6 +155,8 @@ export interface BattleSetup {
   medicine: number;
   /** Wetter: unter 1 sind Zombies träge (Regen, Schnee) */
   foeSpeed?: number;
+  /** Gesten-Steuerung: selbst zuschlagen statt automatisch */
+  manual?: boolean;
 }
 
 export function createBattle(s: BattleSetup): BattleState {
@@ -160,6 +184,14 @@ export function createBattle(s: BattleSetup): BattleState {
     perfects: 0,
     over: null,
     foeSpeed: s.foeSpeed ?? 1,
+    auto: !s.manual,
+    wantHit: 0,
+    combo: 0,
+    sinceHit: 99,
+    charge: null,
+    charged: null,
+    rollX: 0,
+    rollZ: 0,
   };
   const kinds = group(b, s.guard);
   kinds.forEach((k, i) => {
@@ -202,7 +234,7 @@ export function windupLeft(f: Foe, b?: Pick<BattleState, 'foeSpeed'>): number {
 
 // --- Schaden -----------------------------------------------------------------------
 
-function damageFoe(b: BattleState, f: Foe, mult: number, power: boolean, out: BattleEvent[]) {
+function damageFoe(b: BattleState, f: Foe, mult: number, power: boolean, out: BattleEvent[], extra: { combo?: number; charged?: number } = {}) {
   const ws = weaponStats(b);
   const counter = b.counter > 0;
   const crit = counter || rand(b) < BATTLE.crit;
@@ -213,7 +245,7 @@ function damageFoe(b: BattleState, f: Foe, mult: number, power: boolean, out: Ba
   if (counter) b.counter = 0;
   f.hp = Math.max(0, f.hp - dmg);
   const kill = f.hp <= 0;
-  out.push({ type: 'hit', id: f.id, dmg, crit, counter, power, kill });
+  out.push({ type: 'hit', id: f.id, dmg, crit, counter, power, kill, ...extra });
   if (kill) {
     f.mode = 'dead';
     f.t = 0;
@@ -231,7 +263,7 @@ function damageFoe(b: BattleState, f: Foe, mult: number, power: boolean, out: Ba
 
 // --- Eingaben ----------------------------------------------------------------------
 
-function useAbility(b: BattleState, a: Ability, out: BattleEvent[]) {
+function useAbility(b: BattleState, a: Ability, out: BattleEvent[], dir?: { dx: number; dz: number }) {
   if (b.cds[a] > 0) return out.push({ type: 'denied', ability: a, reason: 'cooldown' });
   const tgt = foeById(b, b.target);
   switch (a) {
@@ -243,6 +275,13 @@ function useAbility(b: BattleState, a: Ability, out: BattleEvent[]) {
       break;
     }
     case 'dodge': {
+      // Mit Richtung (Wischen): eine kurze Rolle in diese Richtung
+      if (dir && (dir.dx || dir.dz)) {
+        const n = Math.hypot(dir.dx, dir.dz) || 1;
+        b.rollX = (dir.dx / n) * (BATTLE.rollDistance / BATTLE.dodgeTime);
+        b.rollZ = (dir.dz / n) * (BATTLE.rollDistance / BATTLE.dodgeTime);
+      }
+      b.charge = null;
       // Perfekt: ein Gegner in der Nähe trifft gleich
       const soon = alive(b).filter((f) => windupLeft(f, b) <= BATTLE.perfectWindow && (dist(b, f) <= FOES[f.kind].reach + 0.8 || f.kind === 'screamer'));
       b.dodge = BATTLE.dodgeTime;
@@ -303,7 +342,20 @@ export function stepBattle(b: BattleState, dt: number, inputs: BattleInput[] = [
         b.target = f.id;
         out.push({ type: 'target', id: f.id });
       }
-    } else useAbility(b, inp.ability, out);
+    } else if (inp.type === 'attack') {
+      if (b.dodge <= 0) b.wantHit = Math.min(2, b.wantHit + 1);
+    } else if (inp.type === 'chargeStart') {
+      if (b.dodge <= 0 && b.charged === null) {
+        b.charge = 0;
+        b.wantHit = 0;
+        out.push({ type: 'charge' });
+      }
+    } else if (inp.type === 'chargeRelease') {
+      if (b.charge !== null) {
+        b.charged = Math.min(1, b.charge / BATTLE.chargeTime);
+        b.charge = null;
+      }
+    } else useAbility(b, inp.ability, out, inp.dx !== undefined || inp.dz !== undefined ? { dx: inp.dx ?? 0, dz: inp.dz ?? 0 } : undefined);
   }
   b.t += dt;
   for (const k of Object.keys(b.cds) as Ability[]) b.cds[k] = Math.max(0, b.cds[k] - dt);
@@ -329,19 +381,50 @@ export function stepBattle(b: BattleState, dt: number, inputs: BattleInput[] = [
   const tgt = foeById(b, b.target);
   const ws = weaponStats(b);
   b.swing = Math.max(0, b.swing - dt);
+  b.sinceHit += dt;
+  if (b.charge !== null) b.charge += dt;
+  // Ausweichrolle bewegt die Figur
+  if (b.dodge > 0 && (b.rollX || b.rollZ)) {
+    b.x += b.rollX * dt;
+    b.z += b.rollZ * dt;
+  } else b.rollX = b.rollZ = 0;
   if (tgt) {
     const d = dist(b, tgt);
     b.facing = Math.atan2(tgt.x - b.x, -(tgt.z - b.z));
-    if (d > ws.reach && b.dodge <= 0) {
+    // Automatisch nur mit Tasten-Steuerung, sonst nur auf Befehl (Tippen, Aufladen)
+    const wants = b.auto || b.wantHit > 0 || b.charged !== null;
+    const busy = b.dodge > 0 || b.charge !== null;
+    if (wants && !busy && d > ws.reach) {
       const stepM = Math.min(d - ws.reach * 0.9, BATTLE.playerSpeed * dt);
       b.x += ((tgt.x - b.x) / d) * stepM;
       b.z += ((tgt.z - b.z) / d) * stepM;
-    } else if (b.swing <= 0 && d <= ws.reach + 0.2) {
-      out.push({ type: 'swing', target: tgt.id });
-      damageFoe(b, tgt, 1, false, out);
-      b.swing = ws.interval;
+    } else if (!busy && d <= ws.reach + 0.2) {
+      if (b.charged !== null && b.swing <= 0.3) {
+        // Aufgeladener Schlag: je länger gehalten, desto härter; voll = Gegner taumelt
+        const lvl = b.charged;
+        b.charged = null;
+        out.push({ type: 'swing', target: tgt.id });
+        damageFoe(b, tgt, 1 + BATTLE.chargeBonus * lvl, lvl >= 0.95, out, { charged: lvl });
+        b.swing = ws.interval;
+        b.combo = 0;
+      } else if (b.swing <= 0 && (b.auto || b.wantHit > 0)) {
+        let mult = 1;
+        let combo: number | undefined;
+        if (!b.auto) {
+          // Kombo: schnell nacheinander tippen, der dritte Schlag sitzt
+          b.combo = b.sinceHit <= BATTLE.comboWindow ? b.combo + 1 : 1;
+          combo = b.combo;
+          if (b.combo >= 3) mult = BATTLE.comboFinisher;
+          b.wantHit -= 1;
+        }
+        out.push({ type: 'swing', target: tgt.id });
+        damageFoe(b, tgt, mult, !b.auto && b.combo >= 3, out, combo ? { combo } : {});
+        if (combo && combo >= 3) b.combo = 0;
+        b.swing = b.auto ? ws.interval : ws.interval * BATTLE.manualSpeed;
+        b.sinceHit = 0;
+      }
     }
-  }
+  } else b.wantHit = 0;
 
   // Gegner
   for (const f of b.foes) {
@@ -418,6 +501,10 @@ export function stepBattle(b: BattleState, dt: number, inputs: BattleInput[] = [
           const dmg = between(b, def.dmg);
           b.hp = Math.max(0, b.hp - dmg);
           out.push({ type: 'hurt', dmg, by: f.id });
+          if (b.charge !== null || b.charged !== null) {
+            b.charge = b.charged = null;
+            out.push({ type: 'chargeLost' });
+          }
         }
         break;
       case 'recover':
