@@ -316,14 +316,15 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .locate.lost { color: var(--amber); border-color: var(--amber); }
 
 /* Karte: Spieler und Fundstellen */
-.player { position: relative; width: 50px; height: 50px; pointer-events: none; }
+/* Keine eigene position: MapLibre setzt die Marker absolut, sonst verrutschen sie. */
+.player { width: 50px; height: 50px; pointer-events: none; }
 .player-face { position: absolute; inset: 4px; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 3px var(--amber), 0 0 0 6px rgba(18, 17, 15, 0.8), 0 8px 18px rgba(0, 0, 0, 0.5); }
 .player-face svg { width: 42px; height: 42px; }
 .player-ring { position: absolute; inset: -6px; border-radius: 50%; border: 2px solid var(--amber); opacity: 0; animation: ping 2.6s ease-out infinite; }
 @keyframes ping { 0% { transform: scale(0.6); opacity: 0.7; } 100% { transform: scale(1.7); opacity: 0; } }
 .walk-target { color: var(--amber); filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.8)); pointer-events: none; }
 
-.spot { position: relative; width: 40px; height: 54px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--ink); }
+.spot { width: 40px; height: 54px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--ink); }
 .spot::before { content: ""; position: absolute; left: 13px; bottom: 0; width: 14px; height: 5px; border-radius: 50%; background: rgba(0, 0, 0, 0.5); }
 .spot-stake { position: absolute; left: 19px; top: 34px; width: 2px; height: 17px; background: #15130f; }
 .spot-badge { position: absolute; left: 3px; top: 0; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 2px #15130f, 0 0 16px var(--amber-glow); transition: transform 0.2s ease, background 0.2s ease; }
