@@ -31,6 +31,9 @@ export const MAP_COLORS = {
 
 type Mode = 'real' | 'demo';
 
+/** Ab dieser Zoomstufe zeigt die Karte die Detail-Ebene (Bäume, Häuser mit Dach, Autowracks). */
+export const DECOR_MINZOOM = 15;
+
 export interface RealSource {
   source: SourceSpecification;
   glyphs?: string;
@@ -70,7 +73,13 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
     { id: 'landuse-cemetery-edge', type: 'line', ...from('landuse', cls('cemetery')), paint: { 'line-color': '#5c5a4a', 'line-width': 1.2, 'line-dasharray': [2, 2] } },
     { id: 'landcover-sand', type: 'fill', ...from('landcover', cls('sand', 'rock')), paint: { 'fill-color': '#5f5644' } },
     { id: 'landcover-wetland', type: 'fill', ...from('landcover', cls('wetland')), paint: { 'fill-color': '#3a4236' } },
-    { id: 'landcover-wood', type: 'fill', ...from('landcover', cls('wood', 'forest')), paint: { 'fill-pattern': 'pat-forest' } },
+    {
+      id: 'landcover-wood',
+      type: 'fill',
+      ...from('landcover', cls('wood', 'forest')),
+      // Von weitem Baumkronen, nah dran Waldboden (die Bäume stehen dann in 3D darauf)
+      paint: { 'fill-pattern': ['step', ['zoom'], 'pat-forest', DECOR_MINZOOM, 'pat-forest-floor'] },
+    },
     { id: 'landcover-wood-edge', type: 'line', ...from('landcover', cls('wood', 'forest')), paint: { 'line-color': '#1c2217', 'line-width': 2, 'line-blur': 2 } },
 
     { id: 'water', type: 'fill', ...from('water'), paint: { 'fill-color': C.water } },
@@ -92,17 +101,37 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
     { id: 'road-major', type: 'line', ...from('transportation', road(MAJOR)), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': C.roadMajor, 'line-width': wMajor } },
     { id: 'road-marking', type: 'line', minzoom: 16, ...from('transportation', road(MAJOR)), paint: { 'line-color': C.marking, 'line-opacity': 0.45, 'line-width': z([[16, 0.8], [19, 2.4]]), 'line-dasharray': [4, 6] } },
 
-    // Ruinen: Häuser als 3D-Blöcke, niedriger als im Original
+    // Suchradius liegt auf dem Boden, Häuser und Bäume verdecken ihn
+    { id: 'range-fill', type: 'fill', source: 'range', paint: { 'fill-color': '#ffb22e', 'fill-opacity': 0.08 } },
+    { id: 'range-line', type: 'line', source: 'range', paint: { 'line-color': '#ffb22e', 'line-width': 2, 'line-opacity': 0.8, 'line-dasharray': [2, 2] } },
+
+    // Weit weg (herausgezoomt): einfache 3D-Blöcke aus den Kartendaten
     {
       id: 'buildings',
       type: 'fill-extrusion',
-      minzoom: 14,
+      minzoom: 13,
+      maxzoom: DECOR_MINZOOM,
       ...from('building'),
       paint: {
-        'fill-extrusion-color': ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 6], 2, '#332f29', 8, C.building, 20, C.buildingTop],
+        'fill-extrusion-color': ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 6], 2, '#3a352e', 8, '#4a443b', 20, '#565046'],
         'fill-extrusion-height': ['*', 0.75, ['coalesce', ['get', 'render_height'], 6]],
         'fill-extrusion-base': ['*', 0.75, ['coalesce', ['get', 'render_min_height'], 0]],
         'fill-extrusion-opacity': 0.94,
+      },
+    },
+    // Nah dran: nur Grundrisse; die Häuser selbst kommen aus der Detail-Ebene
+    { id: 'buildings-flat', type: 'fill', minzoom: DECOR_MINZOOM, ...from('building'), paint: { 'fill-color': '#2b2823' } },
+    // Detail-Ebene (map/decor.ts): Häuser mit Dächern und Ruinen, Bäume, Autowracks
+    {
+      id: 'decor',
+      type: 'fill-extrusion',
+      source: 'decor',
+      minzoom: DECOR_MINZOOM,
+      paint: {
+        'fill-extrusion-color': ['get', 'c'],
+        'fill-extrusion-height': ['get', 't'],
+        'fill-extrusion-base': ['get', 'b'],
+        'fill-extrusion-opacity': 1,
       },
     },
   ];
@@ -143,14 +172,15 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
     );
   }
 
-  const sources: Record<string, SourceSpecification> = {};
+  const empty: SourceSpecification = { type: 'geojson', data: { type: 'FeatureCollection', features: [] } };
+  const sources: Record<string, SourceSpecification> = { range: empty, decor: { ...empty } };
   if (mode === 'real' && real) sources.omt = real.source;
 
   const style: StyleSpecification = {
     version: 8,
     sources,
     layers,
-    light: { anchor: 'viewport', color: '#ffd7a0', intensity: 0.32, position: [1.4, 215, 35] },
+    light: { anchor: 'viewport', color: '#ffd7a0', intensity: 0.42, position: [1.3, 210, 40] },
     sky: {
       'sky-color': '#2a251f',
       'horizon-color': '#6d5a43',

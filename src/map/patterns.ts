@@ -73,6 +73,31 @@ const PAINTERS: Record<string, [number, Painter]> = {
         });
     },
   ],
+  // Waldboden: Laub, Nadeln, Moos. Darauf stehen nah dran die 3D-Bäume.
+  'pat-forest-floor': [
+    64,
+    (ctx, s) => {
+      ctx.fillStyle = '#2b3122';
+      ctx.fillRect(0, 0, s, s);
+      const r = rngFrom('waldboden');
+      for (let i = 0; i < 16; i++) {
+        const x = r() * s;
+        const y = r() * s;
+        const rad = 5 + r() * 12;
+        const col = r() < 0.5 ? 'rgba(52, 60, 38, 0.6)' : 'rgba(60, 50, 34, 0.45)';
+        wrap(s, (dx, dy) => {
+          ctx.fillStyle = col;
+          ctx.beginPath();
+          ctx.arc(x + dx, y + dy, rad, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+      for (let i = 0; i < 70; i++) {
+        ctx.fillStyle = r() < 0.5 ? 'rgba(90, 76, 50, 0.6)' : 'rgba(24, 28, 18, 0.6)';
+        ctx.fillRect(r() * s, r() * s, 1 + r() * 1.5, 0.8 + r());
+      }
+    },
+  ],
   'pat-farm': [
     24,
     (ctx, s) => {

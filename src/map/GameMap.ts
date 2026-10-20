@@ -1,15 +1,20 @@
 // Die Spielkarte: MapLibre mit Endzeit-Stil, Spielerfigur, Suchradius und Fundstellen.
 
 import maplibregl from 'maplibre-gl';
-import type { GeoJSONSource, Map as MLMap, Marker } from 'maplibre-gl';
-import { circleRing } from '../core/geo';
+import type { GeoJSONFeature, GeoJSONSource, Map as MLMap, Marker } from 'maplibre-gl';
+import { circleRing, distanceM } from '../core/geo';
 import type { LatLon, Spot } from '../core/types';
 import type { PoiCandidate } from '../core/world';
 import { h, svgEl } from '../ui/dom';
 import { icon, spotIcon } from '../ui/icons';
+import { generateDecor, type DecorInput, type RawLine, type RawPolygon } from './decor';
 import demoWorld from './demoWorld.json';
 import { patternImage } from './patterns';
-import { buildStyle, loadRealSource } from './style';
+import { buildStyle, DECOR_MINZOOM, loadRealSource } from './style';
+
+/** Umkreis der Detail-Ebene. Dahinter liegt ohnehin Nebel. */
+const DECOR_RADIUS_M = 550;
+const DRIVABLE = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service', 'residential', 'unclassified', 'living_street'];
 
 export type SpotState = 'ready' | 'cooldown' | 'inrange';
 export interface SpotView {
@@ -49,6 +54,9 @@ export class GameMap {
   private loaded = false;
   private errorShown = false;
   private pendingRange: { c: LatLon; r: number } | null = null;
+  private decorCenter: LatLon | null = null;
+  private tilesDirty = true;
+  private decorTimer = 0;
 
   constructor(
     private container: HTMLElement,
@@ -101,23 +109,20 @@ export class GameMap {
       }
     });
 
+    const dataSource = mode === 'real' ? 'omt' : 'demo';
+    this.map.on('sourcedata', (e) => {
+      if (e.sourceId === dataSource && (e.tile || e.isSourceLoaded)) this.tilesDirty = true;
+    });
+
     let idleTimer = 0;
     this.map.on('idle', () => {
       clearTimeout(idleTimer);
       idleTimer = window.setTimeout(() => this.opts.onDataChanged(), 250);
+      this.scheduleDecor();
     });
 
     await new Promise<void>((resolve) => this.map.once('load', () => resolve()));
     this.loaded = true;
-
-    this.map.addSource('range', { type: 'geojson', data: emptyFc() });
-    this.map.addLayer({ id: 'range-fill', type: 'fill', source: 'range', paint: { 'fill-color': '#ffb22e', 'fill-opacity': 0.07 } });
-    this.map.addLayer({
-      id: 'range-line',
-      type: 'line',
-      source: 'range',
-      paint: { 'line-color': '#ffb22e', 'line-width': 2, 'line-opacity': 0.75, 'line-dasharray': [2, 2] },
-    });
     if (this.pendingRange) this.setRange(this.pendingRange.c, this.pendingRange.r);
   }
 
@@ -207,6 +212,102 @@ export class GameMap {
     }
   }
 
+  // --- Detail-Ebene ---------------------------------------------------------------
+
+  /** Nach Kamerabewegung oder neu geladenen Kacheln die Details neu aufbauen (wenn nötig). */
+  private scheduleDecor() {
+    if (!this.loaded || this.map.getZoom() < DECOR_MINZOOM - 0.5) return;
+    const c = this.map.getCenter();
+    const center = { lat: c.lat, lon: c.lng };
+    const moved = !this.decorCenter || distanceM(this.decorCenter, center) > 150;
+    if (!moved && !this.tilesDirty) return;
+    this.tilesDirty = false;
+    clearTimeout(this.decorTimer);
+    this.decorTimer = window.setTimeout(() => this.buildDecor(center), 30);
+  }
+
+  private buildDecor(center: LatLon) {
+    const t0 = performance.now();
+    try {
+      const res = generateDecor(this.collectDecorInput(center, DECOR_RADIUS_M + 250), center, DECOR_RADIUS_M);
+      (this.map.getSource('decor') as GeoJSONSource | undefined)?.setData({
+        type: 'FeatureCollection',
+        features: res.parts.map((p) => ({
+          type: 'Feature',
+          properties: { b: p.base, t: p.top, c: p.color },
+          geometry: { type: 'Polygon', coordinates: [p.ring] },
+        })),
+      });
+      this.decorCenter = center;
+      this.container.dataset.decor = JSON.stringify({ ...res.counts, parts: res.parts.length, ms: Math.round(performance.now() - t0) });
+    } catch (err) {
+      console.warn('[Details]', err);
+    }
+  }
+
+  private collectDecorInput(center: LatLon, maxDist: number): DecorInput {
+    const real = this.opts.mode === 'real';
+    const kx = 111320 * Math.cos((center.lat * Math.PI) / 180);
+    const ky = 111320;
+    const query = (layer: string) =>
+      this.map.querySourceFeatures(real ? 'omt' : 'demo', real ? { sourceLayer: layer } : { filter: ['==', ['get', '_layer'], layer] });
+    const nearBox = (ring: number[][]) => {
+      let x0 = Infinity;
+      let y0 = Infinity;
+      let x1 = -Infinity;
+      let y1 = -Infinity;
+      for (const [lon, lat] of ring) {
+        const x = (lon - center.lon) * kx;
+        const y = (lat - center.lat) * ky;
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+      }
+      const dx = Math.max(x0, 0, -x1);
+      const dy = Math.max(y0, 0, -y1);
+      return dx * dx + dy * dy <= maxDist * maxDist;
+    };
+    const cls = (f: { properties: Record<string, unknown> | null }) => String(f.properties?.class ?? '');
+    const polys = (features: GeoJSONFeature[], classes?: string[]): RawPolygon[] => {
+      const out: RawPolygon[] = [];
+      for (const f of features) {
+        if (classes && !classes.includes(cls(f))) continue;
+        const g = f.geometry;
+        const list = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+        for (const rings of list) {
+          if (!rings[0] || rings[0].length < 4 || !nearBox(rings[0])) continue;
+          out.push({
+            rings: rings as [number, number][][],
+            height: Number(f.properties?.render_height ?? 6),
+            minHeight: Number(f.properties?.render_min_height ?? 0),
+          });
+        }
+      }
+      return out;
+    };
+    const lines = (features: GeoJSONFeature[]): RawLine[] => {
+      const out: RawLine[] = [];
+      for (const f of features) {
+        if (f.properties?.brunnel === 'tunnel') continue;
+        const g = f.geometry;
+        const list = g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : [];
+        for (const coords of list) if (coords.length > 1 && nearBox(coords)) out.push({ coords: coords as [number, number][], drivable: DRIVABLE.includes(cls(f)) });
+      }
+      return out;
+    };
+    const landcover = query('landcover');
+    const landuse = query('landuse');
+    return {
+      buildings: polys(query('building')),
+      forests: polys(landcover, ['wood', 'forest']),
+      greens: [...polys(landuse, ['park', 'cemetery', 'village_green', 'garden', 'allotments']), ...(real ? polys(query('park'), ['park']) : [])],
+      meadows: polys(landcover, ['grass', 'meadow', 'scrub']),
+      residential: polys(landuse, ['residential']),
+      roads: lines(query('transportation')),
+    };
+  }
+
   /** Echte Orte (Supermarkt, Apotheke, Haltestelle …) aus den geladenen Kartendaten. */
   poiCandidates(): PoiCandidate[] {
     if (this.opts.mode === 'demo') {
@@ -232,12 +333,9 @@ export class GameMap {
   }
 
   destroy() {
+    clearTimeout(this.decorTimer);
     this.markers.forEach((m) => m.marker.remove());
     this.markers.clear();
     this.map?.remove();
   }
-}
-
-function emptyFc(): GeoJSON.FeatureCollection {
-  return { type: 'FeatureCollection', features: [] };
 }
