@@ -156,10 +156,14 @@ export class BaseScene {
   viewShift = 0;
   /** Anteil der Bildbreite, um den die Szene nach links rückt (rechts liegt die Bauleiste). */
   viewShiftX = 0;
+  /** Ziel der seitlichen Verschiebung: die Ansicht gleitet weich dorthin (Seitenleiste auf/zu). */
+  private viewShiftXTarget = 0;
   /** Joystick: Richtung im Bildschirm (x rechts, y unten), Länge 0..1. */
   driveSource: (() => { x: number; y: number }) | null = null;
   /** Kamera folgt der Figur (beim Steuern mit dem Joystick). */
   followCharacter = false;
+  /** Nach dem Verschieben der Ansicht folgt die Kamera erst wieder, wenn die Figur gesteuert wird. */
+  private followPaused = false;
 
   /** Für die Oberfläche. */
   onTap: (hit: Hit) => void = () => {};
@@ -876,11 +880,13 @@ export class BaseScene {
   }
 
   /** Steuern mit dem Joystick: freie Bewegung mit Kollision an Wänden und Möbeln. */
-  private updateDrive(dt: number): boolean {
+  private updateDrive(dt: number): number {
     const v = this.driveSource?.();
     const d = this.data;
-    if (!v || !d || (v.x === 0 && v.y === 0)) return false;
+    if (!v || !d || (v.x === 0 && v.y === 0)) return 0;
     this.charPath = [];
+    // Wer den Joystick bewegt, will der Figur wieder folgen
+    this.followPaused = false;
     const fx = -Math.sin(this.az);
     const fz = -Math.cos(this.az);
     const rx = Math.cos(this.az);
@@ -911,12 +917,13 @@ export class BaseScene {
     let diff = want - this.charHeading;
     diff = Math.atan2(Math.sin(diff), Math.cos(diff));
     this.charHeading += diff * Math.min(1, dt * 12);
-    return true;
+    // Gangart passend zum Tempo (1 = gehen mit 1,7 m/s)
+    return Math.max(0.5, speed / 1.7);
   }
 
   private updateCharacter(t: number, dt: number) {
     if (!this.rig) return;
-    let moving = this.updateDrive(dt) ? 1 : 0;
+    let moving = this.updateDrive(dt);
     if (this.charPath.length) {
       const [nx, ny] = this.charPath[0];
       const tx = nx + 0.5;
@@ -998,16 +1005,20 @@ export class BaseScene {
     this.camera.updateProjectionMatrix();
   }
 
-  setViewShift(f: number, fx = this.viewShiftX) {
-    if (f === this.viewShift && fx === this.viewShiftX) return;
+  setViewShift(f: number, fx = this.viewShiftXTarget) {
+    if (f === this.viewShift && fx === this.viewShiftXTarget) return;
+    const jump = f !== this.viewShift;
     this.viewShift = f;
-    this.viewShiftX = fx;
-    this.resize();
+    this.viewShiftXTarget = fx;
+    if (jump) {
+      this.viewShiftX = fx;
+      this.resize();
+    }
   }
 
   private updateCamera(dt: number) {
     this.az += (this.azTarget - this.az) * Math.min(1, dt * 7);
-    if (this.followCharacter && this.rig) {
+    if (this.followCharacter && !this.followPaused && this.rig) {
       const k = Math.min(1, dt * 4);
       this.target.x += (W(this.charPos.x) - this.target.x) * k;
       this.target.z += (W(this.charPos.y) - this.target.z) * k;
@@ -1168,16 +1179,20 @@ export class BaseScene {
         const m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
         if (pinchD > 0) this.zoomBy(pinchD / d);
         if (mid) panBy(mid.x, mid.y, m.x, m.y);
+        this.followPaused = true;
         pinchD = d;
         mid = m;
         return;
       }
-      if (start && Math.hypot(now.x - start.x, now.y - start.y) > 7) moved = true;
+      if (start && Math.hypot(now.x - start.x, now.y - start.y) > 9) moved = true;
       if (tool) {
         this.onToolMove(this.pick(now.x, now.y));
         return;
       }
-      if (moved) panBy(prev.x, prev.y, now.x, now.y);
+      if (moved) {
+        this.followPaused = true;
+        panBy(prev.x, prev.y, now.x, now.y);
+      }
     });
     const up = (e: PointerEvent) => {
       const had = pts.has(e.pointerId);
@@ -1217,6 +1232,16 @@ export class BaseScene {
   // --- Schleife ------------------------------------------------------------------------------
 
   private frame(t: number, dt: number) {
+    if (this.viewShiftX !== this.viewShiftXTarget) {
+      const d = this.viewShiftXTarget - this.viewShiftX;
+      this.viewShiftX = Math.abs(d) < 0.001 ? this.viewShiftXTarget : this.viewShiftX + d * Math.min(1, dt * 9);
+      const w = this.host.clientWidth;
+      const h = this.host.clientHeight;
+      if (w && h) {
+        this.camera.setViewOffset(w, h, w * this.viewShiftX, h * this.viewShift, w, h);
+        this.camera.updateProjectionMatrix();
+      }
+    }
     this.updateCamera(dt);
     this.updateCharacter(t, dt);
     this.updateLights(t);

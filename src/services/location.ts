@@ -84,8 +84,8 @@ export class SimulatedLocation implements LocationProvider {
   private onFix: ((f: Fix) => void) | null = null;
   private raf = 0;
   private last = 0;
-  /** Meter pro Sekunde. Schneller als zu Fuß, damit Testen nicht ewig dauert. */
-  speed = 14;
+  /** Meter pro Sekunde: zügiges Rennen. Schneller als zu Fuß, damit Testen nicht ewig dauert, aber noch glaubwürdig für die Figur. */
+  speed = 6;
 
   constructor(start: LatLon) {
     this.pos = start;

@@ -683,14 +683,9 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .drawer-tabs button { display: inline-flex; align-items: center; gap: 5px; }
 .fcard.selected { border-color: var(--amber); box-shadow: 0 0 0 2px var(--amber) inset; }
 .fcard.erase .fthumb { color: #ff9a7a; }
-.tool-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; border-radius: 10px; background: rgba(27, 26, 23, 0.94); border: 1px solid var(--line); }
-.tool-hint { flex: 1 1 160px; font-size: 13px; line-height: 1.3; color: var(--dust); }
-.tool-hint b { color: var(--bone); }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .seg button { height: 34px; padding: 0 12px; border: 0; background: var(--steel); color: var(--dust); font: 600 13px var(--font-ui); cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--amber); color: var(--ink); }
-.ctx-bar.compact { gap: 8px; padding: 10px 12px; }
-.ctx-bar.compact .ctx-title { font-size: 16px; }
 .ctx-cost { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .ctx-cost .refund { display: inline-flex; align-items: center; gap: 4px; color: #a8e08a; font-weight: 700; }
 .land-panel { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 12px; background: rgba(27, 26, 23, 0.94); border: 1px solid var(--line); }
@@ -727,39 +722,51 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .base-cam { position: absolute; right: calc(var(--gutter-r) + 58px); top: calc(var(--safe-t) + 14px); display: flex; gap: 6px; }
 .base-view[data-build="on"] .base-head { right: var(--panel-w); }
 /* Baumodus: Seitenleiste rechts */
-.base-view { --panel-w: min(380px, 46vw); }
-.base-panel { position: absolute; top: 0; right: 0; bottom: 0; width: var(--panel-w); display: flex; flex-direction: column; gap: 8px; padding: calc(var(--safe-t) + 10px) calc(var(--gutter-r)) calc(var(--safe-b) + 10px) 12px; background: rgba(14, 12, 10, 0.94); border-left: 1px solid var(--line); box-shadow: -10px 0 30px rgba(0, 0, 0, 0.35); }
+.base-view { --panel-w: min(320px, 40vw); }
+.base-panel { position: absolute; top: 0; right: 0; bottom: 0; width: var(--panel-w); display: flex; flex-direction: column; gap: 8px; padding: calc(var(--safe-t) + 10px) calc(var(--gutter-r)) calc(var(--safe-b) + 10px) 10px; background: rgba(14, 12, 10, 0.94); border-left: 1px solid var(--line); box-shadow: -10px 0 30px rgba(0, 0, 0, 0.35); transition: transform 0.22s ease-out; }
+/* Etwas ausgewählt: Seitenleiste fährt weg, der ganze Bildschirm ist frei zum Bauen */
+.base-view[data-focus="on"] .base-panel { transform: translateX(calc(100% + 24px)); pointer-events: none; box-shadow: none; }
+.base-view[data-focus="on"] .base-head { right: 0; }
+.base-view[data-build="on"][data-focus="on"] .base-cam { right: calc(var(--gutter-r) + 10px); }
+.base-view[data-build="on"][data-focus="on"] .base-ctx { right: calc(var(--gutter-r) + 8px); }
+.base-view[data-build="on"] .base-title-row { display: none; }
 .base-view[data-build="off"] .base-panel { display: none; }
 .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .panel-head b { display: inline-flex; align-items: center; gap: 6px; font: 700 17px var(--font-ui); color: var(--amber); }
 .panel-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; overscroll-behavior: contain; }
-.base-panel .drawer-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); overflow: visible; padding-bottom: 6px; }
-.base-panel .fcard { width: auto; }
+.base-panel .drawer-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 6px; overflow: visible; padding-bottom: 6px; }
+.base-panel .fcard { width: auto; padding: 6px 4px; gap: 3px; }
+.base-panel .fthumb, .base-panel .fthumb img { width: 60px; height: 60px; }
+.base-panel .fname { font-size: 12px; }
 .base-panel .drawer-tabs { flex-wrap: wrap; overflow: visible; }
 .base-panel .drawer-tabs button { height: 30px; padding: 0 10px; font-size: 13px; }
 .base-panel .base-modes button { height: 34px; font-size: 14px; }
 .base-panel .land-panel { background: var(--steel); }
 /* Schwebende Leiste unten (Auswahl, Bestätigen) */
 .base-ctx { position: absolute; left: calc(var(--gutter-l) + 8px); right: calc(var(--gutter-r) + 8px); bottom: calc(var(--safe-b) + 12px); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
-.base-ctx > * { pointer-events: auto; width: 100%; max-width: 560px; }
+.base-ctx > * { pointer-events: auto; width: 100%; max-width: 640px; }
 .base-view[data-build="on"] .base-ctx { right: calc(var(--panel-w) + 12px); }
 .base-view[data-build="off"][data-control="joystick"] .base-ctx { left: 170px; right: 150px; bottom: calc(var(--safe-b) + 14px); }
-.base-view[data-build="on"] .base-cam { right: calc(var(--panel-w) + 10px); }
+.base-view[data-build="on"] .base-cam { right: calc(var(--panel-w) + 10px); top: calc(var(--safe-t) + 10px); flex-direction: column; }
 .base-view[data-build="on"] .base-head .base-title-row > .iconbtn { display: none; }
 .base-view[data-build="on"] .build-toggle { display: none; }
 .build-toggle { position: absolute; right: calc(var(--gutter-r) + 4px); bottom: calc(var(--safe-b) + 14px); display: inline-flex; align-items: center; gap: 8px; height: 52px; padding: 0 20px 0 16px; border-radius: 26px; border: 0; background: var(--amber); color: var(--ink); font: 700 17px var(--font-ui); text-transform: uppercase; letter-spacing: 0.06em; box-shadow: 0 0 0 4px rgba(18, 17, 15, 0.85), 0 0 20px var(--amber-glow); cursor: pointer; }
 .base-view[data-control="joystick"] .build-toggle { bottom: auto; top: calc(var(--safe-t) + 62px); right: calc(var(--gutter-r) + 4px); height: 44px; font-size: 15px; padding: 0 16px 0 12px; }
 /* Joystick und Benutzen */
 .map-controls { position: absolute; inset: 0; pointer-events: none; }
-.map-controls .joystick { bottom: calc(var(--safe-b) + 84px); }
-.map-controls .use-btn { bottom: calc(var(--safe-b) + 92px); width: 92px; height: 92px; }
+.map-controls .joystick { bottom: calc(var(--safe-b) + 70px); width: 210px; height: 176px; }
+.map-controls .use-btn { bottom: calc(var(--safe-b) + 92px); width: 96px; height: 96px; font-size: 12px; letter-spacing: 0.02em; }
 .base-controls { position: absolute; inset: 0; pointer-events: none; }
-.joystick { position: absolute; left: calc(var(--gutter-l) + 14px); bottom: calc(var(--safe-b) + 14px); width: 132px; height: 132px; pointer-events: auto; touch-action: none; }
+/* Unsichtbare Griff-Fläche, darin der sichtbare Joystick (springt beim Daneben-Drücken unter den Daumen) */
+.joystick { position: absolute; left: var(--gutter-l); bottom: var(--safe-b); width: 230px; height: 196px; pointer-events: auto; touch-action: none; -webkit-user-select: none; user-select: none; }
+.joy-ring { position: absolute; left: 14px; bottom: 14px; width: 132px; height: 132px; transition: transform 0.15s ease-out; }
+.joystick.active .joy-ring { transition: none; }
 .joy-base { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, rgba(255, 178, 46, 0.08) 0%, rgba(18, 17, 15, 0.55) 70%); border: 2px solid rgba(255, 178, 46, 0.45); }
 .joy-knob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #ffd07a, var(--amber) 60%, #c47f12); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5); transition: transform 0.12s ease-out; }
 .joystick.active .joy-knob { transition: none; }
 .use-btn { position: absolute; right: calc(var(--gutter-r) + 18px); bottom: calc(var(--safe-b) + 22px); width: 104px; height: 104px; border-radius: 50%; border: 0; pointer-events: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: var(--amber); color: var(--ink); font: 700 14px/1.1 var(--font-ui); text-transform: uppercase; letter-spacing: 0.04em; box-shadow: 0 0 0 4px rgba(18, 17, 15, 0.85), 0 0 22px var(--amber-glow); cursor: pointer; touch-action: manipulation; }
 .use-btn.idle { background: var(--steel-2); color: var(--dust); box-shadow: 0 0 0 4px rgba(18, 17, 15, 0.85); }
+.use-btn.pressed { transform: scale(0.92); }
 .use-dot { width: 14px; height: 14px; border-radius: 50%; border: 3px solid currentColor; }
 .use-label { max-width: 88px; text-align: center; }
 .drawer-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
@@ -779,11 +786,15 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .fcard.poor { opacity: 0.6; }
 .fhint { font-size: 11px; line-height: 1.2; color: var(--dust); text-align: center; }
 .drawer-hint { margin: 0; font-size: 13px; color: var(--amber); }
-.ctx-bar { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 12px; background: rgba(27, 26, 23, 0.96); border: 1px solid var(--line); }
-.ctx-title { font: 700 18px/1.2 var(--font-ui); }
-.ctx-title small { display: block; margin-top: 2px; font: 400 14px/1.3 var(--font-ui); color: var(--dust); }
-.ctx-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.ctx-actions .btn { flex: 1 1 auto; }
+/* Schwebende Leiste: eine flache Zeile, damit beim Bauen viel vom Gelände zu sehen bleibt */
+.ctx-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 6px 8px 6px 6px; border-radius: 14px; background: rgba(27, 26, 23, 0.96); border: 1px solid var(--line); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); }
+.ctx-close { flex: none; }
+.ctx-title { flex: 1 1 110px; min-width: 0; font: 700 15px/1.2 var(--font-ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ctx-title small { display: block; margin-top: 1px; font: 400 12px/1.25 var(--font-ui); color: var(--dust); overflow: hidden; text-overflow: ellipsis; }
+.ctx-actions { display: flex; gap: 6px; flex: none; margin-left: auto; }
+.ctx-actions .btn { flex: none; }
+.ctx-bar .ctx-cost { flex: none; }
+.ctx-bar .seg { flex: none; }
 .receipt-blueprint { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; padding: 8px 10px; border-radius: 6px; background: #2f4a6a; color: #e8eef6; font: 700 15px var(--font-ui); }
 .overlay.set-base { display: grid; place-items: center; }
 .narrow-box { max-width: 460px; }

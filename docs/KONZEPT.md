@@ -38,12 +38,15 @@ Ein Endzeit-Spiel auf der echten Karte, das man nebenbei im Alltag spielt: Handy
 ## Bedienung
 
 - **Immer im Querformat.** Hochkant zeigt das Handy nur einen Hinweis zum Drehen. Als installierte App bleibt es fest quer, im Browser geht es auf Wunsch ins Vollbild.
-- **Steuerung wählbar** (Einstellungen): *Antippen* (die Figur läuft hin, wie bei Die Sims) oder *Joystick* mit *Benutzen*-Taste. Gilt in der Endstation und im Simulationsmodus der Karte; mit echtem GPS läufst du selbst.
-- **Baumodus an/aus** in der Endstation: Aus ist freie Sicht zum Herumlaufen und Benutzen (Schutt wegräumen, Bäume fällen), an öffnet die Bauleiste an der Seite.
+- **Steuerung wählbar** (Einstellungen): *Antippen* (die Figur läuft hin, wie bei Die Sims) oder *Joystick* mit *Benutzen*-Taste. Gilt in der Endstation und im Simulationsmodus der Karte; mit echtem GPS läufst du selbst. Umstellen wirkt sofort. Der Joystick springt unter den Daumen, wenn man daneben drückt; die Benutzen-Taste reagiert schon beim Drücken.
+- **Baumodus an/aus** in der Endstation: Aus ist freie Sicht zum Herumlaufen und Benutzen (Schutt wegräumen, Bäume fällen), an öffnet die Bauleiste an der Seite. Sobald ein Teil ausgewählt ist, fährt die Leiste weg und unten bleibt nur eine flache Zeile (Drehen, Hinstellen, Bauen), damit der ganze Bildschirm zum Bauen frei ist.
 
 ## Spielfigur
 
 Die Figur aus der Charaktererstellung ist ein Low-Poly-Modell (Frisur, Hautton, Jacke, Rucksack). Sie steht bei der Erstellung zum Drehen auf einem Sockel, läuft auf der Karte in Laufrichtung und wohnt in der Endstation.
+
+- **Echte Größe:** etwa 1,80 m, überall im selben Maßstab wie Häuser, Straßen, Wände (2,40 m) und Möbel. Auf der Karte wächst und schrumpft sie beim Zoomen mit; ganz weit draußen bleibt sie mindestens so groß, dass man sich noch findet.
+- **Gangart passt zum Tempo:** gehen, joggen, rennen. In der Simulation rennt sie mit 6 m/s.
 
 ## Karte freilaufen, Tageszeit, Wetter
 

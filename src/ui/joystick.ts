@@ -1,10 +1,13 @@
 // Virtueller Joystick (unten links) und Benutzen-Taste (unten rechts).
 // Der Joystick liefert eine Richtung im Bildschirm: x nach rechts, y nach unten, Länge 0 bis 1.
+// Er hat eine große, unsichtbare Fläche: Wer etwas daneben drückt, bekommt den Joystick
+// genau unter den Daumen, statt aus Versehen die Ansicht zu verschieben.
 
 import { h } from './dom';
 
 export class Joystick {
   readonly el: HTMLElement;
+  private ring: HTMLElement;
   private knob: HTMLElement;
   private id: number | null = null;
   private cx = 0;
@@ -14,16 +17,31 @@ export class Joystick {
 
   constructor() {
     this.knob = h('div', { class: 'joy-knob' });
-    this.el = h('div', { class: 'joystick', role: 'application', 'aria-label': 'Joystick: Figur bewegen' }, h('div', { class: 'joy-base' }), this.knob);
+    this.ring = h('div', { class: 'joy-ring' }, h('div', { class: 'joy-base' }), this.knob);
+    this.el = h('div', { class: 'joystick', role: 'application', 'aria-label': 'Joystick: Figur bewegen' }, this.ring);
     this.el.addEventListener('pointerdown', (e) => {
       if (this.id !== null) return;
       e.preventDefault();
       e.stopPropagation();
       this.id = e.pointerId;
-      this.el.setPointerCapture(e.pointerId);
-      const r = this.el.getBoundingClientRect();
-      this.cx = r.left + r.width / 2;
-      this.cy = r.top + r.height / 2;
+      try {
+        this.el.setPointerCapture(e.pointerId);
+      } catch {
+        /* egal */
+      }
+      // Ruhelage des Joysticks
+      const r = this.ring.getBoundingClientRect();
+      const rx = r.left + r.width / 2;
+      const ry = r.top + r.height / 2;
+      if (Math.hypot(e.clientX - rx, e.clientY - ry) <= r.width * 0.55) {
+        this.cx = rx;
+        this.cy = ry;
+      } else {
+        // Daneben gedrückt: Joystick springt unter den Daumen
+        this.cx = e.clientX;
+        this.cy = e.clientY;
+        this.ring.style.transform = `translate(${e.clientX - rx}px, ${e.clientY - ry}px)`;
+      }
       this.move(e.clientX, e.clientY);
       this.el.classList.add('active');
     });
@@ -34,13 +52,19 @@ export class Joystick {
     });
     const end = (e: PointerEvent) => {
       if (e.pointerId !== this.id) return;
-      this.id = null;
-      this.value.x = this.value.y = 0;
-      this.knob.style.transform = '';
-      this.el.classList.remove('active');
+      this.release();
     };
     this.el.addEventListener('pointerup', end);
     this.el.addEventListener('pointercancel', end);
+    this.el.addEventListener('lostpointercapture', end);
+  }
+
+  private release() {
+    this.id = null;
+    this.value.x = this.value.y = 0;
+    this.knob.style.transform = '';
+    this.ring.style.transform = '';
+    this.el.classList.remove('active');
   }
 
   private move(x: number, y: number) {
@@ -65,17 +89,30 @@ export class Joystick {
   }
 }
 
-/** Runde Benutzen-Taste mit wechselnder Beschriftung. */
+/** Runde Benutzen-Taste mit wechselnder Beschriftung. Reagiert sofort beim Drücken. */
 export function useButton(onUse: () => void): { el: HTMLButtonElement; setLabel: (label: string | null) => void } {
   const label = h('span', { class: 'use-label' }, 'Benutzen');
   const el = h('button', { class: 'use-btn', type: 'button', 'aria-label': 'Benutzen' }, h('span', { class: 'use-dot' }), label);
+  // Sofort beim Drücken auslösen (auch während der andere Daumen den Joystick hält)
+  el.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    el.classList.add('pressed');
+    onUse();
+  });
+  const unpress = () => el.classList.remove('pressed');
+  el.addEventListener('pointerup', unpress);
+  el.addEventListener('pointercancel', unpress);
+  el.addEventListener('pointerleave', unpress);
+  // Tastatur (Enter/Leertaste) löst einen Klick ohne Zeiger aus
   el.addEventListener('click', (e) => {
     e.stopPropagation();
-    onUse();
+    if (e.detail === 0) onUse();
   });
   return {
     el,
     setLabel: (text) => {
+      if (label.textContent === (text ?? 'Benutzen') && el.classList.contains('idle') === !text) return;
       label.textContent = text ?? 'Benutzen';
       el.classList.toggle('idle', !text);
       el.setAttribute('aria-label', text ?? 'Benutzen');

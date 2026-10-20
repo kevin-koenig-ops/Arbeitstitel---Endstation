@@ -47,6 +47,7 @@ export function gameScreen(app: App): Screen {
   let figPos: LatLon | null = null;
   let heading = 180;
   let walkTimer = 0;
+  let figT = 0;
   const applyFigureYaw = () => {
     if (!figure || !gm) return;
     const rel = ((heading - gm.bearing) * Math.PI) / 180;
@@ -54,15 +55,22 @@ export function gameScreen(app: App): Screen {
   };
   const updateFigure = (f: Fix) => {
     if (!figure) return;
-    if (!figPos) figPos = f.pos;
+    const now = performance.now();
+    if (!figPos) {
+      figPos = f.pos;
+      figT = now;
+    }
     const d = distanceM(figPos, f.pos);
     if (d > 1.2) {
+      // Gangart nach Tempo: gehen, joggen, rennen
+      const speed = d / Math.max(0.05, (now - figT) / 1000);
       heading = bearingDeg(figPos, f.pos);
       figPos = f.pos;
-      figure.setMoving(true);
+      figT = now;
+      figure.setMoving(Math.min(3, Math.max(0.6, speed / 1.7)));
       clearTimeout(walkTimer);
-      walkTimer = window.setTimeout(() => figure?.setMoving(false), f.simulated ? 600 : 2500);
-    }
+      walkTimer = window.setTimeout(() => figure?.setMoving(0), f.simulated ? 350 : 2500);
+    } else if (!f.simulated && now - figT > 2500) figT = now - 2500;
     applyFigureYaw();
   };
   const loadFigure = async () => {
@@ -77,7 +85,7 @@ export function gameScreen(app: App): Screen {
       const look = app.backend.current()!.character.look;
       figure = new fv.FigureView({ mode: 'marker', width: 72, height: 96 });
       figure.setLook(look);
-      gm.setPlayerFigure(figure.canvas, figure.anchorY(), 96);
+      gm.setPlayerFigure(figure.canvas, figure.anchorY(), 96, figure.figureHeightPx());
       applyFigureYaw();
       figure.start();
       gm.map.on('rotate', applyFigureYaw);
@@ -400,8 +408,17 @@ export function gameScreen(app: App): Screen {
     }
     return best;
   };
+  let joyEl: HTMLElement | null = null;
+  const teardownJoystick = () => {
+    cancelAnimationFrame(joyRaf);
+    clearInterval(joyLabelTimer);
+    joyEl?.remove();
+    joyEl = null;
+    joy = null;
+  };
   const setupJoystick = () => {
-    if (!(provider instanceof SimulatedLocation) || app.settings.get().control !== 'joystick') return;
+    teardownJoystick();
+    if (!(provider instanceof SimulatedLocation) || app.settings.get().control !== 'joystick') return renderLocChip();
     const j = new Joystick();
     joy = j;
     const use = useButton(() => {
@@ -409,12 +426,10 @@ export function gameScreen(app: App): Screen {
       if (sp) sheet.open(sp.id);
       else app.toast('Keine Fundstelle in Reichweite. Lauf näher ran.');
     });
-    hud.append(h('div', { class: 'map-controls' }, j.el, use.el));
+    joyEl = h('div', { class: 'map-controls' }, j.el, use.el);
+    hud.append(joyEl);
     joyLabelTimer = window.setInterval(() => use.setLabel(nearestSpot() ? 'Durchsuchen' : null), 300);
     let last = performance.now();
-    let acc = 0;
-    let mx = 0;
-    let my = 0;
     const loop = (t: number) => {
       joyRaf = requestAnimationFrame(loop);
       const dt = Math.min(0.1, (t - last) / 1000);
@@ -422,35 +437,55 @@ export function gameScreen(app: App): Screen {
       if (!j.active || !(provider instanceof SimulatedLocation) || !gm) return;
       const v = j.value;
       const len = Math.hypot(v.x, v.y);
+      // Richtung relativ zur gedrehten Karte; Tempo wie beim Antippen (rennen)
       const ang = (gm.bearing * Math.PI) / 180 + Math.atan2(v.x, -v.y);
-      const dist = 7 * len * dt;
-      mx += Math.sin(ang) * dist;
-      my += Math.cos(ang) * dist;
-      acc += dt;
-      if (acc < 0.08) return;
-      acc = 0;
-      provider.nudge(mx, my);
-      mx = my = 0;
-      gm.setTarget(null);
+      const dist = provider.speed * len * dt;
       if (!gm.follow) recenter();
+      gm.setTarget(null);
+      provider.nudge(Math.sin(ang) * dist, Math.cos(ang) * dist);
     };
     joyRaf = requestAnimationFrame(loop);
     renderLocChip();
   };
+  // Steuerung in den Einstellungen umgestellt: sofort übernehmen
+  let lastControl = app.settings.get().control;
+  const offSettings = app.settings.onChange((st) => {
+    if (st.control === lastControl) return;
+    lastControl = st.control;
+    if (provider) setupJoystick();
+  });
 
   // --- Standort ------------------------------------------------------------------
+  let heavyAt = 0;
+  let heavyTimer = 0;
   const onFix = (f: Fix) => {
     const first = !fix;
     fix = f;
     const s = app.backend.current();
     if (!gm || !s) return;
     hideBanner('gps');
+    // Leicht und flüssig: Figur und Kamera
     gm.setPlayer(f.pos, avatar);
     updateFigure(f);
-    gm.setRange(f.pos, searchRangeM(s));
     if (first) gm.centerOn(f.pos, false);
     else if (gm.follow) gm.centerOn(f.pos, !f.simulated);
     if (provider instanceof SimulatedLocation && !provider.moving) gm.setTarget(null);
+    // Der Rest (Suchradius, Fundstellen, Nebel) höchstens ein paar Mal pro Sekunde
+    const now = performance.now();
+    clearTimeout(heavyTimer);
+    if (first || !f.simulated || now - heavyAt > 200) {
+      heavyAt = now;
+      onFixHeavy(f, first);
+    } else
+      heavyTimer = window.setTimeout(() => {
+        heavyAt = performance.now();
+        if (fix) onFixHeavy(fix, false);
+      }, 220);
+  };
+  const onFixHeavy = (f: Fix, first: boolean) => {
+    const s = app.backend.current();
+    if (!gm || !s || destroyed) return;
+    gm.setRange(f.pos, searchRangeM(s));
     if (!f.simulated && mapMode === 'real') {
       const last = app.settings.get().lastPos;
       if (!last || distanceM(last, f.pos) > 300) app.settings.set({ lastPos: f.pos });
@@ -710,8 +745,9 @@ export function gameScreen(app: App): Screen {
       ambience?.destroy();
       figure?.dispose();
       clearTimeout(walkTimer);
-      cancelAnimationFrame(joyRaf);
-      clearInterval(joyLabelTimer);
+      clearTimeout(heavyTimer);
+      teardownJoystick();
+      offSettings();
       clearInterval(ticker);
       document.removeEventListener('visibilitychange', onVisible);
       provider?.stop();

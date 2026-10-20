@@ -59,6 +59,12 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 
 **Testen:** Macht es Spaß? Tasten oder Gesten? Zu leicht, zu schwer? Zu lang, zu kurz? Wird Aufladen zu oft unterbrochen?
 
+## ✅ Zwischenschritt: Feinschliff Steuerung und Bauen
+
+- Figur in echter Größe auf der Karte (zoomt mit), Gangart passend zum Tempo
+- Steuerung: Umstellen wirkt sofort, flüssiges Laufen ohne Ruckeln, Joystick mit großer Griff-Fläche, Benutzen-Taste reagiert beim Drücken, Kamera folgt nach dem Umschauen wieder
+- Baumodus: Leiste fährt beim Auswählen weg, flache Aktionszeile unten
+
 ## Iteration 1h: Werkstätten und Wetter
 
 - Möbel werden zu Werkstätten mit echten Wartezeiten: Werktisch, Holzofen, Lagerfeuer, Hochbeet, Apfelbaum

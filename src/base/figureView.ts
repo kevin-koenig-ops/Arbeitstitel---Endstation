@@ -65,7 +65,7 @@ export class FigureView {
   private holder = new THREE.Group();
   private yaw = 0;
   private targetYaw = 0;
-  private moving = false;
+  private moving = 0;
   private raf = 0;
   private last = 0;
   private acc = 0;
@@ -151,8 +151,16 @@ export class FigureView {
     this.targetYaw = rad;
   }
 
-  setMoving(moving: boolean) {
-    this.moving = moving;
+  /** 0 = steht, 1 = geht, 2 bis 3 = rennt. */
+  setMoving(moving: number | boolean) {
+    this.moving = Number(moving);
+  }
+
+  /** Wie hoch ist die Figur (Füße bis Scheitel) im Bild, in CSS-Pixeln? */
+  figureHeightPx(): number {
+    const feet = new THREE.Vector3(0, 0, 0).project(this.camera);
+    const head = new THREE.Vector3(0, 1.9, 0).project(this.camera);
+    return ((head.y - feet.y) / 2) * this.opts.height;
   }
 
   wave() {
@@ -169,7 +177,7 @@ export class FigureView {
       const dt = Math.min(0.1, (now - this.last) / 1000);
       this.last = now;
       // Auf der Karte reichen wenige Bilder pro Sekunde, das schont den Akku
-      const fps = this.opts.mode === 'marker' ? (this.moving ? 24 : 12) : 40;
+      const fps = this.opts.mode === 'marker' ? (this.moving > 0 ? 24 : 12) : 40;
       this.acc += dt;
       if (this.acc < 1 / fps) return;
       this.step(now / 1000, this.acc);
@@ -190,7 +198,7 @@ export class FigureView {
     d = Math.atan2(Math.sin(d), Math.cos(d));
     this.yaw += d * Math.min(1, dt * 8);
     this.holder.rotation.y = this.yaw;
-    this.rig.update(t, dt, this.moving ? 1 : 0);
+    this.rig.update(t, dt, this.moving);
     this.renderer.render(this.scene, this.camera);
   }
 

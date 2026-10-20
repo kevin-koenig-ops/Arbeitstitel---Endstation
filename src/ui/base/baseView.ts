@@ -128,6 +128,11 @@ function netCost(plan: BuildPlan): { pay: Partial<Inventory>; back: Partial<Inve
   return { pay, back };
 }
 
+/** Kleiner Schließen-Knopf links in der schwebenden Leiste. */
+function ctxClose(label: string, onClick: () => void): HTMLElement {
+  return h('button', { class: 'iconbtn small ctx-close', type: 'button', 'aria-label': label, title: label, onclick: onClick }, svgEl(icon('close', 16)));
+}
+
 export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLElement {
   const stage = h('div', { class: 'base-stage' });
   const titleEl = h('div', { class: 'base-title' });
@@ -280,6 +285,9 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     clear(ctx);
     if (mode.kind === 'place' || mode.kind === 'tool') building = true;
     el.dataset.build = building ? 'on' : 'off';
+    // Etwas ausgewählt: Seitenleiste weg, damit der ganze Bildschirm zum Bauen frei ist
+    const focus = building && mode.kind !== 'browse';
+    el.dataset.focus = focus ? 'on' : 'off';
     scene.toolCapture = null;
     scene.hideGhost();
     scene.unmark();
@@ -300,7 +308,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     renderControls();
     requestAnimationFrame(() => {
       const w = el.clientWidth || 1;
-      scene.setViewShift(0, building ? panel.offsetWidth / (2 * w) : 0);
+      scene.setViewShift(0, building && !focus ? panel.offsetWidth / (2 * w) : 0);
     });
   };
 
@@ -442,7 +450,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     const confirm = ctx.querySelector<HTMLButtonElement>('.confirm-place');
     if (confirm) confirm.disabled = !!problem;
     const hint = ctx.querySelector('.ctx-title small');
-    if (hint) hint.textContent = problem === 'no_wall' ? 'Braucht eine Wand im Rücken. Drehen hilft.' : problem ? 'Hier ist kein Platz.' : 'Zieh es an seinen Platz oder tippe auf ein Feld.';
+    if (hint) hint.textContent = problem === 'no_wall' ? 'Braucht eine Wand im Rücken. Drehen hilft.' : problem ? 'Hier ist kein Platz.' : 'Ziehen oder Feld antippen';
   };
 
   /** Angetipptes Feld liegt im Teil (bei geraden Breiten links/oben davon). */
@@ -479,11 +487,11 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
       h(
         'div',
         { class: 'ctx-bar' },
+        ctxClose('Abbrechen', () => ((mode = { kind: 'browse' }), render())),
         h('div', { class: 'ctx-title' }, FURNITURE[m.item].name, h('small', null, '')),
         h(
           'div',
           { class: 'ctx-actions' },
-          h('button', { class: 'btn ghost small', type: 'button', onclick: () => ((mode = { kind: 'browse' }), render()) }, 'Abbrechen'),
           h(
             'button',
             {
@@ -538,11 +546,11 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
       h(
         'div',
         { class: 'ctx-bar' },
-        h('div', { class: 'ctx-title' }, def.name, h('small', null, `${def.desc} Gemütlichkeit +${def.comfort}`)),
+        ctxClose('Fertig', () => ((mode = { kind: 'browse' }), render())),
+        h('div', { class: 'ctx-title', title: def.desc }, def.name, h('small', null, `Gemütlichkeit +${def.comfort}`)),
         h(
           'div',
           { class: 'ctx-actions' },
-          h('button', { class: 'btn ghost small', type: 'button', onclick: () => ((mode = { kind: 'browse' }), render()) }, 'Fertig'),
           h(
             'button',
             { class: 'btn ghost small', type: 'button', onclick: () => needHere() && ((mode = { kind: 'place', item: it.kind, x: it.x, y: it.y, rot: it.rot, uid }), render()) },
@@ -582,11 +590,11 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
       h(
         'div',
         { class: 'ctx-bar' },
-        h('div', { class: 'ctx-title' }, def.name, h('small', null, `Bringt ${itemsLine(def.reward)}.${keep}`)),
+        ctxClose('Abbrechen', () => ((mode = { kind: 'browse' }), render())),
+        h('div', { class: 'ctx-title' }, def.name, h('small', null, keep ? 'Darf auch stehen bleiben.' : `Bringt ${itemsLine(def.reward)}`)),
         h(
           'div',
           { class: 'ctx-actions' },
-          h('button', { class: 'btn ghost small', type: 'button', onclick: () => ((mode = { kind: 'browse' }), render()) }, 'Abbrechen'),
           h(
             'button',
             {
@@ -758,7 +766,8 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
       ctx.append(
         h(
           'div',
-          { class: 'ctx-bar compact' },
+          { class: 'ctx-bar' },
+          ctxClose('Verwerfen', () => cancelDraft(t)),
           h(
             'div',
             { class: 'ctx-title' },
@@ -767,12 +776,12 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
               'small',
               null,
               blockedHard
-                ? 'Rot markiert: da geht es nicht (Hindernis, Möbel oder gesperrtes Gelände).'
+                ? 'Rot: da geht es nicht'
                 : plan.blocked.length && !isEdge
-                  ? 'Hindernisse und gesperrte Felder werden ausgelassen.'
+                  ? 'Gesperrtes wird ausgelassen'
                   : t.piece
                     ? ''
-                    : 'Du bekommst alles zurück.',
+                    : 'Du bekommst alles zurück',
             ),
           ),
           h(
@@ -784,7 +793,6 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
           h(
             'div',
             { class: 'ctx-actions' },
-            h('button', { class: 'btn ghost small', type: 'button', onclick: () => cancelDraft(t) }, 'Verwerfen'),
             h(
               'button',
               {
@@ -802,19 +810,20 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
       return;
     }
     const hint = !t.piece
-      ? 'Markiere, was weg soll.'
+      ? 'Markiere, was weg soll'
       : layer === 'openings'
-        ? 'Tippe auf eine Wand. Oder zieh entlang der Wand.'
+        ? 'Wand antippen oder entlang ziehen'
         : isEdge
           ? t.shape === 'room'
-            ? 'Zieh ein Rechteck auf: vier Wände auf einmal.'
-            : 'Zieh mit einem Finger von Ecke zu Ecke.'
-          : 'Tippe ein Feld an oder zieh ein Rechteck auf.';
+            ? 'Rechteck aufziehen: 4 Wände'
+            : 'Von Ecke zu Ecke ziehen'
+          : 'Feld antippen oder Rechteck ziehen';
     ctx.append(
       h(
         'div',
-        { class: 'tool-row' },
-        h('div', { class: 'tool-hint' }, h('b', null, name), ' ', hint),
+        { class: 'ctx-bar tool-row' },
+        ctxClose('Fertig', () => ((mode = { kind: 'browse' }), render())),
+        h('div', { class: 'ctx-title' }, name, h('small', null, `${hint} · zwei Finger: Ansicht`)),
         layer === 'walls'
           ? h(
               'div',
@@ -827,7 +836,6 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
               ).map(([id, label]) => h('button', { type: 'button', 'aria-pressed': String(t.shape === id), onclick: () => ((t.shape = id), render()) }, label)),
             )
           : null,
-        h('button', { class: 'btn ghost small', type: 'button', onclick: () => ((mode = { kind: 'browse' }), render()) }, 'Fertig'),
       ),
     );
   };
@@ -910,12 +918,12 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
       h(
         'div',
         { class: 'ctx-bar' },
-        h('div', { class: 'ctx-title' }, 'Abschnitt zurückerobern', h('small', null, '6 × 6 Meter Gestrüpp und Schrott. Danach kannst du dort bauen.')),
+        ctxClose('Abbrechen', () => ((mode = { kind: 'browse' }), render())),
+        h('div', { class: 'ctx-title' }, 'Abschnitt zurückerobern', h('small', null, '6 × 6 m, danach bebaubar')),
         h('div', { class: 'ctx-cost' }, costChips(cost, s.inventory)),
         h(
           'div',
           { class: 'ctx-actions' },
-          h('button', { class: 'btn ghost small', type: 'button', onclick: () => ((mode = { kind: 'browse' }), render()) }, 'Abbrechen'),
           h(
             'button',
             {

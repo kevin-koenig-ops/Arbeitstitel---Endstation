@@ -2,7 +2,7 @@
 
 import maplibregl from 'maplibre-gl';
 import type { GeoJSONFeature, GeoJSONSource, Map as MLMap, Marker } from 'maplibre-gl';
-import { circleRing, distanceM } from '../core/geo';
+import { circleRing, distanceM, offsetM } from '../core/geo';
 import type { EnemyId, LatLon, Spot } from '../core/types';
 import type { PoiCandidate } from '../core/world';
 import { h, svgEl } from '../ui/dom';
@@ -47,6 +47,13 @@ interface Options {
 
 const ll = (p: LatLon): [number, number] => [p.lon, p.lat];
 
+/** Körpergröße der Spielfigur in Metern: Sie steht maßstabsgetreu auf der Karte. */
+const PERSON_M = 1.8;
+/** So klein wird sie beim Herauszoomen höchstens, damit man sich noch findet. */
+const FIGURE_MIN_PX = 11;
+/** Start-Zoom: nah genug, dass die Figur in echter Größe gut zu sehen ist. */
+export const PLAY_ZOOM = 18.7;
+
 export class GameMap {
   map!: MLMap;
   follow = true;
@@ -54,7 +61,9 @@ export class GameMap {
   private markers = new Map<string, { marker: Marker; el: HTMLElement; state: string }>();
   private player: Marker | null = null;
   private playerEl: HTMLElement | null = null;
-  private figure: { el: HTMLElement; anchorY: number; h: number } | null = null;
+  private figure: { el: HTMLElement; anchorY: number; h: number; px: number } | null = null;
+  private playerPos: LatLon | null = null;
+  private figScale = 0;
   private target: Marker | null = null;
   private baseMarker: Marker | null = null;
   private lastMarkerTap = 0;
@@ -79,11 +88,11 @@ export class GameMap {
       container: this.container,
       style,
       center: ll(start),
-      zoom: 17.2,
+      zoom: PLAY_ZOOM,
       pitch: 52,
       maxPitch: 62,
       minZoom: mode === 'demo' ? 14.5 : 11,
-      maxZoom: 19.5,
+      maxZoom: 21,
       maxBounds: mode === 'demo' ? DEMO.bounds : undefined,
       attributionControl: mode === 'real' ? { compact: true } : false,
       fadeDuration: 0,
@@ -106,7 +115,10 @@ export class GameMap {
       }
     };
     this.map.on('dragstart', breakFollow);
-    this.map.on('move', () => this.opts.onCameraMove());
+    this.map.on('move', () => {
+      this.scaleFigure();
+      this.opts.onCameraMove();
+    });
 
     this.map.on('error', (e) => {
       console.warn('[Karte]', e.error);
@@ -136,6 +148,7 @@ export class GameMap {
 
   setPlayer(pos: LatLon, avatarSvg: string) {
     this.fog?.setPlayer(pos);
+    this.playerPos = pos;
     if (!this.player) {
       this.playerEl = h('div', { class: 'player' }, h('div', { class: 'player-ring' }), svgEl(avatarSvg, 'player-face'));
       if (this.figure) this.attachFigure();
@@ -145,11 +158,12 @@ export class GameMap {
     } else {
       this.player.setLngLat(ll(pos));
     }
+    this.scaleFigure();
   }
 
   /** 3D-Spielfigur statt des runden Gesichts. Die Füße stehen genau auf dem Standort. */
-  setPlayerFigure(el: HTMLElement, anchorY: number, height: number) {
-    this.figure = { el, anchorY, h: height };
+  setPlayerFigure(el: HTMLElement, anchorY: number, height: number, figurePx: number) {
+    this.figure = { el, anchorY, h: height, px: figurePx };
     if (this.playerEl) this.attachFigure();
   }
 
@@ -158,8 +172,38 @@ export class GameMap {
     const f = this.figure;
     f.el.classList.add('player-figure');
     f.el.style.top = `${25 - f.anchorY * f.h}px`;
+    // Skaliert wird um die Füße herum
+    f.el.style.transformOrigin = `36px ${f.anchorY * f.h}px`;
     this.playerEl.classList.add('has-figure');
     this.playerEl.append(f.el);
+    this.figScale = 0;
+    this.scaleFigure();
+  }
+
+  /**
+   * Figur in echter Größe: so hoch, wie ein Mensch an dieser Stelle der Karte wäre.
+   * Gemessen wird quer zur Blickrichtung (dort verzerrt die Neigung nicht).
+   */
+  private scaleFigure() {
+    const f = this.figure;
+    const p = this.playerPos;
+    if (!f || !p || !this.playerEl || !this.map) return;
+    const az = ((this.map.getBearing() + 90) * Math.PI) / 180;
+    const a = this.map.project(ll(p));
+    const b = this.map.project(ll(offsetM(p, Math.sin(az) * 10, Math.cos(az) * 10)));
+    const ppm = Math.hypot(b.x - a.x, b.y - a.y) / 10;
+    const pitch = (this.map.getPitch() * Math.PI) / 180;
+    const want = Math.max(FIGURE_MIN_PX, PERSON_M * ppm * Math.max(0.3, Math.sin(pitch)));
+    const scale = Math.min(1.6, want / f.px);
+    if (!isFinite(scale) || Math.abs(scale - this.figScale) < 0.003) return;
+    this.figScale = scale;
+    f.el.style.transform = `scale(${scale.toFixed(4)})`;
+    // Der Ortungsring wächst mit, bleibt aber gut sichtbar
+    const ring = this.playerEl.querySelector<HTMLElement>('.player-ring');
+    if (ring) {
+      const w = Math.max(26, Math.min(70, want * 1.3));
+      ring.style.cssText = `inset:auto;left:${25 - w / 2}px;top:${25 - w / 4}px;width:${w}px;height:${w / 2}px;transform:none`;
+    }
   }
 
   /** Drehung der Karte in Grad. */
@@ -210,7 +254,7 @@ export class GameMap {
 
   setFollow(on: boolean, p?: LatLon) {
     this.follow = on;
-    if (on && p) this.map.easeTo({ center: ll(p), zoom: Math.max(this.map.getZoom(), 16.5), pitch: 52, duration: 700 });
+    if (on && p) this.map.easeTo({ center: ll(p), zoom: Math.max(this.map.getZoom(), 17.5), pitch: 52, duration: 700 });
   }
 
   project(p: LatLon) {

@@ -232,23 +232,28 @@ export class CharacterRig {
    * Animation fortschreiben.
    * @param t Zeit in Sekunden
    * @param dt Schritt in Sekunden
-   * @param moving 0 = steht, 1 = läuft
+   * @param moving 0 = steht, 1 = geht (etwa 1,7 m/s), 2 bis 3 = rennt
    */
   update(t: number, dt: number, moving: number) {
     this.speed += (moving - this.speed) * Math.min(1, dt * 8);
     const sp = this.speed;
-    this.phase += dt * 10 * sp;
+    // Gehen: Schrittweite wächst bis 1, darüber wird gerannt (schneller Takt, weitere Schritte, Vorlage)
+    const walk = Math.min(1, sp);
+    const run = Math.max(0, Math.min(1, (sp - 1) / 1.6));
+    this.phase += dt * (10 * walk + 4.5 * Math.max(0, sp - 1));
     const s = Math.sin(this.phase);
-    const breathe = Math.sin(t * 2.1) * (1 - sp);
-    this.legL.rotation.x = s * 0.62 * sp;
-    this.legR.rotation.x = -s * 0.62 * sp;
-    this.armL.rotation.x = -s * 0.55 * sp + breathe * 0.03;
-    this.armR.rotation.x = s * 0.55 * sp - breathe * 0.03;
-    this.foreL.rotation.x = -0.25 - 0.35 * sp * (0.5 + 0.5 * Math.max(0, -s));
-    this.foreR.rotation.x = -0.25 - 0.35 * sp * (0.5 + 0.5 * Math.max(0, s));
-    this.body.position.y = Math.abs(Math.cos(this.phase)) * 0.04 * sp;
-    this.torso.rotation.y = s * 0.09 * sp;
-    this.torso.rotation.x = 0.06 * sp;
+    const breathe = Math.sin(t * 2.1) * (1 - walk);
+    const legA = 0.62 * walk + 0.28 * run;
+    const armA = 0.55 * walk + 0.35 * run;
+    this.legL.rotation.x = s * legA;
+    this.legR.rotation.x = -s * legA;
+    this.armL.rotation.x = -s * armA + breathe * 0.03;
+    this.armR.rotation.x = s * armA - breathe * 0.03;
+    this.foreL.rotation.x = -0.25 - (0.35 * walk + 0.7 * run) * (0.5 + 0.5 * Math.max(0, -s));
+    this.foreR.rotation.x = -0.25 - (0.35 * walk + 0.7 * run) * (0.5 + 0.5 * Math.max(0, s));
+    this.body.position.y = Math.abs(Math.cos(this.phase)) * (0.04 * walk + 0.05 * run);
+    this.torso.rotation.y = s * 0.09 * walk;
+    this.torso.rotation.x = 0.06 * walk + 0.16 * run;
     this.torso.scale.y = 1 + breathe * 0.012;
     // Im Stehen schaut die Figur sich ab und zu um
     const look = Math.sin(t * 0.43) * Math.sin(t * 0.17 + 1.3);
