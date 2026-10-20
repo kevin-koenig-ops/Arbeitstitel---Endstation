@@ -18,6 +18,7 @@ import {
 import type { App, Screen } from '../app';
 import { avatarSvg } from '../avatar';
 import { faceEl, loadPortraits } from '../portrait';
+import { Joystick, useButton } from '../joystick';
 import { append, clear, h, svgEl } from '../dom';
 import { openBusPanel } from '../game/busPanel';
 import { getBasePlace } from '../../services/basePlace';
@@ -209,7 +210,7 @@ export function gameScreen(app: App): Screen {
   const renderLocChip = () => {
     clear(locChip);
     if (provider?.kind === 'sim') {
-      locChip.append(svgEl(icon('tap', 16)), 'Tippe auf die Karte zum Laufen');
+      locChip.append(svgEl(icon('tap', 16)), joy ? 'Simulation: mit dem Joystick laufen' : 'Tippe auf die Karte zum Laufen');
       locChip.dataset.q = 'sim';
     } else if (fix) {
       const acc = Math.round(fix.accuracyM);
@@ -378,6 +379,63 @@ export function gameScreen(app: App): Screen {
       gm?.setTarget(p);
       if (gm && !gm.follow) recenter();
     }
+  };
+
+  // --- Joystick (nur in der Simulation; mit GPS läufst du selbst) ---------------------
+  let joy: Joystick | null = null;
+  let joyRaf = 0;
+  let joyLabelTimer = 0;
+  const nearestSpot = (): Spot | null => {
+    const s = app.backend.current();
+    if (!fix || !s) return null;
+    const range = searchRangeM(s) + Math.min(fix.accuracyM, 25);
+    let best: Spot | null = null;
+    let bd = Infinity;
+    for (const sp of spots.values()) {
+      const d = distanceM(fix.pos, sp.pos);
+      if (d <= range && d < bd) {
+        bd = d;
+        best = sp;
+      }
+    }
+    return best;
+  };
+  const setupJoystick = () => {
+    if (!(provider instanceof SimulatedLocation) || app.settings.get().control !== 'joystick') return;
+    const j = new Joystick();
+    joy = j;
+    const use = useButton(() => {
+      const sp = nearestSpot();
+      if (sp) sheet.open(sp.id);
+      else app.toast('Keine Fundstelle in Reichweite. Lauf näher ran.');
+    });
+    hud.append(h('div', { class: 'map-controls' }, j.el, use.el));
+    joyLabelTimer = window.setInterval(() => use.setLabel(nearestSpot() ? 'Durchsuchen' : null), 300);
+    let last = performance.now();
+    let acc = 0;
+    let mx = 0;
+    let my = 0;
+    const loop = (t: number) => {
+      joyRaf = requestAnimationFrame(loop);
+      const dt = Math.min(0.1, (t - last) / 1000);
+      last = t;
+      if (!j.active || !(provider instanceof SimulatedLocation) || !gm) return;
+      const v = j.value;
+      const len = Math.hypot(v.x, v.y);
+      const ang = (gm.bearing * Math.PI) / 180 + Math.atan2(v.x, -v.y);
+      const dist = 7 * len * dt;
+      mx += Math.sin(ang) * dist;
+      my += Math.cos(ang) * dist;
+      acc += dt;
+      if (acc < 0.08) return;
+      acc = 0;
+      provider.nudge(mx, my);
+      mx = my = 0;
+      gm.setTarget(null);
+      if (!gm.follow) recenter();
+    };
+    joyRaf = requestAnimationFrame(loop);
+    renderLocChip();
   };
 
   // --- Standort ------------------------------------------------------------------
@@ -594,7 +652,7 @@ export function gameScreen(app: App): Screen {
         start,
         onTap: (p) => {
           sheet.close();
-          if (provider?.kind === 'sim') walkTo(p);
+          if (provider?.kind === 'sim' && !joy) walkTo(p);
         },
         onSpotTap: (id) => sheet.open(id),
         onBaseTap: () => void openBase(),
@@ -637,6 +695,7 @@ export function gameScreen(app: App): Screen {
       else provider = new GpsLocation();
       if (locMode === 'gps') showBanner('gps', 'Suche GPS-Signal …', 'Einen Moment. Draußen geht es schneller.', []);
       provider.start(onFix, onLocError);
+      setupJoystick();
       renderLocChip();
       void loadFigure();
 
@@ -651,6 +710,8 @@ export function gameScreen(app: App): Screen {
       ambience?.destroy();
       figure?.dispose();
       clearTimeout(walkTimer);
+      cancelAnimationFrame(joyRaf);
+      clearInterval(joyLabelTimer);
       clearInterval(ticker);
       document.removeEventListener('visibilitychange', onVisible);
       provider?.stop();

@@ -54,13 +54,17 @@ export function box(g: THREE.Object3D, w: number, h: number, d: number, m: M, x 
   return add(g, new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m), x, y + h / 2, z, ry);
 }
 
+/** Feinere Polygone: Rundungen bekommen mehr Segmente (der Low-Poly-Stil bleibt). */
+export const DETAIL = 1.6;
+const segs = (n: number) => Math.max(n, Math.round(n * DETAIL));
+
 /** Zylinder; y ist die Unterkante. */
 export function cyl(g: THREE.Object3D, rTop: number, rBot: number, h: number, m: M, x = 0, y = 0, z = 0, seg = 8) {
-  return add(g, new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, h, seg), m), x, y + h / 2, z);
+  return add(g, new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, h, segs(seg)), m), x, y + h / 2, z);
 }
 
 export function blob(g: THREE.Object3D, r: number, m: M, x: number, y: number, z: number) {
-  const mesh = add(g, new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), m), x, y, z);
+  const mesh = add(g, new THREE.Mesh(new THREE.IcosahedronGeometry(r, r > 0.12 ? 1 : 0), m), x, y, z);
   mesh.rotation.set(x * 3.1, y * 2.3, z * 1.7);
   return mesh;
 }
@@ -71,7 +75,7 @@ export const METAL = '#3b3f3a';
 
 /** Kegel (Flamme, Blatt, Hut); y ist die Unterkante. */
 export function cone(g: THREE.Object3D, r: number, h: number, m: M, x = 0, y = 0, z = 0, seg = 6) {
-  return add(g, new THREE.Mesh(new THREE.ConeGeometry(r, h, seg), m), x, y + h / 2, z);
+  return add(g, new THREE.Mesh(new THREE.ConeGeometry(r, h, segs(seg)), m), x, y + h / 2, z);
 }
 
 /** Flamme, die flackert (wird nicht mit verschmolzen). */
@@ -188,7 +192,7 @@ const BUILDERS: Record<FurnitureId, (g: THREE.Group) => LightSpec | void> = {
     cyl(g, 0.025, 0.025, 1.45, mat(METAL), 0, 0.04, 0, 6);
     const shade = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.3, 0.32, 10, 1), mat('#c9a86a', { emissive: '#ffcf7a', emissiveIntensity: 0.6 })), 0, 1.5, 0);
     shade.castShadow = false;
-    add(g, new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), glow('#fff1c4')), 0, 1.42, 0).castShadow = false;
+    add(g, new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), glow('#fff1c4')), 0, 1.42, 0).castShadow = false;
     return { color: '#ffd59a', intensity: 8, distance: 7, y: 1.4 };
   },
   raisedBed(g) {
@@ -202,17 +206,17 @@ const BUILDERS: Record<FurnitureId, (g: THREE.Group) => LightSpec | void> = {
     for (let i = 0; i < 6; i++) {
       const x = -0.65 + i * 0.26;
       blob(g, 0.13 + (i % 2) * 0.04, leaf, x, 0.72, (i % 2 ? 0.12 : -0.12));
-      if (i % 2) add(g, new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 4), mat('#b0472f')), x + 0.06, 0.74, 0.2);
+      if (i % 2) add(g, new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), mat('#b0472f')), x + 0.06, 0.74, 0.2);
     }
   },
   clock(g) {
     const green = mat('#2f4a3c');
     cyl(g, 0.16, 0.2, 0.08, green, 0, 0, 0, 8);
     cyl(g, 0.045, 0.045, 2.3, green, 0, 0.08, 0, 8);
-    const body = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.14, 20), green), 0, 2.55, 0);
+    const body = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.14, 28), green), 0, 2.55, 0);
     body.rotation.x = Math.PI / 2;
     for (const z of [-0.075, 0.075]) {
-      const face = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.01, 20), mat('#efe9da')), 0, 2.55, z);
+      const face = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.01, 28), mat('#efe9da')), 0, 2.55, z);
       face.rotation.x = Math.PI / 2;
       // Zeiger: fünf vor zwölf
       const s = Math.sign(z);
@@ -264,7 +268,7 @@ const BUILDERS: Record<FurnitureId, (g: THREE.Group) => LightSpec | void> = {
         seg.rotation.z = Math.atan2(ny - y, nx - x);
         seg.castShadow = false;
       }
-      if (i > 0 && i < N) add(g, new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 4), glow(bulbs[i % bulbs.length])), x, y - 0.06, 0).castShadow = false;
+      if (i > 0 && i < N) add(g, new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), glow(bulbs[i % bulbs.length])), x, y - 0.06, 0).castShadow = false;
     }
     return { color: '#ffcf8a', intensity: 5, distance: 5, y: 1.6 };
   },
@@ -469,7 +473,7 @@ const BUILDERS: Record<FurnitureId, (g: THREE.Group) => LightSpec | void> = {
     blob(g, 0.36, mat('#5d7a42'), 0.3, 1.35, 0.15);
     blob(g, 0.34, mat('#46603a'), -0.28, 1.4, -0.12);
     for (const [x, y, z] of [[0.3, 1.2, 0.4], [-0.35, 1.3, 0.3], [0.1, 1.85, 0.35], [-0.2, 1.65, -0.4], [0.45, 1.5, -0.2]])
-      add(g, new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), mat('#b0472f')), x, y, z);
+      add(g, new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), mat('#b0472f')), x, y, z);
     blob(g, 0.2, mat('#3b2f22'), 0, 0.02, 0).scale.set(1.4, 0.25, 1.4);
   },
 };
@@ -510,7 +514,7 @@ export function buildBus(): THREE.Group {
   box(g, 2.3, 0.08, 9.8, mat('#9c917a'), 0, 3.05, 0);
   for (const z of [-3.4, 3.3])
     for (const x of [-1.2, 1.2]) {
-      const w = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.3, 12), mat('#161614')), x, 0.48, z);
+      const w = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.3, 18), mat('#161614')), x, 0.48, z);
       w.rotation.z = Math.PI / 2;
     }
   // Front mit Zielanzeige

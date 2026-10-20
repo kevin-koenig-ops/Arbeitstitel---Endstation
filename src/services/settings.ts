@@ -15,13 +15,17 @@ export interface Settings {
   /** Zum Ausprobieren: Tageszeit und Wetter erzwingen (nur Optik). */
   testPhase: 'auto' | DayPhase;
   testWeather: 'auto' | WeatherKind;
+  /** Wie die Figur läuft: Antippen (wie bei Die Sims) oder Joystick mit Benutzen-Taste. */
+  control: 'tap' | 'joystick';
+  /** Am Handy ins Vollbild wechseln und das Querformat festhalten (wo möglich). */
+  fullscreen: boolean;
   /** Letzter bekannter Standort, nur auf diesem Gerät gespeichert. */
   lastPos?: LatLon;
 }
 
 const KEY = 'endstation.settings';
 
-const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto' } as const;
+const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', control: 'tap', fullscreen: true } as const;
 const DEFAULTS: Settings = IS_PREVIEW ? { ...COMMON, map: 'demo', location: 'sim' } : { ...COMMON, map: 'real', location: 'gps' };
 
 export class SettingsStore {

@@ -670,7 +670,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .overlay.base-view[data-phase='night'] { background: radial-gradient(120% 70% at 50% 18%, #222a3d 0%, #13161f 50%, #0b0b0e 100%); }
 .base-stage { position: absolute; inset: 0; }
 .base-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
-.base-head { position: absolute; top: 0; left: 0; right: 0; display: flex; flex-direction: column; gap: 8px; padding-left: var(--gutter-l); padding-right: var(--gutter-r); padding-block: calc(var(--safe-t) + 12px) 0; pointer-events: none; }
+.base-head { position: absolute; top: 0; left: 0; right: 0; display: flex; flex-direction: column; gap: 6px; padding-left: var(--gutter-l); padding-right: var(--gutter-r); padding-block: calc(var(--safe-t) + 12px) 0; pointer-events: none; }
 .base-head > * { pointer-events: auto; }
 .base-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .base-title { display: flex; flex-direction: column; min-width: 0; }
@@ -724,20 +724,44 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .base-res { display: inline-flex; gap: 4px; flex-wrap: wrap; }
 .base-res .cost-chip { background: rgba(18, 17, 15, 0.85); }
 .base-away { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 10px; background: rgba(27, 26, 23, 0.94); border: 1px solid var(--line); font-size: 14px; color: var(--dust); }
-.base-cam { position: absolute; right: var(--gutter-r); top: calc(var(--safe-t) + 150px); display: flex; flex-direction: column; gap: 8px; }
-.base-bottom {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding-left: var(--gutter-l);
-  padding-right: var(--gutter-r);
-  padding-block: 10px calc(var(--safe-b) + 12px);
-  background: linear-gradient(to top, rgba(14, 12, 10, 0.97) 70%, rgba(14, 12, 10, 0));
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+.base-cam { position: absolute; right: calc(var(--gutter-r) + 58px); top: calc(var(--safe-t) + 14px); display: flex; gap: 6px; }
+.base-view[data-build="on"] .base-head { right: var(--panel-w); }
+/* Baumodus: Seitenleiste rechts */
+.base-view { --panel-w: min(380px, 46vw); }
+.base-panel { position: absolute; top: 0; right: 0; bottom: 0; width: var(--panel-w); display: flex; flex-direction: column; gap: 8px; padding: calc(var(--safe-t) + 10px) calc(var(--gutter-r)) calc(var(--safe-b) + 10px) 12px; background: rgba(14, 12, 10, 0.94); border-left: 1px solid var(--line); box-shadow: -10px 0 30px rgba(0, 0, 0, 0.35); }
+.base-view[data-build="off"] .base-panel { display: none; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.panel-head b { display: inline-flex; align-items: center; gap: 6px; font: 700 17px var(--font-ui); color: var(--amber); }
+.panel-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; overscroll-behavior: contain; }
+.base-panel .drawer-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); overflow: visible; padding-bottom: 6px; }
+.base-panel .fcard { width: auto; }
+.base-panel .drawer-tabs { flex-wrap: wrap; overflow: visible; }
+.base-panel .drawer-tabs button { height: 30px; padding: 0 10px; font-size: 13px; }
+.base-panel .base-modes button { height: 34px; font-size: 14px; }
+.base-panel .land-panel { background: var(--steel); }
+/* Schwebende Leiste unten (Auswahl, Bestätigen) */
+.base-ctx { position: absolute; left: calc(var(--gutter-l) + 8px); right: calc(var(--gutter-r) + 8px); bottom: calc(var(--safe-b) + 12px); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+.base-ctx > * { pointer-events: auto; width: 100%; max-width: 560px; }
+.base-view[data-build="on"] .base-ctx { right: calc(var(--panel-w) + 12px); }
+.base-view[data-build="off"][data-control="joystick"] .base-ctx { left: 170px; right: 150px; bottom: calc(var(--safe-b) + 14px); }
+.base-view[data-build="on"] .base-cam { right: calc(var(--panel-w) + 10px); }
+.base-view[data-build="on"] .base-head .base-title-row > .iconbtn { display: none; }
+.base-view[data-build="on"] .build-toggle { display: none; }
+.build-toggle { position: absolute; right: calc(var(--gutter-r) + 4px); bottom: calc(var(--safe-b) + 14px); display: inline-flex; align-items: center; gap: 8px; height: 52px; padding: 0 20px 0 16px; border-radius: 26px; border: 0; background: var(--amber); color: var(--ink); font: 700 17px var(--font-ui); text-transform: uppercase; letter-spacing: 0.06em; box-shadow: 0 0 0 4px rgba(18, 17, 15, 0.85), 0 0 20px var(--amber-glow); cursor: pointer; }
+.base-view[data-control="joystick"] .build-toggle { bottom: auto; top: calc(var(--safe-t) + 62px); right: calc(var(--gutter-r) + 4px); height: 44px; font-size: 15px; padding: 0 16px 0 12px; }
+/* Joystick und Benutzen */
+.map-controls { position: absolute; inset: 0; pointer-events: none; }
+.map-controls .joystick { bottom: calc(var(--safe-b) + 84px); }
+.map-controls .use-btn { bottom: calc(var(--safe-b) + 92px); width: 92px; height: 92px; }
+.base-controls { position: absolute; inset: 0; pointer-events: none; }
+.joystick { position: absolute; left: calc(var(--gutter-l) + 14px); bottom: calc(var(--safe-b) + 14px); width: 132px; height: 132px; pointer-events: auto; touch-action: none; }
+.joy-base { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, rgba(255, 178, 46, 0.08) 0%, rgba(18, 17, 15, 0.55) 70%); border: 2px solid rgba(255, 178, 46, 0.45); }
+.joy-knob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #ffd07a, var(--amber) 60%, #c47f12); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5); transition: transform 0.12s ease-out; }
+.joystick.active .joy-knob { transition: none; }
+.use-btn { position: absolute; right: calc(var(--gutter-r) + 18px); bottom: calc(var(--safe-b) + 22px); width: 104px; height: 104px; border-radius: 50%; border: 0; pointer-events: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: var(--amber); color: var(--ink); font: 700 14px/1.1 var(--font-ui); text-transform: uppercase; letter-spacing: 0.04em; box-shadow: 0 0 0 4px rgba(18, 17, 15, 0.85), 0 0 22px var(--amber-glow); cursor: pointer; touch-action: manipulation; }
+.use-btn.idle { background: var(--steel-2); color: var(--dust); box-shadow: 0 0 0 4px rgba(18, 17, 15, 0.85); }
+.use-dot { width: 14px; height: 14px; border-radius: 50%; border: 3px solid currentColor; }
+.use-label { max-width: 88px; text-align: center; }
 .drawer-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
 .drawer-tabs button { flex: none; height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid var(--line); background: var(--steel); color: var(--dust); font: 600 14px var(--font-ui); cursor: pointer; }
 .drawer-tabs button[aria-selected="true"] { background: var(--amber); color: var(--ink); border-color: var(--amber); }
@@ -765,3 +789,54 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .narrow-box { max-width: 460px; }
 .set-base-lead { margin: 0; font-size: 18px; line-height: 1.45; }
 .set-base .row .btn { flex: 1; }
+
+/* ===== Querformat =====
+   Endstation spielt sich quer. Hochkant (am Handy) gibt es nur einen Hinweis zum Drehen. */
+.rotate-hint { display: none; position: fixed; inset: 0; z-index: 100; place-content: center; justify-items: center; gap: 14px; padding: 24px; text-align: center; background: var(--ink); color: var(--bone); }
+.rotate-hint p { margin: 0; font: 700 22px/1.25 var(--font-ui); }
+.rotate-hint small { color: var(--dust); font-size: 15px; }
+.rotate-phone { width: 64px; height: 104px; border: 4px solid var(--amber); border-radius: 12px; position: relative; animation: rotate-phone 2.4s ease-in-out infinite; }
+.rotate-phone::after { content: ''; position: absolute; left: 50%; bottom: 6px; width: 14px; height: 4px; margin-left: -7px; border-radius: 2px; background: var(--amber); }
+@keyframes rotate-phone { 0%, 25% { transform: rotate(0deg); } 55%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0deg); } }
+@media (orientation: portrait) and (pointer: coarse) {
+  .rotate-hint { display: grid; }
+}
+
+@media (orientation: landscape) and (max-height: 620px) {
+  .page { max-width: 900px; gap: 16px; }
+  .page.narrow { max-width: 720px; }
+  /* Hauptmenü: Schild und Szene links, Haltestellen rechts */
+  .menu { display: grid; grid-template-columns: 1.15fr 1fr; grid-template-rows: auto 1fr auto; grid-template-areas: "head route" "scene route" "scene foot"; }
+  .menu-head { grid-area: head; padding-top: calc(var(--safe-t) + 14px); }
+  .menu-logo { width: min(100%, 400px); }
+  .menu-scene { grid-area: scene; margin-top: -24px; min-height: 0; height: 100%; }
+  .menu-route { grid-area: route; align-self: center; max-width: 420px; }
+  .menu-foot { grid-area: foot; }
+  /* Charaktererstellung: Figur links, Ausweis und Auswahl rechts */
+  .character .page { display: grid; grid-template-columns: minmax(230px, 36%) 1fr; column-gap: 22px; row-gap: 14px; align-items: start; }
+  .character .page > * { grid-column: 2; }
+  .character .page > .figure-stage { grid-column: 1; grid-row: 1 / span 12; position: sticky; top: calc(var(--safe-t) + 12px); height: calc(100dvh - var(--safe-t) - var(--safe-b) - 24px); margin: 0; }
+  /* Bus: Bild links, Ausbau rechts */
+  .bus-panel .overlay-inner { max-width: 1000px; display: grid; grid-template-columns: minmax(240px, 40%) 1fr; grid-template-areas: "top top" "art harvest" "art tabs" "art body"; column-gap: 20px; row-gap: 10px; align-items: start; }
+  .bus-panel .topbar { grid-area: top; }
+  .bus-panel .bus-stage { grid-area: art; position: sticky; top: 0; }
+  .bus-panel .harvest-host { grid-area: harvest; }
+  .bus-panel .tabs { grid-area: tabs; }
+  .bus-panel .bus-body { grid-area: body; }
+  /* Schauplätze nebeneinander */
+  .overlay.site-picker .overlay-inner { max-width: 1000px; }
+  .site-list { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .site-card { grid-template-columns: 1fr; grid-template-areas: "art" "text" "btn"; align-content: start; }
+  .site-art { height: 84px; }
+  /* Fundstellen-Karte rechts statt unten */
+  .sheet-host { top: calc(var(--safe-t) + 62px); bottom: calc(var(--safe-b) + 84px); align-items: flex-end; justify-content: flex-end; padding-right: var(--gutter-r); }
+  .sheet { max-width: 430px; max-height: 100%; overflow-y: auto; border-radius: 16px; border-bottom: 1px solid var(--line); padding-block: 16px; gap: 10px; }
+  /* Kampf: Gegner links, Steuerung rechts */
+  .combat-inner { max-width: 980px; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr auto auto; column-gap: 24px; row-gap: 8px; }
+  .combat-head { grid-column: 1; }
+  .combat-stage { grid-column: 1; grid-row: 2 / span 3; }
+  .combat-inner > :not(.combat-head):not(.combat-stage):not(.combat-flash) { grid-column: 2; }
+  .combat-inner > .combat-log { grid-row: 1 / span 2; align-self: end; }
+  /* Einstellungen breiter */
+  .settings { max-width: 760px; }
+}

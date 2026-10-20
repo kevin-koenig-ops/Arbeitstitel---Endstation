@@ -11,6 +11,7 @@ Ein Endzeit-Spiel auf der echten Karte, das man nebenbei im Alltag spielt: Handy
 3. **Auch auf dem Dorf spielbar.** Fundstellen gibt es überall, nicht nur an Sehenswürdigkeiten. Jedes Dorf hat Bushaltestellen, Gärten, Feldwege.
 4. **Datenschutz.** Den Ort deiner Endstation legst du selbst fest, er bleibt aber nur auf deinem Gerät. Andere Spieler (und später der Server) erfahren nie, wo sie steht.
 5. **Tagsüber raus, abends einrichten.** Draußen sammelst du Material und Baupläne, zu Hause baust du in Ruhe deine Endstation aus, gern auch vom Bett aus.
+6. **Eins statt viele.** Jede nützliche Anlage (Regentonne, Werkbank, Windrad, Ofen …) gibt es nur einmal. Statt mehr davon zu bauen, wird sie in Stufen aufgerüstet und bleibt dabei stehen, wo sie steht. Niemand soll ständig umbauen müssen. Deko darf man beliebig oft aufstellen.
 
 ## Kernschleife
 
@@ -33,6 +34,12 @@ Ein Endzeit-Spiel auf der echten Karte, das man nebenbei im Alltag spielt: Handy
 - **Deine Figur** wohnt dort und läuft hin, wo du hintippst.
 - **Echte Tageszeit und echtes Wetter** auch zu Hause: Regen, Schnee, Nebel, Gewitter. Nachts leuchten Feuer, Lampen und Lichterketten.
 - **Grundsatz:** Draußen ist es gefährlich, die Basis nie. Sie wird nicht angegriffen und ist ein echter Rückzugsort.
+
+## Bedienung
+
+- **Immer im Querformat.** Hochkant zeigt das Handy nur einen Hinweis zum Drehen. Als installierte App bleibt es fest quer, im Browser geht es auf Wunsch ins Vollbild.
+- **Steuerung wählbar** (Einstellungen): *Antippen* (die Figur läuft hin, wie bei Die Sims) oder *Joystick* mit *Benutzen*-Taste. Gilt in der Endstation und im Simulationsmodus der Karte; mit echtem GPS läufst du selbst.
+- **Baumodus an/aus** in der Endstation: Aus ist freie Sicht zum Herumlaufen und Benutzen (Schutt wegräumen, Bäume fällen), an öffnet die Bauleiste an der Seite.
 
 ## Spielfigur
 

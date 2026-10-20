@@ -107,7 +107,7 @@ export class CharacterRig {
     part(torso, new THREE.CylinderGeometry(0.05, 0.055, 0.09, 6), m(skin), 0, 0.6, 0);
     const head = pivot(torso, 0, 0.63);
     this.head = head;
-    const skull = part(head, new THREE.IcosahedronGeometry(0.13, 1), m(skin, 0.75), 0, 0.13, 0.005);
+    const skull = part(head, new THREE.IcosahedronGeometry(0.13, 2), m(skin, 0.75), 0, 0.13, 0.005);
     skull.scale.set(0.95, 1.08, 1.0);
     part(head, B(0.04, 0.055, 0.04), m(shade(skin, 0.9)), 0, 0.12, 0.13); // Nase
     part(head, B(0.06, 0.012, 0.01), m(shade(skin, 0.6)), 0, 0.068, 0.124); // Mund
@@ -140,7 +140,7 @@ export class CharacterRig {
   private buildHair(head: THREE.Group, look: Look, jacket: string) {
     const hair = m(HAIR_COLOR, 0.95);
     const cap = (r: number, mat: THREE.Material, tilt = -0.42, open = 0.6) => {
-      const c = part(head, new THREE.SphereGeometry(r, 8, 5, 0, Math.PI * 2, 0, Math.PI * open), mat, 0, 0.14, -0.012);
+      const c = part(head, new THREE.SphereGeometry(r, 14, 8, 0, Math.PI * 2, 0, Math.PI * open), mat, 0, 0.14, -0.012);
       c.rotation.x = tilt;
       c.scale.set(0.98, 1.05, 1.04);
       return c;
@@ -170,9 +170,9 @@ export class CharacterRig {
         // Mütze
         const beanie = m(shade(jacket, 0.55), 0.95);
         cap(0.152, beanie, -0.12, 0.5);
-        const band = part(head, new THREE.CylinderGeometry(0.156, 0.156, 0.06, 8), m(shade(jacket, 0.45), 0.95), 0, 0.165, -0.01);
+        const band = part(head, new THREE.CylinderGeometry(0.156, 0.156, 0.06, 14), m(shade(jacket, 0.45), 0.95), 0, 0.165, -0.01);
         band.rotation.x = -0.12;
-        part(head, new THREE.IcosahedronGeometry(0.045, 0), beanie, 0, 0.32, -0.035);
+        part(head, new THREE.IcosahedronGeometry(0.045, 1), beanie, 0, 0.32, -0.035);
         part(head, B(0.27, 0.07, 0.08), hair, 0, 0.1, -0.11); // Haare unter der Mütze
       }
     }

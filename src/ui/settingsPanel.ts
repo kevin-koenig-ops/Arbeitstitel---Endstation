@@ -28,6 +28,9 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
   });
   vib.checked = s.get().vibration;
 
+  const fullToggle = h('input', { id: 'set-full', type: 'checkbox', class: 'toggle', onchange: () => s.set({ fullscreen: fullToggle.checked }) });
+  fullToggle.checked = s.get().fullscreen;
+
   const weatherToggle = h('input', { id: 'set-weather', type: 'checkbox', class: 'toggle', onchange: () => s.set({ realWeather: weatherToggle.checked }) });
   weatherToggle.checked = s.get().realWeather;
 
@@ -96,6 +99,21 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
       previewNote,
       h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-vibration' }, 'Vibration', h('small', null, 'Kurz vibrieren, wenn eine Fundstelle in Reichweite ist')), vib),
       h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-weather' }, 'Echtes Wetter', h('small', null, 'Regen, Schnee und Nebel wie draußen. Dafür geht dein Standort, auf etwa 10 km gerundet, an Open-Meteo.')), weatherToggle),
+    ),
+    h(
+      'section',
+      { class: 'set-group' },
+      h('h2', null, 'Steuerung'),
+      h(
+        'div',
+        { class: 'set-row' },
+        h('div', { class: 'set-label', id: 'lbl-ctrl' }, 'Figur bewegen', h('small', null, 'Antippen: Figur läuft zur Stelle, wie bei Die Sims. Joystick: selbst steuern, mit Benutzen-Taste. Gilt in der Endstation und in der Simulation.')),
+        segmented('control', 'lbl-ctrl', [
+          ['tap', 'Antippen'],
+          ['joystick', 'Joystick'],
+        ]),
+      ),
+      h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-full' }, 'Vollbild', h('small', null, 'Am Handy beim Spielen ins Vollbild und im Querformat bleiben (geht nicht in jedem Browser).')), fullToggle),
     ),
     h(
       'section',

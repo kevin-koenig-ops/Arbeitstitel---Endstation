@@ -142,6 +142,8 @@ export class BaseScene {
   private charPos = new THREE.Vector2(HALF, HALF);
   private charHeading = 0;
   private charPath: [number, number][] = [];
+  /** Kleine Laterne an der Figur, damit man sie nachts sieht. */
+  private charLight = new THREE.PointLight('#ffc98a', 0, 7, 1.6);
 
   // Kamera
   private target = new THREE.Vector3(0, 0, 0);
@@ -151,7 +153,13 @@ export class BaseScene {
   private el = 0.93;
   private quadrant = '';
   /** Anteil der Bildhöhe, um den die Szene nach oben rückt (unten liegt die Bauleiste). */
-  viewShift = 0.12;
+  viewShift = 0;
+  /** Anteil der Bildbreite, um den die Szene nach links rückt (rechts liegt die Bauleiste). */
+  viewShiftX = 0;
+  /** Joystick: Richtung im Bildschirm (x rechts, y unten), Länge 0..1. */
+  driveSource: (() => { x: number; y: number }) | null = null;
+  /** Kamera folgt der Figur (beim Steuern mit dem Joystick). */
+  followCharacter = false;
 
   /** Für die Oberfläche. */
   onTap: (hit: Hit) => void = () => {};
@@ -262,6 +270,8 @@ export class BaseScene {
     }
     this.rig = new CharacterRig(look);
     this.scene.add(this.rig.root);
+    this.charLight.position.set(0.25, 1.5, 0.3);
+    this.rig.root.add(this.charLight);
   }
 
   setRoofsVisible(v: boolean) {
@@ -321,20 +331,24 @@ export class BaseScene {
         const h = hash(`${x},${y}`);
         c.set(pal[h % pal.length]);
         if (!open) c.lerp(wild, 0.55).multiplyScalar(0.8);
-        // Zwei Dreiecke pro Feld, leicht unterschiedlich getönt (Low-Poly-Look)
+        // Jedes Feld in 2 × 2 Stücke mit je zwei Dreiecken, leicht unterschiedlich getönt
         const x0 = W(x);
         const z0 = W(y);
-        const tris = [
-          [x0, z0, x0, z0 + 1, x0 + 1, z0],
-          [x0 + 1, z0, x0, z0 + 1, x0 + 1, z0 + 1],
-        ];
-        tris.forEach((t, k) => {
-          const f = k ? 0.975 : 1.01;
-          for (let i = 0; i < 6; i += 2) {
-            pos.push(t[i], 0, t[i + 1]);
-            col.push(c.r * f, c.g * f, c.b * f);
-          }
-        });
+        for (let q = 0; q < 4; q++) {
+          const qx = x0 + (q % 2) * 0.5;
+          const qz = z0 + Math.floor(q / 2) * 0.5;
+          const tris = [
+            [qx, qz, qx, qz + 0.5, qx + 0.5, qz],
+            [qx + 0.5, qz, qx, qz + 0.5, qx + 0.5, qz + 0.5],
+          ];
+          tris.forEach((t, k) => {
+            const f = 0.97 + (((h >> (q * 2 + k)) & 3) / 3) * 0.06;
+            for (let i = 0; i < 6; i += 2) {
+              pos.push(t[i], 0, t[i + 1]);
+              col.push(c.r * f, c.g * f, c.b * f);
+            }
+          });
+        }
       }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -352,8 +366,8 @@ export class BaseScene {
     const perGrass = 16;
     const perJunk = d.site === 'depot' || d.site === 'fuel' ? 6 : 3;
     const mk = (geo: THREE.BufferGeometry, n: number) => new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.95 }), Math.max(1, locked.length * n));
-    const bushes = mk(new THREE.IcosahedronGeometry(1, 0), perBush);
-    const grass = mk(new THREE.ConeGeometry(0.12, 1, 4), perGrass);
+    const bushes = mk(new THREE.IcosahedronGeometry(1, 1), perBush);
+    const grass = mk(new THREE.ConeGeometry(0.12, 1, 5), perGrass);
     const junk = mk(new THREE.BoxGeometry(1, 1, 1), perJunk);
     const greens = ['#3f5a34', '#4f6b3a', '#5d6b3a', '#46603a', '#6b6a3a', '#56603a'].map((s) => new THREE.Color(s));
     const dry = ['#7a7a44', '#8a8450', '#6b6a3a', '#8f8a5a'].map((s) => new THREE.Color(s));
@@ -635,6 +649,7 @@ export class BaseScene {
     this.sun.intensity = p.sun[1] * sunF;
     this.sunDir.set(...p.sun[2]).normalize();
     this.renderer.toneMappingExposure = p.exposure;
+    this.charLight.intensity = this.phase === 'night' ? 3.2 : this.phase === 'dusk' ? 1.2 : 0;
     this.haze.color.set(w === 'fog' ? (this.phase === 'night' ? '#23262c' : '#7d7a72') : w === 'snow' && this.phase !== 'night' ? '#8a8c90' : p.haze);
   }
 
@@ -830,9 +845,78 @@ export class BaseScene {
     return { x: Math.floor(this.charPos.x), y: Math.floor(this.charPos.y) };
   }
 
+  /** Was liegt direkt vor der Figur? (für die Benutzen-Taste) */
+  findInteract(): { kind: 'obstacle'; id: string } | { kind: 'item'; uid: number } | null {
+    const d = this.data;
+    if (!d) return null;
+    const px = this.charPos.x;
+    const py = this.charPos.y;
+    const fx = Math.sin(this.charHeading);
+    const fy = Math.cos(this.charHeading);
+    let best: { kind: 'obstacle'; id: string } | { kind: 'item'; uid: number } | null = null;
+    let bestScore = Infinity;
+    const consider = (x: number, y: number, w: number, dd: number, hit: typeof best) => {
+      const cx = Math.max(x, Math.min(px, x + w));
+      const cy = Math.max(y, Math.min(py, y + dd));
+      const dist = Math.hypot(cx - px, cy - py);
+      if (dist > 1.4) return;
+      const dot = dist > 0.01 ? ((cx - px) * fx + (cy - py) * fy) / dist : 1;
+      const score = dist - dot * 0.5;
+      if (score < bestScore) {
+        bestScore = score;
+        best = hit;
+      }
+    };
+    for (const o of d.idx.obstacles) consider(o.x, o.y, o.w, o.d, { kind: 'obstacle', id: o.id });
+    for (const it of d.plot.items) {
+      const f = footprint(it.kind, it.rot);
+      consider(it.x, it.y, f.w, f.d, { kind: 'item', uid: it.uid });
+    }
+    return best;
+  }
+
+  /** Steuern mit dem Joystick: freie Bewegung mit Kollision an Wänden und Möbeln. */
+  private updateDrive(dt: number): boolean {
+    const v = this.driveSource?.();
+    const d = this.data;
+    if (!v || !d || (v.x === 0 && v.y === 0)) return false;
+    this.charPath = [];
+    const fx = -Math.sin(this.az);
+    const fz = -Math.cos(this.az);
+    const rx = Math.cos(this.az);
+    const rz = -Math.sin(this.az);
+    const mx = rx * v.x - fx * v.y;
+    const mz = rz * v.x - fz * v.y;
+    const len = Math.hypot(v.x, v.y);
+    const speed = 2.8 * len;
+    const step = (dx: number, dy: number) => {
+      const nx = this.charPos.x + dx;
+      const ny = this.charPos.y + dy;
+      const r = 0.24;
+      const cx = Math.floor(this.charPos.x);
+      const cy = Math.floor(this.charPos.y);
+      const tx = Math.floor(nx + Math.sign(dx) * r);
+      const ty = Math.floor(ny + Math.sign(dy) * r);
+      if (tx !== cx || ty !== cy) {
+        if (!walkable(d.idx, tx, ty)) return;
+        const w = tx !== cx ? d.plot.walls[`v${Math.max(cx, tx)},${cy}`] : d.plot.walls[`h${cx},${Math.max(cy, ty)}`];
+        if (w && w.o !== 'door' && w.o !== 'arch' && w.o !== 'gate') return;
+      }
+      this.charPos.set(nx, ny);
+    };
+    const n = Math.hypot(mx, mz) || 1;
+    step(((mx / n) * speed * dt), 0);
+    step(0, (mz / n) * speed * dt);
+    const want = Math.atan2(mx, mz);
+    let diff = want - this.charHeading;
+    diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+    this.charHeading += diff * Math.min(1, dt * 12);
+    return true;
+  }
+
   private updateCharacter(t: number, dt: number) {
     if (!this.rig) return;
-    let moving = 0;
+    let moving = this.updateDrive(dt) ? 1 : 0;
     if (this.charPath.length) {
       const [nx, ny] = this.charPath[0];
       const tx = nx + 0.5;
@@ -910,17 +994,24 @@ export class BaseScene {
     if (!w || !h) return;
     this.renderer.setSize(w, h);
     this.camera.aspect = w / h;
-    this.camera.setViewOffset(w, h, 0, h * this.viewShift, w, h);
+    this.camera.setViewOffset(w, h, w * this.viewShiftX, h * this.viewShift, w, h);
     this.camera.updateProjectionMatrix();
   }
 
-  setViewShift(f: number) {
+  setViewShift(f: number, fx = this.viewShiftX) {
+    if (f === this.viewShift && fx === this.viewShiftX) return;
     this.viewShift = f;
+    this.viewShiftX = fx;
     this.resize();
   }
 
   private updateCamera(dt: number) {
     this.az += (this.azTarget - this.az) * Math.min(1, dt * 7);
+    if (this.followCharacter && this.rig) {
+      const k = Math.min(1, dt * 4);
+      this.target.x += (W(this.charPos.x) - this.target.x) * k;
+      this.target.z += (W(this.charPos.y) - this.target.z) * k;
+    }
     const lim = HALF + 8;
     this.target.x = Math.max(-lim, Math.min(lim, this.target.x));
     this.target.z = Math.max(-lim, Math.min(lim, this.target.z));

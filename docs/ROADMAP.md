@@ -43,9 +43,20 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 
 **Zu Hause testen:** Wie fühlt sich das Bauen am Handy an? Ist das Gelände zu groß, zu klein? Welche Teile fehlen?
 
-## Iteration 1f: Werkstätten und Wetter (als Nächstes)
+## ✅ Iteration 1f: Querformat und Steuerung
+
+- Alle Bildschirme im Querformat, Dreh-Hinweis hochkant, Vollbild/Querformat-Sperre wo möglich
+- Steuerung wählbar: Antippen oder Joystick mit Benutzen-Taste (Basis und Simulation)
+- Baumodus an/aus mit Seitenleiste, feinere Polygone, Laterne an der Figur bei Nacht
+
+## Iteration 1g: Kampf 2.0 (Prototyp, als Nächstes)
+
+- Tab-Targeting in 3D, siehe Ideen unten
+
+## Iteration 1h: Werkstätten und Wetter
 
 - Möbel werden zu Werkstätten mit echten Wartezeiten: Werktisch, Holzofen, Lagerfeuer, Hochbeet, Apfelbaum
+- Jede Anlage nur einmal, dafür in Stufen aufrüstbar (kein Umbauen, keine fünf Regentonnen)
 - Regentonne füllt sich bei echtem Regen, Solarpaneel bei Sonne, Windrad bei Wind
 - Bus-Ausbauten und Basis zusammenführen
 - Gemütlichkeit wirkt sich aus (z. B. schnellere Erholung)
@@ -98,6 +109,18 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - **Sensible Orte ausschließen:** keine Fundstellen auf Friedhöfen, Gedenkstätten, Krankenhäusern, Schulen, Kitas und Privatgrundstücken (OSM-Flächen prüfen, Abstand halten). Pokémon Go hatte genau damit Ärger.
 - **Kämpfe nur im Stehen:** Wer läuft, dessen Kampf pausiert (GPS-Geschwindigkeit). Niemand soll sich beim Spielen verletzen.
 
+## App offen lassen? (Hintergrund)
+
+- **Taschenmodus (Web-App, bald):** schwarzer Bildschirm, Grafik pausiert, GPS läuft weiter (Wake Lock), Vibration bei Fundstelle in Reichweite.
+- **Echte App (später, Capacitor):** Schritte und Kilometer im Hintergrund über Apple Health / Health Connect (nur Kilometer, keine Orte), optional Hintergrund-GPS für den Kartennebel.
+- **Benachrichtigungen:** freundlich und abschaltbar („Dein Eintopf ist fertig“), nie Druck.
+
+## Kampf 2.0 (Idee)
+
+- Tab-Targeting in einer kleinen 3D-Szene: Ziel antippen, Figur greift automatisch an, 3–4 Fähigkeiten mit Abklingzeit (Wuchtschlag, Ausweichen, Lärm, Verbinden), Waffen bringen eine Spezialfähigkeit mit.
+- Gegner kündigen Angriffe an (roter Kreis), richtig ausweichen = Konter. Mehrere Gegner mit Rollen (Kreischer ruft Verstärkung, Brocken ist zäh).
+- Viel Wumms: Treffer-Feedback, Zahlen, Zeitlupe beim letzten Schlag, Beute mit Seltenheit. 30–60 Sekunden, nur im Stehen.
+
 ## Ideen-Sammlung für später
 
 **Basis und Zuhause**
@@ -115,6 +138,7 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - Echte Orte werden Spielorte: Supermarkt = Vorratslager, Apotheke = Medizin, Baumarkt = Baumaterial, Tankstelle = Treibstoff, Parks und Wälder = Holz und Kräuter, Gewässer = Wasser und Fische, Funkmasten fangen Signale (Quests), Bahnhöfe = Handelsposten mit wandernden Händlern.
 - Zeit und Natur: Vollmond macht Mutanten stärker (seltenere Beute), Jahreszeiten (Pilze im Herbst, Schnee im Winter), echte Feiertage als Events (z. B. Halloween).
 - Bewegung: Funkgerät entschlüsselt Nachrichten erst nach gelaufenen Kilometern, Aussichtspunkte und Anhöhen decken größere Bereiche auf.
+- **Quests mit Witcher-Anspruch:** z. B. „Jage drei Rehe“, „Erreiche die Apotheke“. Sie müssen überall funktionieren (Stadt und Dorf), sich lohnen und extrem gut geschrieben sein: echte Figuren, Entscheidungen, Wendungen. Für Story-Liebhaber.
 - Quests aus der echten Welt mit echten Straßennamen („Bring Medizin aus der Apotheke in der Bahnhofstraße zu den Überlebenden im Stadtpark“), Sehenswürdigkeiten bekommen eine Endzeit-Geschichte, tägliche Patrouillen um das eigene Viertel.
 
 **Gemeinschaft**

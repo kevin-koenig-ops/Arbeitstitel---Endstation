@@ -198,7 +198,7 @@ function hillHeight(x: number, z: number) {
 function outerGround(site: SiteId): THREE.Mesh {
   const r = rnd(site.length * 97);
   const size = 200;
-  const step = 3;
+  const step = 2;
   const n = Math.round(size / step);
   const pos: number[] = [];
   const col: number[] = [];

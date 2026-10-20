@@ -39,7 +39,15 @@ const SCREENS: Record<ScreenName, (app: App) => Screen> = {
 export async function createApp(root: HTMLElement) {
   const stage = h('div', { class: 'stage' });
   const toasts = h('div', { class: 'toasts', role: 'status', 'aria-live': 'polite' });
-  root.append(stage, toasts);
+  // Das Spiel läuft im Querformat. Hochkant gibt es einen Hinweis zum Drehen.
+  const rotate = h(
+    'div',
+    { class: 'rotate-hint', role: 'alert' },
+    h('div', { class: 'rotate-phone', 'aria-hidden': 'true' }),
+    h('p', null, 'Bitte dreh dein Handy ins Querformat.'),
+    h('small', null, 'Endstation spielt sich quer, wie ein richtiges Spiel.'),
+  );
+  root.append(stage, toasts, rotate);
   installGrain(root);
 
   let current: Screen | null = null;
@@ -69,6 +77,25 @@ export async function createApp(root: HTMLElement) {
       setTimeout(() => t.remove(), 3600);
     },
   };
+
+  // Am Handy beim ersten Antippen ins Vollbild und Querformat (wo der Browser das erlaubt)
+  const coarse = () => {
+    try {
+      return matchMedia('(pointer: coarse)').matches;
+    } catch {
+      return false;
+    }
+  };
+  const goLandscape = () => {
+    if (!app.settings.get().fullscreen || !coarse() || document.fullscreenElement) return;
+    const el = document.documentElement as HTMLElement & { requestFullscreen?: (o?: FullscreenOptions) => Promise<void> };
+    el.requestFullscreen?.({ navigationUI: 'hide' })
+      .then(() => (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.('landscape'))
+      .catch(() => {
+        /* Browser erlaubt es nicht: dann bleibt der Dreh-Hinweis */
+      });
+  };
+  root.addEventListener('pointerup', goLandscape);
 
   await app.backend.load();
   app.go('splash');

@@ -112,6 +112,14 @@ export class SimulatedLocation implements LocationProvider {
     this.raf = requestAnimationFrame(this.step);
   }
 
+  /** Mit dem Joystick schieben: dx nach Osten, dy nach Norden (Meter). */
+  nudge(dxM: number, dyM: number) {
+    this.target = null;
+    cancelAnimationFrame(this.raf);
+    this.pos = offsetM(this.pos, dxM, dyM);
+    this.emit();
+  }
+
   private step = (t: number) => {
     if (!this.target) return;
     const dt = Math.min(0.1, (t - this.last) / 1000);

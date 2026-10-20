@@ -121,6 +121,15 @@ export class FigureView {
     }
   }
 
+  /** Größe ändern (z. B. wenn der Platz im Layout wächst). */
+  setSize(w: number, h: number) {
+    if (w < 10 || h < 10) return;
+    this.renderer.setSize(w, h);
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
+    this.renderOnce();
+  }
+
   setLook(look: Look) {
     if (this.rig) {
       this.holder.remove(this.rig.root);

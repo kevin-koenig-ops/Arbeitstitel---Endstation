@@ -23,6 +23,7 @@ export function characterScreen(app: App): Screen {
   let fv: typeof import('../../base/figureView') | null = null;
   let fig: import('../../base/figureView').FigureView | null = null;
   let destroyed = false;
+  let ro: ResizeObserver | null = null;
   const hairImgs: HTMLElement[] = [];
   const portrait = (look: Character['look'], size: number) => {
     if (!fv) return svgEl(avatarSvg(look, size));
@@ -166,10 +167,13 @@ export function characterScreen(app: App): Screen {
     }
     if (destroyed) return;
     try {
-      fig = new fv.FigureView({ mode: 'stage', width: Math.max(260, stageEl.clientWidth || 320), height: 300 });
+      fig = new fv.FigureView({ mode: 'stage', width: Math.max(200, stageEl.clientWidth || 320), height: Math.max(200, stageEl.clientHeight || 300) });
       fig.setLook(draft.look);
       stageEl.prepend(fig.canvas);
       fig.start();
+      const f = fig;
+      ro = new ResizeObserver(() => f.setSize(stageEl.clientWidth, stageEl.clientHeight));
+      ro.observe(stageEl);
     } catch {
       fig = null;
     }
@@ -182,6 +186,7 @@ export function characterScreen(app: App): Screen {
     mount,
     destroy: () => {
       destroyed = true;
+      ro?.disconnect();
       fig?.dispose();
     },
   };

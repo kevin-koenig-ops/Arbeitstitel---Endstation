@@ -48,6 +48,7 @@ import { append, clear, h, svgEl } from '../dom';
 import { costChips, itemsLine } from '../game/busPanel';
 import { icon, resIcon } from '../icons';
 import { REJECT_TEXT } from '../texts';
+import { Joystick, useButton } from '../joystick';
 import { openSitePicker } from './sitePicker';
 
 export { openSitePicker };
@@ -140,7 +141,17 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     h('div', { class: 'base-info' }, comfortEl, resEl),
     away,
   );
-  const bottom = h('div', { class: 'base-bottom' });
+  // Seitenleiste im Baumodus und schwebende Leiste für Auswahl/Bestätigung
+  const panelBody = h('div', { class: 'panel-body' });
+  const panel = h(
+    'aside',
+    { class: 'base-panel', 'aria-label': 'Baumodus' },
+    h('div', { class: 'panel-head' }, h('b', null, svgEl(icon('hammer', 18)), 'Baumodus'), h('button', { class: 'btn small', type: 'button', onclick: () => setBuilding(false) }, svgEl(icon('check', 16)), 'Fertig')),
+    panelBody,
+  );
+  const ctx = h('div', { class: 'base-ctx' });
+  const buildToggle = h('button', { class: 'build-toggle', type: 'button', onclick: () => setBuilding(true) }, svgEl(icon('hammer', 22)), h('span', null, 'Bauen'));
+  const controls = h('div', { class: 'base-controls' });
   const roofBtn = h('button', { class: 'iconbtn small', type: 'button', 'aria-label': 'Dächer zeigen', 'aria-pressed': 'false' }, svgEl(icon('roof', 18)));
   const wallBtn = h('button', { class: 'iconbtn small', type: 'button', 'aria-label': 'Wände: Ausschnitt' }, svgEl(icon('cutaway', 18)));
   const cam = h(
@@ -152,7 +163,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     wallBtn,
     h('button', { class: 'iconbtn small', type: 'button', 'aria-label': 'Ganzes Gelände zeigen', onclick: () => scene.fitPlot() }, svgEl(icon('fit', 18))),
   );
-  const el = h('div', { class: 'overlay base-view', role: 'dialog', 'aria-label': 'Die Endstation' }, stage, head, cam, bottom);
+  const el = h('div', { class: 'overlay base-view', role: 'dialog', 'aria-label': 'Die Endstation' }, stage, head, cam, controls, buildToggle, ctx, panel);
   host.append(el);
 
   let top: Top = 'furnish';
@@ -161,6 +172,9 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   let mode: Mode = { kind: 'browse' };
   let roofs = false;
   let wallView: 'cut' | 'full' | 'low' = 'cut';
+  let building = false;
+  const control = app.settings.get().control;
+  el.dataset.control = control;
 
   const scene = new BaseScene(stage);
   scene.setPhase(opts.phase());
@@ -252,31 +266,90 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   };
 
   // --- Unterer Bereich -------------------------------------------------------------------
+  const setBuilding = (on: boolean) => {
+    if (on && !needHere()) return;
+    building = on;
+    mode = { kind: 'browse' };
+    render();
+  };
+
   const render = () => {
     renderHead();
     sync();
-    clear(bottom);
+    clear(panelBody);
+    clear(ctx);
+    if (mode.kind === 'place' || mode.kind === 'tool') building = true;
+    el.dataset.build = building ? 'on' : 'off';
     scene.toolCapture = null;
     scene.hideGhost();
     scene.unmark();
     scene.clearPreview();
     scene.setHiddenItem(mode.kind === 'place' && mode.uid !== undefined ? mode.uid : null);
-    scene.setGridVisible(top === 'build' || mode.kind === 'place');
+    scene.setGridVisible(building);
     renderSections();
-    if (mode.kind === 'place') renderPlaceBar(mode);
-    else if (mode.kind === 'selected') renderSelectedBar(mode.uid);
-    else if (mode.kind === 'obstacle') renderObstacleBar(mode.id);
-    else if (mode.kind === 'section') renderSectionBar(mode.sx, mode.sy);
-    else {
-      bottom.append(topTabs());
+    if (building) {
+      panelBody.append(topTabs());
       if (top === 'furnish') renderFurnish();
       else if (top === 'build') renderBuild();
       else renderLand();
     }
+    if (mode.kind === 'place') renderPlaceBar(mode);
+    else if (mode.kind === 'selected') renderSelectedBar(mode.uid);
+    else if (mode.kind === 'obstacle') renderObstacleBar(mode.id);
+    else if (mode.kind === 'section') renderSectionBar(mode.sx, mode.sy);
+    renderControls();
     requestAnimationFrame(() => {
-      const hgt = el.clientHeight || 1;
-      scene.setViewShift(Math.max(0, Math.min(0.3, (bottom.offsetHeight - head.offsetHeight) / (2 * hgt))));
+      const w = el.clientWidth || 1;
+      scene.setViewShift(0, building ? panel.offsetWidth / (2 * w) : 0);
     });
+  };
+
+  // --- Steuerung im Ansichtsmodus: Joystick und Benutzen ---------------------------------
+  let joy: Joystick | null = null;
+  let use: ReturnType<typeof useButton> | null = null;
+  let useTimer = 0;
+  const doUse = async () => {
+    const t = scene.findInteract();
+    if (!t) return;
+    if (t.kind === 'item') {
+      mode = { kind: 'selected', uid: t.uid };
+      return render();
+    }
+    const o = idx().obstacles.find((x) => x.id === t.id);
+    if (!o || !needHere()) return;
+    const def = OBSTACLES[o.kind];
+    if (await dispatch({ type: 'clearObstacle', id: o.id })) {
+      app.toast(`${def.verb}: +${itemsLine(def.reward)}`, 'good');
+      render();
+    }
+  };
+  const renderControls = () => {
+    const show = control === 'joystick' && !building;
+    scene.followCharacter = show;
+    if (!show) {
+      clear(controls);
+      joy = null;
+      use = null;
+      scene.driveSource = null;
+      clearInterval(useTimer);
+      return;
+    }
+    if (joy) return;
+    joy = new Joystick();
+    use = useButton(() => void doUse());
+    controls.append(joy.el, use.el);
+    const j = joy;
+    scene.driveSource = () => j.value;
+    const refreshUse = () => {
+      const t = scene.findInteract();
+      if (!t) return use?.setLabel(null);
+      if (t.kind === 'item') return use?.setLabel('Ansehen');
+      const o = idx().obstacles.find((x) => x.id === t.id);
+      use?.setLabel(o ? OBSTACLES[o.kind].verb : null);
+    };
+    refreshUse();
+    clearInterval(useTimer);
+    useTimer = window.setInterval(refreshUse, 250);
   };
 
   const topTabs = () =>
@@ -336,7 +409,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
       }),
     );
     const left = idx().obstacles.length;
-    append(bottom, [tabs, list, h('p', { class: 'drawer-hint' }, left && plot().items.length < 2 ? 'Tipp: Räum Schutt und Gestrüpp weg, dann ist Platz. Tippe es an.' : 'Tippe auf den Boden, dann läuft deine Figur dorthin.')]);
+    append(panelBody, [tabs, list, h('p', { class: 'drawer-hint' }, left && plot().items.length < 2 ? 'Tipp: Räum Schutt und Gestrüpp weg, dann ist Platz.' : 'Tippe ein Teil an, dann stellst du es auf.')]);
   };
 
   const startPlace = (k: FurnitureId) => {
@@ -366,9 +439,9 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     if (mode.kind !== 'place') return;
     const problem = placementProblem(st(), mode.item, mode.x, mode.y, mode.rot, mode.uid);
     scene.showGhost(mode.item, mode.x, mode.y, mode.rot, !problem);
-    const confirm = bottom.querySelector<HTMLButtonElement>('.confirm-place');
+    const confirm = ctx.querySelector<HTMLButtonElement>('.confirm-place');
     if (confirm) confirm.disabled = !!problem;
-    const hint = bottom.querySelector('.ctx-title small');
+    const hint = ctx.querySelector('.ctx-title small');
     if (hint) hint.textContent = problem === 'no_wall' ? 'Braucht eine Wand im Rücken. Drehen hilft.' : problem ? 'Hier ist kein Platz.' : 'Zieh es an seinen Platz oder tippe auf ein Feld.';
   };
 
@@ -402,7 +475,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     scene.onToolEnd = (hit) => {
       if (!dragged && hit.cell) placeAtCell(m, hit.cell.x, hit.cell.y);
     };
-    bottom.append(
+    ctx.append(
       h(
         'div',
         { class: 'ctx-bar' },
@@ -461,7 +534,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     const f = footprint(it.kind, it.rot);
     scene.mark(it.x, it.y, f.w, f.d);
     const def = FURNITURE[it.kind];
-    bottom.append(
+    ctx.append(
       h(
         'div',
         { class: 'ctx-bar' },
@@ -505,7 +578,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     const def = OBSTACLES[o.kind];
     scene.mark(o.x, o.y, o.w, o.d);
     const keep = o.kind === 'tree' ? ' Du kannst ihn auch stehen lassen und drumherum bauen.' : '';
-    bottom.append(
+    ctx.append(
       h(
         'div',
         { class: 'ctx-bar' },
@@ -584,9 +657,9 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
       );
     };
     const list = h('div', { class: 'drawer-list' }, [...pieces.map(card), card(null)]);
-    append(bottom, [tabs, list]);
+    append(panelBody, [tabs, list]);
     if (tool) renderToolRow(tool);
-    else bottom.append(h('p', { class: 'drawer-hint' }, 'Wähle ein Bauteil. Dann ziehst du mit einem Finger, zwei Finger schieben die Ansicht.'));
+    else panelBody.append(h('p', { class: 'drawer-hint' }, 'Wähle ein Bauteil. Dann ziehst du mit einem Finger, zwei Finger schieben die Ansicht.'));
   };
 
   const startTool = (piece: PieceId | null) => {
@@ -682,7 +755,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
       const afford = RESOURCE_ORDER.every((r) => st().inventory[r] >= (pay[r] ?? 0));
       const n = plan.keys.length;
       const what = isEdge ? (n === 1 ? 'Stück' : 'Stücke') : n === 1 ? 'Feld' : 'Felder';
-      bottom.append(
+      ctx.append(
         h(
           'div',
           { class: 'ctx-bar compact' },
@@ -737,7 +810,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
             ? 'Zieh ein Rechteck auf: vier Wände auf einmal.'
             : 'Zieh mit einem Finger von Ecke zu Ecke.'
           : 'Tippe ein Feld an oder zieh ein Rechteck auf.';
-    bottom.append(
+    ctx.append(
       h(
         'div',
         { class: 'tool-row' },
@@ -809,7 +882,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     const cost = reclaimCost(p);
     const left = idx().obstacles.length;
     const total = SECTIONS * SECTIONS;
-    bottom.append(
+    panelBody.append(
       h(
         'div',
         { class: 'land-panel' },
@@ -833,7 +906,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   const renderSectionBar = (sx: number, sy: number) => {
     const s = st();
     const cost = reclaimCost(plot());
-    bottom.append(
+    ctx.append(
       h(
         'div',
         { class: 'ctx-bar' },
@@ -887,7 +960,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
       if (hit.cell) placeAtCell(mode, hit.cell.x, hit.cell.y);
       return;
     }
-    if (top === 'land' && hit.section && reclaimable().some((s) => s.sx === hit.section!.sx && s.sy === hit.section!.sy)) {
+    if (building && top === 'land' && hit.section && reclaimable().some((s) => s.sx === hit.section!.sx && s.sy === hit.section!.sy)) {
       mode = { kind: 'section', sx: hit.section.sx, sy: hit.section.sy };
       return render();
     }
@@ -900,8 +973,9 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     else {
       const wasBrowsing = mode.kind === 'browse';
       mode = { kind: 'browse' };
-      if (hit.cell && !scene.walkTo(hit.cell.x, hit.cell.y) && wasBrowsing && idx().unlocked[hit.cell.y * 36 + hit.cell.x] === 0 && top !== 'land')
-        app.toast('Dieser Teil ist noch zugewuchert. Unter „Gelände“ kannst du ihn zurückerobern.');
+      const walk = control === 'tap' || building;
+      if (hit.cell && walk && !scene.walkTo(hit.cell.x, hit.cell.y) && wasBrowsing && idx().unlocked[hit.cell.y * 36 + hit.cell.x] === 0 && !(building && top === 'land'))
+        app.toast('Dieser Teil ist noch zugewuchert. Im Baumodus unter „Gelände“ kannst du ihn zurückerobern.');
     }
     render();
   };
@@ -924,14 +998,17 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
       if (mode.kind !== 'browse') {
         mode = { kind: 'browse' };
         render();
-      } else close();
+      } else if (building) setBuilding(false);
+      else close();
     }
+    if (e.key === 'b' || e.key === 'B') setBuilding(!building);
     if (e.key === 'q' || e.key === 'Q') scene.rotateStep(-1);
     if (e.key === 'e' || e.key === 'E') scene.rotateStep(1);
   };
   window.addEventListener('keydown', onKey);
   const close = () => {
     clearInterval(tick);
+    clearInterval(useTimer);
     window.removeEventListener('keydown', onKey);
     scene.dispose();
     el.remove();
