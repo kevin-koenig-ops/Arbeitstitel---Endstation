@@ -132,6 +132,11 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - Basen besuchen (nur virtuell, über Freundesliste oder Code, nie mit echtem Ort).
 - Grundsatz: Die Welt draußen ist gefährlich, die Basis nie. Keine Angriffe auf die Basis.
 
+- Bewohner wie bei Animal Crossing: gerettete Überlebende ziehen ein, mit Persönlichkeit, Wünschen und kleinen Quests.
+- Ein Hund als Begleiter: erschnüffelt draußen Verstecke, schläft zu Hause am Lagerfeuer.
+- Vorkriegsmuseum: Fundstücke aus der alten Welt ausstellen (Sammelziel und Stolz, wie das Museum bei Animal Crossing).
+- Fotomodus für die Basis: freie Kamera, Filter, ohne Bedienelemente, zum Teilen (z. B. TikTok).
+
 **Draußen**
 - Rucksack mit Risiko: Beute ist erst sicher, wenn sie in der Basis ist. Eine Niederlage kostet einen Teil davon, nie alles.
 - Jagd: zufällige Tiere auf der Karte, manchmal seltene.
