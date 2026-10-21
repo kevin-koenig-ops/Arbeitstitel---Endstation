@@ -47,6 +47,7 @@ import {
   START_INVENTORY,
   START_WEAPONS,
   WEAPONS,
+  WILD,
   WORKBENCH_LEVELS,
 } from './content';
 import { ExploredView, revealAround, SECTOR_LEVELS } from './explore';
@@ -120,7 +121,7 @@ import type {
 import { resolveGridSpot } from './world';
 import { GOALS } from './progress';
 
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 const HOUR = 3600_000;
 /** Millisekunden pro Gesundheitspunkt (die Stufe des Zuhauses macht es schneller). */
 export function regenMs(state: PlayerState): number {
@@ -160,6 +161,7 @@ export function createPlayer(playerId: string, character: Character, now: number
     caches: [],
     radioAt: 0,
     fedUntil: 0,
+    wildAt: 0,
   };
 }
 
@@ -468,6 +470,27 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
 
     case 'stopDig': {
       state.dig = null;
+      break;
+    }
+
+    case 'roam': {
+      // Quer durchs Unterholz: Manchmal kommt dir etwas entgegen. Nie, wenn du erschöpft bist,
+      // nie direkt nach der letzten Begegnung. (Ob es wirklich Wald ist, prüft später der Server.)
+      if (action.terrain !== 'forest' || state.combat || state.dig) break;
+      if (state.health < MIN_HEALTH_TO_FIGHT || ctx.now - state.wildAt < WILD.cooldownMs) break;
+      const meters = Math.max(0, Math.min(WILD.maxMeters, action.meters));
+      const night = dayPhase(action.at, ctx.now) === 'night';
+      const chance = 1 - Math.pow(1 - WILD.chancePer25m * (night ? WILD.nightFactor : 1), meters / 25);
+      const window = Math.floor(ctx.now / 60_000);
+      const r = rngFrom(ctx.worldSeed, state.playerId, 'unterholz', window, Math.round(action.at.lat * 4000), Math.round(action.at.lon * 4000));
+      if (r() >= chance) break;
+      const roll = r();
+      const group: FoeKind[] = roll < 0.12 ? ['brute'] : roll < 0.42 ? ['crawler', 'walker'] : night ? ['walker', 'walker'] : ['walker'];
+      const spot: Spot = { id: `w:${window}`, kind: 'hide', source: 'grid', pos: action.at, name: 'Unterholz' };
+      state.wildAt = ctx.now;
+      state.dig = null;
+      state.combat = { spot, enemy: group[0] === 'screamer' ? 'walker' : group[0], group, window, ambush: true, wild: true };
+      events.push({ type: 'wild', group }, { type: 'combatStarted', enemy: state.combat.enemy });
       break;
     }
 

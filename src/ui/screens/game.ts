@@ -3,11 +3,12 @@
 import { FALLBACK_START, IS_PREVIEW, VIEW_RADIUS_M } from '../../config';
 import { CACHE, ENEMIES, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, SURVIVAL_ORDER } from '../../core/content';
 import { ExploredView, SECTOR_LEVELS, sectorOf } from '../../core/explore';
-import { bearingDeg, distanceM, formatDistance } from '../../core/geo';
+import { bearingDeg, distanceM, formatDistance, offsetM } from '../../core/geo';
 import { rankOf } from '../../core/progress';
 import { currentHealth, dayNumber, packCount, pendingHarvest, readyAt, readyParts, searchRangeM, spotKey } from '../../core/rules';
 import type { Cache, LatLon, Spot } from '../../core/types';
 import { DEMO, GameMap, type SpotView } from '../../map/GameMap';
+import { WalkNet } from '../../map/walkNet';
 import {
   AnchoredLocation,
   GpsLocation,
@@ -206,6 +207,15 @@ export function gameScreen(app: App): Screen {
       updateSpots();
     },
   });
+
+  // Zum Testen: im Simulationsmodus zu einem Punkt laufen (Meter östlich/nördlich vom Start)
+  if (localStorage.getItem('endstation.debug'))
+    (window as unknown as { __walk?: unknown }).__walk = (dx: number, dy: number) => {
+      if (!(provider instanceof SimulatedLocation)) return null;
+      const s0 = mapMode === 'demo' ? DEMO.start : provider.position;
+      walkTo(offsetM(s0, dx, dy));
+      return { ways: net?.wayCount ?? 0, legs: routeOff.length, off: routeOff.filter(Boolean).length };
+    };
 
   // Zum Testen: einen Fundbeleg zeigen, ohne hinzulaufen
   if (localStorage.getItem('endstation.debug'))
@@ -444,12 +454,86 @@ export function gameScreen(app: App): Screen {
     locateBtn.classList.remove('lost');
   };
 
-  const walkTo = (p: LatLon) => {
-    if (provider instanceof SimulatedLocation) {
-      provider.walkTo(p);
-      gm?.setTarget(p);
-      if (gm && !gm.follow) recenter();
+  // --- Wegenetz (nur Testmodus): im Ort über Straßen und Wege, draußen auch quer ------------
+  let net: WalkNet | null = null;
+  let netAt = 0;
+  let routeOff: boolean[] = [];
+  let snapHintAt = 0;
+  /** Wegenetz rund um p, bei Bedarf neu aus den geladenen Kartendaten gebaut. */
+  const walkNet = (p: LatLon, needM = 0): WalkNet | null => {
+    if (!gm) return null;
+    const now = performance.now();
+    const stale = !net || distanceM(net.center, p) + needM > 450 || now - netAt > (net.wayCount ? 20000 : 3000);
+    if (stale) {
+      try {
+        net = new WalkNet(gm.walkInput(p, Math.max(700, needM + 300)));
+        netAt = now;
+      } catch {
+        net = null;
+      }
     }
+    return net;
+  };
+
+  const walkTo = (p: LatLon) => {
+    if (!(provider instanceof SimulatedLocation)) return;
+    const from = provider.position;
+    const n = walkNet(from, distanceM(from, p));
+    const r = n?.wayCount ? n.route(from, p) : null;
+    if (r) {
+      provider.walkPath(r.path, r.speeds);
+      routeOff = r.offroad;
+      gm?.setRoute(r.path, r.offroad);
+      gm?.setTarget(r.end);
+      if (r.snapped && performance.now() - snapHintAt > 30000) {
+        snapHintAt = performance.now();
+        app.toast('Im Ort geht es nur über Straßen und Wege.');
+      }
+    } else {
+      provider.walkTo(p);
+      routeOff = [];
+      gm?.setRoute(null);
+      gm?.setTarget(p);
+    }
+    if (gm && !gm.follow) recenter();
+  };
+
+  // Quer durchs Unterholz: langsamer, und manchmal kommt dir etwas entgegen
+  let roamFrom: LatLon | null = null;
+  let roamM = 0;
+  let roamBusy = false;
+  let wasForest = false;
+  let forestHintAt = 0;
+  const checkRoam = (f: Fix) => {
+    const prev = roamFrom;
+    roamFrom = f.pos;
+    if (provider?.kind !== 'sim' || !net || !prev) return;
+    const d = distanceM(prev, f.pos);
+    if (d < 0.5 || d > 80) return;
+    const forest = net.terrainAt(f.pos) === 'forest';
+    if (forest && !wasForest && performance.now() - forestHintAt > 90000) {
+      forestHintAt = performance.now();
+      app.toast('Unterholz: Hier kommst du nur langsam voran, und es kann dir etwas begegnen.');
+    }
+    wasForest = forest;
+    if (!forest) return;
+    roamM += d;
+    if (roamM < 25 || roamBusy || overlay) return;
+    const meters = roamM;
+    roamM = 0;
+    roamBusy = true;
+    void app.backend
+      .dispatch({ type: 'roam', at: f.pos, accuracyM: f.accuracyM, meters, terrain: 'forest' })
+      .then((res) => {
+        if (destroyed || !res.events.some((e) => e.type === 'wild')) return;
+        if (provider instanceof SimulatedLocation) provider.halt();
+        gm?.setRoute(null);
+        gm?.setTarget(null);
+        sheet.close();
+        app.toast('Im Unterholz bewegt sich etwas …', 'warn');
+        window.setTimeout(() => !destroyed && openFight(), 900);
+      })
+      .finally(() => (roamBusy = false));
   };
 
   // --- Joystick (nur in der Simulation; mit GPS läufst du selbst) ---------------------
@@ -502,10 +586,15 @@ export function gameScreen(app: App): Screen {
       const len = Math.hypot(v.x, v.y);
       // Richtung relativ zur gedrehten Karte; Tempo wie beim Antippen (rennen)
       const ang = (gm.bearing * Math.PI) / 180 + Math.atan2(v.x, -v.y);
-      const dist = provider.speed * len * dt;
+      const from = provider.position;
+      const n = walkNet(from);
+      // Im Wald abseits der Wege langsamer; im Ort rutscht die Figur zurück auf die Straße
+      const dist = provider.speed * len * dt * (n?.wayCount ? n.speedAt(from) : 1);
       if (!gm.follow) recenter();
       gm.setTarget(null);
-      provider.nudge(Math.sin(ang) * dist, Math.cos(ang) * dist);
+      gm.setRoute(null);
+      const to = offsetM(from, Math.sin(ang) * dist, Math.cos(ang) * dist);
+      provider.moveTo(n?.wayCount ? n.step(from, to) : to);
     };
     joyRaf = requestAnimationFrame(loop);
     renderLocChip();
@@ -532,7 +621,13 @@ export function gameScreen(app: App): Screen {
     updateFigure(f);
     if (first) gm.centerOn(f.pos, false);
     else if (gm.follow) gm.centerOn(f.pos, !f.simulated);
-    if (provider instanceof SimulatedLocation && !provider.moving) gm.setTarget(null);
+    if (provider instanceof SimulatedLocation && !provider.moving) {
+      gm.setTarget(null);
+      if (routeOff.length) {
+        gm.setRoute(null);
+        routeOff = [];
+      }
+    }
     // Der Rest (Suchradius, Fundstellen, Nebel) höchstens ein paar Mal pro Sekunde
     const now = performance.now();
     clearTimeout(heavyTimer);
@@ -555,6 +650,9 @@ export function gameScreen(app: App): Screen {
     }
     if (first || !f.simulated) renderLocChip();
     ambience?.setPosition(f.pos);
+    // Reststrecke nachziehen, Unterholz prüfen
+    if (provider instanceof SimulatedLocation && provider.moving && routeOff.length) gm.setRoute(provider.remaining, routeOff.slice(provider.leg));
+    checkRoam(f);
     void explore(f);
     if (first) renderSectorChip();
     updateFog();
@@ -596,7 +694,7 @@ export function gameScreen(app: App): Screen {
       overlay = null;
       renderHud();
       updateSpots();
-      if (end.outcome === 'won' && end.loot) sheet.showLoot(end.spot, end.loot, end.ambush ? 'Überfall abgewehrt. Mehr war hier nicht mehr zu holen.' : end.kills && end.kills > 1 ? `${end.kills} Gegner erledigt` : `${ENEMIES[end.enemy].name} erledigt`);
+      if (end.outcome === 'won' && end.loot) sheet.showLoot(end.spot, end.loot, end.spot.id.startsWith('w:') ? 'Begegnung im Unterholz überstanden.' : end.ambush ? 'Überfall abgewehrt. Mehr war hier nicht mehr zu holen.' : end.kills && end.kills > 1 ? `${end.kills} Gegner erledigt` : `${ENEMIES[end.enemy].name} erledigt`);
       else if (end.outcome === 'fled') app.toast('Du hast dich zurückgezogen.');
     });
   };

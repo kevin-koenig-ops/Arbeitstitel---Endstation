@@ -11,6 +11,10 @@ import type { PlayerState } from './types';
 type Raw = Record<string, unknown> & { schema?: number };
 
 const MIGRATIONS: Record<number, (s: Raw) => void> = {
+  // Version 9 -> 10: Begegnungen im Unterholz (Abkühlzeit).
+  9: (s) => {
+    s.wildAt = 0;
+  },
   // Version 1 -> 2: Kampf kam dazu (Gesundheit, Waffen, laufender Kampf, Statistik)
   1: (s) => {
     s.health = MAX_HEALTH;

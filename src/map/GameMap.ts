@@ -12,9 +12,12 @@ import { FogOfWar } from './fogOfWar';
 import demoWorld from './demoWorld.json';
 import { patternImage } from './patterns';
 import { buildStyle, DECOR_MINZOOM, loadRealSource } from './style';
+import type { WalkInput } from './walkNet';
 
 /** Umkreis der Detail-Ebene. Dahinter liegt ohnehin Nebel. */
 const DECOR_RADIUS_M = 550;
+/** Da läuft niemand: Autobahn, Gleise, Fähren, Seilbahnen. */
+const NOT_WALKABLE = ['motorway', 'rail', 'transit', 'ferry', 'aerialway', 'raceway', 'bus_guideway', 'busway'];
 const DRIVABLE = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service', 'residential', 'unclassified', 'living_street'];
 
 export type SpotState = 'ready' | 'cooldown' | 'inrange';
@@ -278,6 +281,74 @@ export class GameMap {
       type: 'FeatureCollection',
       features: [{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [circleRing(c, radiusM)] } }],
     });
+  }
+
+  /** Geplante Strecke zeigen (Testmodus): offroad = Abschnitt quer durchs Gelände. */
+  setRoute(path: LatLon[] | null, offroad: boolean[] = []) {
+    if (!this.loaded) return;
+    const features: GeoJSON.Feature[] = [];
+    if (path && path.length > 1) {
+      let cur: [number, number][] = [ll(path[0])];
+      let off = offroad[0] ?? false;
+      for (let i = 1; i < path.length; i++) {
+        const o = offroad[i - 1] ?? false;
+        if (o !== off) {
+          features.push({ type: 'Feature', properties: { off }, geometry: { type: 'LineString', coordinates: cur } });
+          cur = [ll(path[i - 1])];
+          off = o;
+        }
+        cur.push(ll(path[i]));
+      }
+      features.push({ type: 'Feature', properties: { off }, geometry: { type: 'LineString', coordinates: cur } });
+    }
+    (this.map.getSource('route') as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features });
+  }
+
+  /** Straßen, Wege, Häuser, Wasser, Ortsflächen und Wald rund um einen Punkt (für das Wegenetz). */
+  walkInput(center: LatLon, radiusM: number): WalkInput {
+    const real = this.opts.mode === 'real';
+    const out: WalkInput = { center, ways: [], buildings: [], water: [], built: [], forest: [] };
+    let feats: (layer: string) => { geometry: GeoJSON.Geometry; properties: Record<string, unknown> | null }[];
+    if (real) {
+      if (!this.loaded || !this.map.getSource('omt')) return out;
+      feats = (layer) => this.map.querySourceFeatures('omt', { sourceLayer: layer });
+    } else feats = (layer) => DEMO.geojson.features.filter((f) => f.properties?._layer === layer) as unknown as { geometry: GeoJSON.Geometry; properties: Record<string, unknown> | null }[];
+    const kx = 111320 * Math.cos((center.lat * Math.PI) / 180);
+    const near = (coords: number[][]) => {
+      for (const [lon, lat] of coords) if (Math.hypot((lon - center.lon) * kx, (lat - center.lat) * 111320) <= radiusM) return true;
+      // Große Flächen: Mittelpunkt liegt vielleicht außerhalb, aber sie überdecken uns
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const [lon, lat] of coords) {
+        x0 = Math.min(x0, lon);
+        x1 = Math.max(x1, lon);
+        y0 = Math.min(y0, lat);
+        y1 = Math.max(y1, lat);
+      }
+      return center.lon >= x0 && center.lon <= x1 && center.lat >= y0 && center.lat <= y1;
+    };
+    const polys = (layer: string, classes: string[] | null, to: [number, number][][][]) => {
+      for (const f of feats(layer)) {
+        if (classes && !classes.includes(String(f.properties?.class ?? ''))) continue;
+        const g = f.geometry;
+        const list = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+        for (const rings of list) if (rings[0]?.length >= 4 && near(rings[0])) to.push(rings as [number, number][][]);
+      }
+    };
+    try {
+      for (const f of feats('transportation')) {
+        if (NOT_WALKABLE.includes(String(f.properties?.class ?? ''))) continue;
+        const g = f.geometry;
+        const list = g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : [];
+        for (const c of list) if (c.length > 1 && near(c)) out.ways.push(c as [number, number][]);
+      }
+      polys('building', null, out.buildings);
+      polys('water', null, out.water);
+      polys('landuse', ['residential', 'commercial', 'industrial', 'retail', 'garages', 'railway'], out.built);
+      polys('landcover', ['wood', 'forest'], out.forest);
+    } catch {
+      /* ohne Kartendaten: freies Laufen */
+    }
+    return out;
   }
 
   setTarget(p: LatLon | null) {

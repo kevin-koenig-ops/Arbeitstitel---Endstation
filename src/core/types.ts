@@ -123,6 +123,8 @@ export interface Combat {
   window: number;
   /** Beim Wühlen überrascht (dann gibt es keine Extra-Beute). */
   ambush?: boolean;
+  /** Begegnung abseits der Wege im Wald (keine echte Fundstelle). */
+  wild?: boolean;
 }
 
 /** Weiter wühlen nach dem Durchsuchen: mehr Beute, aber jedes Mal lauter. */
@@ -241,6 +243,8 @@ export interface PlayerState {
   radioAt: number;
   /** Bis wann du satt bist (Eintopf vom Holzofen): mehr Beute. */
   fedUntil: number;
+  /** Letzte Begegnung im Unterholz (danach eine Weile Ruhe). */
+  wildAt: number;
 }
 
 /** Ein Versteck, auf das ein Hinweis zeigt. Es läuft nie ab. */
@@ -310,6 +314,8 @@ export type Action =
   | { type: 'dig'; at: LatLon; accuracyM: number }
   /** Aufhören zu wühlen. */
   | { type: 'stopDig' }
+  /** Abseits der Wege unterwegs (Meter seit der letzten Meldung). Im Wald kann dir etwas begegnen. */
+  | { type: 'roam'; at: LatLon; accuracyM: number; meters: number; terrain: 'forest' }
   /** Ertrag einer Anlage (Regentonne, Hochbeet) abholen. */
   | { type: 'harvest'; uid: number }
   /** Zu Hause: alles aus dem Rucksack ins Lager. */
@@ -394,6 +400,7 @@ export type GameEvent =
   | { type: 'combatStarted'; enemy: EnemyId }
   | { type: 'dug'; items: Partial<Inventory>; kram?: KramId; collectible?: CollectibleId; round: number; noise: number; left: number }
   | { type: 'ambush'; group: FoeKind[] }
+  | { type: 'wild'; group: FoeKind[] }
   | { type: 'combatWon'; enemy: EnemyId; kills?: number; weaponBroke?: WeaponId }
   | { type: 'combatLost'; enemy: EnemyId; dropped: Partial<Inventory>; weaponBroke?: WeaponId }
   | { type: 'fled'; weaponBroke?: WeaponId }

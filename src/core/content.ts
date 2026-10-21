@@ -736,6 +736,18 @@ export const DIG = {
   collectChance: 0.03,
 };
 
+/** Abseits der Wege im Wald: Wandler, Kriecher, selten ein Borkenmann (siehe Lore). */
+export const WILD = {
+  /** Chance pro 25 m quer durchs Unterholz. */
+  chancePer25m: 0.07,
+  /** Nachts öfter. */
+  nightFactor: 1.5,
+  /** Danach so lange Ruhe. */
+  cooldownMs: 4 * 60_000,
+  /** Höchstens so viele Meter zählen pro Meldung (gegen Sprünge). */
+  maxMeters: 60,
+};
+
 // --- Draußen: Händlerkisten und Verstecke -------------------------------------------
 
 /** Liegengebliebene Händlerkarren: tauchen für ein Zeitfenster an einer Fundstelle auf (für alle gleich). */

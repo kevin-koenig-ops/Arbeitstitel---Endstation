@@ -81,6 +81,9 @@ export class SimulatedLocation implements LocationProvider {
   readonly kind = 'sim' as const;
   private pos: LatLon;
   private target: LatLon | null = null;
+  private path: LatLon[] = [];
+  private speeds: number[] = [];
+  private idx = 0;
   private onFix: ((f: Fix) => void) | null = null;
   private raf = 0;
   private last = 0;
@@ -105,18 +108,52 @@ export class SimulatedLocation implements LocationProvider {
     return this.target !== null;
   }
 
+  get position(): LatLon {
+    return this.pos;
+  }
+
+  /** Was von der Strecke noch übrig ist, ab der Figur. */
+  get remaining(): LatLon[] {
+    return [this.pos, ...this.path.slice(this.idx)];
+  }
+
+  /** Index des Abschnitts, auf dem die Figur gerade läuft (für die Anzeige der Reststrecke). */
+  get leg() {
+    return this.idx;
+  }
+
+  /** Geradeaus hinlaufen. */
   walkTo(target: LatLon) {
-    this.target = target;
+    this.walkPath([this.pos, target], [1]);
+  }
+
+  /** Eine Strecke ablaufen (aus dem Wegenetz). speeds: Tempo-Faktor je Abschnitt (1 = auf dem Weg). */
+  walkPath(path: LatLon[], speeds: number[]) {
+    this.path = path.slice(1);
+    this.speeds = speeds.slice();
+    this.idx = 0;
+    this.target = this.path[0] ?? null;
     this.last = performance.now();
     cancelAnimationFrame(this.raf);
-    this.raf = requestAnimationFrame(this.step);
+    if (this.target) this.raf = requestAnimationFrame(this.step);
+  }
+
+  /** Stehen bleiben (z. B. wenn etwas aus dem Unterholz kommt). */
+  halt() {
+    this.target = null;
+    this.path = [];
+    cancelAnimationFrame(this.raf);
   }
 
   /** Mit dem Joystick schieben: dx nach Osten, dy nach Norden (Meter). */
   nudge(dxM: number, dyM: number) {
-    this.target = null;
-    cancelAnimationFrame(this.raf);
-    this.pos = offsetM(this.pos, dxM, dyM);
+    this.moveTo(offsetM(this.pos, dxM, dyM));
+  }
+
+  /** Direkt an eine Stelle setzen (Joystick mit Wegenetz). */
+  moveTo(p: LatLon) {
+    this.halt();
+    this.pos = p;
     this.emit();
   }
 
@@ -124,17 +161,24 @@ export class SimulatedLocation implements LocationProvider {
     if (!this.target) return;
     const dt = Math.max(0, Math.min(0.1, (t - this.last) / 1000));
     this.last = t;
-    const d = distanceM(this.pos, this.target);
-    const stepM = this.speed * dt;
-    if (d <= stepM) {
-      this.pos = this.target;
-      this.target = null;
-    } else {
-      const f = stepM / d;
-      this.pos = {
-        lat: this.pos.lat + (this.target.lat - this.pos.lat) * f,
-        lon: this.pos.lon + (this.target.lon - this.pos.lon) * f,
-      };
+    // So viele Sekunden Laufzeit sind übrig; im Wald zählt jeder Meter mehr
+    let time = dt;
+    while (time > 0 && this.target) {
+      const v = this.speed * (this.speeds[this.idx] ?? 1);
+      const d = distanceM(this.pos, this.target);
+      if (d <= v * time) {
+        this.pos = this.target;
+        time -= d / v;
+        this.idx += 1;
+        this.target = this.path[this.idx] ?? null;
+      } else {
+        const f = (v * time) / d;
+        this.pos = {
+          lat: this.pos.lat + (this.target.lat - this.pos.lat) * f,
+          lon: this.pos.lon + (this.target.lon - this.pos.lon) * f,
+        };
+        time = 0;
+      }
     }
     this.emit();
     if (this.target) this.raf = requestAnimationFrame(this.step);

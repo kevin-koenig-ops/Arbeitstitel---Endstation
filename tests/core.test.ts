@@ -162,7 +162,7 @@ describe('Spielstand', () => {
     void health, healthAt, weapons, combat;
     const old = { ...v1, schema: 1, stats: { searches: 7 } };
     const m = migrate(JSON.parse(JSON.stringify(old)))!;
-    expect(m.schema).toBe(9);
+    expect(m.schema).toBe(10);
     expect(m.base).toEqual({ active: null, plots: {}, found: {} });
     expect(m.explored).toEqual({});
     expect(m.health).toBe(10);
@@ -240,5 +240,38 @@ describe('Kampf', () => {
     const healed = applyAction(st, { type: 'heal' }, ctx());
     expect(healed.state.health).toBe(9);
     expect(healed.state.inventory.medicine).toBe(1);
+  });
+});
+
+describe('Unterholz', () => {
+  const roam = (s: PlayerState, now: number, i: number) =>
+    applyAction(s, { type: 'roam', at: offsetM(HOME, i * 25, 0), accuracyM: 5, meters: 25, terrain: 'forest' }, ctx(now));
+
+  it('bringt quer durch den Wald manchmal eine Begegnung, danach ist Ruhe', () => {
+    let s = fresh();
+    let met = -1;
+    for (let i = 0; i < 400 && met < 0; i++) {
+      const r = roam(s, T0 + i * 61_000, i);
+      s = r.state;
+      if (r.events.some((e) => e.type === 'wild')) met = i;
+    }
+    expect(met).toBeGreaterThanOrEqual(0);
+    expect(s.combat?.wild).toBe(true);
+    expect(s.combat?.group.length).toBeGreaterThan(0);
+    // Solange der Kampf läuft und kurz danach: keine neue Begegnung
+    const again = roam({ ...s, combat: null }, T0 + met * 61_000 + 60_000, met + 1);
+    expect(again.events.some((e) => e.type === 'wild')).toBe(false);
+  });
+
+  it('lässt Erschöpfte in Ruhe', () => {
+    let s = { ...fresh(), health: 1, healthAt: T0 };
+    let any = false;
+    // Kurz hintereinander (keine Zeit zum Erholen), an vielen Stellen
+    for (let i = 0; i < 200; i++) {
+      const r = roam(s, T0 + i * 1000, i);
+      s = r.state;
+      any ||= r.events.some((e) => e.type === 'wild');
+    }
+    expect(any).toBe(false);
   });
 });

@@ -123,6 +123,11 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
     { id: 'range-fill', type: 'fill', source: 'range', paint: { 'fill-color': '#ffb22e', 'fill-opacity': 0.08 } },
     { id: 'range-line', type: 'line', source: 'range', paint: { 'line-color': '#ffb22e', 'line-width': 2, 'line-opacity': 0.8, 'line-dasharray': [2, 2] } },
 
+    // Geplante Strecke im Testmodus: durchgezogen auf Wegen, gepunktet quer durchs Gelände
+    { id: 'route-shadow', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#12110f', 'line-width': 8, 'line-opacity': 0.5 } },
+    { id: 'route-way', type: 'line', source: 'route', filter: ['!=', ['get', 'off'], true], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffb22e', 'line-width': 4, 'line-opacity': 0.95 } },
+    { id: 'route-off', type: 'line', source: 'route', filter: ['==', ['get', 'off'], true], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffd27a', 'line-width': 4, 'line-dasharray': [0.2, 2] } },
+
     // Suchkreise von Verstecken: wie mit Kreide auf den Boden gemalt
     { id: 'cache-fill', type: 'fill', source: 'caches', paint: { 'fill-color': '#e8dec8', 'fill-opacity': 0.07 } },
     { id: 'cache-line', type: 'line', source: 'caches', paint: { 'line-color': '#e8dec8', 'line-width': 2.5, 'line-opacity': 0.75, 'line-dasharray': [1, 2.2] } },
@@ -210,7 +215,7 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
   }
 
   const empty: SourceSpecification = { type: 'geojson', data: { type: 'FeatureCollection', features: [] } };
-  const sources: Record<string, SourceSpecification> = { range: empty, decor: { ...empty }, glow: { ...empty }, caches: { ...empty } };
+  const sources: Record<string, SourceSpecification> = { range: empty, decor: { ...empty }, glow: { ...empty }, caches: { ...empty }, route: { ...empty } };
   if (mode === 'real' && real) sources.omt = real.source;
 
   const style: StyleSpecification = {

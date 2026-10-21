@@ -732,7 +732,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
       last = performance.now();
       raf = requestAnimationFrame(loop);
       const n = aliveFoes(st).length;
-      say(combat.ambush ? 'Überfall! Zu viel Lärm gemacht.' : n > 1 ? `${n} Gegner!` : `Ein ${FOE_TACTICS[aliveFoes(st)[0].kind].name}!`, 'bad');
+      say(combat.wild ? 'Aus dem Unterholz!' : combat.ambush ? 'Überfall! Zu viel Lärm gemacht.' : n > 1 ? `${n} Gegner!` : `Ein ${FOE_TACTICS[aliveFoes(st)[0].kind].name}!`, 'bad');
       if (firstFight) showHelp();
     })
     .catch(() => {
