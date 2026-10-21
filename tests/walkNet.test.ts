@@ -73,3 +73,14 @@ describe('Wegenetz', () => {
     expect(distanceM(q, ll(305, 2))).toBeLessThan(0.01);
   });
 });
+
+describe('Wegenetz: raus aus dem Ort', () => {
+  it('läuft über die Straße bis zum Ortsrand und dann quer zum Ziel', () => {
+    // Start mitten im Ort, Ziel auf dem Feld hinter dem Wohngebiet (Norden)
+    const r = net.route(ll(0, 0), ll(80, 260))!;
+    expect(r).not.toBeNull();
+    expect(r.snapped).toBe(false);
+    expect(distanceM(r.end, ll(80, 260))).toBeLessThan(1);
+    expect(r.offroad.some((o) => o)).toBe(true);
+  });
+});

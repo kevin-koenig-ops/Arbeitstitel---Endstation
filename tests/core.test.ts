@@ -162,7 +162,7 @@ describe('Spielstand', () => {
     void health, healthAt, weapons, combat;
     const old = { ...v1, schema: 1, stats: { searches: 7 } };
     const m = migrate(JSON.parse(JSON.stringify(old)))!;
-    expect(m.schema).toBe(10);
+    expect(m.schema).toBe(11);
     expect(m.base).toEqual({ active: null, plots: {}, found: {} });
     expect(m.explored).toEqual({});
     expect(m.health).toBe(10);

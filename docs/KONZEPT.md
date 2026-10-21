@@ -182,6 +182,18 @@ Die Figur aus der Charaktererstellung ist ein Low-Poly-Modell (Frisur, Hautton, 
 - **Echte Größe:** etwa 1,80 m, überall im selben Maßstab wie Häuser, Straßen, Wände (2,40 m) und Möbel. Auf der Karte wächst und schrumpft sie beim Zoomen mit; ganz weit draußen bleibt sie mindestens so groß, dass man sich noch findet.
 - **Gangart passt zum Tempo:** gehen, joggen, rennen. In der Simulation rennt sie mit 6 m/s.
 
+## Erkunden: der Drang, nachzusehen
+
+Drei Dinge wecken ihn: Man sieht etwas, weiß aber nicht, was es ist. Etwas führt einen irgendwohin. Je weiter man geht, desto seltsamer wird es.
+
+- **Besondere Orte:** Einmal pro Gegend (~1,5 km) ein abgestürzter Hubschrauber, ein ausgebrannter Konvoi, eine verriegelte Bunkertür (Rote Zone), ein verlassenes Zeltlager, ein Funkmast oder eine abgeworfene Hilfslieferung. Fest aus dem Weltstartwert, also für alle gleich, aber bei jedem woanders. Nie an sensiblen Orten, nie im Ort oder in Gärten, sondern draußen im Offenen. Reiche Beute, beim ersten Besuch ein eigenes Erinnerungsstück.
+- **Das sichtbare Unbekannte:** Bis 3 km weit zeigen Pfeile am Bildschirmrand Rauch, ein Licht, ein Funksignal oder einen Fallschirm, mit Entfernung. Auf der Karte steht nur ein Fragezeichen mit Rauch, Flackern oder Funkwellen. Was es ist, sieht man erst vor Ort.
+- **Spuren und Zettel-Ketten:** Blut-, Schleif- oder Fußspuren führen sichtbar zu einem Versteck. Manche Zettel sind der Anfang einer Kette aus drei Verstecken, am Ende wartet dreifache Beute und etwas fürs Fundbuch. Im Zeltlager liegt immer der Anfang einer Kette.
+- **Neuland:** Wo man noch kaum war, ist die Beute besser (Neuland +10 %, fernes Land +30 %, öfter Seltenes). Bewusst nicht nach Abstand zum Zuhause gerechnet, dessen Ort bleibt privat.
+- **Fundbuch der Orte:** Jeder Ortstyp zählt beim ersten Fund (mit kleinem Bonus). Fehlende stehen als Fragezeichen mit Hinweis drin („Am Waldrand, mit Blick aufs Feld“).
+- **Orte erzählen:** Jede Fundstelle hat einen Satz zur Stimmung; an manchen steht bei Tag: „Komm nachts wieder“.
+- **Kompass:** Nadel oben rechts. Antippen: Norden oben; nochmal: Die Karte dreht sich mit der Blickrichtung des Handys.
+
 ## Karte freilaufen, Tageszeit, Wetter
 
 - **Nebel:** Unbekanntes Gebiet liegt unter Nebel. Was du gerade siehst (~140 m), ist frei. Wo du gegangen bist (~55 m Umkreis), bleibt dauerhaft aufgedeckt.

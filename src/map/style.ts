@@ -129,8 +129,10 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
     { id: 'route-off', type: 'line', source: 'route', filter: ['==', ['get', 'off'], true], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffd27a', 'line-width': 4, 'line-dasharray': [0.2, 2] } },
 
     // Suchkreise von Verstecken: wie mit Kreide auf den Boden gemalt
-    { id: 'cache-fill', type: 'fill', source: 'caches', paint: { 'fill-color': '#e8dec8', 'fill-opacity': 0.07 } },
-    { id: 'cache-line', type: 'line', source: 'caches', paint: { 'line-color': '#e8dec8', 'line-width': 2.5, 'line-opacity': 0.75, 'line-dasharray': [1, 2.2] } },
+    { id: 'cache-fill', type: 'fill', source: 'caches', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': '#e8dec8', 'fill-opacity': 0.07 } },
+    { id: 'cache-line', type: 'line', source: 'caches', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'line-color': '#e8dec8', 'line-width': 2.5, 'line-opacity': 0.75, 'line-dasharray': [1, 2.2] } },
+    // Spuren auf dem Boden: eine Reihe dunkler Tritte bis zum Versteck
+    { id: 'cache-trail', type: 'line', source: 'caches', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#3b2a1f', 'line-width': 5, 'line-opacity': 0.8, 'line-dasharray': [0.25, 1.6] } },
 
     // Warmes Leuchten am Boden unter Fundstellen
     {

@@ -1,11 +1,11 @@
 // Der Spielbildschirm: Karte, Standort, Fundstellen, HUD und Overlays.
 
 import { FALLBACK_START, IS_PREVIEW, VIEW_RADIUS_M } from '../../config';
-import { CACHE, ENEMIES, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, SURVIVAL_ORDER } from '../../core/content';
+import { CACHE, ENEMIES, HINT_NAMES, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, SPECIAL, SPECIAL_HINT, SURVIVAL_ORDER, TIER } from '../../core/content';
 import { ExploredView, SECTOR_LEVELS, sectorOf } from '../../core/explore';
 import { bearingDeg, distanceM, formatDistance, offsetM } from '../../core/geo';
 import { rankOf } from '../../core/progress';
-import { currentHealth, dayNumber, packCount, pendingHarvest, readyAt, readyParts, searchRangeM, spotKey } from '../../core/rules';
+import { currentHealth, dayNumber, packCount, pendingHarvest, readyAt, readyParts, regionTier, searchRangeM, spotKey } from '../../core/rules';
 import type { Cache, FoeKind, LatLon, Spot } from '../../core/types';
 import { DEMO, GameMap, type SpotView } from '../../map/GameMap';
 import { WalkNet } from '../../map/walkNet';
@@ -27,7 +27,8 @@ import { getBasePlace } from '../../services/basePlace';
 import { openBattle } from '../game/battle';
 import { AmbienceController, ambienceEffects, currentAmbience, guardSightM, PHASE_NAMES, WEATHER_NAMES, type Ambience } from '../game/ambience';
 import { Particles } from '../game/dust';
-import { SpotSheet } from '../game/spotSheet';
+import { compassWord, SpotSheet } from '../game/spotSheet';
+import { Pointers, type PointerTarget } from '../../map/pointers';
 import { goalChip, openProgressPanel } from '../game/progressPanel';
 import { icon } from '../icons';
 import { settingsPanel } from '../settingsPanel';
@@ -111,6 +112,11 @@ export function gameScreen(app: App): Screen {
   let particles: Particles | null = null;
   let ambience: AmbienceController | null = null;
   const sectorChip = h('button', { class: 'env-chip sector-chip', type: 'button', onclick: () => explainSector() });
+  // Neuland: wo du kaum warst, ist die Beute besser
+  const tierChip = h('button', { class: 'env-chip tier-chip', type: 'button', hidden: true, onclick: () => explainTier() });
+  // Kompass: Nadel zeigt nach Norden. Antippen: Karte nach Norden, nochmal: Karte dreht sich mit deiner Blickrichtung
+  const needle = h('span', { class: 'compass-needle', 'aria-hidden': 'true' }, h('i', null, 'N'));
+  const compassBtn = h('button', { class: 'iconbtn compass', type: 'button', 'aria-label': 'Kompass', onclick: () => toggleCompass() }, needle);
   const envChip = h('button', { class: 'env-chip', type: 'button', onclick: () => app.toast(ambienceEffects(currentAmbience())) });
   const goals = goalChip(app, () => openProgress());
   // Versteck in der Nähe: kalt, warm, heiß (und dann ausgraben)
@@ -160,11 +166,13 @@ export function gameScreen(app: App): Screen {
         'div',
         { class: 'hud-tr' },
         cacheChip,
+        tierChip,
         sectorChip,
         envChip,
         h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Menü', onclick: () => openPause() }, svgEl(icon('menu', 20))),
       ),
     ),
+    compassBtn,
     banners,
     h('div', { class: 'hud-bottom' }, locChip, homeBtn, packBtn, locateBtn),
   );
@@ -348,6 +356,7 @@ export function gameScreen(app: App): Screen {
       renderHud();
     }
     renderSectorChip();
+    renderTierChip();
   };
 
   // Hinweise oben: einer für GPS, einer für die Karte. So verdrängen sie sich nicht.
@@ -387,11 +396,14 @@ export function gameScreen(app: App): Screen {
     if (!gm || !fix) return;
     if (!force && lastRefreshPos && distanceM(lastRefreshPos, fix.pos) < 60) return;
     lastRefreshPos = fix.pos;
-    const list = await app.backend.spotsNear(fix.pos, VIEW_RADIUS_M, gm.poiCandidates());
-    if (destroyed || !gm) return;
-    // Keine Fundstellen auf Friedhöfen, an Schulen, Krankenhäusern, Gedenkstätten oder in Gebäuden
+    // Keine Fundstellen auf Friedhöfen, an Schulen, Krankenhäusern, Gedenkstätten, in Gebäuden oder im Wasser
     const sensitive = gm.sensitiveCheck();
     app.backend.setPlaceFilter((p) => sensitive(p, true));
+    app.backend.setSpecialFilter(gm.builtCheck());
+    const list = await app.backend.spotsNear(fix.pos, VIEW_RADIUS_M, gm.poiCandidates());
+    if (destroyed || !gm) return;
+    // Besondere Orte weiter weg: für die Hinweise am Horizont
+    specials = app.backend.specialsNear(fix.pos, SPECIAL.hintM);
     spots = new Map(list.filter((s) => !sensitive(s.pos, s.source === 'grid')).map((s) => [s.id, s]));
     updateSpots();
   };
@@ -419,9 +431,11 @@ export function gameScreen(app: App): Screen {
           notifyNear(spot);
         }
       } else if (d > range + 15) notified.delete(spot.id);
-      views.push({ spot, state: st, guard, cart: !!cart, fresh: !seenSet(s).has(spotKey(spot.id)) });
+      const unknown = spot.source === 'special' && !s.discovered[spot.id] && st !== 'inrange' ? SPECIAL_HINT[spot.kind] : undefined;
+      views.push({ spot, state: st, guard, cart: !!cart, fresh: !seenSet(s).has(spotKey(spot.id)), unknown });
     }
     gm.setSpots(views);
+    updatePointers();
     if (cartNews.length) {
       const sp = cartNews.splice(0)[0];
       app.toast(`Funkspruch: Bei „${sp.name}“ ist ein Händlerkarren liegen geblieben. ${fix ? formatDistance(distanceM(fix.pos, sp.pos)) + ' entfernt.' : ''}`, 'good');
@@ -432,6 +446,132 @@ export function gameScreen(app: App): Screen {
       lastSheetRefresh = t;
       sheet.refresh();
     }
+  };
+
+  // --- Erkunden: Hinweise am Horizont, Pfeile zu Verstecken, Neuland, Kompass ---------
+  let specials: Spot[] = [];
+  let pointers: Pointers | null = null;
+  const notifiedSpecials = new Set<string>();
+  const updatePointers = () => {
+    const s = app.backend.current();
+    if (!pointers || !s || !fix) return;
+    const here = fix.pos;
+    const targets: PointerTarget[] = [];
+    // Die drei nächsten unbekannten besonderen Orte (liegen sie im Bild, zeigt die Karte das Fragezeichen selbst)
+    const range = searchRangeM(s);
+    const hidden = specials
+      .filter((sp) => !s.discovered[sp.id])
+      .map((sp) => ({ sp, d: distanceM(here, sp.pos) }))
+      .filter((x) => x.d > range && x.d <= SPECIAL.hintM)
+      .sort((a, b) => a.d - b.d)
+      .slice(0, 3);
+    for (const { sp, d } of hidden) {
+      const hint = SPECIAL_HINT[sp.kind] ?? 'smoke';
+      targets.push({
+        id: sp.id,
+        pos: sp.pos,
+        icon: hint,
+        label: HINT_NAMES[hint],
+        hideInside: d <= VIEW_RADIUS_M,
+        onTap: () => {
+          app.toast(`${HINT_NAMES[hint]}: ${formatDistance(d)} Richtung ${compassWord(bearingDeg(here, sp.pos))}. Was es ist, siehst du erst vor Ort.`);
+          // Im Testmodus gleich hinlaufen
+          if (provider?.kind === 'sim' && !joy) walkTo(sp.pos);
+        },
+      });
+    }
+    // Verstecke, deren Suchkreis noch nicht im Bild ist
+    for (const c of s.caches) {
+      if (distanceM(here, c.center) <= (c.areaM ?? CACHE.areaM) + 25) continue;
+      targets.push({ id: c.id, pos: c.center, icon: c.via === 'tracks' ? 'steps' : c.via === 'radio' ? 'radioSet' : 'chalk', label: 'Versteck', tone: 'cache', hideInside: true, onTap: () => sheet.showCache(c) });
+    }
+    pointers.set(targets);
+    pointers.setPlayer(here);
+    // Erstes Mal in der Nähe eines unbekannten Ortes: kurzer Hinweis
+    for (const sp of specials) {
+      if (s.discovered[sp.id] || notifiedSpecials.has(sp.id) || distanceM(here, sp.pos) > SPECIAL.nearM) continue;
+      notifiedSpecials.add(sp.id);
+      const hint = SPECIAL_HINT[sp.kind] ?? 'smoke';
+      app.toast(`${HINT_NAMES[hint]}, ganz nah. Sieh nach, was dort ist!`, 'good');
+    }
+  };
+
+  const renderTierChip = () => {
+    const s = app.backend.current();
+    if (!s || !fix) return;
+    const t = regionTier(s, fix.pos);
+    tierChip.hidden = t === 0;
+    if (t === 0) return;
+    clear(tierChip);
+    tierChip.dataset.tier = String(t);
+    tierChip.setAttribute('aria-label', `${TIER.names[t]}: bessere Beute`);
+    tierChip.append(svgEl(icon('sparkle', 15)), TIER.names[t]);
+  };
+  const explainTier = () => {
+    const s = app.backend.current();
+    if (!s || !fix) return;
+    const t = regionTier(s, fix.pos);
+    app.toast(
+      t === 2
+        ? `Fernes Land: Weit und breit warst du noch nie. Hier ist die Beute ${Math.round((TIER.lootFactor[2] - 1) * 100)} % besser, und du findest öfter Seltenes.`
+        : `Neuland: Diese Gegend kennst du noch kaum. Die Beute ist ${Math.round((TIER.lootFactor[1] - 1) * 100)} % besser, und du findest öfter Seltenes. Je weiter weg von deinen gewohnten Wegen, desto mehr.`,
+    );
+  };
+
+  // Kompass: north = Karte nach Norden; heading = Karte dreht sich mit dem Handy
+  let compassMode: 'north' | 'heading' = 'north';
+  let headingOff: (() => void) | null = null;
+  const renderNeedle = () => {
+    if (!gm) return;
+    needle.style.transform = `rotate(${-gm.bearing}deg)`;
+    compassBtn.dataset.mode = compassMode;
+    compassBtn.setAttribute('aria-label', compassMode === 'heading' ? 'Kompass: Karte dreht mit. Antippen: Norden oben' : 'Kompass: Norden. Antippen: Karte dreht mit deiner Blickrichtung');
+  };
+  const stopHeading = () => {
+    headingOff?.();
+    headingOff = null;
+  };
+  const toggleCompass = async () => {
+    if (!gm) return;
+    if (compassMode === 'heading' || Math.abs(gm.bearing) > 1) {
+      compassMode = 'north';
+      stopHeading();
+      gm.map.easeTo({ bearing: 0, duration: 500 });
+      renderNeedle();
+      return;
+    }
+    // Blickrichtung vom Handy (Android: absolute Ausrichtung; iPhone: braucht eine Erlaubnis)
+    const DOE = (window as unknown as { DeviceOrientationEvent?: { requestPermission?: () => Promise<string> } }).DeviceOrientationEvent;
+    try {
+      if (DOE?.requestPermission && (await DOE.requestPermission()) !== 'granted') throw new Error('nein');
+    } catch {
+      app.toast('Ohne Zugriff auf den Kompass bleibt Norden oben.');
+      return;
+    }
+    let got = false;
+    let last = 0;
+    const onOri = (e: DeviceOrientationEvent & { webkitCompassHeading?: number }) => {
+      const heading = e.webkitCompassHeading ?? (e.absolute && e.alpha !== null ? 360 - e.alpha : null);
+      if (heading === null || heading === undefined || !gm) return;
+      got = true;
+      const t = performance.now();
+      if (t - last < 120) return;
+      last = t;
+      gm.map.easeTo({ bearing: heading, duration: 150 });
+    };
+    const evName = 'ondeviceorientationabsolute' in window ? 'deviceorientationabsolute' : 'deviceorientation';
+    window.addEventListener(evName, onOri as EventListener);
+    headingOff = () => window.removeEventListener(evName, onOri as EventListener);
+    compassMode = 'heading';
+    renderNeedle();
+    window.setTimeout(() => {
+      if (!got && compassMode === 'heading') {
+        compassMode = 'north';
+        stopHeading();
+        renderNeedle();
+        app.toast('Dieses Gerät liefert keinen Kompass. Norden bleibt oben, die Nadel zeigt ihn.');
+      }
+    }, 2500);
   };
 
   const notifyNear = (spot: Spot) => {
@@ -655,6 +795,7 @@ export function gameScreen(app: App): Screen {
     checkRoam(f);
     void explore(f);
     if (first) renderSectorChip();
+    renderTierChip();
     updateFog();
     void refreshSpots(first);
     updateSpots();
@@ -787,12 +928,12 @@ export function gameScreen(app: App): Screen {
   const updateCaches = () => {
     const s = app.backend.current();
     if (!gm || !s) return;
-    gm.setCaches(s.caches.map((c) => ({ id: c.id, center: c.center, radiusM: CACHE.areaM })));
+    gm.setCaches(s.caches.map((c) => ({ id: c.id, center: c.center, radiusM: c.areaM ?? CACHE.areaM, trail: c.trail })));
     // Das nächste Versteck, in dessen Suchkreis (mit etwas Rand) du stehst
     let best: { c: Cache; d: number } | null = null;
     if (fix) {
       for (const c of s.caches) {
-        if (distanceM(fix.pos, c.center) > CACHE.areaM + 30) continue;
+        if (distanceM(fix.pos, c.center) > (c.areaM ?? CACHE.areaM) + 30) continue;
         const d = distanceM(fix.pos, c.spot.pos);
         if (!best || d < best.d) best = { c, d };
       }
@@ -988,6 +1129,10 @@ export function gameScreen(app: App): Screen {
       if (destroyed) return;
       gm.fog?.setExplored(app.backend.current()?.explored ?? {});
       refreshBaseMarker();
+      pointers = new Pointers(gm.map);
+      el.insertBefore(pointers.host, hud);
+      gm.map.on('rotate', renderNeedle);
+      renderNeedle();
       particles = new Particles(dust);
       ambience = new AmbienceController(app, el, gm.map, gm.fog?.canvas ?? null, particles, bolt);
       ambience.onChange((a) => {
@@ -1018,11 +1163,14 @@ export function gameScreen(app: App): Screen {
       clearTimeout(walkTimer);
       clearTimeout(heavyTimer);
       teardownJoystick();
+      stopHeading();
+      pointers?.destroy();
       offSettings();
       clearInterval(ticker);
       document.removeEventListener('visibilitychange', onVisible);
       provider?.stop();
       app.backend.setPlaceFilter(null);
+      app.backend.setSpecialFilter(null);
       gm?.destroy();
     },
   };

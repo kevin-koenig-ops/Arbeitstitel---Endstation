@@ -1,6 +1,8 @@
 // Untere Karte für eine Fundstelle: Infos, Durchsuchen, Fundbeleg.
 
-import { BACKGROUNDS, CACHE, CART, COLLECTIBLES, COOK, DIG, ENEMIES, FIRST_FIND_FACTOR, isMaterial, KRAM, LOOT_QUALITY, MEMENTOS, MIN_HEALTH_TO_FIGHT, RARITY, RESOURCE_ORDER, RESOURCES, SETS, SET_ORDER, SPOT_KINDS } from '../../core/content';
+import { BACKGROUNDS, CACHE, CART, CHAIN, COLLECTIBLES, COOK, DIG, ENEMIES, FIRST_FIND_FACTOR, HINT_NAMES, isMaterial, KRAM, LOOT_QUALITY, MEMENTOS, MIN_HEALTH_TO_FIGHT, NIGHT_HINT, RARITY, RESOURCE_ORDER, RESOURCES, SETS, SET_ORDER, SPECIAL_HINT, SPOT_KINDS, SPOT_STORIES, TIER, TRACK_LINES } from '../../core/content';
+import { hashString } from '../../core/rng';
+import { dayPhase } from '../../core/sun';
 import { bearingDeg, distanceM, formatDistance } from '../../core/geo';
 import { currentHealth, nextHealthIn, readyAt, regenMs, searchRangeM } from '../../core/rules';
 import type { Cache, CollectibleId, GameEvent, Inventory, LatLon, Quality, Spot } from '../../core/types';
@@ -13,6 +15,15 @@ import { REJECT_TEXT } from '../texts';
 import { blueprintName, SITES } from '../../core/building';
 import { enemySvg } from '../zombies';
 import { GAME_FOR, playLootGame } from './lootGame';
+
+/** Ein Satz zur Stimmung, fest pro Fundstelle. */
+export function spotStory(spot: Spot): string {
+  const list = SPOT_STORIES[spot.kind];
+  return list[(hashString(spot.id) >>> 0) % list.length];
+}
+
+/** Bei Tag an manchen Orten: nachts ist hier mehr los. */
+const NIGHT_KINDS = new Set(['hide', 'shed', 'container', 'heli', 'convoy', 'bunker', 'camp', 'mast']);
 
 /** Himmelsrichtung in Worten (für Hinweise auf Verstecke). */
 export function compassWord(deg: number): string {
@@ -92,6 +103,10 @@ export class SpotSheet {
     const guard = wait > 0 ? null : app.backend.guardFor(spot);
     const health = currentHealth(state, now);
     const cart = wait > 0 ? null : app.backend.cartFor(spot);
+    // Besonderer Ort, noch nie da gewesen und noch zu weit weg: was es ist, siehst du erst vor Ort
+    const hint = SPECIAL_HINT[spot.kind];
+    const unknown = spot.source === 'special' && !state.discovered[spot.id] && !inRange;
+    const nightHint = !unknown && NIGHT_KINDS.has(spot.kind) && dayPhase(spot.pos, now) !== 'night' && (hashString(`${spot.id}:nacht`) >>> 0) % 3 === 0;
 
     let status: string;
     let button: HTMLElement;
@@ -123,14 +138,19 @@ export class SpotSheet {
       h(
         'div',
         { class: 'sheet-head' },
-        h('span', { class: 'sheet-badge', 'data-source': spot.source, 'data-guard': guard ? '1' : '0', 'data-cart': cart ? '1' : '0' }, svgEl(cart ? icon('crate', 26) : spotIcon(spot.kind, 26))),
+        h('span', { class: 'sheet-badge', 'data-source': spot.source, 'data-guard': guard ? '1' : '0', 'data-cart': cart ? '1' : '0' }, svgEl(cart ? icon('crate', 26) : unknown && hint ? icon(hint, 26) : spotIcon(spot.kind, 26))),
         h(
           'div',
           null,
-          h('div', { class: 'sheet-kicker' }, cart ? `Händlerkiste · noch ${formatWait(cart.until - now)}` : spot.source === 'poi' ? 'Ort aus der Karte' : 'Fundstelle'),
-          h('h2', { class: 'sheet-title' }, spot.name),
+          h(
+            'div',
+            { class: 'sheet-kicker' },
+            cart ? `Händlerkiste · noch ${formatWait(cart.until - now)}` : unknown ? 'Unbekannt' : spot.source === 'special' ? 'Besonderer Ort' : spot.source === 'poi' ? 'Ort aus der Karte' : 'Fundstelle',
+          ),
+          h('h2', { class: 'sheet-title' }, unknown ? (hint ? HINT_NAMES[hint] : 'Etwas Unbekanntes') : spot.name),
         ),
       ),
+      unknown ? null : h('p', { class: 'sheet-story' }, spotStory(spot)),
       guard
         ? h(
             'div',
@@ -145,15 +165,18 @@ export class SpotSheet {
           )
         : cart
           ? h('p', { class: 'sheet-hint cart' }, `Ein Händlerkarren ist hier liegen geblieben. Viel mehr Beute als sonst (×${CART.lootFactor}), oft Kram und Sammelstücke. Nur für eine Weile.`)
-          : h('p', { class: 'sheet-hint' }, def.hint, state.spots[spot.id] ? null : h('span', { class: 'first-tag' }, ` Noch nie durchsucht: doppelte Beute.`)),
+          : unknown
+            ? h('p', { class: 'sheet-hint' }, 'Was dort ist, siehst du erst vor Ort. Besondere Orte gibt es nur einmal pro Gegend, mit seltener Beute.')
+            : h('p', { class: 'sheet-hint' }, def.hint, state.spots[spot.id] ? null : h('span', { class: 'first-tag' }, ` Noch nie durchsucht: doppelte Beute.`)),
+      nightHint ? h('p', { class: 'sheet-hint small night' }, svgEl(icon('moon', 14)), NIGHT_HINT) : null,
       h(
         'div',
         { class: 'sheet-meta' },
         h(
           'span',
           { class: 'likely' },
-          likely.map((r) => h('span', { class: 'likely-chip', title: RESOURCES[r].name }, svgEl(resIcon(r, 16)), RESOURCES[r].name)),
-          def.kramChance >= 0.2 ? h('span', { class: 'likely-chip junk', title: 'Kram zum Zerlegen' }, svgEl(icon('junk', 16)), 'Kram') : null,
+          unknown ? h('span', { class: 'likely-chip' }, svgEl(icon('question', 16)), 'Unbekannt') : likely.map((r) => h('span', { class: 'likely-chip', title: RESOURCES[r].name }, svgEl(resIcon(r, 16)), RESOURCES[r].name)),
+          !unknown && def.kramChance >= 0.2 ? h('span', { class: 'likely-chip junk', title: 'Kram zum Zerlegen' }, svgEl(icon('junk', 16)), 'Kram') : null,
         ),
         h('span', { class: 'sheet-status' + (inRange && wait <= 0 ? ' near' : '') }, status),
       ),
@@ -260,6 +283,8 @@ export class SpotSheet {
     if (ev.cart) tags.push(['gold', `Händlerkiste ×${CART.lootFactor}`]);
     if (ev.fed) tags.push(['good', `Satt +${Math.round(COOK.lootBonus * 100)} %`]);
     if (ev.night) tags.push(['night', 'Nacht +30 %']);
+    if (ev.tier) tags.push(['gold', `${TIER.names[ev.tier]} +${Math.round((TIER.lootFactor[ev.tier] - 1) * 100)} %`]);
+    if (ev.newKind) tags.push(['good', 'Neuer Ortstyp']);
     if (ev.bonus) tags.push(['good', 'Rückkehr ×2']);
     const items = h(
       'ul',
@@ -275,7 +300,9 @@ export class SpotSheet {
         'div',
         { class: 'receipt' + (ev.collectible ? ' epic' : '') },
         h('div', { class: 'receipt-head' }, h('span', null, 'Fundbeleg'), h('span', null, `Nr. ${String(state.stats.searches).padStart(4, '0')} · ${time}`)),
+        ev.discovery ? h('div', { class: 'receipt-discovery' }, svgEl(icon('sparkle', 16)), 'Entdeckt! Ein besonderer Ort') : null,
         h('div', { class: 'receipt-place' }, spot.name),
+        h('p', { class: 'receipt-story' }, spotStory(spot)),
         tags.length ? h('div', { class: 'receipt-tags' }, tags.map(([tone, t]) => h('span', { class: 'rtag', 'data-tone': tone }, t))) : null,
         ev.collectible ? this.collectibleNote(ev.collectible) : null,
         items,
@@ -321,7 +348,7 @@ export class SpotSheet {
       this.ctx.host.append(this.el);
     }
     const fix = this.ctx.getFix();
-    const toCircle = fix ? Math.max(0, distanceM(fix.pos, c.center) - CACHE.areaM) : null;
+    const toCircle = fix ? Math.max(0, distanceM(fix.pos, c.center) - (c.areaM ?? CACHE.areaM)) : null;
     const d = distanceM(c.fromPos, c.spot.pos);
     const dir = compassWord(bearingDeg(c.fromPos, c.spot.pos));
     clear(this.el);
@@ -331,9 +358,17 @@ export class SpotSheet {
         'div',
         { class: 'sheet-head' },
         h('span', { class: 'sheet-badge', 'data-cache': '1' }, svgEl(icon(c.via === 'radio' ? 'radioSet' : 'chalk', 26))),
-        h('div', null, h('div', { class: 'sheet-kicker' }, 'Versteck'), h('h2', { class: 'sheet-title' }, c.via === 'radio' ? 'Hinweis per Funk' : 'Hinweis: ein Kreidezeichen')),
+        h(
+          'div',
+          null,
+          h('div', { class: 'sheet-kicker' }, c.chain ? `Zettel-Kette · ${c.chain.step} von ${c.chain.of}` : 'Versteck'),
+          h('h2', { class: 'sheet-title' }, c.via === 'radio' ? 'Hinweis per Funk' : c.via === 'tracks' ? 'Spuren auf dem Boden' : c.chain ? 'Ein Zettel mit Kreuzen' : 'Hinweis: ein Kreidezeichen'),
+        ),
       ),
-      h('p', { class: 'sheet-hint' }, `${c.via === 'radio' ? 'Auf Kanal 4' : `Bei „${c.fromName}“`}: etwa ${Math.round(d / 50) * 50} m Richtung ${dir}, bei: ${c.spot.name}.`),
+      c.via === 'tracks'
+        ? h('p', { class: 'sheet-hint' }, `${TRACK_LINES[(hashString(c.id) >>> 0) % TRACK_LINES.length]} Folge der Spur auf der Karte, etwa ${Math.round(d / 50) * 50} m Richtung ${dir}.`)
+        : h('p', { class: 'sheet-hint' }, `${c.via === 'radio' ? 'Auf Kanal 4' : `Bei „${c.fromName}“`}: etwa ${Math.round(d / 50) * 50} m Richtung ${dir}, bei: ${c.spot.name}.`),
+      c.chain ? h('p', { class: 'sheet-hint small' }, c.chain.step < c.chain.of ? 'Im Versteck liegt bestimmt der nächste Zettel. Am Ende der Kette wartet etwas Besonderes.' : 'Das ist der letzte Zettel. Hier liegt der Schatz.') : null,
       h(
         'p',
         { class: 'sheet-hint' },
@@ -366,8 +401,10 @@ export class SpotSheet {
       h(
         'div',
         { class: 'receipt cache' + (ev.collectible ? ' epic' : '') },
-        h('div', { class: 'receipt-head' }, h('span', null, 'Versteck ausgegraben'), h('span', null, c.via === 'radio' ? 'Funk' : 'Kreide')),
+        h('div', { class: 'receipt-head' }, h('span', null, ev.chainDone ? 'Ende der Kette!' : 'Versteck ausgegraben'), h('span', null, c.via === 'radio' ? 'Funk' : c.via === 'tracks' ? 'Spuren' : c.chain ? `Zettel ${c.chain.step}/${c.chain.of}` : 'Kreide')),
         h('div', { class: 'receipt-place' }, c.spot.name),
+        ev.chainDone ? h('p', { class: 'receipt-story' }, `Der letzte Zettel hat sich gelohnt: ×${CHAIN.finalFactor} Beute und etwas fürs Fundbuch.`) : null,
+        ev.next ? this.clueNote(ev.next) : null,
         ev.collectible ? this.collectibleNote(ev.collectible) : null,
         items,
         ev.kram
@@ -385,17 +422,14 @@ export class SpotSheet {
     if (!c) return null;
     const d = distanceM(c.fromPos, c.spot.pos);
     const dir = compassWord(bearingDeg(c.fromPos, c.spot.pos));
-    return h(
-      'div',
-      { class: 'receipt-clue' },
-      svgEl(icon('chalk', 22)),
-      h(
-        'span',
-        null,
-        h('b', null, 'Hinweis auf ein Versteck!'),
-        h('small', null, `Ein Kreidezeichen: etwa ${Math.round(d / 50) * 50} m Richtung ${dir}, bei: ${c.spot.name}. Der Suchkreis ist auf der Karte markiert.`),
-      ),
-    );
+    const where = `etwa ${Math.round(d / 50) * 50} m Richtung ${dir}`;
+    const [title, text] =
+      c.via === 'tracks'
+        ? ['Spuren!', `${TRACK_LINES[(hashString(c.id) >>> 0) % TRACK_LINES.length]} Sie führen ${where}. Folge ihnen auf der Karte.`]
+        : c.chain
+          ? [`Zettel ${c.chain.step} von ${c.chain.of}`, `Eine Karte mit Kreuzen: ${where}, bei: ${c.spot.name}. Am Ende der Kette wartet etwas Besonderes.`]
+          : ['Hinweis auf ein Versteck!', `Ein Kreidezeichen: ${where}, bei: ${c.spot.name}. Der Suchkreis ist auf der Karte markiert.`];
+    return h('div', { class: 'receipt-clue' }, svgEl(icon(c.via === 'tracks' ? 'steps' : 'chalk', 22)), h('span', null, h('b', null, title), h('small', null, text)));
   }
 
   /** „Weiter wühlen“: kleine Extrafunde, aber jedes Mal lauter. */

@@ -84,8 +84,17 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 - **Benachrichtigungen:** freundlich und abschaltbar („Dein Eintopf ist fertig“), nie Druck.
 - **Smartwatch-Anzeige.**
 
+## Als Nächstes (Wunsch von Kevin, 21.10. abends)
+
+1. **Reisescheine:** finden (besondere Orte, Ketten, Funk) oder jeden Tag einen geschenkt (höchstens 3 sammeln sich). Damit 30–60 Minuten an einen beliebigen Ort der Welt reisen und dort per Antippen über Straßen und Wege laufen, durchsuchen, kämpfen. Echtes Laufen bleibt besser (Neuland-Bonus, mehr Scheine).
+2. **Bestiarium:** Eintrag pro Kreatur beim ersten Treffen (Bild, Lore, wo und wann, was hilft, wie viele erledigt), unbekannte als graue Umrisse.
+3. **Tiere:** passend zu Gelände und Tageszeit auf der Karte (Hase, Fasan, Reh, Fuchs, Wildschwein; selten Luchs, ganz selten der weiße Hirsch). Jagen als kurzes Minispiel (Armbrust), bringt Nahrung, Leder, Trophäen. Sammlung zum Vervollständigen.
+4. **Glossar:** Begriffe aus der Lore (das Weinen, Flux, Rote Zonen, Elysis, Streifer …), schalten sich frei, sobald sie vorkommen.
+5. Jede Sammlung mit Zähler und Belohnung bei 100 %.
+
 ## Ideen für irgendwann
 
+- **Zuhause im echten Gebäude:** Beim Einrichten nimmt das Zuhause den echten Grundriss, die Stockwerke und das Grundstück des Gebäudes an dieser Stelle aus den Kartendaten (Low-Poly, nur auf dem Gerät). So kann man sich überall einrichten: in der Scheune am Dorfrand oder im leeren Laden um die Ecke. (Street View und Googles 3D-Städte gehen nicht: nur zum Anschauen erlaubt, kein Nachbauen, kostet pro Abruf.)
 - **Begleiter kämpfen mit (großes Update):** Hund oder Bewohner stehen im Kampf neben dir und bringen eigene Karten ins Deck (heilen, Falle stellen, ablenken).
 - Weitere Haustiere, die mitlaufen und in der Basis wohnen
 - Bahnhöfe als Handelsposten mit wandernden Händlern
@@ -218,4 +227,5 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - **Karten-HUD schlank:** oben links Figur mit Gesundheitsring und nächstes Ziel, oben rechts Sektor, Wetter, Menü; unten Zuhause, runder Rucksack-Knopf, Zentrieren mit GPS-Punkt. Vorräte, Name und Tag erst beim Antippen
 - **Bleicher Wächter:** neuer Gegner nur nachts, mit Kevins 3D-Modell (fürs Handy auf 260 KB verkleinert). Blick lähmt, weicht ins Dunkel zurück, springt an. Beute aus den Kellern und einmalig das Kellertagebuch
 - **Testmodus:** Figur läuft im Ort nur über Straßen und Wege (Strecke als Linie, quer durchs Gelände gepunktet), im Wald abseits der Wege langsamer mit Begegnungen, „Test: Angriff“ im Menü. Spielstand Version 10
+- **Erkunden:** besondere Orte (6 Arten, einmal pro Gegend), Hinweise am Horizont mit Pfeilen, Spuren und Zettel-Ketten, Neuland-Bonus, Fundbuch der Orte, Stimmungssätze, Kompass. Testmodus: im Ort nur Straßen, raus aufs Feld über den Ortsrand. Spielstand Version 11
 - **Endstation-Geschichte raus:** keine Linie 0, kein eigener Bus, die Basis heißt jetzt „Zuhause“. Bus-Look raus (LED-Schrift, Linienplan-Menü, LED-Icon). Platzhalter-Titel „Nachhall“ mit neuem Icon

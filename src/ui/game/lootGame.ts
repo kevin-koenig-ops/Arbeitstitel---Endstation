@@ -24,6 +24,12 @@ export const GAME_FOR: Record<SpotKind, LootGameKind> = {
   pharmacy: 'pry',
   hardware: 'pry',
   well: 'pry',
+  heli: 'pry',
+  convoy: 'pry',
+  bunker: 'lock',
+  camp: 'rummage',
+  mast: 'pry',
+  airdrop: 'pry',
 };
 
 const TITLE: Record<LootGameKind, string> = { lock: 'Schloss knacken', pry: 'Aufhebeln', rummage: 'Durchwühlen' };

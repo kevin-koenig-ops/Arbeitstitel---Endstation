@@ -269,12 +269,108 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     collectibles: ['phone', 'bike', 'teddy'],
     mementoChance: 0.2,
   },
+
+  // --- besondere Orte: einmal pro Gegend (~1,5 km), mit Geschichte und seltener Beute ---
+  heli: {
+    names: ['Abgestürzter Hubschrauber', 'Hubschrauberwrack'],
+    hint: 'Medizin, Elektronik, Metall aus dem Wrack',
+    cooldownMin: 720,
+    loot: [
+      { res: 'medicine', min: 1, max: 3, chance: 0.9 },
+      { res: 'electronics', min: 1, max: 3, chance: 0.85 },
+      { res: 'metal', min: 2, max: 4, chance: 0.9 },
+      { res: 'glass', min: 1, max: 2, chance: 0.5 },
+      { res: 'screws', min: 1, max: 2, chance: 0.5 },
+    ],
+    kramChance: 0.7,
+    kram: [['radio', 3], ['carBattery', 2], ['toolbox', 2], ['flashlight', 2]],
+    collectibles: ['globe'],
+    mementoChance: 0.05,
+  },
+  convoy: {
+    names: ['Ausgebrannter Konvoi', 'Liegengebliebene Lastwagen'],
+    hint: 'Vorräte und viel Metall von der Ladefläche',
+    cooldownMin: 720,
+    loot: [
+      { res: 'metal', min: 3, max: 5, chance: 0.95 },
+      { res: 'food', min: 1, max: 3, chance: 0.75 },
+      { res: 'water', min: 1, max: 3, chance: 0.75 },
+      { res: 'plastic', min: 1, max: 2, chance: 0.5 },
+      { res: 'screws', min: 1, max: 2, chance: 0.5 },
+    ],
+    kramChance: 0.7,
+    kram: [['gasCan', 3], ['carBattery', 2], ['toolbox', 2], ['tinCans', 2]],
+    collectibles: ['tv'],
+    mementoChance: 0.05,
+  },
+  bunker: {
+    names: ['Verriegelte Bunkertür', 'Alter Schutzbunker'],
+    hint: 'Was am Eingang zurückblieb. Drinnen ist eine Rote Zone.',
+    cooldownMin: 720,
+    loot: [
+      { res: 'medicine', min: 1, max: 2, chance: 0.75 },
+      { res: 'food', min: 1, max: 2, chance: 0.7 },
+      { res: 'water', min: 1, max: 2, chance: 0.7 },
+      { res: 'electronics', min: 1, max: 2, chance: 0.5 },
+      { res: 'metal', min: 1, max: 3, chance: 0.7 },
+    ],
+    kramChance: 0.6,
+    kram: [['flashlight', 3], ['radio', 2], ['cableReel', 2], ['tinCans', 1]],
+    collectibles: ['typewriter'],
+    mementoChance: 0.05,
+  },
+  camp: {
+    names: ['Verlassenes Zeltlager', 'Notlager im Wald'],
+    hint: 'Stoff, Vorräte, Holz. Und vielleicht eine Spur, wohin sie gingen.',
+    cooldownMin: 720,
+    loot: [
+      { res: 'cloth', min: 2, max: 4, chance: 0.9 },
+      { res: 'food', min: 1, max: 3, chance: 0.7 },
+      { res: 'water', min: 1, max: 2, chance: 0.6 },
+      { res: 'wood', min: 2, max: 3, chance: 0.8 },
+      { res: 'plastic', min: 1, max: 1, chance: 0.4 },
+    ],
+    kramChance: 0.7,
+    kram: [['blanket', 3], ['tinCans', 2], ['pan', 2], ['sneakers', 1]],
+    collectibles: ['guitar'],
+    mementoChance: 0.05,
+  },
+  mast: {
+    names: ['Funkmast', 'Alter Sendemast'],
+    hint: 'Kabel, Elektronik, Metall. Von oben sieht man weit.',
+    cooldownMin: 720,
+    loot: [
+      { res: 'electronics', min: 2, max: 4, chance: 0.95 },
+      { res: 'metal', min: 2, max: 3, chance: 0.85 },
+      { res: 'screws', min: 1, max: 2, chance: 0.6 },
+      { res: 'plastic', min: 1, max: 1, chance: 0.4 },
+    ],
+    kramChance: 0.7,
+    kram: [['cableReel', 3], ['carBattery', 2], ['radio', 2], ['brokenPhone', 1]],
+    collectibles: ['phone'],
+    mementoChance: 0.05,
+  },
+  airdrop: {
+    names: ['Abgeworfene Hilfslieferung', 'Kiste am Fallschirm'],
+    hint: 'Vorräte und Medizin, wenn noch keiner da war',
+    cooldownMin: 720,
+    loot: [
+      { res: 'food', min: 2, max: 4, chance: 0.95 },
+      { res: 'water', min: 2, max: 4, chance: 0.95 },
+      { res: 'medicine', min: 1, max: 2, chance: 0.7 },
+      { res: 'cloth', min: 1, max: 2, chance: 0.6 },
+    ],
+    kramChance: 0.6,
+    kram: [['tinCans', 3], ['blanket', 2], ['flashlight', 2]],
+    collectibles: ['teddy'],
+    mementoChance: 0.05,
+  },
 };
 
 /** Bewachte Fundstellen haben eher Kram. */
 export const GUARD_KRAM_BONUS = 0.2;
 /** Chance auf ein Sammelstück (wenn es hier noch eins zu finden gibt). */
-export const COLLECT_CHANCE = { grid: 0.07, poi: 0.12 };
+export const COLLECT_CHANCE = { grid: 0.07, poi: 0.12, special: 0.2 };
 export const GUARD_COLLECT_BONUS = 0.08;
 
 // --- Kram (zum Zerlegen) -------------------------------------------------------------
@@ -480,8 +576,8 @@ export interface MementoDef {
   id: string;
   title: string;
   text: string;
-  /** Gibt es nur von diesem Gegner (nicht beim Durchsuchen). */
-  from?: EnemyId;
+  /** Gibt es nur von diesem Gegner oder an diesem besonderen Ort (nicht beim normalen Durchsuchen). */
+  from?: EnemyId | SpotKind;
 }
 
 export const MEMENTOS: MementoDef[] = [
@@ -497,6 +593,12 @@ export const MEMENTOS: MementoDef[] = [
   { id: 'dogtag', title: 'Hundemarke', text: '„Bruno. Bitte zurückbringen.“ Die Telefonnummer ist nicht mehr lesbar.' },
   { id: 'ticket', title: 'Konzertkarte', text: 'Reihe 3, Platz 12. Das Konzert wäre am Samstag gewesen.' },
   { id: 'clipping', title: 'Zeitungsausschnitt', text: 'Nur die Überschrift ist lesbar: „Behörden raten zur Ruhe“.' },
+  { id: 'flightLog', title: 'Flugbuch', from: 'heli', text: 'Letzter Eintrag: „Evakuierung abgebrochen. Zu viele am Landeplatz. Wir drehen ab.“ Die Schrift wird am Ende krakelig.' },
+  { id: 'waybill', title: 'Frachtbrief', from: 'convoy', text: 'Ladung: Elysis-Saatgut, 40 Paletten. Ziel: Sammelstelle Nord. Empfänger: unleserlich. Jemand hat „NICHT AUSSÄEN“ an den Rand geschrieben.' },
+  { id: 'warningSign', title: 'Warnschild', from: 'bunker', text: '„Zutritt nur mit Atemschutz.“ Darunter, mit Kreide: „Nicht mal dann.“' },
+  { id: 'nameList', title: 'Liste der Namen', from: 'camp', text: 'Zwölf Namen, sieben durchgestrichen. Ganz unten: „Wir gehen zum Wasser. Wartet nicht.“' },
+  { id: 'broadcastPlan', title: 'Sendeplan', from: 'mast', text: 'Kanal 4, jeden Abend 20 Uhr. Daneben, unterstrichen: „Wer das hört: Ihr seid nicht allein.“' },
+  { id: 'aidLeaflet', title: 'Beipackzettel', from: 'airdrop', text: '„Hilfsgüter des Westbunds. Nicht zum Weiterverkauf.“ Auf der Rückseite hat jemand eine Landkarte gezeichnet.' },
   { id: 'cellarDiary', title: 'Kellertagebuch', from: 'watcher', text: 'Tag 212 ohne Sonne. Meine Haut ist hell wie Papier, die Augen brennen schon bei Kerzenlicht. Oben ist es nicht sicher. Ich bleibe unten. Ich passe auf.' },
 ];
 
@@ -588,7 +690,7 @@ export const NIGHT_ENEMY_WEIGHTS: readonly (readonly [EnemyId, number])[] = [...
 export const WATCHER_LOOT = { items: { medicine: 1, electronics: 2 } as Partial<Inventory>, kram: 'flashlight' as KramId, memento: 'cellarDiary' };
 
 /** Anteil bewachter Fundstellen. */
-export const GUARD_CHANCE = { grid: 0.25, poi: 0.4 };
+export const GUARD_CHANCE = { grid: 0.25, poi: 0.4, special: 0.35 };
 /** Bewachte Fundstellen lohnen sich: mehr Beute, öfter Erinnerungsstücke. */
 export const GUARD_LOOT_FACTOR = 1.5;
 export const GUARD_MEMENTO_BONUS = 0.12;
@@ -763,6 +865,125 @@ export const WILD = {
   /** Höchstens so viele Meter zählen pro Meldung (gegen Sprünge). */
   maxMeters: 60,
 };
+
+// --- Erkunden: besondere Orte, Neuland, Ketten, Spuren ------------------------------
+
+/** Besondere Orte: einmal pro Gegend (Kachel Zoom 14, ~1,5 km), fest aus dem Weltstartwert. */
+export const SPECIAL = {
+  zoom: 14,
+  /** Anteil der Gegenden mit einem besonderen Ort */
+  chance: 0.8,
+  /** So viele mögliche Stellen pro Gegend (die erste freie gilt, nie an sensiblen Orten) */
+  candidates: 6,
+  /** Bis zu dieser Entfernung sieht man am Horizont, dass da etwas ist */
+  hintM: 3000,
+  /** Ab hier zeigt die Karte das Fragezeichen an der echten Stelle */
+  nearM: 250,
+};
+export const SPECIAL_KINDS: SpotKind[] = ['heli', 'convoy', 'bunker', 'camp', 'mast', 'airdrop'];
+export const SPECIAL_WEIGHTS: readonly (readonly [SpotKind, number])[] = [
+  ['heli', 12],
+  ['convoy', 18],
+  ['bunker', 14],
+  ['camp', 22],
+  ['mast', 16],
+  ['airdrop', 18],
+];
+/** Was man von Weitem sieht, bevor man weiß, was es ist. */
+export type HintKind = 'smoke' | 'light' | 'signal' | 'chute';
+export const SPECIAL_HINT: Partial<Record<SpotKind, HintKind>> = { heli: 'smoke', convoy: 'smoke', bunker: 'light', camp: 'light', mast: 'signal', airdrop: 'chute' };
+export const HINT_NAMES: Record<HintKind, string> = {
+  smoke: 'Rauch am Horizont',
+  light: 'Ein Licht in der Ferne',
+  signal: 'Ein schwaches Funksignal',
+  chute: 'Ein Fallschirm in den Bäumen',
+};
+
+/** Neuland: Wo du noch kaum warst, ist die Beute seltener und besser. Stufe 0 vertraut, 1 Neuland, 2 fernes Land. */
+export const TIER = {
+  names: ['Vertraut', 'Neuland', 'Fernes Land'],
+  /** Fernes Land: kein erkundeter Sektor in dieser Entfernung (in Sektoren, je ~0,5 km) */
+  farSectors: 5,
+  luck: [0, 1, 2],
+  lootFactor: [1, 1.1, 1.3],
+  mementoBonus: [0, 0.02, 0.05],
+};
+
+/** Zettel-Ketten: ein Hinweis führt zum nächsten, am Ende wartet etwas Besonderes. */
+export const CHAIN = {
+  steps: 3,
+  minM: 300,
+  maxM: 700,
+  /** Anteil der Zettel-Hinweise, die eine Kette beginnen */
+  share: 0.3,
+  finalFactor: 3,
+};
+
+/** Spuren auf dem Boden, die zu einem Versteck führen. */
+export const TRACKS = {
+  chance: 0.04,
+  /** An Wracks und Lagern öfter */
+  specialChance: 0.35,
+  minM: 150,
+  maxM: 350,
+  areaM: 22,
+};
+export const TRACK_LINES = [
+  'Eine Blutspur führt weg. Jemand hat sich hier weggeschleppt.',
+  'Schleifspuren im Dreck, als hätte jemand etwas Schweres gezogen.',
+  'Frische Fußspuren, eilig, immer in eine Richtung.',
+  'Pfotenabdrücke, dazwischen ein verlorener Handschuh.',
+];
+
+/** Wo man welchen Ortstyp findet (fürs Fundbuch, solange er noch fehlt). */
+export const PLACE_WHERE: Record<SpotKind, string> = {
+  car: 'An Straßen und auf Parkplätzen',
+  backpack: 'Überall, wo jemand es eilig hatte',
+  shed: 'In Gärten und am Dorfrand',
+  container: 'An Sammelstellen und Straßenecken',
+  hide: 'Am Waldrand, mit Blick aufs Feld',
+  barrel: 'Bei Höfen, Werkstätten und Baustellen',
+  parcel: 'Vor Häusern und an Packstationen',
+  market: 'Supermärkte und Läden in der Stadt',
+  pharmacy: 'Apotheken und Drogerien',
+  hardware: 'Baumärkte, Werkstätten, Gartencenter',
+  fuel: 'Tankstellen an größeren Straßen',
+  well: 'Brunnen und Wasserstellen, oft im Dorf',
+  stop: 'Bushaltestellen, auch auf dem Land',
+  heli: 'Einmal pro Gegend. Achte auf Rauch am Horizont.',
+  convoy: 'Einmal pro Gegend. Achte auf Rauch am Horizont.',
+  bunker: 'Einmal pro Gegend. Achte auf ein Licht in der Ferne.',
+  camp: 'Einmal pro Gegend. Achte auf ein Licht in der Ferne.',
+  mast: 'Einmal pro Gegend. Achte auf ein Funksignal.',
+  airdrop: 'Einmal pro Gegend. Achte auf einen Fallschirm.',
+};
+/** Belohnung für einen neuen Ortstyp (Haupt-Rohstoff des Ortes). */
+export const NEW_PLACE_BONUS = 2;
+
+/** Ein Satz zur Stimmung beim Durchsuchen (fest pro Fundstelle). */
+export const SPOT_STORIES: Record<SpotKind, string[]> = {
+  car: ['Der Schlüssel steckt noch. Auf dem Beifahrersitz ein Kindersitz, leer.', 'Die Türen stehen offen, als wären alle gleichzeitig ausgestiegen.', 'Im Handschuhfach eine Straßenkarte, die Küste rot umkringelt.'],
+  backpack: ['Ordentlich gepackt. Wer packt so ordentlich und lässt es dann liegen?', 'Ein Riemen ist gerissen. Daneben Fußspuren, die schnell wurden.'],
+  shed: ['Werkzeug hängt noch sauber an der Wand. Nur der Spaten fehlt.', 'Es riecht nach Öl und altem Holz. Jemand hat hier gewohnt, eine Weile.'],
+  container: ['Obendrauf liegt ein Kinderschuh. Nur einer.', 'Jemand hat „HIER NICHTS“ draufgeschrieben. Wer glaubt das schon.'],
+  hide: ['Von hier oben sieht man das ganze Feld. Und das, was darüber zieht.', 'Eingeritzt ins Holz: Striche, sehr viele Striche.'],
+  barrel: ['Ein Fass ist mit Kreide markiert: ein Kreuz, ein Pfeil.', 'Es tropft noch. Irgendwer war vor Kurzem hier.'],
+  parcel: ['„Bitte beim Nachbarn abgeben.“ Der Nachbar ist auch nicht mehr da.', 'Das Paket ist aufgerissen, aber nicht ausgeräumt. Seltsam.'],
+  market: ['Die Regale sind leer, nur die Kasse steht noch offen.', 'Ein Einkaufswagen voller Wasserflaschen, mitten im Gang stehen gelassen.', 'Über der Tür hängt noch „Wir haben für Sie geöffnet“.'],
+  pharmacy: ['Hinter der Theke Zettel mit Namen und Dosierungen, säuberlich.', 'Die Glastür ist eingeschlagen, aber jemand hat danach aufgeräumt.'],
+  hardware: ['Die Kettensägen fehlen alle. Die Gartenzwerge sind noch da.', 'Am Eingang ein Schild: „Nur Barzahlung“. Darunter: „Nur Tausch“.'],
+  fuel: ['Der Zapfhahn hängt noch im Tank eines Autos ohne Fahrer.', 'An der Scheibe der Preis von damals. Man muss trotzdem lachen.'],
+  well: ['Das Wasser ist klar. Jemand hat ein sauberes Glas daneben gestellt.', 'Am Rand frische Kreidezeichen: drei Striche, ein Haken.'],
+  stop: ['Der Fahrplan ist zugeklebt mit Suchzetteln.', 'Auf der Bank liegt eine Thermoskanne, noch halb voll.'],
+  heli: ['Die Rotorblätter stecken im Boden wie Messer. Die Kabine ist leer.', 'Auf dem Rumpf ein rotes Kreuz, halb abgebrannt.'],
+  convoy: ['Sechs Lastwagen, Stoßstange an Stoßstange. Keiner ist weitergekommen.', 'Die Planen flattern. Auf einer steht „Hilfsgüter“.'],
+  bunker: ['Die Tür ist von innen verriegelt. Manchmal klopft es.', 'Ein rotes Licht blinkt über dem Eingang, Tag und Nacht.'],
+  camp: ['Die Feuerstelle ist kalt, die Zelte stehen noch. Niemand antwortet.', 'Wäsche hängt auf einer Leine zwischen zwei Bäumen.'],
+  mast: ['Der Mast summt leise. Irgendwo läuft noch ein Generator.', 'Von oben hängt ein Kabel bis zum Boden, frisch geflickt.'],
+  airdrop: ['Der Fallschirm hängt in den Bäumen, die Kiste ist aufgeplatzt.', 'Jemand hat schon versucht, die Kiste aufzustemmen, und aufgegeben.'],
+};
+/** Hinweis bei Tag: nachts ist es hier anders (mehr Beute, mehr Gefahr). */
+export const NIGHT_HINT = 'Komm nachts wieder: Dann gibt es hier mehr zu holen, aber nicht ohne Gefahr.';
 
 // --- Draußen: Händlerkisten und Verstecke -------------------------------------------
 

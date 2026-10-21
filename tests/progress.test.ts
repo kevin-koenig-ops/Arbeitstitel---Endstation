@@ -183,7 +183,9 @@ describe('Draußen', () => {
       const r = search(st, spot);
       st = r.state;
       clue = loot(r.events).clue;
-      if (clue) break;
+      // Hier geht es um Zettel (Spuren haben eigene Tests)
+      if (clue && st.caches.find((x) => x.id === clue)?.via === 'note') break;
+      clue = undefined;
     }
     expect(clue).toBeDefined();
     const c = st.caches.find((x) => x.id === clue)!;

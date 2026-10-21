@@ -4,8 +4,10 @@
 //    entstehen aus (Welt-Seed + Kachel) 0–2 Fundstellen. Deterministisch, also für
 //    alle Spieler gleich, und überall vorhanden, auch im kleinsten Dorf.
 // 2. POI: Echte Orte aus OpenStreetMap (Supermarkt, Apotheke, Bushaltestelle …).
+// 3. Besondere Orte: einmal pro Gegend (~1,5 km) ein Hubschrauberwrack, ein Konvoi,
+//    eine Bunkertür … Fest aus dem Weltstartwert, nie an sensiblen Orten.
 
-import { GRID_KIND_WEIGHTS, POI_KINDS, POI_NAMES, SPOT_KINDS } from './content';
+import { GRID_KIND_WEIGHTS, POI_KINDS, POI_NAMES, SPECIAL, SPECIAL_WEIGHTS, SPOT_KINDS } from './content';
 import { distanceM, fromTile, toTile } from './geo';
 import { pick, pickWeighted, rngFrom } from './rng';
 import type { LatLon, Spot, SpotKind } from './types';
@@ -56,6 +58,44 @@ export function resolveGridSpot(seed: string, id: string): Spot | null {
   const m = /^g:(\d+):(-?\d+):(-?\d+):(\d+)$/.exec(id);
   if (!m || Number(m[1]) !== GRID_ZOOM) return null;
   return gridSpotsInCell(seed, Number(m[2]), Number(m[3]))[Number(m[4])] ?? null;
+}
+
+// --- Besondere Orte -----------------------------------------------------------------
+
+/** Die möglichen Stellen eines besonderen Ortes in einer Gegend (die erste freie gilt). */
+function specialCandidates(seed: string, x: number, y: number): Spot[] {
+  const r = rngFrom(seed, 'besonders', SPECIAL.zoom, x, y);
+  if (r() >= SPECIAL.chance) return [];
+  const kind = pickWeighted(r, SPECIAL_WEIGHTS);
+  const name = pick(r, SPOT_KINDS[kind].names);
+  const out: Spot[] = [];
+  for (let k = 0; k < SPECIAL.candidates; k++) {
+    const fx = x + 0.15 + r() * 0.7;
+    const fy = y + 0.15 + r() * 0.7;
+    out.push({ id: `s:${x}:${y}:${k}`, kind, source: 'special', pos: fromTile(fx, fy, SPECIAL.zoom), name });
+  }
+  return out;
+}
+
+/** Besondere Orte im Umkreis. blocked: Stellen, an denen nichts liegen darf (dann die nächste Stelle). */
+export function specialPlacesAround(seed: string, center: LatLon, radiusM: number, blocked?: (p: LatLon) => boolean): Spot[] {
+  const t = toTile(center, SPECIAL.zoom);
+  const cellM = (40075016 * Math.cos((center.lat * Math.PI) / 180)) / 2 ** SPECIAL.zoom;
+  const span = Math.ceil(radiusM / cellM) + 1;
+  const out: Spot[] = [];
+  for (let x = Math.floor(t.x) - span; x <= Math.floor(t.x) + span; x++)
+    for (let y = Math.floor(t.y) - span; y <= Math.floor(t.y) + span; y++) {
+      const s = specialCandidates(seed, x, y).find((c) => !blocked?.(c.pos));
+      if (s && distanceM(center, s.pos) <= radiusM) out.push(s);
+    }
+  return out;
+}
+
+/** Einen besonderen Ort aus seiner ID neu berechnen (zum Prüfen, ob er echt ist). */
+export function resolveSpecialSpot(seed: string, id: string): Spot | null {
+  const m = /^s:(-?\d+):(-?\d+):(\d+)$/.exec(id);
+  if (!m) return null;
+  return specialCandidates(seed, Number(m[1]), Number(m[2]))[Number(m[3])] ?? null;
 }
 
 // --- POIs -----------------------------------------------------------------------

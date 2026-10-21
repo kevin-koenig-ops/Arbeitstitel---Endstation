@@ -9,6 +9,10 @@ import {
   BACKGROUNDS,
   BASE_SEARCH_RANGE_M,
   CACHE,
+  CHAIN,
+  NEW_PLACE_BONUS,
+  TIER,
+  TRACKS,
   CART,
   COLLECTIBLE_ORDER,
   COOK,
@@ -53,7 +57,7 @@ import {
   WILD,
   WORKBENCH_LEVELS,
 } from './content';
-import { ExploredView, revealAround, SECTOR_LEVELS } from './explore';
+import { ExploredView, revealAround, SECTOR_LEVELS, sectorOf } from './explore';
 import {
   applyPlan,
   BLUEPRINT_CHANCE,
@@ -121,10 +125,10 @@ import type {
   Weapon,
   WeaponId,
 } from './types';
-import { resolveGridSpot } from './world';
+import { resolveGridSpot, resolveSpecialSpot } from './world';
 import { GOALS } from './progress';
 
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 const HOUR = 3600_000;
 /** Millisekunden pro Gesundheitspunkt (die Stufe des Zuhauses macht es schneller). */
 export function regenMs(state: PlayerState): number {
@@ -165,7 +169,27 @@ export function createPlayer(playerId: string, character: Character, now: number
     radioAt: 0,
     fedUntil: 0,
     wildAt: 0,
+    places: {},
+    discovered: {},
   };
+}
+
+/**
+ * Wie fremd ist die Gegend? 0 vertraut, 1 Neuland (dieser Sektor ist noch nicht erkundet),
+ * 2 fernes Land (weit und breit kein erkundeter Sektor). Bewusst ohne den Ort des Zuhauses,
+ * der bleibt auf dem Gerät. Ganz am Anfang (noch nichts erkundet) ist alles vertraut.
+ */
+export function regionTier(state: PlayerState, p: LatLon): 0 | 1 | 2 {
+  const known = Object.entries(state.sectors).filter(([, lvl]) => lvl >= 1);
+  if (!known.length) return 0;
+  const here = sectorOf(p);
+  if ((state.sectors[here.key] ?? 0) >= 1) return 0;
+  let nearest = Infinity;
+  for (const [k] of known) {
+    const [sx, sy] = k.split(':').map(Number);
+    nearest = Math.min(nearest, Math.max(Math.abs(sx - here.sx), Math.abs(sy - here.sy)));
+  }
+  return nearest > TIER.farSectors ? 2 : 1;
 }
 
 // --- Abfragen (auch für die Oberfläche) ------------------------------------------
@@ -872,10 +896,14 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       state.caches = state.caches.filter((x) => x.id !== c.id);
       const r = rngFrom(ctx.worldSeed, state.playerId, 'versteck', c.id);
       const def = SPOT_KINDS[c.spot.kind];
+      // Zettel-Kette: unterwegs liegt der nächste Zettel, am Ende das Beste
+      const chainNext = c.chain && c.chain.step < c.chain.of;
+      const chainDone = !!c.chain && !chainNext;
+      const factor = chainDone ? CHAIN.finalFactor : CACHE.factor;
       const items: Partial<Inventory> = {};
       for (let i = 0; i < CACHE.rolls; i++) {
         const rule = def.loot[Math.floor(r() * def.loot.length)];
-        items[rule.res] = (items[rule.res] ?? 0) + randInt(r, rule.min, rule.max) * CACHE.factor;
+        items[rule.res] = (items[rule.res] ?? 0) + randInt(r, rule.min, rule.max) * factor;
       }
       gain(state, items);
       const kramList = def.kram.length ? def.kram : SPOT_KINDS.car.kram;
@@ -883,7 +911,7 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       state.packKram[kram] = (state.packKram[kram] ?? 0) + 1;
       let collectible: CollectibleId | undefined;
       const missingC = COLLECTIBLE_ORDER.filter((x) => !state.collectibles[x]);
-      if (missingC.length && r() < CACHE.collectChance) {
+      if (missingC.length && (chainDone || r() < CACHE.collectChance)) {
         collectible = missingC[Math.floor(r() * missingC.length)];
         state.collectibles[collectible] = ctx.now;
       }
@@ -894,7 +922,12 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
         state.blueprints[blueprint] = ctx.now;
       }
       state.stats.caches += 1;
-      events.push({ type: 'cacheOpened', id: c.id, items, kram, collectible, blueprint }, ...checkSets(state, ctx.now));
+      let next: string | undefined;
+      if (chainNext && c.chain) {
+        const rn = rngFrom(ctx.worldSeed, state.playerId, 'kette', c.id);
+        next = makeCache(state, ctx, c.spot.pos, `Zettel aus dem Versteck (${c.chain.step}/${c.chain.of})`, 'note', rn, CHAIN.minM, CHAIN.maxM, { chain: { step: c.chain.step + 1, of: c.chain.of } })?.id;
+      }
+      events.push({ type: 'cacheOpened', id: c.id, items, kram, collectible, blueprint, next, chainDone: chainDone || undefined }, ...checkSets(state, ctx.now));
       break;
     }
 
@@ -1051,7 +1084,8 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, o: { guarded
   const r = rngFrom(ctx.worldSeed, state.playerId, spot.id, guardWindow(spot, ctx.now));
   const perks = basePerks(state);
   const q = LOOT_QUALITY[o.quality] ?? LOOT_QUALITY.good;
-  const luck = q.luck + perks.luck;
+  const tier = regionTier(state, spot.pos);
+  const luck = q.luck + perks.luck + TIER.luck[tier];
   const first = firstVisit(state, spot.id);
   const items: Partial<Inventory> = {};
   for (const rule of def.loot) {
@@ -1070,7 +1104,8 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, o: { guarded
     perks.lootFactor *
     (first ? FIRST_FIND_FACTOR : 1) *
     (cart ? CART.lootFactor : 1) *
-    (fed ? 1 + COOK.lootBonus : 1);
+    (fed ? 1 + COOK.lootBonus : 1) *
+    TIER.lootFactor[tier];
   for (const k of Object.keys(items) as Resource[]) items[k] = Math.max(1, Math.round((items[k] ?? 0) * factor));
   // Vorgeschichte
   let perk: Resource | undefined;
@@ -1105,7 +1140,7 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, o: { guarded
   // Erinnerungsstück
   let memento: string | undefined;
   const missing = MEMENTOS.filter((m) => !m.from && !state.collection[m.id]);
-  const chance = def.mementoChance + (guarded ? GUARD_MEMENTO_BONUS : 0);
+  const chance = def.mementoChance + (guarded ? GUARD_MEMENTO_BONUS : 0) + TIER.mementoBonus[tier];
   if (state.stats.searches === 0 && !state.collection[FIRST_MEMENTO]) memento = FIRST_MEMENTO;
   else if (missing.length && r() < chance) memento = missing[Math.floor(r() * missing.length)].id;
   if (memento) state.collection[memento] = ctx.now;
@@ -1128,11 +1163,38 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, o: { guarded
     }
   }
 
+  // Neuer Ortstyp fürs Fundbuch: ein kleiner Bonus vom Haupt-Rohstoff
+  const newKind = !state.places[spot.kind];
+  if (newKind) {
+    state.places[spot.kind] = ctx.now;
+    const main = def.loot.find((l) => isMaterial(l.res))?.res ?? def.loot[0].res;
+    items[main] = (items[main] ?? 0) + NEW_PLACE_BONUS;
+    gain(state, { [main]: NEW_PLACE_BONUS });
+  }
+
+  // Besonderer Ort zum ersten Mal: sein Erinnerungsstück (gibt es nur hier)
+  const discovery = spot.source === 'special' && !state.discovered[spot.id];
+  if (discovery) {
+    state.discovered[spot.id] = ctx.now;
+    const own = MEMENTOS.find((m) => m.from === spot.kind && !state.collection[m.id]);
+    if (own && !memento) {
+      memento = own.id;
+      state.collection[own.id] = ctx.now;
+    }
+  }
+
   // Hinweis auf ein Versteck (eigener Zufall, damit sich die übrige Beute nicht verschiebt)
   let clue: string | undefined;
   const rc = rngFrom(ctx.worldSeed, state.playerId, 'zettel', spot.id, guardWindow(spot, ctx.now));
-  if (state.caches.length < CACHE.max && rc() < CACHE.clueChance + (first ? CACHE.firstBonus : 0) + (cart ? 0.1 : 0)) {
-    clue = makeCache(state, ctx, spot.pos, spot.name, 'note', rc, CACHE.minM, CACHE.maxM)?.id;
+  if (discovery && spot.kind === 'camp' && state.caches.length < CACHE.max) {
+    // Im Zeltlager liegt immer eine Karte mit Kreuzen: der Anfang einer Kette
+    clue = makeCache(state, ctx, spot.pos, spot.name, 'note', rc, CHAIN.minM, CHAIN.maxM, { chain: { step: 1, of: CHAIN.steps } })?.id;
+  } else if (state.caches.length < CACHE.max && rc() < CACHE.clueChance + (first ? CACHE.firstBonus : 0) + (cart ? 0.1 : 0)) {
+    const chain = rc() < CHAIN.share ? { step: 1, of: CHAIN.steps } : undefined;
+    clue = makeCache(state, ctx, spot.pos, spot.name, 'note', rc, CACHE.minM, CACHE.maxM, { chain })?.id;
+  } else if (state.caches.length < CACHE.max && rc() < (spot.kind === 'heli' || spot.kind === 'convoy' || spot.kind === 'camp' ? TRACKS.specialChance : TRACKS.chance)) {
+    // Spuren auf dem Boden führen zu einem Versteck
+    clue = makeCache(state, ctx, spot.pos, spot.name, 'tracks', rc, TRACKS.minM, TRACKS.maxM, { tracks: true })?.id;
   }
 
   state.spots[spot.id] = ctx.now;
@@ -1157,11 +1219,24 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, o: { guarded
     cart: cart || undefined,
     fed: fed || undefined,
     clue,
+    newKind: newKind || undefined,
+    discovery: discovery || undefined,
+    tier: tier || undefined,
   };
 }
 
 /** Legt ein Versteck an einer Fundstelle in der Umgebung an (oder null, wenn keine passt). */
-function makeCache(state: PlayerState, ctx: RuleContext, around: LatLon, fromName: string, via: Cache['via'], r: () => number, minM: number, maxM: number): Cache | null {
+function makeCache(
+  state: PlayerState,
+  ctx: RuleContext,
+  around: LatLon,
+  fromName: string,
+  via: Cache['via'],
+  r: () => number,
+  minM: number,
+  maxM: number,
+  o: { chain?: Cache['chain']; tracks?: boolean } = {},
+): Cache | null {
   const taken = new Set(state.caches.map((c) => c.spot.id));
   const cands = gridSpotsAround(ctx.worldSeed, around, maxM).filter((sp) => !taken.has(sp.id) && distanceM(around, sp.pos) >= minM && !ctx.blocked?.(sp.pos));
   if (!cands.length) return null;
@@ -1170,6 +1245,25 @@ function makeCache(state: PlayerState, ctx: RuleContext, around: LatLon, fromNam
   const a = r() * Math.PI * 2;
   const d = CACHE.areaM * (0.25 + r() * 0.45);
   const cache: Cache = { id: `v:${spot.id}:${ctx.now}`, spot, center: offsetM(spot.pos, Math.cos(a) * d, Math.sin(a) * d), fromName, fromPos: around, at: ctx.now, via };
+  if (o.chain) cache.chain = o.chain;
+  if (o.tracks) {
+    // Spuren: eine leicht wackelige Linie vom Fundort bis kurz vors Versteck, kleiner Suchkreis
+    const end = offsetM(spot.pos, Math.cos(a) * TRACKS.areaM * 0.3, Math.sin(a) * TRACKS.areaM * 0.3);
+    const kx = 111320 * Math.cos((around.lat * Math.PI) / 180);
+    const dx = (end.lon - around.lon) * kx;
+    const dy = (end.lat - around.lat) * 111320;
+    const len = Math.hypot(dx, dy) || 1;
+    const trail: LatLon[] = [around];
+    for (let i = 1; i < 6; i++) {
+      const f = i / 6;
+      const side = (r() - 0.5) * Math.min(40, len * 0.15);
+      trail.push(offsetM(around, dx * f + (-dy / len) * side, dy * f + (dx / len) * side));
+    }
+    trail.push(end);
+    cache.trail = trail;
+    cache.center = end;
+    cache.areaM = TRACKS.areaM;
+  }
   state.caches.push(cache);
   return cache;
 }
@@ -1231,6 +1325,11 @@ function dropSome(state: PlayerState, r: () => number): Partial<Inventory> {
  * gegen seine eigene OSM-Liste.
  */
 function verifySpot(spot: Spot, ctx: RuleContext): Spot | null {
+  if (spot.source === 'special') {
+    const real = resolveSpecialSpot(ctx.worldSeed, spot.id);
+    if (!real || real.kind !== spot.kind || distanceM(real.pos, spot.pos) > 1) return null;
+    return real;
+  }
   if (spot.source === 'grid') {
     const real = resolveGridSpot(ctx.worldSeed, spot.id);
     if (!real || real.kind !== spot.kind || distanceM(real.pos, spot.pos) > 1) return null;

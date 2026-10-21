@@ -12,7 +12,7 @@ import { distanceM } from '../core/geo';
 import { applyAction, cartOf, createPlayer, guardOf } from '../core/rules';
 import { migrate } from '../core/save';
 import type { Action, ActionResult, Character, EnemyId, LatLon, PlayerState, Spot } from '../core/types';
-import { gridSpotsAround, poiSpots, type PoiCandidate } from '../core/world';
+import { gridSpotsAround, poiSpots, specialPlacesAround, type PoiCandidate } from '../core/world';
 import type { AuthProvider } from './auth';
 import { readJson, removeKey, writeJson } from './storage';
 
@@ -26,12 +26,16 @@ export interface GameBackend {
   deleteSave(): Promise<void>;
   /** Fundstellen in der Nähe. Im Mehrspieler kommen sie vom Server. */
   spotsNear(center: LatLon, radiusM: number, pois: PoiCandidate[]): Promise<Spot[]>;
+  /** Besondere Orte im Umkreis (auch weit weg, für die Hinweise am Horizont). */
+  specialsNear(center: LatLon, radiusM: number): Spot[];
   /** Wer bewacht diese Fundstelle gerade? Im Mehrspieler weiß das der Server. */
   guardFor(spot: Spot): EnemyId | null;
   /** Steht hier gerade eine Händlerkiste (und bis wann)? */
   cartFor(spot: Spot): { until: number } | null;
   /** Wo nichts liegen darf (aus den Kartendaten); gilt für neue Verstecke. */
   setPlaceFilter(fn: ((p: LatLon) => boolean) | null): void;
+  /** Wo keine besonderen Orte liegen sollen (bebaut, Gärten, Höfe): sie liegen draußen im Offenen. */
+  setSpecialFilter(fn: ((p: LatLon) => boolean) | null): void;
   now(): number;
 }
 
@@ -94,12 +98,23 @@ export class LocalBackend implements GameBackend {
     this.placeFilter = fn;
   }
 
+  private specialFilter: ((p: LatLon) => boolean) | null = null;
+  setSpecialFilter(fn: ((p: LatLon) => boolean) | null) {
+    this.specialFilter = fn;
+  }
+
   cartFor(spot: Spot) {
     return cartOf(this.worldSeed, spot, this.clock());
   }
 
   async spotsNear(center: LatLon, radiusM: number, pois: PoiCandidate[]) {
     const nearPois = poiSpots(this.worldSeed, pois).filter((s) => distanceM(center, s.pos) <= radiusM);
-    return [...nearPois, ...gridSpotsAround(this.worldSeed, center, radiusM)];
+    return [...nearPois, ...gridSpotsAround(this.worldSeed, center, radiusM), ...this.specialsNear(center, radiusM)];
+  }
+
+  specialsNear(center: LatLon, radiusM: number) {
+    const a = this.placeFilter;
+    const b = this.specialFilter;
+    return specialPlacesAround(this.worldSeed, center, radiusM, a || b ? (p) => !!(a?.(p) || b?.(p)) : undefined);
   }
 }

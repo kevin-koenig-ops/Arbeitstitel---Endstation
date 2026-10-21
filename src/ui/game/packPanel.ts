@@ -2,6 +2,8 @@
 // und deine Ausrüstung (Gesundheit, Waffen).
 
 import {
+  PLACE_WHERE,
+  SPECIAL_KINDS,
   CARDS,
   COLLECTIBLE_ORDER,
   COLLECTIBLES,
@@ -27,7 +29,7 @@ import { bestWeapon, collectiblePlaced, currentHealth, dayNumber, kramCount, nex
 import type { CollectibleId, KramId, SpotKind } from '../../core/types';
 import type { App } from '../app';
 import { clear, h, svgEl } from '../dom';
-import { icon, resIcon } from '../icons';
+import { icon, resIcon, spotIcon } from '../icons';
 import { REJECT_TEXT, SPOT_PLURAL } from '../texts';
 import { exploredStats } from '../../core/explore';
 import { formatWait } from './spotSheet';
@@ -132,6 +134,34 @@ export function openPackPanel(app: App, host: HTMLElement, onClose: () => void, 
   };
 
   // --- Fundbuch -----------------------------------------------------------------------
+  /** Ortstypen: was du schon gefunden hast, und graue Umrisse mit Hinweis, wo es den Rest gibt. */
+  const placesView = () => {
+    const s = app.backend.current()!;
+    const all = Object.keys(SPOT_KINDS) as SpotKind[];
+    const normal = all.filter((k) => !SPECIAL_KINDS.includes(k));
+    const have = all.filter((k) => s.places[k]).length;
+    const specialFound = Object.keys(s.discovered).length;
+    const tile = (k: SpotKind) => {
+      const got = !!s.places[k];
+      const name = SPOT_KINDS[k].names[0];
+      return h(
+        'li',
+        { class: 'place' + (got ? ' got' : '') + (SPECIAL_KINDS.includes(k) ? ' special' : ''), title: got ? name : PLACE_WHERE[k] },
+        h('span', { class: 'place-icon' }, svgEl(got ? spotIcon(k, 24) : icon('question', 24))),
+        h('span', { class: 'place-name' }, got ? name : '???'),
+        got ? null : h('small', null, PLACE_WHERE[k]),
+      );
+    };
+    return h(
+      'section',
+      { class: 'places' },
+      h('h3', { class: 'stock-head' }, 'Orte', h('small', null, `${have} von ${all.length} Ortstypen`)),
+      h('ul', { class: 'place-grid' }, normal.map(tile)),
+      h('h3', { class: 'stock-head' }, 'Besondere Orte', h('small', null, specialFound ? `${specialFound} entdeckt` : 'Achte auf Rauch, Licht und Funksignale')),
+      h('ul', { class: 'place-grid' }, SPECIAL_KINDS.map(tile)),
+    );
+  };
+
   const bookView = () => {
     const s = app.backend.current()!;
     const found = COLLECTIBLE_ORDER.filter((c) => s.collectibles[c]).length;
@@ -177,6 +207,7 @@ export function openPackPanel(app: App, host: HTMLElement, onClose: () => void, 
       { class: 'book' },
       h('p', { class: 'mem-count' }, `${found} von ${COLLECTIBLE_ORDER.length} Sammelstücken. Jedes gibt es nur einmal. Stell sie zu Hause auf, das macht es gemütlich.`),
       sets,
+      placesView(),
       h('h3', { class: 'stock-head' }, 'Erinnerungsstücke', h('small', null, `${memFound} von ${MEMENTOS.length}`)),
       h(
         'ul',

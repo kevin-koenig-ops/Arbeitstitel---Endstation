@@ -79,7 +79,7 @@ export const SITES: Record<SiteId, SiteDef> = {
 };
 export const SITE_ORDER = Object.keys(SITES) as SiteId[];
 /** Chance auf einen Lageplan, wenn es dort einen zu finden gibt. */
-export const SITE_PLAN_CHANCE = { poi: 0.15, grid: 0.03 };
+export const SITE_PLAN_CHANCE = { poi: 0.15, grid: 0.03, special: 0.2 };
 
 // --- Hindernisse -------------------------------------------------------------------
 
@@ -216,7 +216,7 @@ export const BLUEPRINT_SOURCES: Partial<Record<SpotKind, BlueprintId[]>> = {
   backpack: ['picture'],
 };
 /** Chance auf einen Bauplan, wenn es dort noch einen zu finden gibt. */
-export const BLUEPRINT_CHANCE = { poi: 0.3, grid: 0.08 };
+export const BLUEPRINT_CHANCE = { poi: 0.3, grid: 0.08, special: 0.4 };
 
 export function isPiece(id: BlueprintId): id is PieceId {
   return id in PIECES;

@@ -13,6 +13,7 @@ import demoWorld from './demoWorld.json';
 import { patternImage } from './patterns';
 import { buildStyle, DECOR_MINZOOM, loadRealSource } from './style';
 import type { WalkInput } from './walkNet';
+import type { HintKind } from '../core/content';
 
 /** Umkreis der Detail-Ebene. Dahinter liegt ohnehin Nebel. */
 const DECOR_RADIUS_M = 550;
@@ -23,6 +24,8 @@ const DRIVABLE = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'mino
 export type SpotState = 'ready' | 'cooldown' | 'inrange';
 export interface SpotView {
   spot: Spot;
+  /** Besonderer Ort, noch unbekannt: man sieht nur den Hinweis (Rauch, Licht …). */
+  unknown?: HintKind;
   state: SpotState;
   /** Gegner, der die Fundstelle bewacht, oder null. */
   guard: EnemyId | null;
@@ -37,6 +40,8 @@ export interface CacheView {
   id: string;
   center: LatLon;
   radiusM: number;
+  /** Spuren: Linie bis zum Versteck. */
+  trail?: LatLon[];
 }
 
 export const DEMO = demoWorld as unknown as {
@@ -172,7 +177,10 @@ export class GameMap {
     }
     (this.map.getSource('caches') as GeoJSONSource | undefined)?.setData({
       type: 'FeatureCollection',
-      features: list.map((c) => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [circleRing(c.center, c.radiusM)] } })),
+      features: [
+        ...list.map((c): GeoJSON.Feature => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [circleRing(c.center, c.radiusM)] } })),
+        ...list.filter((c) => c.trail && c.trail.length > 1).map((c): GeoJSON.Feature => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: c.trail!.map(ll) } })),
+      ],
     });
     const ids = new Set(list.map((c) => c.id));
     for (const [id, m] of this.cacheMarkers) {
@@ -183,7 +191,7 @@ export class GameMap {
     }
     for (const c of list) {
       if (this.cacheMarkers.has(c.id)) continue;
-      const el = h('button', { class: 'cache-marker', type: 'button', 'aria-label': 'Versteck: Hinweis ansehen' }, svgEl(icon('chalk', 20)), h('span', null, '?'));
+      const el = h('button', { class: 'cache-marker', type: 'button', 'aria-label': 'Versteck: Hinweis ansehen' }, svgEl(icon(c.trail ? 'steps' : 'chalk', 20)), h('span', null, '?'));
       el.addEventListener('click', (ev) => {
         ev.stopPropagation();
         this.lastMarkerTap = Date.now();
@@ -406,6 +414,7 @@ export class GameMap {
           'button',
           { class: 'spot', type: 'button', 'aria-label': v.spot.name, 'data-source': v.spot.source },
           h('span', { class: 'spot-badge' }, svgEl(spotIcon(v.spot.kind, 19))),
+          h('span', { class: 'spot-hint', 'aria-hidden': 'true' }),
           h('span', { class: 'spot-stake' }),
           h('span', { class: 'spot-guard', 'aria-hidden': 'true' }),
         );
@@ -418,13 +427,18 @@ export class GameMap {
         m = { marker, el, state: '' };
         this.markers.set(v.spot.id, m);
       }
-      const st = v.state + (v.guard ? ':g' : '') + (v.cart ? ':c' : '') + (v.fresh ? ':f' : '');
+      const st = v.state + (v.guard ? ':g' : '') + (v.cart ? ':c' : '') + (v.fresh ? ':f' : '') + (v.unknown ? `:u${v.unknown}` : '');
       if (m.state !== st) {
+        // Unbekannter besonderer Ort: Fragezeichen statt Symbol, darüber Rauch, Licht oder Funkwellen
+        const badge = m.el.querySelector('.spot-badge');
+        if (badge) badge.innerHTML = v.unknown ? icon('question', 21) : spotIcon(v.spot.kind, 19);
+        if (v.unknown) m.el.dataset.unknown = v.unknown;
+        else delete m.el.dataset.unknown;
         m.el.dataset.state = v.state;
         m.el.dataset.guard = v.guard ? '1' : '0';
         m.el.dataset.cart = v.cart ? '1' : '0';
         m.el.dataset.fresh = v.fresh ? '1' : '0';
-        m.el.setAttribute('aria-label', v.cart ? `${v.spot.name} (Händlerkiste)` : v.guard ? `${v.spot.name} (bewacht)` : v.spot.name);
+        m.el.setAttribute('aria-label', v.unknown ? 'Etwas Unbekanntes' : v.cart ? `${v.spot.name} (Händlerkiste)` : v.guard ? `${v.spot.name} (bewacht)` : v.spot.name);
         m.state = st;
       }
     }
@@ -561,6 +575,58 @@ export class GameMap {
    * Kitas, Gedenkstätten, Kirchen, dazu das Innere von Gebäuden (Privatgrund).
    * Gibt eine Prüf-Funktion zurück. Später muss ein Server dasselbe prüfen.
    */
+  /**
+   * Bebaut? (Wohn-, Gewerbe-, Industriegebiet oder nah an Häusern.) Besondere Orte liegen
+   * nur draußen im Offenen, also nie in Gärten oder auf Höfen, und sind immer erreichbar.
+   */
+  builtCheck(): (p: LatLon) => boolean {
+    const BUILT = ['residential', 'commercial', 'industrial', 'retail', 'garages', 'railway'];
+    const areas: { ring: [number, number][]; x0: number; y0: number; x1: number; y1: number }[] = [];
+    const houses: { x0: number; y0: number; x1: number; y1: number }[] = [];
+    const real = this.opts.mode === 'real';
+    try {
+      const features = (layer: string): { geometry: GeoJSON.Geometry; properties: Record<string, unknown> | null }[] =>
+        real
+          ? this.loaded && this.map.getSource('omt')
+            ? this.map.querySourceFeatures('omt', { sourceLayer: layer })
+            : []
+          : (DEMO.geojson.features.filter((f) => f.properties?._layer === layer) as unknown as { geometry: GeoJSON.Geometry; properties: Record<string, unknown> | null }[]);
+      const box = (ring: number[][]) => {
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (const [x, y] of ring) {
+          x0 = Math.min(x0, x);
+          x1 = Math.max(x1, x);
+          y0 = Math.min(y0, y);
+          y1 = Math.max(y1, y);
+        }
+        return { x0, y0, x1, y1 };
+      };
+      const each = (g: GeoJSON.Geometry, fn: (ring: number[][]) => void) => {
+        const list = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+        for (const r of list) if (r[0]?.length >= 4) fn(r[0]);
+      };
+      for (const f of features('landuse')) if (BUILT.includes(String(f.properties?.class ?? ''))) each(f.geometry, (r) => areas.push({ ring: r as [number, number][], ...box(r) }));
+      for (const f of features('building')) each(f.geometry, (r) => houses.push(box(r)));
+    } catch {
+      /* ohne Kartendaten: nichts bekannt */
+    }
+    const inside = (p: LatLon, ring: [number, number][]) => {
+      let c = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [xi, yi] = ring[i];
+        const [xj, yj] = ring[j];
+        if (yi > p.lat !== yj > p.lat && p.lon < ((xj - xi) * (p.lat - yi)) / (yj - yi) + xi) c = !c;
+      }
+      return c;
+    };
+    return (p: LatLon) => {
+      const pad = 25 / 111320;
+      const padX = pad / Math.cos((p.lat * Math.PI) / 180);
+      if (houses.some((b) => p.lon > b.x0 - padX && p.lon < b.x1 + padX && p.lat > b.y0 - pad && p.lat < b.y1 + pad)) return true;
+      return areas.some((a) => p.lon > a.x0 && p.lon < a.x1 && p.lat > a.y0 && p.lat < a.y1 && inside(p, a.ring));
+    };
+  }
+
   sensitiveCheck(): (p: LatLon, grid?: boolean) => boolean {
     const AREA = ['cemetery', 'hospital', 'school', 'kindergarten', 'college', 'university', 'religious'];
     const POINT = ['cemetery', 'grave_yard', 'hospital', 'school', 'kindergarten', 'college', 'university', 'place_of_worship', 'memorial', 'monument'];
@@ -581,6 +647,8 @@ export class GameMap {
       };
       for (const f of features('landuse')) if (AREA.includes(String(f.properties?.class ?? ''))) addPolys(f.geometry, rings);
       for (const f of features('building')) addPolys(f.geometry, buildings);
+      // Auch nicht mitten im Wasser
+      for (const f of features('water')) addPolys(f.geometry, buildings);
       for (const f of features('poi')) {
         const c = String(f.properties?.class ?? '');
         const sc = String(f.properties?.subclass ?? '');

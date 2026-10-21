@@ -388,6 +388,55 @@ export class WalkNet {
     return { len: g.get(E)!, pts };
   }
 
+  /** Kürzeste Wege vom Startpunkt zu allen Knoten (für den besten Absprung ins Gelände). */
+  private viaExit(A: Hit, T: P): { cost: number; pts: P[]; speeds: number[]; off: boolean[] } | null {
+    const n = this.nodes.length;
+    const S = n;
+    const [a0, a1] = this.segs[A.seg];
+    const lenA = Math.hypot(this.nodes[a1].x - this.nodes[a0].x, this.nodes[a1].y - this.nodes[a0].y);
+    const dist = new Map<number, number>([[S, 0]]);
+    const prev = new Map<number, number>();
+    const heap = new Heap();
+    heap.push(S, 0);
+    let steps = 0;
+    while (heap.size && steps++ < 80000) {
+      const u = heap.pop();
+      const du = dist.get(u)!;
+      const edges: [number, number][] = u === S ? [[a0, lenA * A.t], [a1, lenA * (1 - A.t)]] : this.adj[u];
+      for (const [v, w] of edges) {
+        const nd = du + w;
+        if (nd < (dist.get(v) ?? Infinity)) {
+          dist.set(v, nd);
+          prev.set(v, u);
+          heap.push(v, nd);
+        }
+      }
+    }
+    // Die nächsten erreichbaren Knoten beim Ziel durchprobieren
+    const near: { i: number; d: number }[] = [];
+    for (let i = 0; i < n; i++) {
+      if (!dist.has(i)) continue;
+      const d = Math.hypot(this.nodes[i].x - T.x, this.nodes[i].y - T.y);
+      if (d <= 600) near.push({ i, d });
+    }
+    near.sort((a, b) => a.d - b.d);
+    let best: { cost: number; i: number; leg: { cost: number; pts: P[]; speeds: number[] } } | null = null;
+    for (const { i } of near.slice(0, 40)) {
+      const leg = this.freeLeg(this.nodes[i], T);
+      const cost = dist.get(i)! + leg.cost;
+      if (leg.cost < Infinity && (!best || cost < best.cost)) best = { cost, i, leg };
+    }
+    if (!best) return null;
+    const way: P[] = [];
+    for (let c: number | undefined = best.i; c !== undefined && c !== S; c = prev.get(c)) way.push(this.nodes[c]);
+    way.push({ x: A.x, y: A.y });
+    way.reverse();
+    const pts = [...way, ...best.leg.pts.slice(1)];
+    const speeds = [...way.slice(1).map(() => SPEED.road), ...best.leg.speeds];
+    const off = [...way.slice(1).map(() => false), ...best.leg.speeds.map((v) => v !== SPEED.road)];
+    return { cost: best.cost, pts, speeds, off };
+  }
+
   /** Strecke von hier zur angetippten Stelle: über Wege, draußen auch quer, was schneller ist. */
   route(fromLL: LatLon, toLL: LatLon): Route | null {
     const F = this.toXY(fromLL);
@@ -425,6 +474,16 @@ export class WalkNet {
           } else snapped = B.d > ON_WAY_M;
         }
         cands.push({ cost, pts, speeds, off, snapped });
+      }
+    }
+    // 3. Über die Wege bis an den Ortsrand, dann quer zum Ziel (z. B. ein Wrack draußen auf dem Feld)
+    if (outside && A && !cands.some((c) => !c.snapped && c.pts.length > 2)) {
+      const ex = this.viaExit(A, T);
+      if (ex) {
+        const pts: P[] = [F, ...ex.pts];
+        const speeds: number[] = [SPEED.open, ...ex.speeds];
+        const off: boolean[] = [A.d > ON_WAY_M, ...ex.off];
+        cands.push({ cost: A.d / SPEED.open + ex.cost, pts, speeds, off, snapped: false });
       }
     }
     if (!cands.length) return null;

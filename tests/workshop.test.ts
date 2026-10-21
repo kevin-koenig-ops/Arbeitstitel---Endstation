@@ -182,7 +182,7 @@ describe('Umzug auf Version 8', () => {
       },
     };
     const s = migrate(JSON.parse(JSON.stringify({ ...old, lastActiveAt: T0 })))!;
-    expect(s.schema).toBe(10);
+    expect(s.schema).toBe(11);
     expect('bus' in s).toBe(false);
     // Regenfass: Kosten zurück (3 Metall, 2 Kunststoff) und 3 Wasser Ertrag
     expect(s.inventory.water).toBe(3);

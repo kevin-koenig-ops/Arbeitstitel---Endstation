@@ -11,6 +11,11 @@ import type { PlayerState } from './types';
 type Raw = Record<string, unknown> & { schema?: number };
 
 const MIGRATIONS: Record<number, (s: Raw) => void> = {
+  // Version 10 -> 11: Fundbuch der Ortstypen, entdeckte besondere Orte.
+  10: (s) => {
+    s.places = {};
+    s.discovered = {};
+  },
   // Version 9 -> 10: Begegnungen im Unterholz (Abkühlzeit).
   9: (s) => {
     s.wildAt = 0;

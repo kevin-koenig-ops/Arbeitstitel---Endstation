@@ -86,13 +86,20 @@ export type SpotKind =
   | 'hardware'
   | 'fuel'
   | 'well'
-  | 'stop';
+  | 'stop'
+  // Besondere Orte: einmal pro Gegend, fest aus dem Weltstartwert
+  | 'heli'
+  | 'convoy'
+  | 'bunker'
+  | 'camp'
+  | 'mast'
+  | 'airdrop';
 
 export interface Spot {
-  /** Stabile ID. Grid-Spots: "g:<zoom>:<x>:<y>:<i>", POI-Spots: "p:..." */
+  /** Stabile ID. Grid-Spots: "g:<zoom>:<x>:<y>:<i>", POI-Spots: "p:...", besondere Orte: "s:<x>:<y>:<k>" */
   id: string;
   kind: SpotKind;
-  source: 'grid' | 'poi';
+  source: 'grid' | 'poi' | 'special';
   pos: LatLon;
   name: string;
 }
@@ -245,6 +252,10 @@ export interface PlayerState {
   fedUntil: number;
   /** Letzte Begegnung im Unterholz (danach eine Weile Ruhe). */
   wildAt: number;
+  /** Schon gefundene Ortstypen (fürs Fundbuch): Art -> Zeitpunkt. */
+  places: Partial<Record<SpotKind, number>>;
+  /** Entdeckte besondere Orte: ID -> Zeitpunkt. */
+  discovered: Record<string, number>;
 }
 
 /** Ein Versteck, auf das ein Hinweis zeigt. Es läuft nie ab. */
@@ -258,7 +269,14 @@ export interface Cache {
   fromName: string;
   fromPos: LatLon;
   at: number;
-  via: 'note' | 'radio';
+  /** note: Zettel, radio: Funkspruch, tracks: Spuren auf dem Boden */
+  via: 'note' | 'radio' | 'tracks';
+  /** Teil einer Zettel-Kette (Schritt von insgesamt). */
+  chain?: { step: number; of: number };
+  /** Spuren: Linie vom Fundort bis zum Versteck. */
+  trail?: LatLon[];
+  /** Eigener Suchradius (Spuren führen genauer hin). */
+  areaM?: number;
 }
 
 export interface Stats {
@@ -386,7 +404,7 @@ export type RejectReason =
   | 'no_stove';
 
 export type GameEvent =
-  | { type: 'loot'; spotId: string; items: Partial<Inventory>; kram?: KramId; collectible?: CollectibleId; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: BlueprintId; site?: SiteId; quality?: Quality; first?: boolean; canDig?: boolean; cart?: boolean; fed?: boolean; clue?: string }
+  | { type: 'loot'; spotId: string; items: Partial<Inventory>; kram?: KramId; collectible?: CollectibleId; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: BlueprintId; site?: SiteId; quality?: Quality; first?: boolean; canDig?: boolean; cart?: boolean; fed?: boolean; clue?: string; newKind?: boolean; discovery?: boolean; tier?: number }
   | { type: 'siteChosen'; site: SiteId; first: boolean }
   | { type: 'reclaimed'; section: string; cost: Partial<Inventory> }
   | { type: 'obstacleCleared'; id: string; kind: ObstacleKind; reward: Partial<Inventory> }
@@ -414,7 +432,7 @@ export type GameEvent =
   | { type: 'collected'; items: Partial<Inventory>; count: number }
   | { type: 'workbenchUpgraded'; level: number }
   | { type: 'goalClaimed'; goal: GoalId; items: Partial<Inventory>; blueprint?: BlueprintId }
-  | { type: 'cacheOpened'; id: string; items: Partial<Inventory>; kram?: KramId; collectible?: CollectibleId; blueprint?: BlueprintId }
+  | { type: 'cacheOpened'; id: string; items: Partial<Inventory>; kram?: KramId; collectible?: CollectibleId; blueprint?: BlueprintId; next?: string; chainDone?: boolean }
   | { type: 'radio'; line: number; cache?: string }
   | { type: 'cooked'; until: number; healed: number }
   | { type: 'rejected'; reason: RejectReason };
