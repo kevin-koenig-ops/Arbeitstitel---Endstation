@@ -52,6 +52,9 @@ const INTENT: Record<Intent['kind'], { icon: string; label: string; tone: string
   howl: { icon: 'howl', label: 'Ruft Hilfe', tone: 'warn' },
   lurk: { icon: 'shield', label: 'Duckt sich', tone: 'calm' },
   stunned: { icon: 'stun', label: 'Betäubt', tone: 'calm' },
+  stare: { icon: 'eye', label: 'Starrt dich an', tone: 'grab' },
+  fade: { icon: 'moon', label: 'Weicht ins Dunkel', tone: 'calm' },
+  pounce: { icon: 'leap', label: 'Sprung', tone: 'worst' },
 };
 
 /** Was eine Karte tut, kurz für die Karte selbst. */
@@ -364,6 +367,40 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           floatAt(-1, 'Gepackt! −1 Kraft', 'hurt');
           await wait(260);
           break;
+        case 'stare': {
+          const f = sfoe(e.by);
+          if (f) f.acted = true;
+          scene?.setFoes(shownList());
+          floatAt(e.by, 'Starrt dich an …', 'crit');
+          floatAt(-1, 'Wie gelähmt: −1 Karte, −1 Kraft', 'hurt');
+          vibrate([60]);
+          await wait(620);
+          break;
+        }
+        case 'fade': {
+          const f = sfoe(e.id);
+          if (f) {
+            f.acted = true;
+            f.row = 'far';
+            f.block = 2;
+          }
+          scene?.setFoes(shownList());
+          floatAt(e.id, 'Weicht ins Dunkel', 'miss');
+          await wait(520);
+          break;
+        }
+        case 'pounce': {
+          const f = sfoe(e.id);
+          if (f) {
+            f.acted = true;
+            f.row = 'near';
+            f.block = 0;
+          }
+          scene?.setFoes(shownList());
+          floatAt(e.id, 'Springt dich an!', 'crit');
+          await wait(360);
+          break;
+        }
         case 'windup': {
           const f = sfoe(e.id);
           if (f) {
@@ -443,6 +480,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     busy = false;
     renderAll(true);
     if (st.over) void finish();
+    else if (events.some((e) => e.type === 'stare')) setInfo('Wie gelähmt: diese Runde 1 Karte und 1 Kraft weniger.');
     else if (st.grabbed === 0 && st.energy < TACTICS.energy) setInfo('Gepackt: diese Runde 1 Kraft weniger.');
   };
 

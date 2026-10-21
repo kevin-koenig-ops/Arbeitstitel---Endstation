@@ -480,6 +480,8 @@ export interface MementoDef {
   id: string;
   title: string;
   text: string;
+  /** Gibt es nur von diesem Gegner (nicht beim Durchsuchen). */
+  from?: EnemyId;
 }
 
 export const MEMENTOS: MementoDef[] = [
@@ -495,6 +497,7 @@ export const MEMENTOS: MementoDef[] = [
   { id: 'dogtag', title: 'Hundemarke', text: '„Bruno. Bitte zurückbringen.“ Die Telefonnummer ist nicht mehr lesbar.' },
   { id: 'ticket', title: 'Konzertkarte', text: 'Reihe 3, Platz 12. Das Konzert wäre am Samstag gewesen.' },
   { id: 'clipping', title: 'Zeitungsausschnitt', text: 'Nur die Überschrift ist lesbar: „Behörden raten zur Ruhe“.' },
+  { id: 'cellarDiary', title: 'Kellertagebuch', from: 'watcher', text: 'Tag 212 ohne Sonne. Meine Haut ist hell wie Papier, die Augen brennen schon bei Kerzenlicht. Oben ist es nicht sicher. Ich bleibe unten. Ich passe auf.' },
 ];
 
 /** Das allererste Erinnerungsstück, damit die Sammlung sofort startet. */
@@ -569,6 +572,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
   walker: { name: 'Wandler', hp: 4, dmg: [1, 2], armor: 0, speed: 1, desc: 'Ein Toter, durch den Ranken wachsen. Langsam, aber unermüdlich.' },
   crawler: { name: 'Kriecher', hp: 3, dmg: [1, 2], armor: 0, speed: 1.45, desc: 'Knochen wie Glas, flach am Boden. Flink und schwer zu erwischen.' },
   brute: { name: 'Borkenmann', hp: 6, dmg: [1, 3], armor: 1, speed: 0.85, desc: 'Verholzte Ranken wie eine Rüstung, oft noch in Warnweste.' },
+  watcher: { name: 'Bleicher Wächter', hp: 6, dmg: [2, 3], armor: 0, speed: 1.1, desc: 'Jahre ohne Tageslicht im Keller. Kommt nur nachts heraus und starrt, bis du dich nicht mehr rührst.' },
 };
 
 /** Welcher Gegner wie häufig eine Fundstelle bewacht. */
@@ -577,6 +581,11 @@ export const ENEMY_WEIGHTS: readonly (readonly [EnemyId, number])[] = [
   ['crawler', 25],
   ['brute', 15],
 ];
+/** Dazu nachts: der Bleiche Wächter (tagsüber verkriecht er sich, Licht tut ihm weh). */
+export const NIGHT_ENEMY_WEIGHTS: readonly (readonly [EnemyId, number])[] = [...ENEMY_WEIGHTS, ['watcher', 14]];
+
+/** Was der Bleiche Wächter dabeihat: Dinge aus den Kellern, dazu einmalig sein Tagebuch. */
+export const WATCHER_LOOT = { items: { medicine: 1, electronics: 2 } as Partial<Inventory>, kram: 'flashlight' as KramId, memento: 'cellarDiary' };
 
 /** Anteil bewachter Fundstellen. */
 export const GUARD_CHANCE = { grid: 0.25, poi: 0.4 };
@@ -666,7 +675,7 @@ export const TACTICS = {
   maxHowls: 2,
 };
 
-export type IntentKind = 'attack' | 'windup' | 'smash' | 'grab' | 'advance' | 'howl' | 'lurk' | 'stunned';
+export type IntentKind = 'attack' | 'windup' | 'smash' | 'grab' | 'advance' | 'howl' | 'lurk' | 'stunned' | 'stare' | 'fade' | 'pounce';
 
 export interface FoeTactic {
   name: string;
@@ -709,6 +718,13 @@ export const FOE_TACTICS: Record<FoeKind, FoeTactic> = {
     stayBack: true,
     pattern: [{ kind: 'howl' }, { kind: 'attack', dmg: 1 }, { kind: 'attack', dmg: 1 }],
     desc: 'Bleibt hinten und heult. Das lockt weitere Wandler an. Zuerst ausschalten, mit Wurf oder Bolzen!',
+  },
+  watcher: {
+    name: 'Bleicher Wächter',
+    hp: 18,
+    armor: 0,
+    pattern: [{ kind: 'stare' }, { kind: 'attack', dmg: 4 }, { kind: 'fade' }, { kind: 'pounce', dmg: 6 }],
+    desc: 'Nur nachts. Sein Blick lähmt: nächste Runde eine Karte und eine Kraft weniger. Dann weicht er ins Dunkel zurück und springt dich an. Solange er hinten lauert, treffen ihn nur Wurf und Bolzen; gegen den Sprung hilft Ausweichen.',
   },
 };
 

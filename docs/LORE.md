@@ -1,4 +1,4 @@
-<!-- Spiele-Lore von Kevin (Quelle: Entstehungsgeschichte.docx, übernommen am 21.10.2026). Kapitel I–VI sind Kevins Text; am 21.10. wurden echte Staaten durch erfundene ersetzt und Notlazarette statt Krankenhäuser eingesetzt. Zeittafel, Kapitel VII und „Für das Spiel“ sind Ergänzungen. Am 21.10. abends auf Kevins Wunsch entfernt: die Geschichte von Linie 0 und Endstation. -->
+<!-- Spiele-Lore von Kevin (Quelle: Entstehungsgeschichte.docx, übernommen am 21.10.2026). Kapitel I–VI sind Kevins Text; am 21.10. wurden echte Staaten durch erfundene ersetzt und Notlazarette statt Krankenhäuser eingesetzt. Zeittafel, Kapitel VII und „Für das Spiel“ sind Ergänzungen. Am 21.10. abends auf Kevins Wunsch entfernt: die Geschichte von Linie 0 und Endstation; dazugekommen: der Bleiche Wächter (Kevins Modell). -->
 
 # Die Entstehung der Welt
 
@@ -674,6 +674,7 @@ Die bekannten Formen sind 2026 stabil genug, dass man Regeln kennt. Im Spiel zei
 | **Kriecher** | Unterholz, Gräben, Ruinen | Wandler, deren Knochen das Weinen spröde wie Glas gemacht hat. Das Skelett trägt nicht mehr, also ziehen sie sich flach am Boden voran. Flink und schwer zu treffen | Aufpassen, wohin man tritt | Kriecher |
 | **Borkenmann** | Alte Wälder, Schluchten, Bahndämme | Ein Wandler, der jahrelang im Schatten stand. Die Ranken sind verholzt und liegen wie eine Rüstung über ihm, oft trägt er noch die Warnweste vom Bautrupp. Langsam, zäh, schlägt hart | Schwere Waffen, Feuer | Brocken |
 | **Heuler** | Großstädte, Tunnel, Tiefgaragen | Akustische Jäger, fast blind. Sie jagen nach Gehör und schreien, um andere anzulocken. Einzelne verirren sich aufs Land | Leise sein, zuerst ausschalten | Kreischer |
+| **Bleicher Wächter** | Keller, Tunnel, verschlossene Hallen; draußen nur nachts | Ein Wirt, der Jahre ohne Tageslicht unten verbracht hat. Die Haut ist fahl wie Papier, auf dem Rücken wuchern Knoten, die Augen sind riesig. Er sieht im Dunkeln, starrt, bis man sich nicht mehr rührt, weicht zurück und springt aus dem Schatten. Tagsüber verkriecht er sich, Licht tut ihm weh | Licht, Ausweichen, aus der Ferne treffen, wenn er zurückweicht | Bleicher Wächter (nur nachts) |
 | **Rote Zonen** | Bunker, Tunnel, verschlossene Hallen | Keine Kreatur, sondern ein Ort: geschlossene Räume ohne Tageslicht, in denen die Keime schlafen. Ein einziger Atemzug kann reichen | Draußen bleiben, nur mit Atemschutz und nur kurz | noch nicht |
 
 **Weitere Ideen (offen):**

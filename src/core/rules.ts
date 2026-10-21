@@ -15,6 +15,9 @@ import {
   RADIO,
   RADIO_LINES,
   ENEMY_WEIGHTS,
+  FOE_TACTICS,
+  NIGHT_ENEMY_WEIGHTS,
+  WATCHER_LOOT,
   FIRST_MEMENTO,
   COLLECT_CHANCE,
   GUARD_CHANCE,
@@ -223,7 +226,8 @@ export function guardOf(seed: string, spot: Spot, now: number): EnemyId | null {
   const night = dayPhase(spot.pos, now) === 'night';
   const chance = Math.min(0.75, GUARD_CHANCE[spot.source] * (night ? NIGHT_GUARD_FACTOR : 1));
   if (r() >= chance) return null;
-  return pickWeighted(r, ENEMY_WEIGHTS);
+  // Der Bleiche Wächter kommt nur nachts heraus
+  return pickWeighted(r, night ? NIGHT_ENEMY_WEIGHTS : ENEMY_WEIGHTS);
 }
 
 /**
@@ -473,6 +477,17 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       break;
     }
 
+    case 'testFight': {
+      const group = action.group.filter((k) => k in FOE_TACTICS).slice(0, 4);
+      if (!group.length) return reject('nothing');
+      const window = Math.floor(ctx.now / 60_000);
+      const spot: Spot = { id: `w:test:${window}`, kind: 'hide', source: 'grid', pos: action.at, name: 'Testkampf' };
+      state.dig = null;
+      state.combat = { spot, enemy: group[0] === 'screamer' ? 'walker' : group[0], group, window, ambush: true, wild: true };
+      events.push({ type: 'wild', group }, { type: 'combatStarted', enemy: state.combat.enemy });
+      break;
+    }
+
     case 'roam': {
       // Quer durchs Unterholz: Manchmal kommt dir etwas entgegen. Nie, wenn du erschöpft bist,
       // nie direkt nach der letzten Begegnung. (Ob es wirklich Wald ist, prüft später der Server.)
@@ -485,7 +500,8 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       const r = rngFrom(ctx.worldSeed, state.playerId, 'unterholz', window, Math.round(action.at.lat * 4000), Math.round(action.at.lon * 4000));
       if (r() >= chance) break;
       const roll = r();
-      const group: FoeKind[] = roll < 0.12 ? ['brute'] : roll < 0.42 ? ['crawler', 'walker'] : night ? ['walker', 'walker'] : ['walker'];
+      // Nachts kann auch der Bleiche Wächter durchs Unterholz streifen
+      const group: FoeKind[] = night && roll < 0.25 ? ['watcher'] : roll < 0.12 ? ['brute'] : roll < 0.42 ? ['crawler', 'walker'] : night ? ['walker', 'walker'] : ['walker'];
       const spot: Spot = { id: `w:${window}`, kind: 'hide', source: 'grid', pos: action.at, name: 'Unterholz' };
       state.wildAt = ctx.now;
       state.dig = null;
@@ -548,10 +564,13 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
           const main = SPOT_KINDS[c.spot.kind].loot.find((l) => isMaterial(l.res))?.res ?? 'metal';
           const items: Partial<Inventory> = { [main]: kills };
           gain(state, items);
-          events.push({ type: 'loot', spotId: c.spot.id, items, bonus: false });
+          const loot: Extract<GameEvent, { type: 'loot' }> = { type: 'loot', spotId: c.spot.id, items, bonus: false };
+          if (c.group.includes('watcher')) watcherBonus(state, loot, ctx.now);
+          events.push(loot);
           break;
         }
         const loot = lootSpot(state, c.spot, ctx, { guarded: true, quality: 'good' });
+        if (c.group.includes('watcher')) watcherBonus(state, loot, ctx.now);
         startDig(state, c.spot, ctx);
         loot.canDig = true;
         // Jeder weitere erledigte Gegner bringt etwas vom Haupt-Rohstoff der Fundstelle
@@ -999,9 +1018,25 @@ function startDig(state: PlayerState, spot: Spot, ctx: RuleContext) {
 }
 
 /** Wer bewacht eine Fundstelle mit? (immer gleich für dieselbe Wache) */
+/** Besondere Beute vom Bleichen Wächter: Dinge aus den Kellern, beim ersten Mal sein Tagebuch. */
+function watcherBonus(state: PlayerState, loot: Extract<GameEvent, { type: 'loot' }>, now: number) {
+  gain(state, WATCHER_LOOT.items);
+  for (const [k, v] of Object.entries(WATCHER_LOOT.items) as [Resource, number][]) loot.items[k] = (loot.items[k] ?? 0) + v;
+  if (!loot.kram) {
+    loot.kram = WATCHER_LOOT.kram;
+    state.packKram[WATCHER_LOOT.kram] = (state.packKram[WATCHER_LOOT.kram] ?? 0) + 1;
+  }
+  if (!state.collection[WATCHER_LOOT.memento] && !loot.memento) {
+    loot.memento = WATCHER_LOOT.memento;
+    state.collection[WATCHER_LOOT.memento] = now;
+  }
+}
+
 export function encounter(seed: string, playerId: string, spot: Spot, window: number, enemy: EnemyId, night: boolean): FoeKind[] {
   const r = rngFrom(seed, playerId, 'gruppe', spot.id, window);
   const g: FoeKind[] = [enemy];
+  // Der Bleiche Wächter jagt allein
+  if (enemy === 'watcher') return g;
   if (enemy === 'walker' && r() < (night ? 0.6 : 0.35)) g.push('walker');
   if (enemy === 'crawler' && r() < 0.6) g.push('crawler');
   if (enemy === 'brute' && r() < 0.4) g.push('walker');
@@ -1069,7 +1104,7 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, o: { guarded
 
   // Erinnerungsstück
   let memento: string | undefined;
-  const missing = MEMENTOS.filter((m) => !state.collection[m.id]);
+  const missing = MEMENTOS.filter((m) => !m.from && !state.collection[m.id]);
   const chance = def.mementoChance + (guarded ? GUARD_MEMENTO_BONUS : 0);
   if (state.stats.searches === 0 && !state.collection[FIRST_MEMENTO]) memento = FIRST_MEMENTO;
   else if (missing.length && r() < chance) memento = missing[Math.floor(r() * missing.length)].id;

@@ -216,4 +216,6 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 
 - **Android-App:** GitHub baut bei jedem Push eine APK (Releases, „endstation.apk“), Vollbild, Querformat, Standort-Rechte
 - **Karten-HUD schlank:** oben links Figur mit Gesundheitsring und nächstes Ziel, oben rechts Sektor, Wetter, Menü; unten Zuhause, runder Rucksack-Knopf, Zentrieren mit GPS-Punkt. Vorräte, Name und Tag erst beim Antippen
+- **Bleicher Wächter:** neuer Gegner nur nachts, mit Kevins 3D-Modell (fürs Handy auf 260 KB verkleinert). Blick lähmt, weicht ins Dunkel zurück, springt an. Beute aus den Kellern und einmalig das Kellertagebuch
+- **Testmodus:** Figur läuft im Ort nur über Straßen und Wege (Strecke als Linie, quer durchs Gelände gepunktet), im Wald abseits der Wege langsamer mit Begegnungen, „Test: Angriff“ im Menü. Spielstand Version 10
 - **Endstation-Geschichte raus:** keine Linie 0, kein eigener Bus, die Basis heißt jetzt „Zuhause“. Bus-Look raus (LED-Schrift, Linienplan-Menü, LED-Icon). Platzhalter-Titel „Nachhall“ mit neuem Icon

@@ -5,6 +5,7 @@
 // und Verbinden, wenn du Medizin dabeihast. Die Gegner zeigen vorher an, was sie vorhaben
 // (Angriff mit Schaden, Ausholen, Heulen …). Wer vorne steht, kann zuschlagen; wer hinten
 // steht, kommt erst nach vorne (außer dem Heuler, der bleibt hinten und ruft Verstärkung).
+// Der Bleiche Wächter (nur nachts) starrt dich an, weicht ins Dunkel zurück und springt dich an.
 //
 // Alles hier ist rein und vorhersagbar: gleicher Startwert, gleiche Züge, gleiches Ergebnis.
 // Dadurch kann es später auch der Server nachrechnen.
@@ -46,6 +47,8 @@ export interface TacticsState {
   focus: number;
   /** Gepackt: nächste Runde 1 Kraft weniger. */
   grabbed: number;
+  /** Angestarrt: nächste Runde 1 Karte weniger. */
+  dazed: number;
   hand: CardId[];
   draw: CardId[];
   discard: CardId[];
@@ -71,6 +74,9 @@ export type TEvent =
   | { type: 'focus'; amount: number }
   | { type: 'hurt'; by: number; dmg: number; absorbed: number }
   | { type: 'grabbed'; by: number }
+  | { type: 'stare'; by: number }
+  | { type: 'fade'; id: number }
+  | { type: 'pounce'; id: number }
   | { type: 'advance'; id: number }
   | { type: 'windup'; id: number }
   | { type: 'lurk'; id: number; block: number }
@@ -119,8 +125,10 @@ function makeFoe(st: TacticsState, kind: FoeKind, row: 'near' | 'far'): TFoe {
 export function intentOf(f: TFoe): Intent {
   const def = FOE_TACTICS[f.kind];
   if (f.stunned) return { kind: 'stunned' };
-  if (f.row === 'far' && !def.stayBack) return { kind: 'advance' };
   const p = def.pattern[f.step % def.pattern.length];
+  // Der Sprung kommt von hinten: dafür muss er nicht erst nach vorne
+  if (f.row === 'far' && !def.stayBack && p.kind !== 'pounce') return { kind: 'advance' };
+  if (f.row === 'near' && p.kind === 'pounce') return { kind: 'attack', dmg: p.dmg };
   if (p.kind === 'howl' && f.howls >= TACTICS.maxHowls) return { kind: 'attack', dmg: 1 };
   return { kind: p.kind, dmg: p.dmg };
 }
@@ -136,6 +144,7 @@ export function createTactics(o: { seed: string; group: FoeKind[]; weapons: Weap
     block: 0,
     focus: 0,
     grabbed: 0,
+    dazed: 0,
     hand: [],
     draw: [],
     discard: [],
@@ -199,7 +208,8 @@ function startTurn(st: TacticsState, events: TEvent[]) {
   st.block = 0;
   st.energy = Math.max(1, TACTICS.energy - st.grabbed);
   st.grabbed = 0;
-  drawCards(st, TACTICS.hand);
+  drawCards(st, Math.max(2, TACTICS.hand - st.dazed));
+  st.dazed = 0;
   for (const f of aliveFoes(st)) f.intent = intentOf(f);
   events.push({ type: 'turn', turn: st.turn });
 }
@@ -321,9 +331,15 @@ export function endTurn(st: TacticsState): TEvent[] {
     const def = FOE_TACTICS[f.kind];
     f.step = (f.step + 1) % def.pattern.length;
     switch (intent.kind) {
+      case 'pounce':
       case 'attack':
       case 'smash':
       case 'grab': {
+        if (intent.kind === 'pounce') {
+          // Aus dem Dunkel nach vorne gesprungen, dann zugeschlagen
+          f.row = 'near';
+          events.push({ type: 'pounce', id: f.id });
+        }
         const raw = intent.dmg ?? 0;
         const absorbed = Math.min(st.block, raw);
         st.block -= absorbed;
@@ -343,6 +359,17 @@ export function endTurn(st: TacticsState): TEvent[] {
       case 'lurk':
         f.block = 2;
         events.push({ type: 'lurk', id: f.id, block: 2 });
+        break;
+      case 'stare':
+        // Wie gelähmt: eine Karte und eine Kraft weniger
+        st.dazed = 1;
+        st.grabbed = 1;
+        events.push({ type: 'stare', by: f.id });
+        break;
+      case 'fade':
+        f.row = 'far';
+        f.block = 2;
+        events.push({ type: 'fade', id: f.id });
         break;
       case 'howl':
         if (aliveFoes(st).length < TACTICS.maxFoes && f.howls < TACTICS.maxHowls) {

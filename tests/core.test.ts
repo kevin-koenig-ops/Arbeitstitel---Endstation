@@ -275,3 +275,32 @@ describe('Unterholz', () => {
     expect(any).toBe(false);
   });
 });
+
+describe('Bleicher Wächter', () => {
+  it('bewacht Fundstellen nur nachts', () => {
+    const spots = gridSpotsAround(SEED, HOME, 1500);
+    const day = Date.UTC(2026, 6, 1, 11);
+    const night = Date.UTC(2026, 6, 1, 23);
+    let atDay = 0;
+    let atNight = 0;
+    for (const sp of spots)
+      for (let h = 0; h < 6; h++) {
+        if (guardOf(SEED, sp, day + h * 600_000) === 'watcher') atDay++;
+        if (guardOf(SEED, sp, night + h * 600_000) === 'watcher') atNight++;
+      }
+    expect(atDay).toBe(0);
+    expect(atNight).toBeGreaterThan(0);
+  });
+
+  it('bringt besondere Beute und beim ersten Mal sein Tagebuch', () => {
+    let s = fresh();
+    s = applyAction(s, { type: 'testFight', at: HOME, group: ['watcher'] }, ctx()).state;
+    expect(s.combat?.group).toEqual(['watcher']);
+    const r = applyAction(s, { type: 'battleResult', outcome: 'won', health: 8, kills: 1, usedMedicine: 0 }, ctx());
+    const loot = r.events.find((e) => e.type === 'loot');
+    expect(loot && loot.type === 'loot' && loot.memento).toBe('cellarDiary');
+    expect(loot && loot.type === 'loot' && loot.kram).toBe('flashlight');
+    expect(r.state.collection.cellarDiary).toBeDefined();
+    expect(r.state.inventory.medicine).toBeGreaterThan(s.inventory.medicine);
+  });
+});

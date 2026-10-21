@@ -100,7 +100,7 @@ export interface Spot {
 export type BackgroundId = 'rescue' | 'workshop' | 'farm' | 'courier';
 
 // --- Kampf ---------------------------------------------------------------------
-export type EnemyId = 'walker' | 'crawler' | 'brute';
+export type EnemyId = 'walker' | 'crawler' | 'brute' | 'watcher';
 export type WeaponId = 'crowbar' | 'bat' | 'crossbow';
 /** Wie gut ein Geschicklichkeits-Moment lief (Mini-Spiel beim Durchsuchen). Kommt vom Client, wirkt nur begrenzt. */
 export type Quality = 'miss' | 'good' | 'perfect';
@@ -316,6 +316,8 @@ export type Action =
   | { type: 'stopDig' }
   /** Abseits der Wege unterwegs (Meter seit der letzten Meldung). Im Wald kann dir etwas begegnen. */
   | { type: 'roam'; at: LatLon; accuracyM: number; meters: number; terrain: 'forest' }
+  /** Nur im Testmodus (Simulation): sofort ein Kampf gegen diese Gegner. Der Server nimmt das später nicht an. */
+  | { type: 'testFight'; at: LatLon; group: FoeKind[] }
   /** Ertrag einer Anlage (Regentonne, Hochbeet) abholen. */
   | { type: 'harvest'; uid: number }
   /** Zu Hause: alles aus dem Rucksack ins Lager. */

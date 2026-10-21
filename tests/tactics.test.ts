@@ -167,10 +167,48 @@ describe('Taktik-Kampf', () => {
     expect(rate(['crawler', 'crawler']).won).toBeGreaterThan(0.85);
     expect(rate(['walker', 'walker']).won).toBeGreaterThan(0.75);
     expect(rate(['brute']).won).toBeGreaterThan(0.6);
+    // Der Bleiche Wächter ist eine echte Nacht-Herausforderung, aber schaffbar
+    const w = rate(['watcher']);
+    expect(w.won).toBeGreaterThan(0.45);
+    expect(w.won).toBeLessThan(0.97);
     // Schwerer Brocken: mit Nagelschläger deutlich leichter
     const bat = [{ kind: 'bat' as const, dur: WEAPONS.bat.dur }];
     expect(rate(['brute', 'walker'], bat).won).toBeGreaterThan(rate(['brute', 'walker']).won - 0.05);
     // Ohne Waffe geht es auch, nur schwerer
     expect(rate(['walker'], []).won).toBeGreaterThan(0.6);
+  });
+});
+
+describe('Bleicher Wächter', () => {
+  it('starrt, schlägt zu, weicht ins Dunkel und springt dich an', () => {
+    const st = start(['watcher']);
+    const w = aliveFoes(st)[0];
+    // Muster von vorne beginnen lassen
+    w.step = 0;
+    w.intent = intentOf(w);
+    expect(w.intent.kind).toBe('stare');
+    // Runde 1: Starren -> nächste Runde eine Karte weniger
+    let ev = endTurn(st);
+    expect(ev.some((e) => e.type === 'stare')).toBe(true);
+    expect(st.hand.length).toBe(3);
+    // Runde 2: Angriff
+    expect(w.intent).toEqual({ kind: 'attack', dmg: 4 });
+    endTurn(st);
+    expect(st.hand.length).toBe(4);
+    // Runde 3: ins Dunkel, dann hinten mit Abwehr
+    expect(w.intent.kind).toBe('fade');
+    ev = endTurn(st);
+    expect(ev.some((e) => e.type === 'fade')).toBe(true);
+    expect(w.row).toBe('far');
+    // Hinten trifft ihn kein Nahkampf, nur Wurf und Bolzen
+    expect(targetsFor(st, 'punch').length).toBe(0);
+    expect(targetsFor(st, 'throw').length).toBe(1);
+    // Runde 4: Sprung von hinten, mit vollem Schaden
+    expect(w.intent).toEqual({ kind: 'pounce', dmg: 6 });
+    const hp = st.hp;
+    ev = endTurn(st);
+    expect(ev.some((e) => e.type === 'pounce')).toBe(true);
+    expect(w.row).toBe('near');
+    expect(st.hp).toBe(hp - 6);
   });
 });

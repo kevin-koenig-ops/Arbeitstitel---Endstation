@@ -210,6 +210,9 @@ Die Häuser stehen schon als einfache Klötze in echter Höhe auf der Karte. Ech
   - „Runde beenden“: Die Gegner handeln nacheinander, dann gibt es neue Karten. Kein Zeitdruck.
   - Waffen nutzen sich pro gespielter Waffenkarte ab.
 - **Überfall:** Wer beim Wühlen zu laut ist, wird angegriffen. Danach gibt es nur, was die Gegner dabeihatten.
+- **Bleicher Wächter (nur nachts):** Jagt allein, bewacht nachts manchmal Fundstellen oder streift durchs Unterholz. Sein Blick lähmt (nächste Runde eine Karte und eine Kraft weniger), dann weicht er ins Dunkel zurück (hinten, nur Wurf und Bolzen treffen) und springt dich an (Ausweichen hilft). Beute: Dinge aus den Kellern (Medizin, Elektronik, eine Taschenlampe), beim ersten Sieg sein Kellertagebuch als besonderes Erinnerungsstück. Eigenes 3D-Modell (von Kevin), Bewegung per Code.
+- **Unterholz:** Abseits der Wege im Wald geht es langsamer, und manchmal kommt dir etwas entgegen (danach ein paar Minuten Ruhe, nie wenn du erschöpft bist). Erst im Testmodus, mit echtem GPS später.
+- **Testmodus:** Im Menü „Test: Angriff“ löst einen Kampf gegen Gegner nach Wahl aus. Dort läuft die Figur im Ort nur über Straßen und Wege; die geplante Strecke ist als Linie zu sehen (gepunktet quer durchs Gelände).
 - **Niederlage ist kein Drama:** Ein paar Sachen fallen aus dem Rucksack (nie aus dem Lager), die Gesundheit kommt von selbst zurück. **Fliehen geht immer** und kostet nichts.
 - Die Kampfregeln stehen in `core/tactics.ts` und sind deterministisch: Ein Server kann einen Kampf später nachrechnen.
 

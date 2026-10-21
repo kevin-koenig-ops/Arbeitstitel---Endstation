@@ -6,7 +6,7 @@ import { ExploredView, SECTOR_LEVELS, sectorOf } from '../../core/explore';
 import { bearingDeg, distanceM, formatDistance, offsetM } from '../../core/geo';
 import { rankOf } from '../../core/progress';
 import { currentHealth, dayNumber, packCount, pendingHarvest, readyAt, readyParts, searchRangeM, spotKey } from '../../core/rules';
-import type { Cache, LatLon, Spot } from '../../core/types';
+import type { Cache, FoeKind, LatLon, Spot } from '../../core/types';
 import { DEMO, GameMap, type SpotView } from '../../map/GameMap';
 import { WalkNet } from '../../map/walkNet';
 import {
@@ -458,7 +458,7 @@ export function gameScreen(app: App): Screen {
   let net: WalkNet | null = null;
   let netAt = 0;
   let routeOff: boolean[] = [];
-  let snapHintAt = 0;
+  let snapHintAt = -Infinity;
   /** Wegenetz rund um p, bei Bedarf neu aus den geladenen Kartendaten gebaut. */
   const walkNet = (p: LatLon, needM = 0): WalkNet | null => {
     if (!gm) return null;
@@ -503,7 +503,7 @@ export function gameScreen(app: App): Screen {
   let roamM = 0;
   let roamBusy = false;
   let wasForest = false;
-  let forestHintAt = 0;
+  let forestHintAt = -Infinity;
   const checkRoam = (f: Fix) => {
     const prev = roamFrom;
     roamFrom = f.pos;
@@ -694,7 +694,7 @@ export function gameScreen(app: App): Screen {
       overlay = null;
       renderHud();
       updateSpots();
-      if (end.outcome === 'won' && end.loot) sheet.showLoot(end.spot, end.loot, end.spot.id.startsWith('w:') ? 'Begegnung im Unterholz überstanden.' : end.ambush ? 'Überfall abgewehrt. Mehr war hier nicht mehr zu holen.' : end.kills && end.kills > 1 ? `${end.kills} Gegner erledigt` : `${ENEMIES[end.enemy].name} erledigt`);
+      if (end.outcome === 'won' && end.loot) sheet.showLoot(end.spot, end.loot, end.spot.id.startsWith('w:test') ? 'Testkampf gewonnen.' : end.spot.id.startsWith('w:') ? 'Begegnung im Unterholz überstanden.' : end.ambush ? 'Überfall abgewehrt. Mehr war hier nicht mehr zu holen.' : end.kills && end.kills > 1 ? `${end.kills} Gegner erledigt` : `${ENEMIES[end.enemy].name} erledigt`);
       else if (end.outcome === 'fled') app.toast('Du hast dich zurückgezogen.');
     });
   };
@@ -877,7 +877,38 @@ export function gameScreen(app: App): Screen {
           { class: 'menu-list compact' },
           menuItem('Weiterspielen', null, close, true),
           menuItem('Einstellungen', null, showSettings),
+          provider?.kind === 'sim' ? menuItem('Test: Angriff', 'Nur im Testmodus: Kampf gegen Gegner nach Wahl', showTestFight) : null,
           menuItem('Hauptmenü', 'Dein Spielstand ist gespeichert', () => app.go('menu')),
+        ),
+      );
+    };
+    // Testmodus: einen Angriff auslösen, egal wo und wann
+    const showTestFight = () => {
+      clear(body);
+      const groups: [string, FoeKind[]][] = [
+        ['Bleicher Wächter', ['watcher']],
+        ['Wandler', ['walker']],
+        ['Kriecher', ['crawler', 'crawler']],
+        ['Borkenmann', ['brute']],
+        ['Wandler mit Heuler', ['walker', 'walker', 'screamer']],
+        ['Alles auf einmal', ['watcher', 'brute', 'screamer']],
+      ];
+      body.append(
+        h('button', { class: 'btn ghost small back-link', type: 'button', onclick: showMain }, svgEl(icon('back', 16)), 'Zurück'),
+        h(
+          'ol',
+          { class: 'menu-list compact' },
+          groups.map(([label, group]) =>
+            menuItem(label, null, async () => {
+              const at = fix?.pos ?? (provider instanceof SimulatedLocation ? provider.position : null);
+              if (!at) return;
+              const res = await app.backend.dispatch({ type: 'testFight', at, group });
+              if (res.events.some((e) => e.type === 'wild')) {
+                closeOverlay();
+                openFight();
+              }
+            }),
+          ),
         ),
       );
     };

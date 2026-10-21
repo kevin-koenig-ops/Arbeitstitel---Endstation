@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import type { FoeKind } from '../core/content';
 import { softBox } from './softBox';
+import { loadFoeModel } from './foeModels';
 
 interface Look {
   skin: string;
@@ -20,6 +21,8 @@ const LOOKS: Record<FoeKind, Look> = {
   crawler: { skin: '#7f8a68', shirt: '#3a3530', pants: '#2e2a26', scale: 0.95 },
   brute: { skin: '#8a9a72', shirt: '#3a3f3a', pants: '#2f3440', scale: 1.32, vest: true },
   screamer: { skin: '#b0b49c', shirt: '#4a4250', pants: '#3a3440', scale: 1.02, thin: true },
+  // Ersatz, bis das echte Modell geladen ist: bleich und dürr
+  watcher: { skin: '#ddd3c6', shirt: '#cfc5b8', pants: '#bdb2a4', scale: 1.0, thin: true },
 };
 
 export type ZombiePose = 'idle' | 'walk' | 'windup' | 'strike' | 'stagger' | 'scream' | 'dead';
@@ -38,6 +41,9 @@ export class ZombieRig {
   private phase = Math.random() * 6;
   private deadT = 0;
   pose: ZombiePose = 'walk';
+  /** Fertiges 3D-Modell statt Klötzchen (falls es eins gibt). */
+  private model: THREE.Group | null = null;
+  private disposed = false;
   /** 0..1 Fortschritt beim Ausholen */
   windup = 0;
   private strikeT = 0;
@@ -139,6 +145,22 @@ export class ZombieRig {
       const mesh = o as THREE.Mesh;
       if (mesh.isMesh) mesh.receiveShadow = true;
     });
+    void loadFoeModel(kind)
+      ?.then((m) => this.useModel(m))
+      .catch(() => undefined);
+  }
+
+  /** Das fertige Modell einsetzen: die Klötzchen-Teile verschwinden. */
+  private useModel(m: THREE.Object3D) {
+    if (this.disposed) return;
+    for (const c of this.body.children) c.visible = false;
+    this.model = new THREE.Group();
+    this.model.add(m);
+    this.body.add(this.model);
+    m.traverse((o) => {
+      const mat = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
+      if ((o as THREE.Mesh).isMesh && mat && 'emissive' in mat) this.mats.push(mat);
+    });
   }
 
   /** Kurz weiß aufblitzen (Treffer). */
@@ -205,12 +227,30 @@ export class ZombieRig {
       this.root.rotation.x = -k * (Math.PI / 2) * 0.95;
       this.root.position.y = -Math.max(0, this.deadT - 2.2) * 0.4;
     }
+    // Fertiges Modell ohne Gelenke: der ganze Körper atmet, beugt sich vor, springt, taumelt
+    if (this.model) {
+      const breathe = Math.sin(t * 2.1 + this.phase) * 0.012;
+      let tilt = 0;
+      let fwd = 0;
+      if (p === 'windup' || p === 'scream') tilt = -0.25 * this.windup;
+      if (this.strikeT > 0) {
+        const k = Math.max(0, this.strikeT / 0.25);
+        tilt = 0.3 * k;
+        fwd = 0.45 * k;
+      }
+      if (p === 'stagger') tilt = -0.28 + Math.sin(t * 18) * 0.04;
+      this.model.rotation.x = tilt;
+      this.model.rotation.y = Math.sin(t * 0.7 + this.phase) * 0.12;
+      this.model.position.z = fwd;
+      this.model.scale.set(1, 1 + breathe, 1);
+    }
     if (this.flashT > 0) this.flashT -= dt;
     const f = Math.max(0, this.flashT) / 0.12;
     for (const mm of this.mats) mm.emissive.setScalar(f * 0.9);
   }
 
   dispose() {
+    this.disposed = true;
     this.root.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if (mesh.isMesh) mesh.geometry.dispose();

@@ -71,6 +71,28 @@ const ART: Record<EnemyId, string> = {
   <path d="M136 190l28 16 12 18" stroke="${SKIN}" stroke-width="10" stroke-linecap="round" fill="none"/>
   ${hand(178, 226, 1)}
   ${head(100, 178, 0, '<path d="M80 166q6-18 24-16q12 2 16 14q-8-6-16-4q-14-2-24 6z" fill="#3a332b"/>')}`,
+
+  // Bleicher Wächter: dürr, gebückt, Haut wie Papier, Knoten auf dem Rücken, große helle Augen
+  watcher: `${SHADOW}
+  <g fill="none" stroke="#d9cfc2" stroke-linecap="round">
+    <path d="M86 150l-14 40 4 34" stroke-width="9"/>
+    <path d="M112 150l16 40-4 34" stroke-width="9"/>
+    <path d="M76 98Q50 130 46 176" stroke-width="7"/>
+    <path d="M124 98Q150 130 154 176" stroke-width="7"/>
+  </g>
+  <path d="M70 224h14M118 224h14" stroke="#cfc4b6" stroke-width="7" stroke-linecap="round"/>
+  <path d="M74 92Q100 78 126 92l-8 64H82z" fill="#ded4c7"/>
+  <path d="M84 104q16 6 32 0M86 116q14 5 28 0M88 128q12 4 24 0" stroke="#b9ad9e" stroke-width="2" fill="none"/>
+  <circle cx="72" cy="86" r="7" fill="#c9bcab"/><circle cx="130" cy="84" r="8" fill="#c9bcab"/><circle cx="120" cy="76" r="5" fill="#c9bcab"/>
+  <path d="M40 182l-4 10M46 184v11M52 182l4 10" stroke="#d9cfc2" stroke-width="3" stroke-linecap="round"/>
+  <path d="M148 182l-4 10M154 184v11M160 182l4 10" stroke="#d9cfc2" stroke-width="3" stroke-linecap="round"/>
+  <g transform="rotate(14 100 92)">
+    <ellipse cx="100" cy="72" rx="20" ry="25" fill="#e4dacd"/>
+    <path d="M80 70q4 18 20 26q-14-2-20-26z" fill="#cfc3b4"/>
+    <ellipse cx="91" cy="66" rx="8" ry="7.5" fill="#1e1a17"/><ellipse cx="110" cy="66" rx="8" ry="7.5" fill="#1e1a17"/>
+    <circle class="eye" cx="92" cy="67" r="2.2" fill="#f6f0dc"/><circle class="eye" cx="109" cy="67" r="2.2" fill="#f6f0dc"/>
+    <ellipse cx="100" cy="86" rx="5" ry="4" fill="#2e201c"/>
+  </g>`,
 };
 
 export function enemySvg(id: EnemyId): string {
