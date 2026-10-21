@@ -10,7 +10,25 @@ export type { FurnitureId, SiteId };
 /** Zum Überleben: wird verbraucht. */
 export type Survival = 'food' | 'water' | 'medicine';
 /** Rohstoffe: zum Bauen, Basteln und Aufrüsten. */
-export type Material = 'wood' | 'metal' | 'stone' | 'cloth' | 'plastic' | 'glass' | 'glue' | 'screws' | 'electronics';
+export type Material =
+  | 'wood'
+  | 'metal'
+  | 'stone'
+  | 'cloth'
+  | 'plastic'
+  | 'glass'
+  | 'rubber'
+  | 'leather'
+  | 'screws'
+  | 'springs'
+  | 'gears'
+  | 'copper'
+  | 'glue'
+  | 'oil'
+  | 'electronics'
+  | 'cells'
+  | 'antiseptic'
+  | 'phosphate';
 export type Resource = Survival | Material;
 export type Inventory = Record<Resource, number>;
 
@@ -33,7 +51,47 @@ export type KramId =
   | 'fruitCrate'
   | 'pan'
   | 'brokenPhone'
-  | 'superglue';
+  | 'superglue'
+  | 'carRadio'
+  | 'jack'
+  | 'wiperBlades'
+  | 'firstAidKit'
+  | 'hubcap'
+  | 'motorOil'
+  | 'spareTire'
+  | 'thermos'
+  | 'powerbank'
+  | 'headphones'
+  | 'umbrella'
+  | 'hedgeShears'
+  | 'gardenHose'
+  | 'fertilizer'
+  | 'bikeLock'
+  | 'bikeParts'
+  | 'oilCan'
+  | 'mousetrap'
+  | 'cordlessDrill'
+  | 'copperWire'
+  | 'bucket'
+  | 'leatherJacket'
+  | 'handbag'
+  | 'rubberBoots'
+  | 'alarmClock'
+  | 'kitchenScale'
+  | 'kettle'
+  | 'speaker'
+  | 'deskFan'
+  | 'hairDryer'
+  | 'clothesIron'
+  | 'coffeeMachine'
+  | 'schnapps'
+  | 'cashRegister'
+  | 'bloodPressure'
+  | 'disinfectant'
+  | 'hotWaterBottle'
+  | 'binoculars'
+  | 'lantern'
+  | 'gasMask';
 export type KramBag = Partial<Record<KramId, number>>;
 
 /** Sammelstücke: selten, jedes gibt es nur einmal. Fürs Fundbuch und zum Aufstellen. */

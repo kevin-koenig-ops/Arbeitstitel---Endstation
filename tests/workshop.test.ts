@@ -149,7 +149,8 @@ describe('Werktisch', () => {
     expect(readyParts(s, T0 + KRAM.toaster.minutes * MIN)).toEqual({ items: KRAM.toaster.parts, count: 1 });
     const c = act(s, { type: 'collect' }, T0 + 7 * 24 * 60 * MIN);
     expect(c.events[0]).toMatchObject({ type: 'collected', count: 3 });
-    expect(c.state.inventory.electronics).toBe(50 + 1 + 1);
+    // Toaster und Radio enthalten je 1 Kupfer (wie bei Fallout zerlegt)
+    expect(c.state.inventory.copper).toBe(50 + 1 + 1);
     expect(c.state.workshop.jobs).toEqual([]);
   });
 
@@ -182,7 +183,7 @@ describe('Umzug auf Version 8', () => {
       },
     };
     const s = migrate(JSON.parse(JSON.stringify({ ...old, lastActiveAt: T0 })))!;
-    expect(s.schema).toBe(11);
+    expect(s.schema).toBe(12);
     expect('bus' in s).toBe(false);
     // Regenfass: Kosten zurück (3 Metall, 2 Kunststoff) und 3 Wasser Ertrag
     expect(s.inventory.water).toBe(3);

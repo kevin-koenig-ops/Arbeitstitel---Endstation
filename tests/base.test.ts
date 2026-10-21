@@ -13,7 +13,7 @@ import {
   START_SECTIONS,
   type PlotIndex,
 } from '../src/core/building';
-import { emptyInventory } from '../src/core/content';
+import { emptyInventory, MATERIAL_ORDER } from '../src/core/content';
 import { FURNITURE } from '../src/core/furniture';
 import { activePlot, applyAction, comfortTier, createPlayer, knowsBlueprint, placementProblem, plotIndexOf } from '../src/core/rules';
 import { migrate } from '../src/core/save';
@@ -27,7 +27,7 @@ const ev = (s: PlayerState, a: Action) => act(s, a).events[0];
 
 /** Spieler mit gewähltem Busdepot und vollen Taschen. */
 function settled(): PlayerState {
-  const s = { ...createPlayer('p', hero, T0), inventory: { food: 50, water: 50, medicine: 5, wood: 500, metal: 500, stone: 500, cloth: 500, plastic: 500, glass: 500, glue: 500, screws: 500, electronics: 500 } };
+  const s = { ...createPlayer('p', hero, T0), inventory: { ...emptyInventory(), food: 50, water: 50, medicine: 5, ...Object.fromEntries(MATERIAL_ORDER.map((m) => [m, 500])) } };
   return act(s, { type: 'chooseSite', site: 'depot' }).state;
 }
 
@@ -230,10 +230,10 @@ describe('Migration', () => {
       base: { items: [{ uid: 1, kind: 'sofa', x: 0, y: 0, rot: 0 }, { uid: 2, kind: 'plant', x: 2, y: 0, rot: 0 }], rubble: [], nextUid: 3 },
     };
     const s = migrate(JSON.parse(JSON.stringify(old)))!;
-    expect(s.schema).toBe(11);
+    expect(s.schema).toBe(12);
     expect(s.base).toEqual({ active: null, plots: {}, found: {} });
     // Sofa: 2 Holz, 4 Stoff, 1 Schraube; Pflanze: 1 Stein, 1 Wasser; 5 Material: 3 Holz, 2 Metall
-    expect(s.inventory).toEqual({ ...emptyInventory(), wood: 5, metal: 2, cloth: 4, screws: 1, stone: 1, water: 1 });
+    expect(s.inventory).toEqual({ ...emptyInventory(), wood: 5, metal: 2, cloth: 3, springs: 2, screws: 1, stone: 1, water: 1 });
     expect('material' in s.inventory).toBe(false);
     expect(s.kram).toEqual({});
     expect(s.collectibles).toEqual({});
@@ -254,7 +254,7 @@ describe('Migration', () => {
     };
     const v6 = { ...now, schema: 6, base: { active: 'depot', plots: { depot: oldPlot }, found: {} } };
     const s = migrate(JSON.parse(JSON.stringify(v6)))!;
-    expect(s.schema).toBe(11);
+    expect(s.schema).toBe(12);
     const p = s.base.plots.depot!;
     expect(p.walls).toEqual({ 'h32,33': { k: 'plankWall' }, 'v34,31': { k: 'plankWall', o: 'door' } });
     expect(p.floors).toEqual({ '32,33': 'plankFloor' });

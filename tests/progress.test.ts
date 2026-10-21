@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FurnitureId } from '../src/core/furniture';
-import { CACHE, CART, COOK, DIG, MAX_HEALTH, RADIO, TIER_PERKS } from '../src/core/content';
+import { CACHE, CART, COOK, DIG, emptyInventory, MATERIAL_ORDER, MAX_HEALTH, RADIO, TIER_PERKS } from '../src/core/content';
 import { distanceM } from '../src/core/geo';
 import { claimableGoals, GOALS, rankOf, visibleGoals } from '../src/core/progress';
 import { applyAction, basePerks, cartOf, createPlayer, guardOf, placementProblem, readyAt, regenMs, searchRangeM, whereToFind, workbenchSlots } from '../src/core/rules';
@@ -15,7 +15,7 @@ const hero: Character = { name: 'Kim', look: { hair: 0, color: 0, skin: 0 }, bac
 const ctx = (now = T0) => ({ now, worldSeed: SEED });
 const act = (s: PlayerState, a: Action, now = T0) => applyAction(s, a, ctx(now));
 const fresh = () => createPlayer('player-1', hero, T0);
-const rich = (): PlayerState => ({ ...fresh(), inventory: { food: 50, water: 50, medicine: 5, wood: 500, metal: 500, stone: 500, cloth: 500, plastic: 500, glass: 500, glue: 500, screws: 500, electronics: 500 } });
+const rich = (): PlayerState => ({ ...fresh(), inventory: { ...emptyInventory(), food: 50, water: 50, medicine: 5, ...Object.fromEntries(MATERIAL_ORDER.map((m) => [m, 500])) } });
 const settled = () => act(rich(), { type: 'chooseSite', site: 'depot' }).state;
 const free = (now = T0) => gridSpotsAround(SEED, HOME, 1500, now).filter((x) => !guardOf(SEED, x, now) && !cartOf(SEED, x, now));
 const search = (s: PlayerState, spot: Spot, quality?: 'miss' | 'good' | 'perfect', now = T0) => act(s, { type: 'search', spot, at: spot.pos, accuracyM: 5, quality }, now);

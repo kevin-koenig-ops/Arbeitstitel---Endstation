@@ -11,6 +11,12 @@ import type { PlayerState } from './types';
 type Raw = Record<string, unknown> & { schema?: number };
 
 const MIGRATIONS: Record<number, (s: Raw) => void> = {
+  // Version 11 -> 12: neue Bauteile wie bei Fallout (Gummi, Federn, Kupfer …), anfangs 0
+  11: (s) => {
+    const inv = (s.inventory ?? {}) as Record<string, number>;
+    for (const r of RESOURCE_ORDER) inv[r] = inv[r] ?? 0;
+    s.inventory = inv;
+  },
   // Version 10 -> 11: Fundbuch der Ortstypen, entdeckte besondere Orte.
   10: (s) => {
     s.places = {};

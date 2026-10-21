@@ -1,10 +1,10 @@
 // Kleine Bausteine für Rohstoffe, Kram und Sammelstücke (Kosten-Chips, Zeilen, Vorschaubilder).
 
-import { isMaterial, KRAM, RESOURCE_ORDER, RESOURCES } from '../../core/content';
+import { isMaterial, KRAM, KRAM_ORDER, RESOURCE_ORDER, RESOURCES } from '../../core/content';
 import { whereToFind } from '../../core/rules';
 import { SPOT_PLURAL } from '../texts';
 import type { FurnitureId } from '../../core/furniture';
-import type { Inventory, KramId } from '../../core/types';
+import type { Inventory, KramId, Resource } from '../../core/types';
 import { clear, h, svgEl } from '../dom';
 import { icon, resIcon } from '../icons';
 
@@ -49,7 +49,17 @@ export function missingText(cost: Partial<Inventory>, have: Inventory): string {
     .map((k) => SPOT_PLURAL[k])
     .filter(Boolean)
     .slice(0, 2);
-  return `Dir fehlen ${list}.${places.length ? ` ${RESOURCES[r].name} gibt es oft in ${places.join(' und ')}.` : ''}`;
+  if (places.length) return `Dir fehlen ${list}. ${RESOURCES[r].name} gibt es oft in ${places.join(' und ')}.`;
+  // Bauteile wie Federn oder Kupfer stecken vor allem in Kram (wie bei Fallout)
+  const inKram = kramWith(r).slice(0, 2).map((k) => KRAM[k].name);
+  return `Dir fehlen ${list}.${inKram.length ? ` ${RESOURCES[r].name} steckt zum Beispiel in: ${inKram.join(', ')}.` : ''}`;
+}
+
+/** Welcher Kram enthält dieses Bauteil? (am meisten zuerst) */
+export function kramWith(r: Resource) {
+  return KRAM_ORDER.filter((k) => (KRAM[k].parts as Partial<Record<Resource, number>>)[r]).sort(
+    (a, b) => ((KRAM[b].parts as Partial<Record<Resource, number>>)[r] ?? 0) - ((KRAM[a].parts as Partial<Record<Resource, number>>)[r] ?? 0),
+  );
 }
 
 export function itemsLine(items: Partial<Inventory>) {

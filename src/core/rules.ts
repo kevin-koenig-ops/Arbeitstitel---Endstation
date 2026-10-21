@@ -128,7 +128,7 @@ import type {
 import { gridSpotAlive, resolveGridSpot, resolveSpecialSpot } from './world';
 import { GOALS } from './progress';
 
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 const HOUR = 3600_000;
 /** Millisekunden pro Gesundheitspunkt (die Stufe des Zuhauses macht es schneller). */
 export function regenMs(state: PlayerState): number {

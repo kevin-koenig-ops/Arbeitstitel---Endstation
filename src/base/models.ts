@@ -811,6 +811,273 @@ const KRAM_BUILDERS: Record<KramId, (g: THREE.Group) => void> = {
     cone(g, 0.016, 0.05, mat('#b0472f'), -0.014, 0.145, 0, 8).rotation.z = 0.2;
     box(g, 0.06, 0.01, 0.03, mat('#c9c6bc'), 0.014, 0.022, 0);
   },
+  // --- Kram wie bei Fallout: viele Sorten, jede mit kleinem Modell fürs Vorschaubild ---
+  carRadio(g) {
+    box(g, 0.36, 0.1, 0.2, mat('#1d1d1b'), 0, 0, 0);
+    box(g, 0.34, 0.07, 0.005, mat('#2f3a35'), 0, 0.015, 0.1);
+    box(g, 0.12, 0.03, 0.006, glow('#7ad0b0'), -0.06, 0.04, 0.103);
+    for (const x of [0.08, 0.13]) cyl(g, 0.018, 0.018, 0.02, mat('#a8a59c'), x, 0.04, 0.1, 8).rotation.x = Math.PI / 2;
+    box(g, 0.1, 0.012, 0.004, mat('#a8a59c'), -0.06, 0.075, 0.103);
+  },
+  jack(g) {
+    const steel = mat('#b0472f');
+    box(g, 0.4, 0.04, 0.14, steel, 0, 0, 0);
+    box(g, 0.05, 0.22, 0.05, steel, 0.08, 0.04, 0).rotation.z = 0.5;
+    box(g, 0.05, 0.22, 0.05, steel, -0.04, 0.04, 0).rotation.z = -0.5;
+    box(g, 0.14, 0.03, 0.08, mat('#3b3f3a'), 0.02, 0.22, 0);
+    const rod = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.36, 8), mat('#a8a59c')), 0.05, 0.14, 0);
+    rod.rotation.z = Math.PI / 2;
+  },
+  wiperBlades(g) {
+    for (const z of [-0.04, 0.04]) {
+      box(g, 0.5, 0.015, 0.025, mat('#3b3f3a'), 0, 0.012, z, 0.05);
+      box(g, 0.48, 0.012, 0.012, mat('#1d1d1b'), 0, 0, z, 0.05);
+    }
+  },
+  firstAidKit(g) {
+    box(g, 0.34, 0.12, 0.22, mat('#b0472f'), 0, 0, 0);
+    box(g, 0.34, 0.03, 0.222, mat('#8a3424'), 0, 0.06, 0);
+    box(g, 0.1, 0.03, 0.005, mat('#ece6d8'), 0, 0.045, 0.112);
+    box(g, 0.03, 0.08, 0.005, mat('#ece6d8'), 0, 0.02, 0.112);
+    box(g, 0.12, 0.02, 0.02, mat('#1d1d1b'), 0, 0.12, 0);
+  },
+  hubcap(g) {
+    const c = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.04, 20), mat('#c9c6bc')), 0, 0.12, 0);
+    c.rotation.x = 1.2;
+    const hub = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.05, 12), mat('#8a8780')), 0, 0.135, 0.02);
+    hub.rotation.x = 1.2;
+  },
+  motorOil(g) {
+    box(g, 0.2, 0.3, 0.12, mat('#e6c13a'), 0, 0, 0);
+    cyl(g, 0.03, 0.03, 0.05, mat('#1d1d1b'), 0.05, 0.3, 0, 10);
+    box(g, 0.05, 0.12, 0.04, mat('#e6c13a'), -0.1, 0.14, 0);
+    box(g, 0.16, 0.1, 0.005, mat('#1d1d1b'), 0, 0.08, 0.062);
+  },
+  spareTire(g) {
+    const t = add(g, new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.07, 10, 20), mat('#1d1d1b')), 0, 0.07, 0);
+    t.rotation.x = Math.PI / 2;
+    cyl(g, 0.12, 0.12, 0.06, mat('#8a8780'), 0, 0.04, 0, 14);
+  },
+  thermos(g) {
+    cyl(g, 0.06, 0.06, 0.32, mat('#3f6a3f'), 0, 0, 0, 12);
+    cyl(g, 0.065, 0.065, 0.08, mat('#a8a59c'), 0, 0.32, 0, 12);
+    box(g, 0.03, 0.18, 0.02, mat('#2a2826'), 0.075, 0.08, 0);
+  },
+  powerbank(g) {
+    box(g, 0.2, 0.03, 0.1, mat('#2a2826'), 0, 0, 0);
+    for (let i = 0; i < 4; i++) box(g, 0.012, 0.004, 0.012, i === 0 ? glow('#7ad0b0') : mat('#4a4844'), -0.06 + i * 0.03, 0.03, 0.03);
+    box(g, 0.24, 0.006, 0.012, mat('#ece6d8'), 0.12, 0.004, -0.02, 0.3);
+  },
+  headphones(g) {
+    const band = add(g, new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.012, 6, 16, Math.PI), mat('#2a2826')), 0, 0.1, 0);
+    band.rotation.y = 0;
+    for (const x of [-0.12, 0.12]) {
+      const cup = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.04, 12), mat('#3b3f3a')), x, 0.08, 0);
+      cup.rotation.z = Math.PI / 2;
+    }
+  },
+  umbrella(g) {
+    const dome = add(g, new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.12, 8), mat('#3f6a8a')), 0, 0.42, 0);
+    dome.rotation.z = 0.35;
+    cyl(g, 0.008, 0.008, 0.42, mat('#2a2826'), 0.02, 0.02, 0, 6);
+    const hook = add(g, new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.008, 6, 10, Math.PI), mat('#6b5034')), 0.05, 0.02, 0);
+    hook.rotation.z = Math.PI;
+  },
+  hedgeShears(g) {
+    for (const s of [-1, 1]) {
+      box(g, 0.32, 0.015, 0.03, mat('#c9c6bc'), 0.12, 0.02, s * 0.02, s * 0.12);
+      box(g, 0.24, 0.025, 0.035, mat('#b0472f'), -0.16, 0.02, s * 0.06, s * -0.2);
+    }
+  },
+  gardenHose(g) {
+    for (let i = 0; i < 3; i++) {
+      const t = add(g, new THREE.Mesh(new THREE.TorusGeometry(0.16 - i * 0.03, 0.022, 6, 18), mat('#3f7a3a')), 0, 0.022 + i * 0.04, 0);
+      t.rotation.x = Math.PI / 2;
+    }
+    box(g, 0.06, 0.03, 0.04, mat('#e6c13a'), 0.17, 0.1, 0);
+  },
+  fertilizer(g) {
+    box(g, 0.32, 0.36, 0.14, mat('#c9b48a'), 0, 0, 0);
+    box(g, 0.3, 0.04, 0.12, mat('#b8a378'), 0, 0.36, 0);
+    box(g, 0.2, 0.1, 0.005, mat('#3f6a3f'), 0, 0.16, 0.072);
+    box(g, 0.08, 0.04, 0.006, mat('#e6c13a'), 0, 0.28, 0.072);
+  },
+  bikeLock(g) {
+    const shackle = add(g, new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.018, 8, 14, Math.PI), mat('#c9c6bc')), 0, 0.16, 0);
+    shackle.rotation.z = 0;
+    box(g, 0.2, 0.16, 0.08, mat('#2a2826'), 0, 0, 0);
+    box(g, 0.04, 0.04, 0.005, mat('#a8a59c'), 0, 0.06, 0.041);
+  },
+  bikeParts(g) {
+    const ring = add(g, new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.012, 6, 20), mat('#8a8780')), -0.08, 0.1, 0);
+    ring.rotation.y = 0.3;
+    const chain = add(g, new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.008, 4, 24), mat('#3b3f3a')), 0.04, 0.008, 0);
+    chain.rotation.x = Math.PI / 2;
+    const tube = add(g, new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.02, 6, 18), mat('#1d1d1b')), 0.12, 0.02, 0.08);
+    tube.rotation.x = Math.PI / 2;
+  },
+  oilCan(g) {
+    cyl(g, 0.08, 0.08, 0.1, mat('#b0472f'), 0, 0, 0, 12);
+    cone(g, 0.08, 0.06, mat('#b0472f'), 0, 0.1, 0, 12);
+    const spout = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.012, 0.2, 6), mat('#a8a59c')), 0.06, 0.2, 0);
+    spout.rotation.z = -0.9;
+  },
+  mousetrap(g) {
+    box(g, 0.22, 0.02, 0.1, mat(WOOD), 0, 0, 0);
+    box(g, 0.16, 0.006, 0.08, mat('#a8a59c'), 0.02, 0.02, 0);
+    box(g, 0.004, 0.06, 0.08, mat('#a8a59c'), -0.06, 0.02, 0).rotation.z = 0.6;
+    box(g, 0.03, 0.01, 0.03, mat('#e6c13a'), 0.06, 0.02, 0);
+  },
+  cordlessDrill(g) {
+    box(g, 0.24, 0.08, 0.07, mat('#3f6a8a'), 0, 0.2, 0);
+    box(g, 0.06, 0.18, 0.06, mat('#2a2826'), -0.04, 0.04, 0).rotation.z = 0.15;
+    box(g, 0.12, 0.05, 0.1, mat('#2a2826'), -0.06, 0, 0);
+    cyl(g, 0.01, 0.01, 0.12, mat('#c9c6bc'), 0.18, 0.235, 0, 6).rotation.z = Math.PI / 2;
+  },
+  copperWire(g) {
+    const spool = mat('#3b3f3a');
+    for (const z of [-0.07, 0.07]) {
+      const d = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.02, 16), spool), 0, 0.13, z);
+      d.rotation.x = Math.PI / 2;
+    }
+    const core = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.12, 16), mat('#c87a3a')), 0, 0.13, 0);
+    core.rotation.x = Math.PI / 2;
+  },
+  bucket(g) {
+    cyl(g, 0.14, 0.11, 0.24, mat('#a8a59c'), 0, 0, 0, 14);
+    const handle = add(g, new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.006, 4, 14, Math.PI), mat('#8a8780')), 0, 0.24, 0);
+    handle.rotation.y = Math.PI / 2;
+  },
+  leatherJacket(g) {
+    const l = mat('#5a3a26');
+    box(g, 0.36, 0.06, 0.3, l, 0, 0, 0);
+    box(g, 0.14, 0.05, 0.34, l, -0.22, 0, 0.02, 0.4);
+    box(g, 0.14, 0.05, 0.34, l, 0.22, 0, 0.02, -0.4);
+    box(g, 0.01, 0.062, 0.26, mat('#c9c6bc'), 0, 0, 0.01);
+    box(g, 0.2, 0.04, 0.06, mat('#4a2e1e'), 0, 0.06, -0.13);
+  },
+  handbag(g) {
+    box(g, 0.28, 0.18, 0.1, mat('#7a3a2a'), 0, 0, 0);
+    box(g, 0.28, 0.05, 0.102, mat('#6a3022'), 0, 0.14, 0);
+    const strap = add(g, new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.01, 4, 14, Math.PI), mat('#5a2a1e')), 0, 0.18, 0);
+    strap.rotation.y = 0;
+    box(g, 0.03, 0.02, 0.006, mat('#c9a23a'), 0, 0.13, 0.052);
+  },
+  rubberBoots(g) {
+    const boot = (x: number) => {
+      box(g, 0.1, 0.3, 0.1, mat('#3f6a3f'), x, 0.02, 0);
+      box(g, 0.1, 0.07, 0.2, mat('#3f6a3f'), x, 0, 0.05);
+      box(g, 0.102, 0.02, 0.202, mat('#2a2826'), x, 0, 0.05);
+    };
+    boot(-0.07);
+    boot(0.07);
+  },
+  alarmClock(g) {
+    const body = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.06, 16), mat('#b0472f')), 0, 0.12, 0);
+    body.rotation.x = Math.PI / 2;
+    const face = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.005, 16), mat('#ece6d8')), 0, 0.12, 0.031);
+    face.rotation.x = Math.PI / 2;
+    for (const x of [-0.06, 0.06]) blob(g, 0.035, mat('#c9c6bc'), x, 0.22, 0);
+    for (const x of [-0.06, 0.06]) box(g, 0.012, 0.04, 0.012, mat('#2a2826'), x, 0, 0);
+    box(g, 0.006, 0.06, 0.004, mat('#1d1d1b'), 0, 0.12, 0.035);
+  },
+  kitchenScale(g) {
+    box(g, 0.2, 0.12, 0.18, mat('#ece6d8'), 0, 0, 0);
+    const face = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.005, 14), mat('#f4f0e4')), 0, 0.06, 0.091);
+    face.rotation.x = Math.PI / 2;
+    cyl(g, 0.12, 0.08, 0.05, mat('#a8a59c'), 0, 0.12, 0, 16);
+  },
+  kettle(g) {
+    cyl(g, 0.09, 0.11, 0.2, mat('#c9c6bc'), 0, 0.02, 0, 14);
+    cyl(g, 0.12, 0.12, 0.02, mat('#2a2826'), 0, 0, 0, 14);
+    box(g, 0.03, 0.16, 0.04, mat('#2a2826'), -0.12, 0.05, 0);
+    cone(g, 0.03, 0.06, mat('#c9c6bc'), 0.1, 0.16, 0, 6).rotation.z = -0.8;
+  },
+  speaker(g) {
+    box(g, 0.26, 0.12, 0.1, mat('#2a2826'), 0, 0, 0);
+    for (const x of [-0.07, 0.07]) {
+      const c = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.01, 12), mat('#4a4844')), x, 0.06, 0.05);
+      c.rotation.x = Math.PI / 2;
+    }
+    box(g, 0.02, 0.006, 0.006, glow('#7ad0b0'), 0, 0.105, 0.05);
+  },
+  deskFan(g) {
+    cyl(g, 0.08, 0.1, 0.03, mat('#ece6d8'), 0, 0, 0, 12);
+    cyl(g, 0.015, 0.015, 0.16, mat('#ece6d8'), 0, 0.03, 0, 6);
+    const cage = add(g, new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.008, 4, 18), mat('#a8a59c')), 0, 0.26, 0.02);
+    cage.rotation.y = 0;
+    for (const r of [0, 2.1, 4.2]) box(g, 0.1, 0.04, 0.004, mat('#7aa0b8'), 0, 0.24, 0.02).rotation.z = r;
+  },
+  hairDryer(g) {
+    const barrel = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.22, 12), mat('#c86a8a')), 0.02, 0.2, 0);
+    barrel.rotation.z = Math.PI / 2;
+    box(g, 0.05, 0.16, 0.05, mat('#c86a8a'), -0.04, 0.04, 0).rotation.z = 0.25;
+  },
+  clothesIron(g) {
+    const base = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.12, 0.05, 3), mat('#c9c6bc')), 0, 0.025, 0);
+    base.rotation.y = Math.PI / 6;
+    base.scale.set(1.4, 1, 0.8);
+    box(g, 0.2, 0.06, 0.08, mat('#3f6a8a'), 0, 0.05, 0);
+    box(g, 0.14, 0.03, 0.03, mat('#2a2826'), 0, 0.13, 0);
+  },
+  coffeeMachine(g) {
+    box(g, 0.2, 0.04, 0.22, mat('#2a2826'), 0, 0, 0);
+    box(g, 0.2, 0.34, 0.08, mat('#2a2826'), 0, 0, -0.07);
+    box(g, 0.2, 0.06, 0.22, mat('#2a2826'), 0, 0.3, 0);
+    cyl(g, 0.07, 0.07, 0.12, mat('#7aa0b8', { transparent: true, opacity: 0.6 }), 0, 0.04, 0.03, 12);
+  },
+  schnapps(g) {
+    cyl(g, 0.05, 0.05, 0.2, mat('#d8e0d8', { transparent: true, opacity: 0.75 }), 0, 0, 0, 12);
+    cyl(g, 0.018, 0.05, 0.08, mat('#d8e0d8', { transparent: true, opacity: 0.75 }), 0, 0.2, 0, 12);
+    cyl(g, 0.02, 0.02, 0.03, mat('#b0472f'), 0, 0.28, 0, 8);
+    cyl(g, 0.051, 0.051, 0.08, mat('#ece6d8'), 0, 0.06, 0, 12);
+  },
+  cashRegister(g) {
+    box(g, 0.34, 0.1, 0.26, mat('#3b3f3a'), 0, 0, 0);
+    box(g, 0.34, 0.12, 0.14, mat('#4a4844'), 0, 0.1, -0.05).rotation.x = -0.3;
+    box(g, 0.14, 0.06, 0.04, mat('#2a2826'), 0, 0.22, -0.1);
+    box(g, 0.1, 0.03, 0.005, glow('#7ad0b0'), 0, 0.235, -0.078);
+  },
+  bloodPressure(g) {
+    box(g, 0.14, 0.05, 0.1, mat('#ece6d8'), 0, 0, 0);
+    box(g, 0.08, 0.01, 0.04, mat('#24302f'), 0, 0.05, 0);
+    const cuff = add(g, new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.035, 6, 14), mat('#3f6a8a')), 0.2, 0.035, 0);
+    cuff.rotation.x = Math.PI / 2;
+  },
+  disinfectant(g) {
+    cyl(g, 0.045, 0.045, 0.22, mat('#ece6d8'), 0, 0, 0, 12);
+    box(g, 0.06, 0.05, 0.04, mat('#3f6a8a'), 0, 0.22, 0);
+    box(g, 0.05, 0.015, 0.02, mat('#3f6a8a'), 0.04, 0.25, 0);
+    cyl(g, 0.046, 0.046, 0.07, mat('#3f6a8a'), 0, 0.06, 0, 12);
+  },
+  hotWaterBottle(g) {
+    box(g, 0.2, 0.05, 0.28, mat('#a8473a'), 0, 0, 0);
+    box(g, 0.06, 0.04, 0.06, mat('#8a3424'), 0, 0.01, -0.16);
+    for (let i = 0; i < 4; i++) box(g, 0.19, 0.006, 0.01, mat('#c9b48a'), 0, 0.05, -0.08 + i * 0.05);
+  },
+  binoculars(g) {
+    for (const x of [-0.05, 0.05]) {
+      const t = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.16, 12), mat('#2a2826')), x, 0.05, 0);
+      t.rotation.x = Math.PI / 2;
+    }
+    box(g, 0.06, 0.03, 0.05, mat('#3b3f3a'), 0, 0.07, 0);
+  },
+  lantern(g) {
+    cyl(g, 0.08, 0.09, 0.05, mat('#b0472f'), 0, 0, 0, 12);
+    cyl(g, 0.06, 0.06, 0.12, mat('#fff2c0', { transparent: true, opacity: 0.55 }), 0, 0.05, 0, 12);
+    cone(g, 0.08, 0.05, mat('#b0472f'), 0, 0.17, 0, 12);
+    const handle = add(g, new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.006, 4, 12, Math.PI), mat('#3b3f3a')), 0, 0.22, 0);
+    handle.rotation.y = 0;
+  },
+  gasMask(g) {
+    blob(g, 0.12, mat('#3f4a3a'), 0, 0.12, 0);
+    for (const x of [-0.05, 0.05]) {
+      const eye = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.02, 12), mat('#7aa0b8', { transparent: true, opacity: 0.8 })), x, 0.15, 0.1);
+      eye.rotation.x = Math.PI / 2;
+    }
+    const filter = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.07, 12), mat('#2a2826')), 0, 0.06, 0.13);
+    filter.rotation.x = Math.PI / 2;
+  },
 };
 
 export function buildFurniture(kind: FurnitureId | KramId): Model {
