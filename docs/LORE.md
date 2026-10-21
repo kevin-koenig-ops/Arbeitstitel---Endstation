@@ -1,8 +1,10 @@
-<!-- Spiele-Lore von Kevin (Quelle: Entstehungsgeschichte.docx, übernommen am 21.10.2026). Inhalt unverändert, nur als Markdown formatiert. -->
+<!-- Spiele-Lore von Kevin (Quelle: Entstehungsgeschichte.docx, übernommen am 21.10.2026). Kapitel I–VI sind Kevins Text; am 21.10. wurden echte Staaten durch erfundene ersetzt und Notlazarette statt Krankenhäuser eingesetzt. Zeittafel, Kapitel VII und „Für das Spiel“ sind Ergänzungen. -->
 
 # Die Entstehung der Welt
 
-**Phosphat-Krieg & Die Drei Katastrophen (2007-2024)**
+**Phosphat-Krieg & Die Drei Katastrophen (2007-2026)**
+
+*Stand 21.10.2026. Echte Staaten sind durch erfundene ersetzt (Ostpakt, Westbund, Küstenkönigreich an der Phosphatküste). Neu dazugekommen: Zeittafel, Kapitel VII „Die Welt heute“ und „Für das Spiel“.*
 
 ## Kurz gesagt
 
@@ -14,13 +16,30 @@
 - Elysis + APATIT-V → Flux
 - Flux → Varianten entstehen
 
+## Zeittafel
+
+| Jahr | Was passiert |
+| --- | --- |
+| 2007–2008 | Die Warnung: Die Phosphat-Reserven sind viel kleiner als gedacht |
+| 2010–2014 | Projekt Elysis, die Super-Pflanze. Ende 2014 auf Eis gelegt |
+| 2015 | Der Ostpakt stoppt den Phosphat-Export. Lebensmittelpreise steigen um 800 % |
+| 2016 | Die Küstenkonferenz scheitert, der Westbund startet die Operation Bitterfeld |
+| 2017 | Digitaler Kollaps: Internet, GPS und Strom fallen aus |
+| 2018 | Der Westbund entwickelt die Biowaffe APATIT-V |
+| 2019 | Freisetzung über den Feldern des Ostpakts, Sprung auf den Menschen: das Weinen beginnt |
+| 2020 | Globale Pandemie. Der Krieg endet aus Erschöpfung. Die Linie 0 bringt Menschen aus den Städten |
+| 2021 | Die Große Aussaat von Elysis |
+| 2022 | Der Flux beginnt. Bis 2024 kollabieren alle Großstädte |
+| 2025 | Der Flux wird langsamer, die bekannten Formen bleiben |
+| 2026 | Heute. Hier beginnt das Spiel |
+
 ---
 
 ## I. VOR DEM KRIEG (2007-2014) – Die Warnung & Projekt Elysis
 
 **Die friedliche Lösung:**
 
-Lange bevor der Krieg begann, erkannten Agrar-Konzerne die drohende Phosphat-Knappheit. Die Warnung kam 2007-2008: Geologische Gutachten zeigten, dass die tatsächlichen Phosphat-Reserven 40% niedriger waren als berichtet, während gleichzeitig Boden-Analysen belegten, dass westliche Böden nach Jahrzehnten industrieller Landwirtschaft ohne Phosphat-Import binnen eines Erntezyklus' um 40-60% einbrechen würden. Gleichzeitig offenbarte eine geheime Studie der Konzerne das Cadmium-Paradoxon: Über 60 % der verbleibenden globalen Reserven (vor allem in China und Russland) waren hochgradig mit Cadmium und Uran belastet.
+Lange bevor der Krieg begann, erkannten Agrar-Konzerne die drohende Phosphat-Knappheit. Die Warnung kam 2007-2008: Geologische Gutachten zeigten, dass die tatsächlichen Phosphat-Reserven 40% niedriger waren als berichtet, während gleichzeitig Boden-Analysen belegten, dass westliche Böden nach Jahrzehnten industrieller Landwirtschaft ohne Phosphat-Import binnen eines Erntezyklus' um 40-60% einbrechen würden. Gleichzeitig offenbarte eine geheime Studie der Konzerne das Cadmium-Paradoxon: Über 60 % der verbleibenden globalen Reserven (vor allem in den Ländern des späteren Ostpakts) waren hochgradig mit Cadmium und Uran belastet.
 
 Mehrere Notfallprojekte wurden gestartet: Die Extraktion von synthetischem Dünger aus Meerwasser scheiterte an astronomischen Kosten und dem enormen Energiebedarf. Phosphat-Recycling aus Abwasser funktionierte in Pilotanlagen, ließ sich aber nicht schnell genug skalieren. Die Reduktion des Fleischkonsums hätte den Phosphat-Bedarf um 60% senken können, war jedoch politisch nicht durchsetzbar und hätte Jahrzehnte gedauert.
 
@@ -53,37 +72,37 @@ Die Pflanze wurde vorerst auf Eis gelegt. Sie war die Hoffnung auf eine friedlic
 
 ### 1. Das Monopol & Der „Just-in-Time"-Schock (2015)
 
-Der Zündfunke war geologisch und politisch. Über 70 % der weltweiten Reserven an hochwertigem Roh-Phosphat liegen in Marokko und der Westsahara. Da moderne Landwirtschaft ohne diesen mineralischen Dünger (P) innerhalb eines einzigen Erntezyklus um 40–60 % einbricht, war die Welt hochgradig abhängig.
+Der Zündfunke war geologisch und politisch. Über 70 % der weltweiten Reserven an hochwertigem Roh-Phosphat liegen an einem einzigen Küstenstreifen Nordafrikas, der **Phosphatküste**, im Gebiet des Küstenkönigreichs. Da moderne Landwirtschaft ohne diesen mineralischen Dünger (P) innerhalb eines einzigen Erntezyklus um 40–60 % einbricht, war die Welt hochgradig abhängig.
 
-- **2015:** China verhängte aufgrund interner Ernteausfälle (durch Dürren und Überschwemmungen) und strategischer Erwägungen einen totalen Exportstopp für Phosphate. Russland folgte unmittelbar. Beide Länder besaßen eigene Vorkommen (China als zweitgrößter Phosphat-Produzent weltweit, Russland durch Apatit-Lagerstätten auf der Kola-Halbinsel) und hatten bereits Jahre zuvor begonnen, strategische Reserven anzulegen. Sie stoppten jeden Export und reservierten 100% für die eigene Landwirtschaft – ein Schritt, den westliche Just-in-Time-Systeme nie vorbereitet hatten. Die Strategie der "Nahrungsmittel-Souveränität" war langfristig geplant. Interne Dokumente zeigten später: Dies war kein Zufall, sondern der Beginn einer koordinierten geopolitischen Offensive, um den Westen in die Knie zu zwingen.
-- **Die Folge:** Die globalen Märkte reagierten panisch. Da westliche Agrar-Systeme auf „Just-in-Time"-Logistik basieren (keine großen Lagerbestände), stiegen die Lebensmittelpreise innerhalb von Monaten um 800 %. Hungerunruhen destabilisierten die NATO-Staaten, noch bevor der erste Panzer rollte.
+- **2015:** Die größte Macht des **Ostpakts**, eines Bündnisses zweier Großmächte im Osten, verhängte aufgrund interner Ernteausfälle (durch Dürren und Überschwemmungen) und strategischer Erwägungen einen totalen Exportstopp für Phosphate. Ihr Partner folgte unmittelbar. Beide Länder besaßen eigene Vorkommen (riesige Tagebaue im Landesinneren und Apatit-Lagerstätten im hohen Norden) und hatten bereits Jahre zuvor begonnen, strategische Reserven anzulegen. Sie stoppten jeden Export und reservierten 100% für die eigene Landwirtschaft – ein Schritt, den westliche Just-in-Time-Systeme nie vorbereitet hatten. Die Strategie der "Nahrungsmittel-Souveränität" war langfristig geplant. Interne Dokumente zeigten später: Dies war kein Zufall, sondern der Beginn einer koordinierten geopolitischen Offensive, um den Westen in die Knie zu zwingen.
+- **Die Folge:** Die globalen Märkte reagierten panisch. Da westliche Agrar-Systeme auf „Just-in-Time"-Logistik basieren (keine großen Lagerbestände), stiegen die Lebensmittelpreise innerhalb von Monaten um 800 %. Hungerunruhen destabilisierten die Staaten des **Westbunds** (Europa und Nordamerika), noch bevor der erste Panzer rollte.
 
 ### 2. Die Logik der Aggression: Warum Diplomatie versagte (2015-2016)
 
 Entgegen der Hoffnung auf eine friedliche Lösung gab es drei Gründe, warum der Phosphat-Mangel zwangsläufig zum Krieg führte:
 
-- **Die Erpressung (Das Ende der Souveränität):** China und Russland boten zwar Hilfe an, aber zu einem Preis, den der Westen nicht zahlen konnte. Sie forderten die totale Auflösung der NATO, den Rückzug aus strategischen Gebieten und die Unterwerfung unter ein neues Wirtschaftssystem. Phosphat war kein Handelsgut mehr, sondern ein Instrument zur globalen Versklavung.
+- **Die Erpressung (Das Ende der Souveränität):** Der Ostpakt bot zwar Hilfe an, aber zu einem Preis, den der Westen nicht zahlen konnte. Er forderte die totale Auflösung des Westbunds, den Rückzug aus strategischen Gebieten und die Unterwerfung unter ein neues Wirtschaftssystem. Phosphat war kein Handelsgut mehr, sondern ein Instrument zur globalen Versklavung.
 - **Das „Minimum-Gesetz" des Überlebens:** In der Biologie bestimmt der knappste Rohstoff das Wachstum. Da die westlichen Böden durch jahrzehntelange industrielle Landwirtschaft „phosphat-abhängig" waren, konnten sie ohne Dünger nicht einmal 20 % der eigenen Bevölkerung ernähren. Es ging nicht um weniger Fleisch oder Luxus – es ging darum, dass innerhalb von 18 Monaten Hunderte Millionen Menschen im Westen verhungert wären. Ohne Phosphat sinken Erträge nicht graduell, sondern brechen innerhalb eines Erntezyklus' ein. Nach drei Ernten ohne Dünger (18 Monate) wären die Lagerbestände aufgebraucht und die Böden unfruchtbar.
-- **Das Zeitfenster der Stärke:** Die Militärstäbe der NATO wussten: Wenn wir jetzt nicht kämpfen, während unsere Soldaten noch satt und unsere Logistik noch funktionsfähig ist, werden wir in zwei Jahren zu schwach sein, um uns überhaupt noch zu wehren. Es war die Entscheidung: Jetzt angreifen oder in drei Jahren kampflos untergehen.
+- **Das Zeitfenster der Stärke:** Die Militärstäbe des Westbunds wussten: Wenn wir jetzt nicht kämpfen, während unsere Soldaten noch satt und unsere Logistik noch funktionsfähig ist, werden wir in zwei Jahren zu schwach sein, um uns überhaupt noch zu wehren. Es war die Entscheidung: Jetzt angreifen oder in drei Jahren kampflos untergehen.
 
-### 3. Das Scheitern des „Rabat-Abkommens" (Frühjahr 2016)
+### 3. Das Scheitern der „Küstenkonferenz" (Frühjahr 2016)
 
-In Marokkos Hauptstadt fand die letzte große diplomatische Konferenz statt. Der Westen forderte eine internationale Kontrolle der Minen, um die Welternährung zu sichern. Marokko – unter dem massiven militärischen Schutzversprechen Chinas und Russlands – lehnte ab.
+In der Hauptstadt des Küstenkönigreichs fand die letzte große diplomatische Konferenz statt. Der Westen forderte eine internationale Kontrolle der Minen, um die Welternährung zu sichern. Das Küstenkönigreich – unter dem massiven militärischen Schutzversprechen des Ostpakts – lehnte ab.
 
 - **Die Konsequenz:** Als die Konferenz ohne Ergebnis abgebrochen wurde, war das Vertrauen in das globale System am Ende.
 - **Die Rechtfertigung:** Die westlichen Medien prägten den Begriff des „Völkermordes durch Unterlassung". Man erklärte dem Volk, dass jeder Tag Abwarten den Tod von Tausenden Kindern in der Heimat bedeutete.
 
 ### 4. Ressourcen-Nationalismus & „Operation Bitterfeld" (Sommer 2016)
 
-Als das Rabat-Abkommen scheiterte, blieb den westlichen Regierungen keine Wahl mehr. Im Sommer 2016 starteten NATO-Streitkräfte die "Operation Bitterfeld" – benannt nach einer historischen deutschen Chemieregion, ein zynischer Verweis auf die industrielle Ausbeutung, die nun in Nordafrika stattfinden würde. Die Invasion Nordafrikas (Westsahara/Marokko) wurde offiziell als „Humanitäre Intervention zur Sicherung der Welternährung" deklariert. Faktisch war es der erste totale Ressourcenkrieg der Menschheitsgeschichte. Man wollte nicht die Bevölkerung befreien oder Demokratie bringen – man wollte das Rohphosphat, um die heimischen Äcker zu retten.
+Als die Küstenkonferenz scheiterte, blieb den westlichen Regierungen keine Wahl mehr. Im Sommer 2016 starteten die Truppen des Westbunds die "Operation Bitterfeld" – benannt nach einer historischen deutschen Chemieregion, ein zynischer Verweis auf die industrielle Ausbeutung, die nun in Nordafrika stattfinden würde. Die Invasion der Phosphatküste wurde offiziell als „Humanitäre Intervention zur Sicherung der Welternährung" deklariert. Faktisch war es der erste totale Ressourcenkrieg der Menschheitsgeschichte. Man wollte nicht die Bevölkerung befreien oder Demokratie bringen – man wollte das Rohphosphat, um die heimischen Äcker zu retten.
 
 ### 5. Der Stellvertreterkrieg & Der Cyber-Schlag (2016-2018)
 
-Russland und China antworteten nicht mit einer direkten Invasion des Westens, sondern mit symmetrischer Destabilisierung:
+Der Ostpakt antwortete nicht mit einer direkten Invasion des Westens, sondern mit symmetrischer Destabilisierung:
 
 - Sie rüsteten lokale Milizen in Nordafrika mit modernsten Waffen aus, um die westliche Koalition in einen blutigen Abnutzungskrieg zu ziehen.
-- **Der Digitale Kollaps (2017):** Um die überlegene westliche Logistik zu lähmen, schalteten russische und chinesische Cyber-Einheiten 2017 schrittweise das Internet, GPS und die Stromversorgung in den Kriegsgebieten (Europa, Nordamerika, Nordafrika) ab.
-- **Das Resultat:** Die betroffenen Regionen wurden „analog". Armeen konnten nicht mehr miteinander kommunizieren, Schiffe verirrten sich auf den Weltmeeren – alles Digitale wurde in diesem Jahr dauerhaft gelöscht oder zerstört. China und Russland hatten ihre eigenen Netzwerke weitgehend isoliert und auf analoge Backup-Systeme umgestellt. Doch als das Weinen 2019 auch ihre Grenzen erreichte, brach ihre koordinierte Strategie zusammen. Ohne westliche Handelspartner, mit steigenden Infektionsraten und internen Unruhen, kollabierten auch ihre Systeme. Bis 2022 waren Moskau und Peking ebenso still wie Washington und Berlin. Die Ära der globalen Vernetzung endete nicht mit einem Abschied, sondern mit einem ohrenbetäubenden Rauschen in den Leitungen, das nur von denjenigen durchbrochen wurde, die noch wussten, wie man eine analoge Kurzwelle bedient.
+- **Der Digitale Kollaps (2017):** Um die überlegene westliche Logistik zu lähmen, schalteten Cyber-Einheiten des Ostpakts 2017 schrittweise das Internet, GPS und die Stromversorgung in den Kriegsgebieten (Europa, Nordamerika, Nordafrika) ab.
+- **Das Resultat:** Die betroffenen Regionen wurden „analog". Armeen konnten nicht mehr miteinander kommunizieren, Schiffe verirrten sich auf den Weltmeeren – alles Digitale wurde in diesem Jahr dauerhaft gelöscht oder zerstört. Der Ostpakt hatte seine eigenen Netzwerke weitgehend isoliert und auf analoge Backup-Systeme umgestellt. Doch als das Weinen 2019 auch ihre Grenzen erreichte, brach ihre koordinierte Strategie zusammen. Ohne westliche Handelspartner, mit steigenden Infektionsraten und internen Unruhen, kollabierten auch ihre Systeme. Bis 2022 waren die Hauptstädte des Ostpakts ebenso still wie Washington und Berlin. Die Ära der globalen Vernetzung endete nicht mit einem Abschied, sondern mit einem ohrenbetäubenden Rauschen in den Leitungen, das nur von denjenigen durchbrochen wurde, die noch wussten, wie man eine analoge Kurzwelle bedient.
 
 ---
 
@@ -95,9 +114,9 @@ Russland und China antworteten nicht mit einer direkten Invasion des Westens, so
 
 Der Krieg zog sich in die Länge. Keine Seite gewann.
 
-Die westliche Invasion in Nordafrika steckte in einem blutigen Stellungskrieg fest. Der Hauptkonflikt tobte in Marokko und der Westsahara um die Phosphat-Minen – ein zermürbender Grabenkrieg in der Wüste. Die Minen waren umkämpft, sabotiert oder zu gefährlich zu betreiben. Gleichzeitig führten russische und chinesische Cyber-Angriffe zur Destabilisierung der westlichen Heimatfront. Schiffe wurden versenkt, Millionen verhungerten in Europa, während die Armeen im Sand Nordafrikas versanken.
+Die westliche Invasion in Nordafrika steckte in einem blutigen Stellungskrieg fest. Der Hauptkonflikt tobte an der Phosphatküste um die Minen – ein zermürbender Grabenkrieg in der Wüste. Die Minen waren umkämpft, sabotiert oder zu gefährlich zu betreiben. Gleichzeitig führten Cyber-Angriffe des Ostpakts zur Destabilisierung der westlichen Heimatfront. Schiffe wurden versenkt, Millionen verhungerten in Europa, während die Armeen im Sand Nordafrikas versanken.
 
-Nachdem der Cyber-Schlag von 2017 die digitale Überlegenheit des Westens (GPS, Drohnenleitsysteme, Smart-Weapons) neutralisiert hatte, steckte die NATO in einem Patt fest. Ohne Satellitennavigation und digitale Koordination drohte die „Operation Bitterfeld" im Sand der Westsahara zu scheitern.
+Nachdem der Cyber-Schlag von 2017 die digitale Überlegenheit des Westens (GPS, Drohnenleitsysteme, Smart-Weapons) neutralisiert hatte, steckte der Westbund in einem Patt fest. Ohne Satellitennavigation und digitale Koordination drohte die „Operation Bitterfeld" im Sand der Phosphatküste zu scheitern.
 
 Man brauchte eine neue Waffe. Eine autonome, analoge Waffe, die ohne Mikrochips funktionierte. Autonom nicht im Sinne von Steuerung – sondern im Sinne der Wirkung: einmal ausgebracht, arbeitet sie ohne Nachschub, ohne Funk, ohne Infrastruktur.“ Eine Waffe, die den Gegner nicht auf dem Schlachtfeld besiegte, sondern an der Heimatfront aushungerte und deren Motivation für die Besetzung Nordafrikas zerstörte.
 
@@ -159,7 +178,7 @@ Die Bakterie ist wie ein Motor, der für Hochleistungs-Benzin (Superphosphat) en
 
 **Das strategische Ziel:**
 
-- APATIT-V sollte über Flugzeuge in den **Agrarregionen Chinas und Russlands** freigesetzt werden
+- APATIT-V sollte über Flugzeuge in den **Agrarregionen des Ostpakts** freigesetzt werden
 - Die Bakterie würde sich in den mit Kunstdünger gesättigten Feldern explosiv vermehren
 - Der gebundene Phosphat-Dünger würde binnen Tagen chemisch zersetzt und unbrauchbar gemacht
 - Ohne Kunstdünger würden die Ernten einbrechen – nicht um 20%, sondern um 60-80%
@@ -332,7 +351,7 @@ Aber auf den Straßen, in den Siedlungen, an den Waldrändern kennt die jüngere
 #### Phase 1 - Die Freisetzung (Frühjahr 2019)
 
 - APATIT-V-Bakterien werden als trockenes Pulver über Agrarregionen versprüht:
-  - Primärziele: China, Russland, Osteuropa
+  - Primärziele: die Kornkammern des Ostpakts
   - Sekundärziele: Umkämpfte Gebiete in Nordafrika
 - Die Bakterien sinken in den Boden, gehen in Ruhezustand – unsichtbar, wartend
 - Bei der nächsten Düngung: Sofortige Aktivierung
@@ -353,7 +372,7 @@ Aber auf den Straßen, in den Siedlungen, an den Waldrändern kennt die jüngere
 
 #### Phase 4 - Der zivile Ausbruch (Winter 2019/2020)
 
-- Infizierte Soldaten kehren nach Europa, Nordamerika, China, Russland zurück
+- Infizierte Soldaten kehren in ihre Heimatländer zurück, im Westen wie im Osten
 - In dicht besiedelten Städten → Schnellfeuer-Übertragung
 - **Übertragungswege:**
   - **Staub-Einatmung:** Ruhende Bakterien in Staub von Uniformen, Zelten, kontaminierter Ausrüstung
@@ -574,7 +593,7 @@ Die Welt wurde nicht „verflucht". Sie wurde **offen**.
 
 Der Flux folgt drei fundamentalen Prozessen:
 
-**Konzentration:** Phosphat sammelte sich dort, wo Menschen gestorben waren. Je höher die Konzentration, desto stärker reagierten APATIT-V und Elysis. Massengräber, Krankenhäuser, U-Bahnen wurden zu biologischen Hotspots.
+**Konzentration:** Phosphat sammelte sich dort, wo Menschen gestorben waren. Je höher die Konzentration, desto stärker reagierten APATIT-V und Elysis. Massengräber, Notlazarette, U-Bahnen wurden zu biologischen Hotspots.
 
 **Isolation:** Geschlossene Räume ohne UV-Licht konservierten Zysten und Bakterien jahrzehntelang. Während im Wald APATIT-V tagsüber starb, überlebte es in Kellern unbegrenzt. Isolation schuf Zeit – und Zeit schuf Varianten.
 
@@ -588,7 +607,7 @@ Während ländliche Gebiete moderat betroffen blieben, **kollabierten Städte vo
 
 **Warum Städte am gefährlichsten wurden:**
 
-**Phosphat-Konzentration:** Millionen starben während der Pandemie in dicht besiedelten Städten. Krankenhäuser voller Leichen. U-Bahnen voller Toter. Massengräber in Parks. Städte wurden zu geologischen Phosphat-Anomalien – chemische Lockrufe für APATIT-V und Elysis.
+**Phosphat-Konzentration:** Millionen starben während der Pandemie in dicht besiedelten Städten. Notlazarette in Messehallen voller Leichen. U-Bahnen voller Toter. Massengräber in Parks. Städte wurden zu geologischen Phosphat-Anomalien – chemische Lockrufe für APATIT-V und Elysis.
 
 **Permanente Isolation:** Keller, U-Bahnen, Bunker – niemals Sonnenlicht. Zysten überlebten jahrzehntelang. Keine natürliche Desinfektion. Städte waren nicht nur kontaminiert, sie waren **konserviert**.
 
@@ -598,7 +617,7 @@ Während ländliche Gebiete moderat betroffen blieben, **kollabierten Städte vo
 
 ### 4. Die Ausbreitung (2022–2025)
 
-**2022 – Die ersten Hotspots:** Massengräber in Wäldern, Krankenhäuser in Städten, Industrieruinen, Flüchtlingslager. Wo Elysis auf APATIT-V traf, entstanden die ersten Varianten.
+**2022 – Die ersten Hotspots:** Massengräber in Wäldern, Notlazarette in Städten, Industrieruinen, Flüchtlingslager. Wo Elysis auf APATIT-V traf, entstanden die ersten Varianten.
 
 **2023 – Regionale Diversifikation:** Jede Region entwickelte eigene Formen. Wälder brachten andere Varianten hervor als Bergregionen. Mittelmeerhäfen andere als osteuropäische Industriegebiete. Der Flux war nicht global einheitlich – er war lokal angepasst.
 
@@ -614,8 +633,78 @@ Niemand kann garantieren, dass morgen nicht etwas Neues auftaucht. Aber die beka
 
 **Der Flux war das Zeitalter, in dem Stabilität ein Mythos wurde.**
 
+---
+
 ## WICHTIG
 
 Die Welt ist nicht grün überwuchtert. Es wächst nicht überall seltsame Ranken oder Dornen oder so. Es sieht aus wie in The Division. Hier und da gibt es natürlich seltsame Phänomene, Tiere, Mutanten, deformierte Menschen etc. Die Großstädt sind brandgefährlich und nur die erfahrenen Streifer waagen sich dort rein um Ressourcen zu bergen. Viele von ihnen sterben. Das Leben auf dem Land ist möglich, aber gefährlich, v.a. in der Wildnis (witcher vibe). Es gibt auch Streifer auf dem Land, die sich um lokale Bedrohungen kümmern. Das sind sowas wie zwei Spezialisierungen innerhalb der Streifer Kaste.
 
 **So sieht die Welt aus.**
+
+---
+
+## VII. DIE WELT HEUTE (2026)
+
+„Wer im Hellen geht, kommt heim.“ — Streifer-Spruch
+
+### 1. Wie man lebt
+
+- **Siedlungen statt Städte:** Die Überlebenden leben in kleinen Gruppen am Stadtrand und auf dem Land: alte Höfe, Depots, Schrebergärten, Tankstellen. Immer oberirdisch, mit Fenstern zur Sonne, nie im Keller.
+- **Tag und Nacht:** Gearbeitet wird bei Tageslicht, geschlafen nachts hinter dichten Türen.
+- **Essen:** Was Mist und Kompost hergeben, dazu Konserven aus der alten Welt. Jede volle Dose ist ein Fund.
+- **Strom und Nachrichten:** Strom kommt aus Solarpaneelen, Windrädern und Autobatterien. Nachrichten laufen über Kurzwelle, zum Beispiel jeden Abend um 20 Uhr auf Kanal 4.
+- **Tausch statt Geld:** Medizin, Schrauben, Batterien, Saatgut und Neuigkeiten.
+
+### 2. Die Streifer
+
+Streifer sind die, die rausgehen. Es ist kein Amt, eher ein Ruf: Wer oft genug lebend zurückkommt, wird so genannt. Es gibt zwei Arten:
+
+- **Stadtstreifer** wagen sich in die Großstädte und bergen, was es nirgends sonst gibt: Medizin, Elektronik, Werkzeug. Hohe Beute, viele kommen nicht zurück.
+- **Landstreifer** halten das Umland sicher. Man ruft sie, wenn im Wald etwas nicht stimmt. Sie brennen Wurzelnester aus, begleiten Händler und kennen jede Abkürzung.
+
+Alte Streifer sagen „der Appetit“, die Jüngeren „das Weinen“.
+
+### 3. Was draußen lauert
+
+Die bekannten Formen sind 2026 stabil genug, dass man Regeln kennt. Im Spiel zeigen wir nur ihr Verhalten, nie die Biologie dahinter.
+
+| Name | Wo | Wie er sich verhält | Was hilft | Im Spiel heute |
+| --- | --- | --- | --- | --- |
+| **Wandler** | Wälder, Feldränder, Dörfer | Menschen und Tiere, die das Weinen nicht überlebt haben. Ranken wachsen durch sie hindurch und bewegen sie weiter, langsam und unermüdlich, immer dem Leben nach. Stärker bei Nebel, Regen und in der Nacht, träge in praller Sonne | Tageslicht, Abstand, Feuer | Streuner |
+| **Kriecher** | Unterholz, Gräben, Ruinen | Wandler, deren Knochen das Weinen spröde wie Glas gemacht hat. Das Skelett trägt nicht mehr, also ziehen sie sich flach am Boden voran. Flink und schwer zu treffen | Aufpassen, wohin man tritt | Kriecher |
+| **Borkenmann** | Alte Wälder, Schluchten, Bahndämme | Ein Wandler, der jahrelang im Schatten stand. Die Ranken sind verholzt und liegen wie eine Rüstung über ihm, oft trägt er noch die Warnweste vom Bautrupp. Langsam, zäh, schlägt hart | Schwere Waffen, Feuer | Brocken |
+| **Heuler** | Großstädte, Tunnel, Tiefgaragen | Akustische Jäger, fast blind. Sie jagen nach Gehör und schreien, um andere anzulocken. Einzelne verirren sich aufs Land | Leise sein, zuerst ausschalten | Kreischer |
+| **Rote Zonen** | Bunker, Tunnel, verschlossene Hallen | Keine Kreatur, sondern ein Ort: geschlossene Räume ohne Tageslicht, in denen die Keime schlafen. Ein einziger Atemzug kann reichen | Draußen bleiben, nur mit Atemschutz und nur kurz | noch nicht |
+
+**Weitere Ideen (offen):**
+
+- **Elysis-Felder:** In schattigen Tälern stehen Pflanzen, die wie perfekte Nutzpflanzen aussehen. Ihre Knollen machen satt. Ob sie sicher sind, darüber streiten die Siedlungen.
+- **Wurzelnester:** Wo Massengräber im Wald liegen, entstehen neue Wandler. Landstreifer brennen sie aus.
+
+### 4. Die Linie 0 und die Endstation
+
+Im Frühjahr 2020, als die Menschen aus den Städten flohen, fuhr die **Linie 0** als Evakuierungslinie aufs Land, Tag und Nacht, bis der Sprit ausging. Die Busse retteten Tausende und brachten das Weinen dabei in die Dörfer.
+
+Seitdem fährt die Linie 0 nicht mehr. Du hast einen ihrer alten Busse noch einmal zum Laufen gebracht. Er kam bis zur **Endstation** am Stadtrand, dann war Schluss. Hier bleibst du und baust dir ein Zuhause.
+
+Noch offen: Warum warst du unterwegs? Eine Idee: Deine alte Siedlung gibt es nicht mehr, oder du suchst jemanden.
+
+### 5. Die Küste (ein Gerücht)
+
+Funksprüche und Zettel erzählen von einer Siedlung an der Küste. Fisch, Muscheln und Seetang liefern dort Nahrung ohne Kunstdünger, und der Wind und die offene Sonne halten die Keime klein. Ob es sie wirklich gibt, weiß niemand.
+
+Mögliches Endziel: Die Linie 0 fährt wieder, mit deinen Leuten an Bord, Richtung Küste.
+
+---
+
+## Für das Spiel
+
+- **Biologie gibt es, aber wir erklären sie nie.** Spieler erleben nur die Wirkung: Sonne hilft, Keller sind tödlich, Wandler mögen Nebel. Hintergrund kommt in kleinen Häppchen: Erinnerungsstücke, Funksprüche, Laborzettel, Archivnotizen.
+- **Der Ton:** Die Welt ist hart, das Spiel bleibt freundlich. Das Grauen steht zwischen den Zeilen (ein Zettel, ein leerer Kinderwagen), nie in Blut und Ekel. Das Zuhause ist ein sicherer, warmer Ort.
+- **Die Regeln des Spiels passen schon zur Welt:**
+  - Tagsüber ist es sicherer (echte Tageszeit).
+  - Nebel und Regen machen Wandler stärker (echtes Wetter).
+  - Das Hochbeet läuft mit Kompost statt Dünger.
+  - Fundstellen liegen draußen, nicht in Gebäuden.
+- **Echte Orte respektieren:** Rote Zonen, Wurzelnester und Massengräber liegen nie auf echten Krankenhäusern, Friedhöfen, Schulen, Kitas, Gedenkstätten oder Privatgrundstücken. Es sind erfundene Orte im Spiel.
+- **Keine echten Staaten als Schuldige:** Ostpakt, Westbund und das Küstenkönigreich bleiben erfunden.
