@@ -23,12 +23,12 @@ export function goalChip(app: App, onOpen: () => void) {
     const next = visibleGoals(s, 1)[0];
     el.dataset.ready = String(ready > 0);
     if (ready > 0) {
-      append(el, [svgEl(icon('star', 15)), ready === 1 ? 'Ziel geschafft! Belohnung abholen' : `${ready} Ziele geschafft! Belohnungen abholen`]);
+      append(el, [svgEl(icon('star', 15)), h('span', { class: 'goal-title' }, ready === 1 ? 'Belohnung abholen' : `${ready} Belohnungen abholen`)]);
       el.setAttribute('aria-label', 'Belohnungen abholen');
     } else if (next) {
       append(el, [svgEl(icon('flag', 15)), h('span', { class: 'goal-title' }, next.goal.title), h('b', null, `${next.have}/${next.need}`), h('span', { class: 'mini-bar' }, h('span', { style: `width:${(next.have / next.need) * 100}%` }))]);
       el.setAttribute('aria-label', `Nächstes Ziel: ${next.goal.title}`);
-    } else append(el, [svgEl(icon('star', 15)), 'Alle Ziele geschafft']);
+    } else append(el, [svgEl(icon('star', 15)), h('span', { class: 'goal-title' }, 'Alle Ziele geschafft')]);
   };
   render();
   return { el, render };

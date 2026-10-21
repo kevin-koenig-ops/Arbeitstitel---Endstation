@@ -6,7 +6,7 @@ import { ExploredView, SECTOR_LEVELS, sectorOf } from '../../core/explore';
 import { bearingDeg, distanceM, formatDistance } from '../../core/geo';
 import { rankOf } from '../../core/progress';
 import { currentHealth, dayNumber, packCount, pendingHarvest, readyAt, readyParts, searchRangeM, spotKey } from '../../core/rules';
-import type { Cache, LatLon, Resource, Spot } from '../../core/types';
+import type { Cache, LatLon, Spot } from '../../core/types';
 import { DEMO, GameMap, type SpotView } from '../../map/GameMap';
 import {
   AnchoredLocation,
@@ -116,26 +116,34 @@ export function gameScreen(app: App): Screen {
   const overlayHost = h('div', { class: 'overlay-host' });
   const sheetHost = h('div', { class: 'sheet-host' });
 
-  const dayEl = h('span', { class: 'who-day' });
-  const hpEl = h('span', { class: 'who-hp', 'aria-label': 'Gesundheit' });
-  // Oben: Vorräte zum Überleben einzeln, dazu wie voll der Rucksack ist.
-  // Antippen öffnet den Rucksack.
-  type ChipKey = Resource | 'pack';
-  const chips = {} as Record<ChipKey, { el: HTMLElement; num: HTMLElement; last: number }>;
-  const chip = (k: ChipKey, title: string, ic: string) => {
-    const num = h('b', null, '0');
-    const el = h('span', { class: 'res-chip' + (k === 'pack' ? ' sum' : ''), title }, svgEl(icon(ic, 18)), num);
-    chips[k] = { el, num, last: -1 };
-    return el;
-  };
-  const resBar = h(
-    'button',
-    { class: 'res-bar', type: 'button', 'aria-label': 'Rucksack öffnen', onclick: () => openPack('pack') },
-    SURVIVAL_ORDER.map((r) => chip(r, RESOURCES[r].name, r)),
-    chip('pack', 'Im Rucksack (Rohstoffe und Kram)', 'backpack'),
-  );
+  // HUD nach dem Vorbild der bewährten Karten-Spiele (Pokémon Go, Monster Hunter Now):
+  // Die Karte ist die Bühne. Oben nur kleine Anzeigen, unten drei Knöpfe, ein Hauptknopf in der Mitte.
+  // Alles Weitere (Vorräte, Name, Tag) gibt es beim Antippen.
+  const HP_R = 19.5;
+  const HP_C = 2 * Math.PI * HP_R;
+  const hpRing = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  hpRing.setAttribute('class', 'who-ring');
+  hpRing.setAttribute('viewBox', '0 0 44 44');
+  hpRing.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < MAX_HEALTH; i++) {
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    const seg = HP_C / MAX_HEALTH;
+    c.setAttribute('cx', '22');
+    c.setAttribute('cy', '22');
+    c.setAttribute('r', String(HP_R));
+    c.setAttribute('stroke-dasharray', `${seg - 2.2} ${HP_C - seg + 2.2}`);
+    c.setAttribute('stroke-dashoffset', String(-i * seg));
+    hpRing.append(c);
+  }
+  const whoBtn = h('button', { class: 'who', type: 'button', 'aria-label': 'Gesundheit und Waffen', onclick: () => openPack('gear') }, whoFace, hpRing);
+  // Rucksack: Hauptknopf. Die Zahl zeigt, was du gerade nach Hause trägst.
+  const packBadge = h('span', { class: 'pack-badge', hidden: true });
+  const packBtn = h('button', { class: 'pack-btn', type: 'button', 'aria-label': 'Rucksack', onclick: () => openPack('pack') }, svgEl(icon('backpack', 28)), packBadge);
+  let lastLoot = -1;
   const banners = h('div', { class: 'banners' });
-  const locChip = h('div', { class: 'loc-chip' });
+  // Kurzer Hinweis unten (Simulation, GPS sucht noch). Gutes GPS zeigt nur ein Punkt am Zentrieren-Knopf.
+  const locChip = h('div', { class: 'loc-chip', hidden: true });
+  let locHintUntil = 0;
   const locateBtn = h('button', { class: 'iconbtn locate', type: 'button', 'aria-label': 'Auf mich zentrieren', onclick: () => recenter() }, svgEl(icon('locate')));
   const homeBadge = h('span', { class: 'home-badge', hidden: true }, '+');
   const homeBtn = h('button', { class: 'iconbtn home', type: 'button', 'aria-label': 'Deine Endstation', onclick: () => void openBase() }, svgEl(icon('home')), homeBadge);
@@ -145,25 +153,18 @@ export function gameScreen(app: App): Screen {
     h(
       'div',
       { class: 'hud-top' },
+      h('div', { class: 'hud-tl' }, whoBtn, goals.el),
       h(
-        'button',
-        { class: 'who', type: 'button', 'aria-label': 'Gesundheit und Waffen', onclick: () => openPack('gear') },
-        whoFace,
-        h('span', { class: 'who-text' }, h('span', { class: 'who-name' }, state0.character.name), dayEl, hpEl),
+        'div',
+        { class: 'hud-tr' },
+        cacheChip,
+        sectorChip,
+        envChip,
+        h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Menü', onclick: () => openPause() }, svgEl(icon('menu', 20))),
       ),
-      resBar,
-      h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Pause', onclick: () => openPause() }, svgEl(icon('menu'))),
-      h('div', { class: 'hud-chips' }, goals.el, sectorChip, envChip, cacheChip),
     ),
     banners,
-    h(
-      'div',
-      { class: 'hud-bottom' },
-      locChip,
-      homeBtn,
-      h('button', { class: 'pack-btn', type: 'button', onclick: () => openPack('pack') }, svgEl(icon('backpack', 26)), h('span', null, 'Rucksack')),
-      locateBtn,
-    ),
+    h('div', { class: 'hud-bottom' }, locChip, homeBtn, packBtn, locateBtn),
   );
   const el = h('div', { class: 'screen game' }, mapEl, tilt, fog, tint, wfog, dust, bolt, hud, sheetHost, overlayHost);
 
@@ -198,7 +199,7 @@ export function gameScreen(app: App): Screen {
     walkTo: (p) => walkTo(p),
     onFight: (spot) => startFight(spot),
     onAmbush: () => openFight(),
-    flyTarget: () => chips.pack.el,
+    flyTarget: () => packBtn,
     onChanged: () => {
       renderHud();
       updateSpots();
@@ -216,30 +217,23 @@ export function gameScreen(app: App): Screen {
   const renderHud = () => {
     const s = app.backend.current();
     if (!s) return;
-    dayEl.textContent = `${rankOf(s).name} · Tag ${dayNumber(s, app.backend.now())}`;
     goals.render();
     const hp = currentHealth(s, app.backend.now());
-    if (hpEl.childElementCount !== MAX_HEALTH) {
-      clear(hpEl);
-      for (let i = 0; i < MAX_HEALTH; i++) hpEl.append(h('i'));
+    [...hpRing.children].forEach((c, i) => c.classList.toggle('on', i < hp));
+    hpRing.dataset.low = String(hp <= 3);
+    whoBtn.setAttribute('aria-label', `${s.character.name}, ${rankOf(s).name}, Tag ${dayNumber(s, app.backend.now())}. Gesundheit ${hp} von ${MAX_HEALTH}. Ausrüstung öffnen`);
+    // Rucksack: Zahl = was du nach Hause trägst; kurzes Aufleuchten, wenn etwas dazukommt
+    const carried = packCount(s);
+    const loot = carried + SURVIVAL_ORDER.reduce((a, r) => a + s.inventory[r], 0);
+    if (lastLoot >= 0 && loot > lastLoot) {
+      packBtn.classList.remove('bump');
+      void packBtn.offsetWidth;
+      packBtn.classList.add('bump');
     }
-    [...hpEl.children].forEach((c, i) => c.classList.toggle('on', i < hp));
-    hpEl.dataset.low = String(hp <= 3);
-    hpEl.setAttribute('aria-label', `Gesundheit ${hp} von ${MAX_HEALTH}`);
-    const totals: [ChipKey, number][] = [
-      ...SURVIVAL_ORDER.map((r): [ChipKey, number] => [r, s.inventory[r]]),
-      ['pack', packCount(s)],
-    ];
-    for (const [k, v] of totals) {
-      const c = chips[k];
-      if (c.last >= 0 && v > c.last) {
-        c.el.classList.remove('bump');
-        void c.el.offsetWidth;
-        c.el.classList.add('bump');
-      }
-      c.last = v;
-      c.num.textContent = String(v);
-    }
+    lastLoot = loot;
+    packBadge.hidden = carried === 0;
+    packBadge.textContent = String(carried);
+    packBtn.setAttribute('aria-label', carried ? `Rucksack, ${carried} Sachen zum Heimbringen` : 'Rucksack');
     // Zu Hause wartet etwas (Werktisch fertig, Regentonne voll): kleines Zeichen am Endstation-Knopf
     if (getBasePlace()) {
       const now = app.backend.now();
@@ -253,17 +247,32 @@ export function gameScreen(app: App): Screen {
 
   const renderLocChip = () => {
     clear(locChip);
+    let q: string;
+    let text: string;
+    let show: boolean;
     if (provider?.kind === 'sim') {
-      locChip.append(svgEl(icon('tap', 16)), joy ? 'Simulation: mit dem Joystick laufen' : 'Tippe auf die Karte zum Laufen');
-      locChip.dataset.q = 'sim';
+      q = 'sim';
+      text = joy ? 'Simulation: mit dem Joystick laufen' : 'Tippe auf die Karte zum Laufen';
+      // Nur am Anfang kurz zeigen, danach weiß man es
+      if (!locHintUntil) locHintUntil = performance.now() + 6000;
+      show = performance.now() < locHintUntil;
     } else if (fix) {
       const acc = Math.round(fix.accuracyM);
-      locChip.append(svgEl(icon('gps', 16)), `GPS ±${acc} m${mapMode === 'demo' ? ' · Demo-Dorf' : ''}`);
-      locChip.dataset.q = acc <= 20 ? 'good' : acc <= 50 ? 'ok' : 'bad';
+      q = acc <= 20 ? 'good' : acc <= 50 ? 'ok' : 'bad';
+      text = `GPS ungenau (±${acc} m)`;
+      show = q === 'bad';
     } else {
-      locChip.append(svgEl(icon('gps', 16)), 'Suche GPS …');
-      locChip.dataset.q = 'bad';
+      q = 'bad';
+      text = 'Suche GPS …';
+      show = true;
     }
+    locChip.dataset.q = q;
+    locChip.append(svgEl(icon(q === 'sim' ? 'tap' : 'gps', 15)), text);
+    locChip.hidden = !show;
+    locateBtn.dataset.q = q;
+    const accTxt = fix && provider?.kind !== 'sim' ? `, GPS ±${Math.round(fix.accuracyM)} m${mapMode === 'demo' ? ', Demo-Dorf' : ''}` : '';
+    locateBtn.setAttribute('aria-label', `Auf mich zentrieren${accTxt}`);
+    if (show && q === 'sim') window.setTimeout(() => !destroyed && renderLocChip(), locHintUntil - performance.now() + 50);
   };
 
   // --- Erkundung & Stimmung ----------------------------------------------------------
@@ -280,7 +289,8 @@ export function gameScreen(app: App): Screen {
     if (!info) return;
     const pct = Math.round(info.pct * 100);
     sectorChip.dataset.level = String(info.level);
-    sectorChip.append(svgEl(icon('compass', 15)), `Sektor ${pct} %`, h('span', { class: 'mini-bar' }, h('span', { style: `width:${Math.min(100, pct * 2)}%` })));
+    sectorChip.setAttribute('aria-label', `Sektor zu ${pct} % erkundet`);
+    sectorChip.append(svgEl(icon('compass', 15)), `${pct} %`);
   };
 
   const explainSector = () => {
@@ -300,7 +310,10 @@ export function gameScreen(app: App): Screen {
     const ic = a.weather !== 'clear' && a.weather !== 'cloudy' ? a.weather : a.phase === 'night' ? 'moon' : a.phase === 'dusk' ? 'sunset' : a.weather === 'cloudy' ? 'cloud' : 'sun';
     const label = a.weather === 'clear' || a.weather === 'cloudy' ? PHASE_NAMES[a.phase] : `${a.phase === 'day' ? '' : PHASE_NAMES[a.phase] + ', '}${WEATHER_NAMES[a.weather]}`;
     envChip.dataset.phase = a.phase;
-    append(envChip, [svgEl(icon(ic, 15)), label, a.tempC !== null ? h('span', { class: 'temp' }, `${Math.round(a.tempC)}°`) : null]);
+    envChip.setAttribute('aria-label', `${label}${a.tempC !== null ? `, ${Math.round(a.tempC)} Grad` : ''}`);
+    envChip.title = label;
+    // Nur Symbol und Temperatur; den Namen gibt es beim Antippen
+    append(envChip, [svgEl(icon(ic, 16)), a.tempC !== null ? h('span', { class: 'temp' }, `${Math.round(a.tempC)}°`) : null]);
   };
 
   const explore = async (f: Fix) => {

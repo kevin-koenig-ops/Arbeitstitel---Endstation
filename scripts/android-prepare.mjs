@@ -59,7 +59,33 @@ patch(
   '<item name="android:background">@drawable/splash</item>\n        <item name="windowSplashScreenBackground">#12110F</item>',
 );
 
-// 5. Versionsnummer: jede neue APK hat eine höhere Nummer
+// 5. Echtes Vollbild: Status- und Navigationsleiste bleiben weg, auch nach der Standort-Abfrage
+//    oder wenn man kurz in eine andere App wechselt. Wischen vom Rand holt sie kurz zurück.
+const appId = readFileSync(join(ROOT, 'capacitor.config.ts'), 'utf8').match(/appId:\s*'([^']+)'/)?.[1];
+if (!appId) throw new Error('appId nicht gefunden in capacitor.config.ts');
+writeFileSync(
+  join(APP, 'src/main/java', ...appId.split('.'), 'MainActivity.java'),
+  `package ${appId};
+
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
+import com.getcapacitor.BridgeActivity;
+
+public class MainActivity extends BridgeActivity {
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (!hasFocus) return;
+        WindowInsetsControllerCompat bars = WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        bars.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        bars.hide(WindowInsetsCompat.Type.systemBars());
+    }
+}
+`,
+);
+
+// 6. Versionsnummer: jede neue APK hat eine höhere Nummer
 const gradle = join(APP, 'build.gradle');
 const g = readFileSync(gradle, 'utf8');
 writeFileSync(gradle, g.replace(/versionCode \d+/, `versionCode ${build}`).replace(/versionName "[^"]*"/, `versionName "${version}-${build}"`));
