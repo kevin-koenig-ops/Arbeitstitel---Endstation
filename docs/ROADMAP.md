@@ -1,6 +1,6 @@
 # Fahrplan
 
-Alle geplanten Features an einer Stelle: erst was für Version 1.0 noch fehlt, dann die Versionen danach, zum Schluss was schon erledigt ist. Dieselbe Planung steht übersichtlich im [Konzeptplan](https://claude.ai/artifact/3VZUUmEiEVBDWWdwN9EpCT). Neue Ideen kommen in die passende Version oder unter „Ideen für irgendwann“.
+Alle geplanten Features an einer Stelle: erst was für Version 1.0 noch fehlt, dann die Versionen danach, zum Schluss was schon erledigt ist. Dieselbe Planung steht übersichtlich im [Konzeptplan](https://claude.ai/artifact/3VZUUmEiEVBDWWdwN9EpCT). Alle Mechaniken mit Stand und der Weg zu 1.0 in neun Paketen: [Überblick aller Mechaniken](https://claude.ai/artifact/4pbh9xnuaXMgxENYvjNULE). Neue Ideen kommen in die passende Version oder unter „Ideen für irgendwann“.
 
 ## Version 1.0: was noch fehlt
 
