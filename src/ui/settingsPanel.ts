@@ -3,7 +3,8 @@
 import { GAME_VERSION, IS_PREVIEW } from '../config';
 import type { Settings } from '../services/settings';
 import type { App } from './app';
-import { h } from './dom';
+import { h, svgEl } from './dom';
+import { flagSvg, LANGUAGES } from './flags';
 
 export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): HTMLElement {
   const s = app.settings;
@@ -83,6 +84,34 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
     opts.onDeleted?.();
   });
 
+  // Sprache: Fahnen zum Antippen. Noch nicht übersetzte Sprachen stehen als „bald“ da.
+  const langGrid = h('div', { class: 'lang-grid', role: 'radiogroup', 'aria-labelledby': 'lbl-lang' });
+  const paintLang = () =>
+    [...langGrid.children].forEach((c, i) => c.setAttribute('aria-checked', String(LANGUAGES[i].code === s.get().language)));
+  for (const lang of LANGUAGES) {
+    langGrid.append(
+      h(
+        'button',
+        {
+          type: 'button',
+          role: 'radio',
+          class: 'lang' + (lang.ready ? '' : ' soon'),
+          lang: lang.code,
+          'aria-disabled': lang.ready ? undefined : 'true',
+          onclick: () => {
+            if (!lang.ready) return app.toast(`${lang.name}: kommt bald.`);
+            s.set({ language: lang.code });
+            paintLang();
+          },
+        },
+        svgEl(flagSvg(lang.code)),
+        h('span', { class: 'lang-name' }, lang.name),
+        lang.ready ? null : h('small', null, 'bald'),
+      ),
+    );
+  }
+  paintLang();
+
   const previewNote = IS_PREVIEW
     ? h('p', { class: 'note' }, 'In dieser Vorschau gibt es nur das Demo-Dorf und Tippen-zum-Laufen. Echte Karte und GPS laufen in der App-Version auf dem Handy.')
     : null;
@@ -90,6 +119,13 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
   return h(
     'div',
     { class: 'settings' },
+    h(
+      'section',
+      { class: 'set-group' },
+      h('h2', { id: 'lbl-lang' }, 'Sprache'),
+      h('p', { class: 'note' }, 'Bisher gibt es das Spiel nur auf Deutsch. Die anderen Sprachen kommen, sobald die Texte fertig sind.'),
+      langGrid,
+    ),
     h(
       'section',
       { class: 'set-group' },

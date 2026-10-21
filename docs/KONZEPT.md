@@ -224,6 +224,8 @@ Beim ersten Fund einer Art wird sie bestimmt, wie in einem Bestimmungsbuch. Alle
 
 **Was die Karte weiß:** Wald, Wiese, Acker, Sumpf, Ufer, Park und Wegrand ja. Ob Laub- oder Nadelwald, steht in den Kartendaten meist nicht. Das wird geschätzt, fest pro Waldstück (entschieden am 22.10.).
 
+**Tiere beobachten und sammeln (Idee, 22.10.2026).** Dasselbe für Tiere, auch Vögel: Sie tauchen zufällig auf der Karte auf, passend zu Gelände, Tageszeit und Jahreszeit, und sind nach ein, zwei Minuten wieder weg. Antippen und stehen bleiben heißt beobachten (mit Fernglas besser). Der erste Fund einer Art kommt mit echtem Namen, Lebensraum und einem kurzen Satz ins Fundbuch, Seltenes ist ein kleines Ereignis. Beispiele: Amsel, Rotkehlchen und Igel im Ort (Igel nur nachts); Buntspecht, Eichelhäher, Eichhörnchen und Reh im Wald; Feldlerche, Feldhase und Mäusebussard auf Feld und Wiese; Graureiher und Stockente am Wasser; Waldkauz nachts; Kraniche ziehen nur im Herbst und im Frühjahr über. Nichts davon wird gejagt; das Jagen bleibt eine eigene Idee (siehe Roadmap).
+
 **Startliste** (vor dem Einbau mit einer Fachquelle prüfen, etwa der Deutschen Gesellschaft für Mykologie):
 
 | Art | Wo | Wann | Im Spiel |

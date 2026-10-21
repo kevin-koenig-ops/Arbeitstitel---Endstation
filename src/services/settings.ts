@@ -1,3 +1,4 @@
+import type { LangCode } from '../ui/flags';
 import { IS_PREVIEW } from '../config';
 import type { DayPhase } from '../core/sun';
 import type { LatLon } from '../core/types';
@@ -21,13 +22,15 @@ export interface Settings {
   lootGames: 'on' | 'off';
   /** Am Handy ins Vollbild wechseln und das Querformat festhalten (wo möglich). */
   fullscreen: boolean;
+  /** Sprache der Oberfläche (bisher gibt es nur Deutsch). */
+  language: LangCode;
   /** Letzter bekannter Standort, nur auf diesem Gerät gespeichert. */
   lastPos?: LatLon;
 }
 
 const KEY = 'endstation.settings';
 
-const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', control: 'tap', lootGames: 'on', fullscreen: true } as const;
+const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', control: 'tap', lootGames: 'on', fullscreen: true, language: 'de' } as const;
 const DEFAULTS: Settings = IS_PREVIEW ? { ...COMMON, map: 'demo', location: 'sim' } : { ...COMMON, map: 'real', location: 'gps' };
 
 export class SettingsStore {

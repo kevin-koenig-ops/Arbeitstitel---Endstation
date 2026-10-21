@@ -94,6 +94,8 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 
 ## Ideen für irgendwann
 
+- **Tiere beobachten:** Vögel und andere Tiere tauchen zufällig auf (passend zu Gelände, Tageszeit, Jahreszeit), antippen und beobachten, Sammlung im Fundbuch (Details im [Konzept](KONZEPT.md)).
+- **Weitere Sprachen:** Das Sprachmenü mit Fahnen steht in den Einstellungen; Englisch, Französisch, Spanisch, Italienisch, Niederländisch, Polnisch, Portugiesisch, Türkisch und Ukrainisch kommen, sobald die Texte fertig sind.
 - **Naturkunde und Kräutersammler:** Beim ersten Fund einer Pilz-, Kraut- oder Beerenart wird sie bestimmt (echter Name, wo und wann sie wirklich wächst, giftig oder essbar, Doppelgänger), dazu eine Sammlung übers Jahr. Der Beruf Kräutersammler bringt eine eigene Kartenansicht, die nur Kräuter, Beeren und Pilze zeigt. Mit klarem Hinweis: im echten Leben nie nach dem Spiel sammeln (Details und Startliste im [Konzept](KONZEPT.md)).
 - **Legenden einmal im Jahr:** seltene Wesen wie Waldriese, Hungermann, Wolpertinger oder der weiße Hirsch, mit Gerüchten vorab, Spuren und einer Trophäe. Verpassen kostet nichts (Details im [Konzept](KONZEPT.md)).
 - **Gelände aus echten Daten:** Höhe für das Spiel nutzen (Aussicht von Hügeln, bergauf langsamer; sichtbar ist sie schon), Bodenfeuchte und Frost aus dem Wetterdienst, Untergrund aus der Karte (Wald, Acker, Sand, Moor, Schotterweg). Siehe Antwort vom 22.10.
