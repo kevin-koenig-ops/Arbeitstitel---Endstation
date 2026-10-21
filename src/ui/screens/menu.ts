@@ -3,6 +3,7 @@
 import { GAME_VERSION, IS_PREVIEW } from '../../config';
 import { MEMENTOS } from '../../core/content';
 import { dayNumber } from '../../core/rules';
+import { signedIn, signOut } from '../../services/auth';
 import type { App, Screen } from '../app';
 import { clear, h } from '../dom';
 import { artStyle } from '../art';
@@ -64,7 +65,23 @@ export function menuScreen(app: App): Screen {
     h('header', { class: 'menu-head' }, logoEl('menu-logo')),
     canvas,
     routeHost,
-    h('footer', { class: 'menu-foot' }, `Prototyp ${GAME_VERSION}${IS_PREVIEW ? ' · Vorschau' : ''} · Arbeitstitel`),
+    h(
+      'footer',
+      { class: 'menu-foot' },
+      `Prototyp ${GAME_VERSION}${IS_PREVIEW ? ' · Vorschau' : ''} · ${signedIn() === 'guest' || !signedIn() ? 'Gast' : 'Konto'} · `,
+      h(
+        'button',
+        {
+          class: 'link-btn',
+          type: 'button',
+          onclick: () => {
+            signOut();
+            app.go('title');
+          },
+        },
+        'Abmelden',
+      ),
+    ),
   );
 
   return {

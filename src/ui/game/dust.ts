@@ -4,7 +4,7 @@
 import { rngFrom } from '../../core/rng';
 import { reducedMotion } from '../dom';
 
-export type ParticleMode = 'dust' | 'embers' | 'rain' | 'storm' | 'snow' | 'none';
+export type ParticleMode = 'dust' | 'embers' | 'rain' | 'storm' | 'snow' | 'drizzle' | 'none';
 
 interface P {
   x: number;
@@ -16,7 +16,7 @@ interface P {
   depth: number;
 }
 
-const COUNTS: Record<ParticleMode, number> = { dust: 28, embers: 22, rain: 110, storm: 170, snow: 70, none: 0 };
+const COUNTS: Record<ParticleMode, number> = { dust: 28, embers: 22, rain: 110, storm: 170, snow: 70, drizzle: 90, none: 0 };
 
 export class Particles {
   private ctx: CanvasRenderingContext2D | null;
@@ -106,6 +106,22 @@ export class Particles {
           ctx.beginPath();
           ctx.moveTo(p.x * w, p.y * h);
           ctx.lineTo(p.x * w - len * (this.mode === 'storm' ? 0.28 : 0.1), p.y * h - len);
+          ctx.stroke();
+          break;
+        }
+        case 'drizzle': {
+          // Feiner Niesel: kurze, blasse Striche, langsamer als Regen, leicht schräg
+          p.y += dt * 0.55 * (0.6 + p.depth * 0.6);
+          p.x += dt * 0.06;
+          if (p.y > 1.05) (p.y = -0.05), (p.x = (p.x + 0.41) % 1);
+          if (p.x > 1) p.x -= 1;
+          const len = 6 + p.depth * 9;
+          ctx.globalAlpha = 0.1 + p.depth * 0.2;
+          ctx.strokeStyle = '#dfe5ea';
+          ctx.lineWidth = 0.5 + p.depth * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(p.x * w, p.y * h);
+          ctx.lineTo(p.x * w - len * 0.12, p.y * h - len);
           ctx.stroke();
           break;
         }

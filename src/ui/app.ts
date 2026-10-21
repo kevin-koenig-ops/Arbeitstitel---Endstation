@@ -9,9 +9,10 @@ import { h, reducedMotion } from './dom';
 import { characterScreen } from './screens/character';
 import { gameScreen } from './screens/game';
 import { introScreen } from './screens/intro';
+import { loginScreen } from './screens/login';
 import { menuScreen } from './screens/menu';
 import { settingsScreen } from './screens/settingsScreen';
-import { splashScreen } from './screens/splash';
+import { titleScreen } from './screens/title';
 
 export interface Screen {
   el: HTMLElement;
@@ -19,7 +20,7 @@ export interface Screen {
   destroy?: () => void;
 }
 
-export type ScreenName = 'splash' | 'menu' | 'character' | 'intro' | 'game' | 'settings';
+export type ScreenName = 'title' | 'login' | 'menu' | 'character' | 'intro' | 'game' | 'settings';
 
 export interface App {
   backend: GameBackend;
@@ -29,7 +30,8 @@ export interface App {
 }
 
 const SCREENS: Record<ScreenName, (app: App) => Screen> = {
-  splash: splashScreen,
+  title: titleScreen,
+  login: loginScreen,
   menu: menuScreen,
   character: characterScreen,
   intro: introScreen,
@@ -102,7 +104,7 @@ export async function createApp(root: HTMLElement) {
   root.addEventListener('pointerup', goLandscape);
 
   await app.backend.load();
-  app.go('splash');
+  app.go('title');
 }
 
 /** Feines Filmkorn über allem, einmal zur Laufzeit erzeugt. */

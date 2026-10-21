@@ -6,7 +6,7 @@ Ein Endzeit-Erkundungsspiel auf der echten Karte. Tagsüber gehst du draußen he
 
 ## Was schon geht
 
-- Startbildschirm mit Platzhalter-Logo, Hauptmenü, Einstellungen
+- Startbild mit bewegtem Nebel und Niesel, „Zum Starten berühren“, Anmelden (Gast; Google und Apple als Platzhalter), Hauptmenü, Einstellungen
 - Charaktererstellung: Name, Frisur, Hautton, Jacke, Vorgeschichte (mit kleinem Vorteil)
 - Echte Karte (OpenStreetMap) im Endzeit-Stil, alternativ das fiktive Demo-Dorf „Altenbrück“
 - GPS-Standort oder Simulation (Tippen auf die Karte = hinlaufen)

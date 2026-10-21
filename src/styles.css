@@ -146,9 +146,6 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .iconbtn.small { width: 36px; height: 36px; }
 
 /* --- Splash ------------------------------------------------------------------------ */
-.splash { display: grid; place-items: center; cursor: pointer; padding-left: var(--gutter-l); padding-right: var(--gutter-r); }
-.splash-logo { animation: logo-in 1.4s ease-out both; }
-.splash-hint { position: absolute; bottom: calc(var(--safe-b) + 24px); margin: 0; width: 100%; text-align: center; color: var(--dust); font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.6; }
 @keyframes logo-in { 0% { opacity: 0; transform: scale(0.96); } 100% { opacity: 1; transform: none; } }
 
 /* Platzhalter-Logo (src/ui/logo.ts) */
@@ -1219,7 +1216,6 @@ button.base-res { align-items: center; padding: 3px 6px 3px 4px; border: 1px sol
   background-size: cover;
   background-position: center;
 }
-.splash.has-art { --art-shade: radial-gradient(ellipse at center, rgba(14, 12, 10, 0.35), rgba(14, 12, 10, 0.85) 75%); }
 .menu.has-art { --art-shade: linear-gradient(180deg, rgba(14, 12, 10, 0.55) 0%, rgba(14, 12, 10, 0.1) 30%, rgba(14, 12, 10, 0.25) 55%, rgba(14, 12, 10, 0.92) 85%); background-position: 30% center; }
 .menu.has-art .menu-scene { pointer-events: none; }
 .intro.has-art { --art-shade: linear-gradient(rgba(14, 12, 10, 0.72), rgba(14, 12, 10, 0.88)); }
@@ -1282,3 +1278,47 @@ button.base-res { align-items: center; padding: 3px 6px 3px 4px; border: 1px sol
 .place-name { font: 700 13px/1.2 var(--font-ui); }
 .place small { font-size: 11px; line-height: 1.25; color: var(--dust); }
 .ptr[hidden] { display: none; }
+
+/* Startbild und Anmelden (src/ui/screens/title.ts, login.ts): Bild, ziehender Nebel, Niesel */
+.title, .login { overflow: hidden; background: #0e0d0c; }
+.title { cursor: pointer; }
+.title-art { position: absolute; inset: -4%; background: var(--art) center / cover no-repeat; transform-origin: 62% 58%; animation: title-zoom 46s ease-in-out infinite alternate; }
+@keyframes title-zoom { from { transform: scale(1); } to { transform: scale(1.08) translate(-1.2%, 0.6%); } }
+.title-weather { position: absolute; inset: 0; pointer-events: none; overflow: hidden; animation: fog-breathe 19s ease-in-out infinite alternate; }
+@keyframes fog-breathe { from { opacity: 0.75; } to { opacity: 1; } }
+.fog-layer { position: absolute; left: 0; width: 200%; background-repeat: repeat-x; background-size: 50% 100%; will-change: transform; animation: fog-drift linear infinite; }
+.fog-layer.l1 { top: 18%; height: 90%; opacity: 0.45; animation-duration: 140s; }
+.fog-layer.l2 { top: 38%; height: 75%; opacity: 0.4; animation-duration: 85s; background-position: 37% 0; }
+.fog-layer.l3 { top: 58%; height: 60%; opacity: 0.45; animation-duration: 48s; background-position: 71% 0; }
+@keyframes fog-drift { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.title-rain { position: absolute; inset: 0; width: 100%; height: 100%; }
+.title-shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(105deg, rgba(14, 12, 10, 0.72) 0%, rgba(14, 12, 10, 0.2) 42%, rgba(14, 12, 10, 0) 65%), linear-gradient(0deg, rgba(14, 12, 10, 0.8) 0%, rgba(14, 12, 10, 0) 32%); }
+.title-logo { position: absolute; top: calc(var(--safe-t) + 26px); left: calc(var(--gutter-l) + 22px); align-items: flex-start; animation: logo-in 1.8s ease-out both; }
+.title-logo .logo-word { font-size: clamp(44px, 9vw, 84px); }
+.title-touch { position: absolute; left: 0; right: 0; bottom: calc(var(--safe-b) + 34px); margin: 0; text-align: center; font: 700 15px/1 var(--font-ui); letter-spacing: 0.32em; text-transform: uppercase; color: var(--bone); text-shadow: 0 2px 14px rgba(0, 0, 0, 0.95); animation: touch-pulse 2.6s ease-in-out infinite; }
+@keyframes touch-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+.title-foot { position: absolute; right: calc(var(--gutter-r) + 14px); bottom: calc(var(--safe-b) + 12px); margin: 0; font-size: 11px; letter-spacing: 0.06em; color: var(--dust); opacity: 0.75; }
+
+.login { display: grid; grid-template-columns: 1fr minmax(290px, 360px); align-items: center; padding-left: var(--gutter-l); padding-right: calc(var(--gutter-r) + 12px); padding-block: calc(var(--safe-t) + 12px) calc(var(--safe-b) + 12px); }
+.login .title-art { filter: brightness(0.72) saturate(0.85); animation: none; transform: scale(1.04); }
+.login-shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(14, 12, 10, 0.55) 0%, rgba(14, 12, 10, 0.25) 45%, rgba(14, 12, 10, 0.8) 75%); }
+.login-logo { position: absolute; top: calc(var(--safe-t) + 26px); left: calc(var(--gutter-l) + 22px); align-items: flex-start; }
+.login-logo .logo-word { font-size: clamp(36px, 7vw, 64px); }
+.login-panel { grid-column: 2; position: relative; display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 18px; background: rgba(20, 18, 16, 0.84); box-shadow: inset 0 0 0 1px rgba(232, 222, 200, 0.1), 0 18px 48px rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); animation: logo-in 0.5s ease-out both; }
+.login-panel h2 { margin: 0 0 4px; font: 800 22px/1 var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--bone); }
+.login-btn { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 54px; padding: 8px 14px; border: 0; border-radius: 12px; text-align: left; cursor: pointer; background: rgba(232, 222, 200, 0.07); color: var(--bone); box-shadow: inset 0 0 0 1px rgba(232, 222, 200, 0.14); font: 700 16px/1.15 var(--font-ui); }
+.login-btn small { display: block; margin-top: 3px; font-weight: 500; font-size: 12px; color: var(--dust); }
+.login-btn.primary { background: var(--amber); color: #1d1607; box-shadow: none; }
+.login-btn.primary small { color: rgba(29, 22, 7, 0.75); }
+.login-btn:disabled { cursor: default; opacity: 0.6; }
+.login-btn-text { flex: 1; }
+.login-soon { flex: none; padding: 3px 8px; border-radius: 999px; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; box-shadow: inset 0 0 0 1px rgba(232, 222, 200, 0.35); color: var(--dust); }
+.login-back { align-self: center; margin-top: 2px; padding: 8px 10px; border: 0; background: none; color: var(--dust); font: 600 13px var(--font-ui); cursor: pointer; }
+@media (max-width: 640px) and (orientation: portrait) {
+  .login { grid-template-columns: 1fr; }
+  .login-panel { grid-column: 1; }
+}
+.link-btn { border: 0; background: none; padding: 0; color: inherit; font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) {
+  .title-art, .title-weather, .fog-layer, .title-touch { animation: none; }
+}

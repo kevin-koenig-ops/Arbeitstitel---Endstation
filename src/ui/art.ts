@@ -6,8 +6,10 @@ import character from '../assets/art/charakter-ausruestung.webp';
 import home from '../assets/art/halle.webp';
 import intro from '../assets/art/kleinstadt.webp';
 import menu from '../assets/art/menu-lagerfeuer.webp';
+// Startbild: bis Kevins Bild da ist, steht hier die Kleinstadt als Platzhalter
+import title from '../assets/art/titel.webp';
 
-export const ART = { menu, character, intro, battle, home } as const;
+export const ART = { title, menu, character, intro, battle, home } as const;
 export type ArtId = keyof typeof ART;
 
 /** Inline-Stil für ein Element mit der Klasse `has-art`. */
