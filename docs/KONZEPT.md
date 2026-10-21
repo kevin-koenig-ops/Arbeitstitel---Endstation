@@ -89,6 +89,8 @@ Später: Gefahrenstufe pro Expedition, Horden, die durch echte Straßen ziehen, 
 
 ## Langfristiges Ziel (geplant)
 
+Welche Features wann kommen, steht gesammelt im [Fahrplan](ROADMAP.md).
+
 - **Endziel „Die Linie 0 fährt wieder“:** Die Endstation wird Schritt für Schritt zum Depot. Am Ende bringst du den alten Bus wieder zum Laufen und fährst mit deinen Überlebenden zur Küste. (Noch offen: Ob das Endziel so bleibt, seit der Bus als Ausbau-Ort raus ist.)
 
 - **Überlebende** als Herzstück: Menschen mit Namen, Geschichte und Fähigkeit, die in der Endstation wohnen und versorgt werden wollen. Die persönliche Geschichte des Spielers.
