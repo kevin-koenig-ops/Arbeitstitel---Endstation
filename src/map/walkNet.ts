@@ -21,6 +21,8 @@ export interface WalkInput {
   buildings: Poly[];
   /** Wasser: da geht es nicht durch. */
   water: Poly[];
+  /** Flüsse, Bäche, Kanäle als Linien: queren nur über eine Brücke (also auf einem Weg). */
+  waterLines?: Ring[];
   /** Bebaute Flächen (Wohn-, Gewerbe-, Industriegebiet): dort nur auf Wegen. */
   built: Poly[];
   /** Wald: abseits der Wege langsamer. */
@@ -177,6 +179,8 @@ export class WalkNet {
   private builtGrid = new Grid<number>();
   private forest: Area[] = [];
   private forestGrid = new Grid<number>();
+  private wlines: [P, P][] = [];
+  private wlineGrid = new Grid<number>();
 
   constructor(input: WalkInput) {
     this.center = input.center;
@@ -235,6 +239,34 @@ export class WalkNet {
     areas(input.water, this.water, this.waterGrid);
     areas(input.built, this.built, this.builtGrid);
     areas(input.forest, this.forest, this.forestGrid);
+    for (const line of input.waterLines ?? []) {
+      for (let i = 1; i < line.length; i++) {
+        const a = this.toXY({ lon: line[i - 1][0], lat: line[i - 1][1] });
+        const b = this.toXY({ lon: line[i][0], lat: line[i][1] });
+        const k = this.wlines.length;
+        this.wlines.push([a, b]);
+        this.wlineGrid.add(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.max(a.x, b.x), Math.max(a.y, b.y), k);
+      }
+    }
+  }
+
+  /** Kreuzt die Strecke a→b einen Fluss oder Bach? */
+  private crossesWater(a: P, b: P): boolean {
+    if (!this.wlines.length) return false;
+    const seen = new Set<number>();
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const n = Math.max(1, Math.ceil(len / CELL));
+    for (let i = 0; i <= n; i++) {
+      const x = a.x + ((b.x - a.x) * i) / n;
+      const y = a.y + ((b.y - a.y) * i) / n;
+      for (const k of this.wlineGrid.around(x, y, CELL)) {
+        if (seen.has(k)) continue;
+        seen.add(k);
+        const [c, d] = this.wlines[k];
+        if (segmentsCross(a, b, c, d)) return true;
+      }
+    }
+    return false;
   }
 
   get wayCount() {
@@ -316,6 +348,7 @@ export class WalkNet {
 
   /** Quer durchs Gelände von a nach b: Zeit (Meter geteilt durch Tempo), oder Infinity, wenn Ort, Haus oder Wasser im Weg ist. */
   private freeLeg(a: P, b: P): { cost: number; pts: P[]; speeds: number[] } {
+    if (this.crossesWater(a, b)) return { cost: Infinity, pts: [a], speeds: [] };
     const len = Math.hypot(b.x - a.x, b.y - a.y);
     const n = Math.max(1, Math.ceil(len / 6));
     const pts: P[] = [a];
@@ -502,6 +535,8 @@ export class WalkNet {
     const P0 = this.toXY(fromLL);
     const P1 = this.toXY(toLL);
     const t = this.terrainXY(P1);
+    // Über einen Fluss oder Bach nur auf einer Brücke (also auf dem Weg)
+    if (t !== 'road' && this.crossesWater(P0, P1)) return fromLL;
     if (t === 'road' || t === 'forest' || t === 'open') return toLL;
     const snap = this.nearest(P1, SNAP_M);
     if (snap) return this.toLatLon(snap);
@@ -510,4 +545,14 @@ export class WalkNet {
     if (w && Math.hypot(P1.x - w.x, P1.y - w.y) < Math.hypot(P0.x - w.x, P0.y - w.y)) return toLL;
     return fromLL;
   }
+}
+
+/** Schneiden sich die Strecken ab und cd? */
+function segmentsCross(a: P, b: P, c: P, d: P): boolean {
+  const o = (p: P, q: P, r: P) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+  const o1 = o(a, b, c);
+  const o2 = o(a, b, d);
+  const o3 = o(c, d, a);
+  const o4 = o(c, d, b);
+  return o1 * o2 < 0 && o3 * o4 < 0;
 }

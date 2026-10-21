@@ -351,6 +351,14 @@ export class GameMap {
       }
       polys('building', null, out.buildings);
       polys('water', null, out.water);
+      // Flüsse, Bäche und Kanäle als Linien (Gräben und Rohre unter der Straße zählen nicht)
+      out.waterLines = [];
+      for (const f of feats('waterway')) {
+        if (!['river', 'stream', 'canal'].includes(String(f.properties?.class ?? '')) || f.properties?.brunnel === 'tunnel') continue;
+        const g = f.geometry;
+        const list = g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : [];
+        for (const c of list) if (c.length > 1 && near(c)) out.waterLines.push(c as [number, number][]);
+      }
       polys('landuse', ['residential', 'commercial', 'industrial', 'retail', 'garages', 'railway'], out.built);
       polys('landcover', ['wood', 'forest'], out.forest);
     } catch {

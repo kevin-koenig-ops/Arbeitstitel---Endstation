@@ -84,3 +84,32 @@ describe('Wegenetz: raus aus dem Ort', () => {
     expect(r.offroad.some((o) => o)).toBe(true);
   });
 });
+
+describe('Wegenetz: Wasser', () => {
+  // Ein Bach von Süd nach Nord bei x = 300 (draußen auf dem Feld), eine Straße mit Brücke bei y = 0
+  const wet = new WalkNet({
+    center: C,
+    ways: [[at(250, 0), at(350, 0)]],
+    buildings: [],
+    water: [],
+    built: [],
+    forest: [],
+    waterLines: [[at(300, -300), at(300, 300)]],
+  });
+
+  it('geht nicht quer durch den Bach, sondern über die Brücke', () => {
+    const r = wet.route(ll(260, 150), ll(340, 150))!;
+    expect(r).not.toBeNull();
+    // Der Weg führt über die Straße (y = 0), nicht direkt hinüber
+    expect(r.path.some((p) => Math.abs((p.lat - C.lat) * 111320) < 2)).toBe(true);
+    expect(distanceM(r.end, ll(340, 150))).toBeLessThan(1);
+  });
+
+  it('der Joystick bleibt am Ufer stehen', () => {
+    const p = wet.step(ll(298, 150), ll(302, 150));
+    expect(distanceM(p, ll(298, 150))).toBeLessThan(0.01);
+    // Auf der Brücke geht es
+    const q = wet.step(ll(298, 0), ll(302, 0));
+    expect(distanceM(q, ll(302, 0))).toBeLessThan(0.01);
+  });
+});

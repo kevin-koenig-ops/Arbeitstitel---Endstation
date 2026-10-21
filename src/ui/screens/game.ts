@@ -226,6 +226,9 @@ export function gameScreen(app: App): Screen {
       return { ways: net?.wayCount ?? 0, legs: routeOff.length, off: routeOff.filter(Boolean).length };
     };
 
+  // Zum Testen: die Karte von außen steuern (Ausschnitt, Neigung)
+  if (localStorage.getItem('endstation.debug')) (window as unknown as { __map?: () => unknown }).__map = () => gm?.map;
+
   // Zum Testen: einen Fundbeleg zeigen, ohne hinzulaufen
   if (localStorage.getItem('endstation.debug'))
     (window as unknown as { __loot?: unknown }).__loot = (ev: Parameters<SpotSheet['showLoot']>[1]) => {
