@@ -13,6 +13,7 @@ import { loginScreen } from './screens/login';
 import { menuScreen } from './screens/menu';
 import { settingsScreen } from './screens/settingsScreen';
 import { titleScreen } from './screens/title';
+import { unlocksScreen } from './screens/unlocks';
 
 export interface Screen {
   el: HTMLElement;
@@ -20,7 +21,7 @@ export interface Screen {
   destroy?: () => void;
 }
 
-export type ScreenName = 'title' | 'login' | 'menu' | 'character' | 'intro' | 'game' | 'settings';
+export type ScreenName = 'title' | 'login' | 'menu' | 'unlocks' | 'character' | 'intro' | 'game' | 'settings';
 
 export interface App {
   backend: GameBackend;
@@ -33,6 +34,7 @@ const SCREENS: Record<ScreenName, (app: App) => Screen> = {
   title: titleScreen,
   login: loginScreen,
   menu: menuScreen,
+  unlocks: unlocksScreen,
   character: characterScreen,
   intro: introScreen,
   game: gameScreen,

@@ -35,7 +35,7 @@ export function menuScreen(app: App): Screen {
         ),
       );
     }
-    items.push(stop('Neues Spiel', save ? null : 'Erstelle deine Figur', () => (save ? confirmNew() : app.go('character')), !save));
+    items.push(stop('Neues Spiel', save ? null : 'Erstelle deine Figur', () => (save ? confirmNew() : app.go('unlocks')), !save));
     items.push(stop('Einstellungen', null, () => app.go('settings')));
     routeHost.append(h('ol', { class: 'menu-list' }, items));
   };
@@ -53,7 +53,7 @@ export function menuScreen(app: App): Screen {
           'div',
           { class: 'row' },
           h('button', { class: 'btn ghost', type: 'button', onclick: renderRoute }, 'Abbrechen'),
-          h('button', { class: 'btn danger', type: 'button', onclick: () => app.go('character') }, 'Neu starten'),
+          h('button', { class: 'btn danger', type: 'button', onclick: () => app.go('unlocks') }, 'Neu starten'),
         ),
       ),
     );

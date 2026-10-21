@@ -222,6 +222,18 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .intro-how { margin: 0; padding: 14px 16px 14px 32px; border-left: 3px solid var(--line); color: var(--dust); display: flex; flex-direction: column; gap: 8px; }
 .intro-how b { color: var(--bone); }
 
+/* Bitte kurz lesen: was man nach und nach freischaltet */
+.unlocks-lead { margin: 0 0 14px; font-size: 18px; line-height: 1.5; max-width: 46em; }
+.unlocks-lead b { color: var(--amber); font-weight: 600; }
+.unlocks-head { margin: 4px 0 10px; font: 600 13px/1 var(--font-ui); letter-spacing: 0.16em; text-transform: uppercase; color: var(--dust); }
+.unlock-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.unlock-card { position: relative; display: grid; grid-template-columns: 40px 1fr; column-gap: 12px; row-gap: 2px; align-items: start; align-content: start; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--steel); }
+.unlock-card .unlock-icon { grid-row: span 2; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 178, 46, 0.12); color: var(--amber); }
+.unlock-card b { font: 600 17px/1.2 var(--font-ui); color: var(--bone); padding-right: 22px; }
+.unlock-card > span:last-child { font-size: 14px; line-height: 1.35; color: var(--dust); }
+.unlock-card .unlock-lock { position: absolute; top: 10px; right: 10px; color: var(--dust); opacity: 0.7; transform: scale(0.75); transform-origin: top right; }
+.unlocks-calm { margin: 14px 0 0; color: var(--amber); font-size: 16px; }
+
 /* --- Einstellungen ------------------------------------------------------------------ */
 .settings { display: flex; flex-direction: column; gap: 22px; }
 .set-group { display: flex; flex-direction: column; gap: 4px; }
