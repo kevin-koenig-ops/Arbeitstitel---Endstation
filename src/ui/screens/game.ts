@@ -465,9 +465,10 @@ export function gameScreen(app: App): Screen {
     joyRaf = requestAnimationFrame(loop);
     renderLocChip();
   };
-  // Steuerung in den Einstellungen umgestellt: sofort übernehmen
+  // Steuerung oder Grafik in den Einstellungen umgestellt: sofort übernehmen
   let lastControl = app.settings.get().control;
   const offSettings = app.settings.onChange((st) => {
+    gm?.setComic(st.graphics === 'comic');
     if (st.control === lastControl) return;
     lastControl = st.control;
     if (provider) setupJoystick();
@@ -735,6 +736,7 @@ export function gameScreen(app: App): Screen {
             ],
           ]),
       });
+      gm.setComic(app.settings.get().graphics === 'comic');
       try {
         await gm.init();
       } catch (err) {

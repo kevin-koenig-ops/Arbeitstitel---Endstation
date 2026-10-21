@@ -6,8 +6,9 @@ import type { FurnitureId } from '../core/furniture';
 import { renderThumbnails, type ThumbJob } from './BaseScene';
 import { buildFurniture } from './models';
 import { buildFloor, buildRoof, buildWall, WALL_H } from './structures';
+import { graphicsStyle } from './gfxStyle';
 
-const cache: Record<string, string> = {};
+const caches: Record<string, Record<string, string>> = {};
 
 function patch(build: (v: number) => THREE.Group, size = 2): THREE.Group {
   const g = new THREE.Group();
@@ -47,6 +48,7 @@ function pieceModel(id: PieceId): THREE.Object3D {
 
 /** Fehlende Vorschaubilder rendern und alle zurückgeben (Schlüssel "f:kind" bzw. "p:id"). */
 export function thumbnails(furniture: FurnitureId[], pieces: PieceId[]): Record<string, string> {
+  const cache = (caches[graphicsStyle()] ??= {});
   const jobs: ThumbJob[] = [];
   for (const k of furniture) if (!cache[`f:${k}`]) jobs.push({ key: `f:${k}`, build: () => buildFurniture(k).group });
   for (const p of pieces) if (!cache[`p:${p}`]) jobs.push({ key: `p:${p}`, build: () => pieceModel(p) });

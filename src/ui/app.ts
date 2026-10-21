@@ -4,6 +4,7 @@ import { WORLD_SEED } from '../config';
 import { GuestAuth } from '../services/auth';
 import { LocalBackend, type GameBackend } from '../services/backend';
 import { SettingsStore } from '../services/settings';
+import { setGraphicsStyle } from '../base/gfxStyle';
 import { h, reducedMotion } from './dom';
 import { characterScreen } from './screens/character';
 import { gameScreen } from './screens/game';
@@ -52,9 +53,18 @@ export async function createApp(root: HTMLElement) {
 
   let current: Screen | null = null;
 
+  const settings = new SettingsStore();
+  // Grafikstil gilt sofort für alle 3D-Ansichten
+  const applyGfx = () => {
+    setGraphicsStyle(settings.get().graphics);
+    root.dataset.gfx = settings.get().graphics;
+  };
+  applyGfx();
+  settings.onChange(applyGfx);
+
   const app: App = {
     backend: new LocalBackend(new GuestAuth(), WORLD_SEED),
-    settings: new SettingsStore(),
+    settings,
     go(name) {
       const prev = current;
       const next = SCREENS[name](app);

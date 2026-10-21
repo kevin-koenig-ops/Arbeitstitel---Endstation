@@ -3,6 +3,7 @@
 // Bewegungen, angekündigte Angriffe (roter Kreis), Treffer, Funken, Wackeln.
 
 import * as THREE from 'three';
+import { StyledRenderer } from './comic';
 import { alive, windupLeft, type BattleEvent, type BattleState } from '../core/battle';
 import { BATTLE, FOES } from '../core/content';
 import type { DayPhase } from '../core/sun';
@@ -36,6 +37,7 @@ interface Bit {
 
 export class CombatScene {
   readonly renderer: THREE.WebGLRenderer;
+  private styled: StyledRenderer;
   private scene = new THREE.Scene();
   private camera = new THREE.PerspectiveCamera(38, 1, 0.3, 120);
   private hemi = new THREE.HemisphereLight();
@@ -61,6 +63,7 @@ export class CombatScene {
     phase: DayPhase,
   ) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.styled = new StyledRenderer(this.renderer, 1.3);
     this.renderer.setPixelRatio(Math.min(1.75, window.devicePixelRatio || 1));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -398,7 +401,7 @@ export class CombatScene {
   }
 
   render() {
-    this.renderer.render(this.scene, this.camera);
+    this.styled.render(this.scene, this.camera);
   }
 
   /** Bildschirmposition eines Punkts (für Schadenszahlen und Lebensbalken). */

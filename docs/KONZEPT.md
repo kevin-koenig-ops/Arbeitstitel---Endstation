@@ -105,3 +105,5 @@ Name, Aussehen (Frisur, Hautton, Jacke) und eine Vorgeschichte mit kleinem Vorte
 ## Gestaltung
 
 Bus-Zielanzeige trifft Endzeit: LED-Punktschrift in Bernstein, dunkle Paneele, das Hauptmenü als Linienplan mit Haltestellen. Fundbelege sehen aus wie Kassenzettel, Erinnerungsstücke sind handschriftliche Zettel.
+
+**Grafikstil zum Vergleichen** (Einstellungen → Grafik): *Polygon* (kantig, weiches Licht) oder *Comic* (Cel-Shading: flächige Farben in wenigen Stufen, dunkle Umrisslinien, kräftigere Farben). Comic wirkt in Endstation, Kampf, Charaktererstellung und bei der Figur auf der Karte voll; die Karte selbst bekommt nur flache Hausseiten und dunkle Kanten am Fuß der Häuser.

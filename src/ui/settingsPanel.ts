@@ -127,6 +127,20 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
     h(
       'section',
       { class: 'set-group' },
+      h('h2', null, 'Grafik'),
+      h(
+        'div',
+        { class: 'set-row' },
+        h('div', { class: 'set-label', id: 'lbl-gfx' }, 'Grafikstil', h('small', null, 'Polygon: kantig, mit weichem Licht. Comic: flächige Farben und dunkle Umrisse wie im Zeichentrick.')),
+        segmented('graphics', 'lbl-gfx', [
+          ['poly', 'Polygon'],
+          ['comic', 'Comic'],
+        ]),
+      ),
+    ),
+    h(
+      'section',
+      { class: 'set-group' },
       h('h2', null, 'Zum Ausprobieren'),
       h('p', { class: 'note' }, 'Tageszeit und Wetter erzwingen, um die Stimmungen zu sehen. Ändert nur die Optik, nicht Beute oder Gegner.'),
       h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-phase' }, 'Tageszeit'), phaseSelect),

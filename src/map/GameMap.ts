@@ -142,8 +142,19 @@ export class GameMap {
 
     await new Promise<void>((resolve) => this.map.once('load', () => resolve()));
     this.loaded = true;
+    this.setComic(this.comic);
     this.fog = new FogOfWar(this.map);
     if (this.pendingRange) this.setRange(this.pendingRange.c, this.pendingRange.r);
+  }
+
+  private comic = false;
+
+  /** Comic-Stil auf der Karte: flache Seiten ohne Verlauf und dunkle Umrisse. */
+  setComic(on: boolean) {
+    this.comic = on;
+    if (!this.loaded) return;
+    for (const id of ['decor', 'buildings']) if (this.map.getLayer(id)) this.map.setPaintProperty(id, 'fill-extrusion-vertical-gradient', !on);
+    if (this.map.getLayer('decor-outline')) this.map.setLayoutProperty('decor-outline', 'visibility', on ? 'visible' : 'none');
   }
 
   setPlayer(pos: LatLon, avatarSvg: string) {

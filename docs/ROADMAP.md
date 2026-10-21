@@ -74,6 +74,11 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 
 **Testen:** Reicht die Menge an Rohstoffen? Was fehlt am häufigsten? Sind die Wartezeiten angenehm?
 
+## ✅ Zwischenschritt: Grafikstil Comic zum Vergleichen
+
+- Umschaltbar in den Einstellungen: Polygon oder Comic (Cel-Shading mit Umrissen)
+- **Testen:** Was gefällt besser? Läuft Comic am Handy flüssig?
+
 ## Iteration 1h (Teil 2): Weitere Werkstätten und Wetter
 
 - Weitere Anlagen mit echten Wartezeiten: Holzofen (Eintopf), Lagerfeuer, Hochbeet, Apfelbaum

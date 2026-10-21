@@ -4,6 +4,7 @@
 // Wände vor einem Raum werden abgesenkt, damit man hineinsieht (wie bei Die Sims).
 
 import * as THREE from 'three';
+import { StyledRenderer } from './comic';
 import {
   cellIndex,
   cellKey,
@@ -82,6 +83,7 @@ function edgeWorld(e: EdgeKey): { x: number; z: number; ry: number } {
 
 export class BaseScene {
   readonly renderer: THREE.WebGLRenderer;
+  private styled: StyledRenderer;
   private scene = new THREE.Scene();
   private haze = new THREE.Fog('#000000', 30, 90);
   private camera = new THREE.PerspectiveCamera(34, 1, 0.5, 500);
@@ -175,6 +177,7 @@ export class BaseScene {
 
   constructor(private host: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    this.styled = new StyledRenderer(this.renderer, 1.2);
     this.renderer.setPixelRatio(Math.min(1.75, window.devicePixelRatio || 1));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1247,7 +1250,7 @@ export class BaseScene {
     this.updateLights(t);
     this.updateWeather(dt);
     if (this.sectionMarks.count) (this.sectionMarks.material as THREE.MeshBasicMaterial).opacity = 0.32 + 0.14 * Math.sin(t * 3);
-    this.renderer.render(this.scene, this.camera);
+    this.styled.render(this.scene, this.camera);
   }
 
   dispose() {
@@ -1257,6 +1260,7 @@ export class BaseScene {
     this.env?.dispose();
     this.rig?.dispose();
     this.precip?.obj.geometry.dispose();
+    this.styled.dispose();
     this.renderer.dispose();
     this.renderer.forceContextLoss();
     this.renderer.domElement.remove();
@@ -1276,6 +1280,7 @@ export function renderThumbnails(jobs: ThumbJob[], size = 112): Record<string, s
   r.setSize(size, size);
   r.toneMapping = THREE.ACESFilmicToneMapping;
   r.outputColorSpace = THREE.SRGBColorSpace;
+  const styled = new StyledRenderer(r, 1.4);
   const scene = new THREE.Scene();
   scene.add(new THREE.HemisphereLight('#fff1d8', '#4b4538', 1.4));
   const d = new THREE.DirectionalLight('#ffe0b0', 2.4);
@@ -1291,7 +1296,7 @@ export function renderThumbnails(jobs: ThumbJob[], size = 112): Record<string, s
     const s = bb.getSize(new THREE.Vector3()).length();
     cam.position.set(c.x + s * 1.25, c.y + s * 1.05, c.z + s * 1.6);
     cam.lookAt(c);
-    r.render(scene, cam);
+    styled.render(scene, cam);
     out[job.key] = r.domElement.toDataURL('image/png');
     scene.remove(g);
     g.traverse((o) => {
@@ -1299,6 +1304,7 @@ export function renderThumbnails(jobs: ThumbJob[], size = 112): Record<string, s
       if (m.isMesh) m.geometry.dispose();
     });
   }
+  styled.dispose();
   r.dispose();
   r.forceContextLoss();
   return out;
