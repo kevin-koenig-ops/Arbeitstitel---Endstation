@@ -95,7 +95,7 @@ Knobeln passt perfekt zu „draußen kurz, zu Hause die Tiefe“: Hinweise finde
 ## Kampf: wie es weitergeht (geplant)
 
 - **Kartensammlung:** Heute bringen nur Waffen neue Karten. Dazu kommen:
-  - **Kniffe** als seltene Funde (Zettel, Erinnerungsstücke), dauerhaft, wie Baupläne. Beispiele: „Leise sein“ (der Heuler ruft keine Hilfe), „Feuer“ (doppelter Schaden gegen den Borkenmann).
+  - **Kniffe** als seltene Funde (Zettel, Erinnerungsstücke), dauerhaft, wie Baupläne. Beispiele: „Leise sein“ (der Heuler ruft keine Hilfe), „Feuer“ (doppelter Schaden gegen Wandler).
   - **Werktisch-Gegenstände** als Einmalkarten: Brandflasche, Krähenfüße, Rauchdose. Kosten Material.
   - **Karten durch den Rang** und später **von Bewohnern**.
   - **Deck zusammenstellen:** Wer viele Karten hat, wählt vor dem Rausgehen aus (z. B. 10 Karten).
@@ -104,7 +104,7 @@ Knobeln passt perfekt zu „draußen kurz, zu Hause die Tiefe“: Hinweise finde
 - **Raids (Nester):** einmal pro Woche ein Nest mit großem Lebensbalken für alle Spieler. Jeder kämpft seine Runden, wann es passt, auch von zu Hause. Belohnung nach Anteil. Endgegner mit Phasen (ab halber Gesundheit ein neues Muster).
 - **Eine Figur, viele Fähigkeiten:** Anders als bei Raid Shadow Legends sammelt man keine Helden. Man spielt immer die eigene Figur, die Vielfalt kommt aus den Fähigkeitenkarten im Deck. Jede Runde zieht man zufällig 4 Karten aus dem Deck und wählt, welche man spielt: Zufall bei der Hand, Entscheidung beim Spielen.
 - **Statuseffekte** (ohne Magie, alles Endzeit), nach und nach freigeschaltet:
-  - **Brennt:** Schaden jede Runde (Brandflasche). Stark gegen Borkenmänner.
+  - **Brennt:** Schaden jede Runde (Brandflasche). Stark gegen Wandler.
   - **Vereist:** Gegner setzt eine Runde aus (Feuerlöscher).
   - **Geblendet:** trifft schlechter (Rauchdose, Taschenlampe).
   - **Verlangsamt:** rückt nicht nach vorn (Krähenfüße).
@@ -214,7 +214,7 @@ Die Häuser stehen schon als einfache Klötze in echter Höhe auf der Karte. Ech
 ## Bedrohung und Kampf
 
 - **Wachen:** Gegner bewachen Fundstellen (etwa jede vierte, an echten Orten öfter, nachts mehr). Wer gewinnt, bekommt mehr Beute und darf danach weiter wühlen. Man kann bewachte Orte auch liegen lassen.
-- **Gegner aus der Lore:** Wandler (Tote, durch die Ranken wachsen; packen zu), Kriecher (flink, ducken sich weg), Borkenmann (verholzte Rinde als Rüstung, holt aus und schlägt schwer zu), Heuler (bleibt hinten und ruft Wandler herbei, zuerst ausschalten). Meist kommen sie zu zweit oder dritt, nachts öfter.
+- **Gegner aus der Lore:** Wandler (vom Weinen ausgebrannte Menschen; packen zu), Kriecher (flink, ducken sich weg), Borkenmann (Kalkplatten unter der Haut als Rüstung, holt aus und schlägt schwer zu), Heuler (bleibt hinten und ruft Wandler herbei, zuerst ausschalten). Meist kommen sie zu zweit oder dritt, nachts öfter.
 - **Kampf als kurze Taktik mit Karten** (Seitenansicht: du links, die Gegner rechts):
   - Über jedem Gegner steht, was er als Nächstes tut (Angriff mit Schaden, Packen, Ausholen, Wuchtschlag, Näherkommen, Heulen). Danach plant man.
   - Pro Runde 3 Kraft und 4 Karten. Grundkarten: Faustschlag, Steinwurf, Ausweichen (blockt 3), Tritt (stößt nach hinten und unterbricht Ausholen). Jede Waffe bringt eigene Karten mit: Brechstange (Hebelhieb), Nagelschläger (Schwinger, Volltreffer mit Betäuben), Armbrust (Bolzen, Zielen). Verbinden kostet 1 Medizin.

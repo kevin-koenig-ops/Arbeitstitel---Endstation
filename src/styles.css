@@ -1223,7 +1223,8 @@ button.base-res { align-items: center; padding: 3px 6px 3px 4px; border: 1px sol
 .battle-loading.has-art { --art-shade: radial-gradient(ellipse at 55% 45%, rgba(14, 12, 10, 0.1), rgba(14, 12, 10, 0.75) 80%); text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9); }
 .overlay.site-picker.has-art { --art-shade: linear-gradient(rgba(14, 12, 10, 0.78), rgba(14, 12, 10, 0.9)); }
 @media (orientation: landscape) {
-  .menu.has-art { --art-shade: linear-gradient(90deg, rgba(14, 12, 10, 0.25) 0%, rgba(14, 12, 10, 0.05) 35%, rgba(14, 12, 10, 0.55) 58%, rgba(14, 12, 10, 0.9) 78%); background-position: left center; }
+  /* Hauptmenü-Bild etwas größer, damit die Kreatur links neben dem Menü steht */
+  .menu.has-art { --art-shade: linear-gradient(90deg, rgba(14, 12, 10, 0.3) 0%, rgba(14, 12, 10, 0.05) 32%, rgba(14, 12, 10, 0.5) 56%, rgba(14, 12, 10, 0.88) 76%); background-size: auto, 128% auto; background-position: center, 88% 55%; }
 }
 
 /* --- Erkunden: besondere Orte, Hinweise am Horizont, Kompass, Neuland, Fundbuch-Orte --- */

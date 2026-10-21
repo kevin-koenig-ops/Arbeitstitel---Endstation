@@ -1,4 +1,4 @@
-<!-- Spiele-Lore von Kevin (Quelle: Entstehungsgeschichte.docx, übernommen am 21.10.2026). Kapitel I–VI sind Kevins Text; am 21.10. wurden echte Staaten durch erfundene ersetzt und Notlazarette statt Krankenhäuser eingesetzt. Zeittafel, Kapitel VII und „Für das Spiel“ sind Ergänzungen. Am 21.10. abends auf Kevins Wunsch entfernt: die Geschichte von Linie 0 und Endstation; dazugekommen: der Bleiche Wächter (Kevins Modell). -->
+<!-- Spiele-Lore von Kevin (Quelle: Entstehungsgeschichte.docx, übernommen am 21.10.2026). Kapitel I–VI sind Kevins Text; am 21.10. wurden echte Staaten durch erfundene ersetzt und Notlazarette statt Krankenhäuser eingesetzt. Zeittafel, Kapitel VII und „Für das Spiel“ sind Ergänzungen. Am 21.10. abends auf Kevins Wunsch entfernt: die Geschichte von Linie 0 und Endstation, außerdem die Ranken bei den Kreaturen (Kapitel VII; Wurzelnester heißen jetzt Fiebergruben); dazugekommen: der Bleiche Wächter (Kevins Modell). -->
 
 # Die Entstehung der Welt
 
@@ -660,19 +660,19 @@ Die Welt ist nicht grün überwuchtert. Es wächst nicht überall seltsame Ranke
 Streifer sind die, die rausgehen. Es ist kein Amt, eher ein Ruf: Wer oft genug lebend zurückkommt, wird so genannt. Es gibt zwei Arten:
 
 - **Stadtstreifer** wagen sich in die Großstädte und bergen, was es nirgends sonst gibt: Medizin, Elektronik, Werkzeug. Hohe Beute, viele kommen nicht zurück.
-- **Landstreifer** halten das Umland sicher. Man ruft sie, wenn im Wald etwas nicht stimmt. Sie brennen Wurzelnester aus, begleiten Händler und kennen jede Abkürzung.
+- **Landstreifer** halten das Umland sicher. Man ruft sie, wenn im Wald etwas nicht stimmt. Sie brennen Fiebergruben aus, begleiten Händler und kennen jede Abkürzung.
 
 Alte Streifer sagen „der Appetit“, die Jüngeren „das Weinen“.
 
 ### 3. Was draußen lauert
 
-Die bekannten Formen sind 2026 stabil genug, dass man Regeln kennt. Im Spiel zeigen wir nur ihr Verhalten, nie die Biologie dahinter.
+Die bekannten Formen sind 2026 stabil genug, dass man Regeln kennt. Im Spiel zeigen wir nur ihr Verhalten, nie die Biologie dahinter. Alle sind geerdet und biologisch, ohne Ranken oder Pflanzen: Menschen und Tiere, die das Weinen verändert hat. Der Keim holt sich Phosphat aus den Knochen, Knochen werden spröde wie Glas, die Haut wächsern, aus den Augen laufen blutige Tränen, das gelöste Kalzium lagert sich bei manchen als Kalkplatten unter der Haut ab.
 
 | Name | Wo | Wie er sich verhält | Was hilft | Im Spiel heute |
 | --- | --- | --- | --- | --- |
-| **Wandler** | Wälder, Feldränder, Dörfer | Menschen und Tiere, die das Weinen nicht überlebt haben. Ranken wachsen durch sie hindurch und bewegen sie weiter, langsam und unermüdlich, immer dem Leben nach. Stärker bei Nebel, Regen und in der Nacht, träge in praller Sonne | Tageslicht, Abstand, Feuer | Streuner |
+| **Wandler** | Wälder, Feldränder, Dörfer | Menschen, in denen eine langsame Form des Weinens steckt: Der Keim baut den Körper ab, während er noch läuft. Das Fieber hat das Denken ausgebrannt, der Körper zittert. Sie folgen Wärme und dem Geruch von Blut, langsam und unermüdlich. Stärker bei Nebel, Regen und in der Nacht, träge in praller Sonne | Tageslicht, Abstand, Feuer | Streuner |
 | **Kriecher** | Unterholz, Gräben, Ruinen | Wandler, deren Knochen das Weinen spröde wie Glas gemacht hat. Das Skelett trägt nicht mehr, also ziehen sie sich flach am Boden voran. Flink und schwer zu treffen | Aufpassen, wohin man tritt | Kriecher |
-| **Borkenmann** | Alte Wälder, Schluchten, Bahndämme | Ein Wandler, der jahrelang im Schatten stand. Die Ranken sind verholzt und liegen wie eine Rüstung über ihm, oft trägt er noch die Warnweste vom Bautrupp. Langsam, zäh, schlägt hart | Schwere Waffen, Feuer | Brocken |
+| **Borkenmann** | Alte Wälder, Schluchten, Bahndämme | Ein Wandler, bei dem sich das Kalzium aus den Knochen unter der Haut ablagert. Über Jahre wachsen graue, rissige Kalkplatten, die wie Baumrinde aussehen, daher der Name. Oft trägt er noch die Warnweste vom Bautrupp. Langsam, zäh, schlägt hart | Schwere Waffen, die die Platten brechen | Brocken |
 | **Heuler** | Großstädte, Tunnel, Tiefgaragen | Akustische Jäger, fast blind. Sie jagen nach Gehör und schreien, um andere anzulocken. Einzelne verirren sich aufs Land | Leise sein, zuerst ausschalten | Kreischer |
 | **Bleicher Wächter** | Keller, Tunnel, verschlossene Hallen; draußen nur nachts | Ein Wirt, der Jahre ohne Tageslicht unten verbracht hat. Die Haut ist fahl wie Papier, auf dem Rücken wuchern Knoten, die Augen sind riesig. Er sieht im Dunkeln, starrt, bis man sich nicht mehr rührt, weicht zurück und springt aus dem Schatten. Tagsüber verkriecht er sich, Licht tut ihm weh | Licht, Ausweichen, aus der Ferne treffen, wenn er zurückweicht | Bleicher Wächter (nur nachts) |
 | **Rote Zonen** | Bunker, Tunnel, verschlossene Hallen | Keine Kreatur, sondern ein Ort: geschlossene Räume ohne Tageslicht, in denen die Keime schlafen. Ein einziger Atemzug kann reichen | Draußen bleiben, nur mit Atemschutz und nur kurz | noch nicht |
@@ -680,7 +680,7 @@ Die bekannten Formen sind 2026 stabil genug, dass man Regeln kennt. Im Spiel zei
 **Weitere Ideen (offen):**
 
 - **Elysis-Felder:** In schattigen Tälern stehen Pflanzen, die wie perfekte Nutzpflanzen aussehen. Ihre Knollen machen satt. Ob sie sicher sind, darüber streiten die Siedlungen.
-- **Wurzelnester:** Wo Massengräber im Wald liegen, entstehen neue Wandler. Landstreifer brennen sie aus.
+- **Fiebergruben:** Wo Massengräber im Wald liegen, sammelt sich der Keim. Tiere und Streuner stecken sich dort an, neue Wandler entstehen. Landstreifer brennen solche Gruben aus.
 
 ### 4. Dein Zuhause
 
@@ -705,5 +705,5 @@ Mögliches Endziel: noch offen. Eine Idee: mit deinen Leuten zur Küste aufbrech
   - Nebel und Regen machen Wandler stärker (echtes Wetter).
   - Das Hochbeet läuft mit Kompost statt Dünger.
   - Fundstellen liegen draußen, nicht in Gebäuden.
-- **Echte Orte respektieren:** Rote Zonen, Wurzelnester und Massengräber liegen nie auf echten Krankenhäusern, Friedhöfen, Schulen, Kitas, Gedenkstätten oder Privatgrundstücken. Es sind erfundene Orte im Spiel.
+- **Echte Orte respektieren:** Rote Zonen, Fiebergruben und Massengräber liegen nie auf echten Krankenhäusern, Friedhöfen, Schulen, Kitas, Gedenkstätten oder Privatgrundstücken. Es sind erfundene Orte im Spiel.
 - **Keine echten Staaten als Schuldige:** Ostpakt, Westbund und das Küstenkönigreich bleiben erfunden.

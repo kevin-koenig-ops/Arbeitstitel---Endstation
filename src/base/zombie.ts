@@ -115,30 +115,19 @@ export class ZombieRig {
       if (side < 0) this.armL = arm;
       else this.armR = arm;
     }
-    // Ranken wachsen durch sie hindurch (Lore: Wandler). Beim Borkenmann sind sie verholzt wie Rinde.
-    const vine = m(kind === 'brute' ? '#5a4632' : '#3f5a2e', 0.95);
-    const strand = (parent: THREE.Object3D, w2: number, h2: number, x: number, y: number, z: number, rz: number, ry = 0) => {
-      const v = part(parent, B(w2, h2, 0.035), vine, x, y, z);
-      v.rotation.set(0, ry, rz);
-      return v;
-    };
-    if (kind !== 'screamer') {
-      strand(torso, 0.04, 0.5, 0.02, 0.3, 0.14, 0.7);
-      strand(torso, 0.035, 0.42, -0.05, 0.36, -0.13, -0.6);
-      strand(torso, 0.03, 0.3, 0.1, 0.5, 0.1, 0.2);
-      strand(head, 0.025, 0.16, -0.08, 0.1, 0.08, 0.4);
-      strand(this.armR, 0.03, 0.4, 0.04, -0.3, 0.03, 0.15, 0.6);
-      strand(this.legL, 0.03, 0.36, 0.05, -0.3, 0.06, -0.2);
-    } else strand(torso, 0.03, 0.34, 0.05, 0.3, 0.13, 0.5);
+    // Blutige Tränenspuren unter den Augen (Lore: das Weinen)
+    const tears = m('#5a1414', 0.9);
+    for (const side of [-1, 1]) part(head, B(0.012, 0.05, 0.006), tears, side * 0.045, 0.115, 0.128);
     if (kind === 'brute') {
-      // Rindenplatten auf Schultern und Rücken
-      const bark = m('#6a5238', 1);
+      // Kalkplatten auf Schultern, Rücken und Arm: das Kalzium aus den Knochen lagert sich unter der Haut ab
+      const crust = m('#8f8c84', 1);
       for (const side of [-1, 1]) {
-        const p1 = part(torso, B(0.2, 0.08, 0.22), bark, side * 0.2, 0.56, 0);
+        const p1 = part(torso, B(0.2, 0.08, 0.22), crust, side * 0.2, 0.56, 0);
         p1.rotation.z = side * 0.35;
       }
-      part(torso, B(0.36, 0.36, 0.06), bark, 0, 0.32, -0.16).rotation.x = 0.12;
-      part(this.armL, B(0.13, 0.22, 0.13), bark, 0, -0.18, 0);
+      part(torso, B(0.36, 0.36, 0.06), crust, 0, 0.32, -0.16).rotation.x = 0.12;
+      part(this.armL, B(0.13, 0.22, 0.13), crust, 0, -0.18, 0);
+      part(head, B(0.12, 0.05, 0.1), crust, 0.04, 0.22, -0.03).rotation.z = -0.25;
     }
 
     this.root.traverse((o) => {

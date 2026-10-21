@@ -678,9 +678,9 @@ export interface EnemyDef {
 }
 
 export const ENEMIES: Record<EnemyId, EnemyDef> = {
-  walker: { name: 'Wandler', hp: 4, dmg: [1, 2], armor: 0, speed: 1, desc: 'Ein Toter, durch den Ranken wachsen. Langsam, aber unermüdlich.' },
+  walker: { name: 'Wandler', hp: 4, dmg: [1, 2], armor: 0, speed: 1, desc: 'Das Weinen hat ihn nicht getötet, nur ausgebrannt. Er zittert, folgt Wärme und Blut. Langsam, aber unermüdlich.' },
   crawler: { name: 'Kriecher', hp: 3, dmg: [1, 2], armor: 0, speed: 1.45, desc: 'Knochen wie Glas, flach am Boden. Flink und schwer zu erwischen.' },
-  brute: { name: 'Borkenmann', hp: 6, dmg: [1, 3], armor: 1, speed: 0.85, desc: 'Verholzte Ranken wie eine Rüstung, oft noch in Warnweste.' },
+  brute: { name: 'Borkenmann', hp: 6, dmg: [1, 3], armor: 1, speed: 0.85, desc: 'Graue Kalkplatten unter der Haut, hart wie Rinde, oft noch in Warnweste.' },
   watcher: { name: 'Bleicher Wächter', hp: 6, dmg: [2, 3], armor: 0, speed: 1.1, desc: 'Jahre ohne Tageslicht im Keller. Kommt nur nachts heraus und starrt, bis du dich nicht mehr rührst.' },
 };
 
@@ -804,7 +804,7 @@ export const FOE_TACTICS: Record<FoeKind, FoeTactic> = {
     hp: 8,
     armor: 0,
     pattern: [{ kind: 'attack', dmg: 2 }, { kind: 'attack', dmg: 3 }, { kind: 'grab', dmg: 1 }],
-    desc: 'Ein Toter, durch den Ranken wachsen. Langsam und unermüdlich. Packt er dich, hast du nächste Runde weniger Kraft.',
+    desc: 'Das Weinen hat ihn ausgebrannt, nicht getötet. Langsam und unermüdlich. Packt er dich, hast du nächste Runde weniger Kraft.',
   },
   crawler: {
     name: 'Kriecher',
@@ -818,7 +818,7 @@ export const FOE_TACTICS: Record<FoeKind, FoeTactic> = {
     hp: 14,
     armor: 1,
     pattern: [{ kind: 'attack', dmg: 2 }, { kind: 'windup' }, { kind: 'smash', dmg: 6 }],
-    desc: 'Verholzte Ranken wie eine Rüstung. Holt er aus, kommt ein schwerer Schlag: ausweichen oder wegtreten!',
+    desc: 'Kalkplatten wie eine Rüstung. Holt er aus, kommt ein schwerer Schlag: ausweichen oder wegtreten!',
   },
   screamer: {
     name: 'Heuler',

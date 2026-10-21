@@ -59,6 +59,8 @@ const ART: Record<EnemyId, string> = {
     <path d="M148 98l22 30 6 22" stroke="${SKIN}" stroke-width="16" stroke-linecap="round" fill="none"/>
     <path d="M148 96l12 16" stroke="#c4772e" stroke-width="18" stroke-linecap="round"/>
     ${hand(178, 153, 1)}
+    <path d="M46 94l14-12 22 2-6 12-16 4z" fill="#8f8c84"/><path d="M154 94l-14-12-22 2 6 12 16 4z" fill="#8f8c84"/>
+    <path d="M30 128l10-6 8 8-6 10-10-2z" fill="#8f8c84"/>
     <rect x="90" y="68" width="20" height="18" fill="${SKIN_DARK}"/>
     ${head(100, 50, -6, '<path d="M74 40q2-26 26-26t26 26z" fill="#c9a23a"/><rect x="70" y="37" width="60" height="6" rx="3" fill="#b08a2c"/>')}
   </g>`,

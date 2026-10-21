@@ -5,7 +5,7 @@ import battle from '../assets/art/heuler-tunnel.webp';
 import character from '../assets/art/charakter-ausruestung.webp';
 import home from '../assets/art/halle.webp';
 import intro from '../assets/art/kleinstadt.webp';
-import menu from '../assets/art/menu-lagerfeuer.webp';
+import menu from '../assets/art/hauptmenue.webp';
 // Startbild: bis Kevins Bild da ist, steht hier die Kleinstadt als Platzhalter
 import title from '../assets/art/titel.webp';
 

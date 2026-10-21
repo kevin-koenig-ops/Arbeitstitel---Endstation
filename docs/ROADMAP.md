@@ -40,9 +40,9 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 
 ## Version 1.3: Kampf und Gefahr
 
-- **Mehr Karten und Gegner:** neue Waffenkarten (z. B. Feuer gegen Borkenmänner), seltene Karten als Fund, Gegner-Varianten.
+- **Mehr Karten und Gegner:** neue Waffenkarten (z. B. Feuer gegen Wandler, schwere Schläge gegen die Kalkplatten des Borkenmanns), seltene Karten als Fund, Gegner-Varianten.
 - **Statuseffekte und Lärm:** Brennt, Vereist, Geblendet, Verlangsamt, Blutet, Verwundbar, Schwach, Adrenalin. Dazu die Lärm-Leiste (laut lockt Heuler an), Kombos und bessere Treffer-Effekte (Anhalten beim Treffer, Zeitlupe beim letzten Kill). Details im [Konzept](KONZEPT.md).
-- **Mehr Kreaturen aus der Lore:** Varianten von Wandlern und Heulern, Wurzelnester, die man ausbrennt.
+- **Mehr Kreaturen aus der Lore:** Varianten von Wandlern und Heulern, Fiebergruben, die man ausbrennt. Vorschläge mit Lore und Bild-Prompts stehen im Überblick-Dokument (Seite Gegner).
 - **Schusswaffen:** Pistole, Schrotflinte, Gewehr als seltene Funde. Munition ist knapp, Schüsse sind laut und locken Gegner an.
 - **Gefahrenstufe pro Ausflug:** vorher wählen, mehr Risiko bringt bessere Beute.
 - **Horden auf echten Straßen:** umgehen, durchschleichen oder kämpfen. Lärm beim Durchsuchen lockt an, Stammwege werden mit der Zeit sicher.
