@@ -23,6 +23,31 @@ Wie es zum Weltuntergang kam (Phosphat-Krieg, das Weinen, Elysis, der Flux), ste
 4. **Ausbauen:** Mit Rohstoffen aus dem Lager wird die Endstation ausgebaut. Manche Anlagen produzieren von allein (Regentonne, Hochbeet). Einen Bus zum Ausbauen gibt es nicht mehr.
 5. **Entdecken:** Selten findet man Erinnerungsstücke, kleine Notizen und Fundsachen, die nach und nach erzählen, was passiert ist.
 
+## Drinnen und draußen im Gleichgewicht (geplant)
+
+Grundregel: **Draußen findest du, zu Hause machst du etwas daraus.** Beides soll sich jederzeit lohnen. Niemand soll abends spielen wollen und nicht können, weil er keine Lust hat rauszugehen. Und umgekehrt soll draußen nie langweilig sein, nur weil zu Hause gerade nichts wartet.
+
+- **Draußen ist das Abenteuer:** Rohstoffe, Kram, Sammelstücke, neue Karten (Kniffe), Hinweise auf Verstecke, Händlerkisten. Dazu die Roten Zonen als Dungeons, die man nur vor Ort betreten kann. Seltenes und Besonderes gibt es nur hier.
+- **Zu Hause ist Planen und Machen:** bauen und einrichten, Kram zerlegen, kochen, das Kartendeck zusammenstellen, Bewohner versorgen (Version 1.2). **Raids gehen von zu Hause:** Das wöchentliche Nest wird über das Funkgerät bekämpft. Stark macht dich dafür, was du draußen gefunden hast (Karten, Waffen, Vorräte).
+- **Zu Hause läuft nie leer:**
+  - Am Anfang genug Startmaterial und viel Schutt auf dem Gelände (Wegräumen bringt Rohstoffe), damit man am ersten Abend gleich etwas bauen kann.
+  - Anlagen, die über Nacht etwas erzeugen (Regentonne, Hochbeet, Sanitätsschrank, später mehr).
+  - „Ums Haus streifen“: ein paarmal am Tag etwas Kleinkram direkt an der Endstation. Genug, um weiterzubauen, aber nie so viel wie draußen.
+  - Ziele, die zu Hause erfüllbar sind (Raum bauen, Eintopf kochen, Deck bauen, Raid-Beitrag).
+- **Draußen ist nie Pflicht:** Wer ein paar Tage nicht rausgeht, kann trotzdem einrichten, Raids kämpfen und Geschichten lesen. Er kommt nur langsamer voran. Wegbleiben wird nie bestraft.
+- **Zahlen im Blick behalten:** Das Rechenmodell für das Gleichgewicht (14 Spieltage, verschiedene Spielertypen) bekommt einen „Stubenhocker“ und einen „Läufer“ dazu. Beide sollen Spaß haben: der Läufer schneller vorankommen, der Stubenhocker nie feststecken.
+
+## Kampf: wie es weitergeht (geplant)
+
+- **Kartensammlung:** Heute bringen nur Waffen neue Karten. Dazu kommen:
+  - **Kniffe** als seltene Funde (Zettel, Erinnerungsstücke), dauerhaft, wie Baupläne. Beispiele: „Leise sein“ (der Heuler ruft keine Hilfe), „Feuer“ (doppelter Schaden gegen den Borkenmann).
+  - **Werktisch-Gegenstände** als Einmalkarten: Brandflasche, Krähenfüße, Rauchdose. Kosten Material.
+  - **Karten durch den Rang** und später **von Bewohnern**.
+  - **Deck zusammenstellen:** Wer viele Karten hat, wählt vor dem Rausgehen aus (z. B. 10 Karten).
+- **Klassen:** Jede Vorgeschichte bringt 2 bis 3 eigene Karten mit (Rettungsdienst: „Erste Hilfe“, Werkstatt: „Improvisieren“, Hof & Wald: „Fährte lesen“, Kurierdienst: „Haken schlagen“). Ab dem Rang Streifer wählt man eine Richtung aus der Lore: **Landstreifer** (Feuer, Fallen, stark im Umland) oder **Stadtstreifer** (leise, länger in Roten Zonen). Klassenkarten machen höchstens ein Viertel des Decks aus, wechseln geht zu Hause. Man kann sich nie verskillen. Noch offen: Wird die Vorgeschichte selbst die Klasse oder getrennt davon?
+- **Dungeons (Rote Zonen):** eine Kette aus 3 bis 5 Kämpfen. Gesundheit und Waffen bleiben von Kampf zu Kampf. Dazwischen rasten oder plündern. Der Atemschutz ist die Uhr: nach einer festen Zahl Runden muss man raus, mit dem, was man hat. Abbrechen geht jederzeit. Nur vor Ort.
+- **Raids (Nester):** einmal pro Woche ein Nest mit großem Lebensbalken für alle Spieler. Jeder kämpft seine Runden, wann es passt, auch von zu Hause. Belohnung nach Anteil. Endgegner mit Phasen (ab halber Gesundheit ein neues Muster).
+
 ## Fortschritt
 
 - **Zielleiste:** Auf der Karte steht immer das nächste Ziel (z. B. „Durchsuche 3 Fundstellen“). Geschaffte Ziele leuchten gelb und haben eine kleine Belohnung (Rohstoffe, manchmal ein Bauplan). Die ersten Ziele führen durch den Einstieg. Antippen öffnet das Fortschritts-Fenster.

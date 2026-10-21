@@ -10,10 +10,21 @@ Version 1.0 ist fertig, wenn der ganze Kreislauf ohne Lücken läuft: rausgehen,
 11. **Klang:** Geräusche für Fund, Bauen, Kampf und Heimkehr.
 12. **Draußen-Test und Fehlerrunde:** eine Woche echt spielen, dann alles Hakelige reparieren. Dazu der Taschenmodus: Bildschirm schwarz, GPS läuft weiter, Vibration bei Fundstellen.
 13. **Feinschliff nach dem Test:** Zahlen für Beute, Kämpfe und Stufen anhand echter Spielrunden nachstellen (das Rechenmodell dafür gibt es schon).
+14. **Drinnen und draußen im Gleichgewicht:** Zu Hause muss es immer etwas zu tun geben, draußen das Besondere. Mehr Startmaterial, „Ums Haus streifen“ ein paarmal am Tag, Ziele auch für zu Hause, das Rechenmodell mit „Stubenhocker“ und „Läufer“. Details im [Konzept](KONZEPT.md).
+15. **Grafik-Stilprobe mit fertigen Modellen:** eine Ecke der Endstation und den Kampf mit freien Modell-Paketen (CC0, z. B. Quaternius „Zombie Apocalypse Kit“, „Downtown City MegaKit“, „Ultimate House Interior“, KayKit) statt der im Code gebauten Kästen. Dazu unser gemaltes Licht. Danach entscheiden.
 
 **Entschieden:** Kampf als kurze Taktik mit Karten statt Echtzeit. **Noch offen:** Grafikstil (Polygon, Comic, Gemalt oder 2D mit gemalten Bildern), Endziel (Vorschlag aus der Lore: „Die Linie 0 fährt wieder“, mit deinen Leuten zur Küste).
 
-## Version 1.1: Geschichte und Bewohner
+## Version 1.1: Karten, Klassen, Dungeons
+
+Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
+
+- **Kartensammlung:** Kniffe als seltene Funde, Werktisch-Gegenstände als Einmalkarten (Brandflasche, Krähenfüße, Rauchdose), Karten durch den Rang. Deck vor dem Rausgehen zusammenstellen.
+- **Klassen:** Vorgeschichte mit 2 bis 3 eigenen Karten, ab dem Rang Streifer Land- oder Stadtstreifer. Höchstens ein Viertel des Decks, zu Hause wechselbar.
+- **Rote Zonen als Dungeons:** 3 bis 5 Kämpfe hintereinander, der Atemschutz ist die Uhr, nur vor Ort, abbrechen geht immer.
+- **Raids von zu Hause:** wöchentliches Nest über das Funkgerät, zuerst allein gegen einen großen Gegner mit Phasen, mit Konten (Version 2.0) dann für alle gemeinsam.
+
+## Version 1.2: Geschichte und Bewohner
 
 - **Überlebende ziehen ein:** Menschen mit Name, Geschichte und Fähigkeit wohnen sichtbar in der Endstation, wünschen sich Möbel und geben kleine Aufträge. Gut versorgt helfen sie mehr; niemand stirbt, wenn du mal nicht spielst.
 - **Quests mit Witcher-Anspruch:** wenige, aber gute Aufträge, die in Stadt und Dorf funktionieren, gern mit echten Straßennamen („Bring Medizin aus der Apotheke in der Bahnhofstraße zum Stadtpark“).
@@ -21,11 +32,10 @@ Version 1.0 ist fertig, wenn der ganze Kreislauf ohne Lücken läuft: rausgehen,
 - **Geschichte in Häppchen:** Erinnerungsstücke werden zu zusammenhängenden Kapiteln, dazu Laborzettel, Archivnotizen und Funksprüche aus der Lore. Die Biologie wird nie erklärt.
 - **Hund als Begleiter:** erschnüffelt draußen Verstecke, schläft zu Hause am Lagerfeuer.
 
-## Version 1.2: Kampf und Gefahr
+## Version 1.3: Kampf und Gefahr
 
 - **Mehr Karten und Gegner:** neue Waffenkarten (z. B. Feuer gegen Borkenmänner), seltene Karten als Fund, Gegner-Varianten.
 - **Mehr Kreaturen aus der Lore:** Varianten von Wandlern und Heulern, Wurzelnester, die man ausbrennt.
-- **Rote Zonen:** erfundene Orte (Bunker, Tunnel, verschlossene Hallen), nur mit Atemschutz und nur kurz, dafür seltene Beute.
 - **Schusswaffen:** Pistole, Schrotflinte, Gewehr als seltene Funde. Munition ist knapp, Schüsse sind laut und locken Gegner an.
 - **Gefahrenstufe pro Ausflug:** vorher wählen, mehr Risiko bringt bessere Beute.
 - **Horden auf echten Straßen:** umgehen, durchschleichen oder kämpfen. Lärm beim Durchsuchen lockt an, Stammwege werden mit der Zeit sicher.
@@ -33,7 +43,7 @@ Version 1.0 ist fertig, wenn der ganze Kreislauf ohne Lücken läuft: rausgehen,
 - **Jagd:** Tiere auf der Karte, manchmal seltene.
 - **Vollmond** macht Gegner stärker, dafür gibt es seltenere Beute.
 
-## Version 1.3: Zuhause, Wetter und Jahreszeiten
+## Version 1.4: Zuhause, Wetter und Jahreszeiten
 
 - **Wetter treibt Anlagen an:** Regentonne füllt sich bei echtem Regen, Solarpaneel bei Sonne, Windrad bei Wind, bei Gewitter selten ein Blitz-Bauplan.
 - **Mehr Anlagen in Stufen:** Lagerfeuer, Apfelbaum und Beete wachsen über Stunden.
@@ -49,7 +59,7 @@ Version 1.0 ist fertig, wenn der ganze Kreislauf ohne Lücken läuft: rausgehen,
 - **Konto** (z. B. Google-Login, Server in der EU): Spielstand auf mehreren Geräten, der Gast-Spielstand wird übernommen. Der Server rechnet mit denselben Spielregeln (`src/core`).
 - **Spuren anderer Spieler:** Notizen aus vorgegebenen Bausteinen (wie bei Dark Souls, kein freier Text), Vorratskisten, Warnschilder, Verstecke.
 - **Basen besuchen:** nur virtuell über Freundesliste oder Code, nie mit echtem Ort.
-- **Zeitversetzte Raids:** einmal pro Woche ein Nest (z. B. ein befallener Supermarkt). Jeder macht Schaden, wann es passt, die Belohnung gibt es nach Anteil.
+- **Zeitversetzte Raids für alle:** einmal pro Woche ein Nest (z. B. ein befallener Supermarkt) mit gemeinsamem Lebensbalken. Jeder macht Schaden, wann es passt, auch von zu Hause, die Belohnung gibt es nach Anteil.
 - **Tauschen per Funk:** Pakete brauchen echte Stunden, je nach Entfernung. Dörfer liefern Nahrung, Städte Medizin und Technik.
 - **Gemeinsam eine Stadt befreien,** Stadtteil für Stadtteil, ohne gleichzeitig online zu sein.
 
