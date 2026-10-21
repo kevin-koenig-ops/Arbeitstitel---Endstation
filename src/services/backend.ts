@@ -12,7 +12,7 @@ import { distanceM } from '../core/geo';
 import { applyAction, cartOf, createPlayer, guardOf } from '../core/rules';
 import { migrate } from '../core/save';
 import type { Action, ActionResult, Character, EnemyId, LatLon, PlayerState, Spot } from '../core/types';
-import { gridSpotsAround, poiSpots, specialPlacesAround, type PoiCandidate } from '../core/world';
+import { gridSpotsAround, gridSpotUntil, poiSpots, specialPlacesAround, type PoiCandidate } from '../core/world';
 import type { AuthProvider } from './auth';
 import { readJson, removeKey, writeJson } from './storage';
 
@@ -32,6 +32,8 @@ export interface GameBackend {
   guardFor(spot: Spot): EnemyId | null;
   /** Steht hier gerade eine Händlerkiste (und bis wann)? */
   cartFor(spot: Spot): { until: number } | null;
+  /** Bis wann eine wandernde Fundstelle noch liegt (null: bleibt). */
+  spotUntil(spot: Spot): number | null;
   /** Wo nichts liegen darf (aus den Kartendaten); gilt für neue Verstecke. */
   setPlaceFilter(fn: ((p: LatLon) => boolean) | null): void;
   /** Wo keine besonderen Orte liegen sollen (bebaut, Gärten, Höfe): sie liegen draußen im Offenen. */
@@ -107,9 +109,14 @@ export class LocalBackend implements GameBackend {
     return cartOf(this.worldSeed, spot, this.clock());
   }
 
+  /** Bis wann eine wandernde Fundstelle noch liegt (null: bleibt). */
+  spotUntil(spot: Spot) {
+    return spot.source === 'grid' ? gridSpotUntil(this.worldSeed, spot.id) : null;
+  }
+
   async spotsNear(center: LatLon, radiusM: number, pois: PoiCandidate[]) {
     const nearPois = poiSpots(this.worldSeed, pois).filter((s) => distanceM(center, s.pos) <= radiusM);
-    return [...nearPois, ...gridSpotsAround(this.worldSeed, center, radiusM), ...this.specialsNear(center, radiusM)];
+    return [...nearPois, ...gridSpotsAround(this.worldSeed, center, radiusM, this.clock()), ...this.specialsNear(center, radiusM)];
   }
 
   specialsNear(center: LatLon, radiusM: number) {

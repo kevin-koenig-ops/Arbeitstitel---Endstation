@@ -17,14 +17,14 @@ const ctx = (now = T0) => ({ now, worldSeed: SEED });
 
 describe('Welt', () => {
   it('erzeugt für alle Spieler dieselben Fundstellen', () => {
-    const a = gridSpotsAround(SEED, HOME, 500);
-    const b = gridSpotsAround(SEED, offsetM(HOME, 3, 2), 500).filter((s) => distanceM(HOME, s.pos) <= 500);
+    const a = gridSpotsAround(SEED, HOME, 500, T0);
+    const b = gridSpotsAround(SEED, offsetM(HOME, 3, 2), 500, T0).filter((s) => distanceM(HOME, s.pos) <= 500);
     expect(a.length).toBeGreaterThan(5);
     expect(b.map((s) => s.id).sort()).toEqual(a.map((s) => s.id).sort());
   });
 
   it('kann Grid-Fundstellen aus der ID nachrechnen', () => {
-    const [s] = gridSpotsAround(SEED, HOME, 400);
+    const [s] = gridSpotsAround(SEED, HOME, 400, T0);
     expect(resolveGridSpot(SEED, s.id)).toEqual(s);
     expect(resolveGridSpot(SEED, 'g:17:1:2:9')).toBeNull();
   });
@@ -46,8 +46,8 @@ describe('Welt', () => {
 
 describe('Durchsuchen', () => {
   // Eine Fundstelle, die jetzt und nach Ablauf der Abklingzeit unbewacht ist
-  const spot = (): Spot =>
-    gridSpotsAround(SEED, HOME, 600).find((s) => !guardOf(SEED, s, T0) && !guardOf(SEED, s, readyAt({ ...fresh(), spots: { [s.id]: T0 } }, s)))!;
+  const spot = (now = T0): Spot =>
+    gridSpotsAround(SEED, HOME, 600, now).find((s) => !guardOf(SEED, s, now) && !guardOf(SEED, s, readyAt({ ...fresh(), spots: { [s.id]: now } }, s)))!;
 
   it('gibt Beute, wenn man nah genug dran ist', () => {
     const s = spot();
@@ -99,7 +99,7 @@ describe('Durchsuchen', () => {
   });
 
   it('verdoppelt die Beute nach einer Pause (ohne Strafe fürs Wegbleiben)', () => {
-    const s = spot();
+    const s = spot(T0 + 30 * HOUR);
     const back = applyAction(fresh(), { type: 'session' }, ctx(T0 + 30 * HOUR));
     expect(back.events).toEqual([{ type: 'returnBonus' }]);
     expect(back.state.inventory).toEqual(fresh().inventory);
@@ -177,7 +177,7 @@ describe('Spielstand', () => {
 
 describe('Kampf', () => {
   const guarded = (enemy?: string) =>
-    gridSpotsAround(SEED, HOME, 1500).find((s) => {
+    gridSpotsAround(SEED, HOME, 1500, T0).find((s) => {
       const g = guardOf(SEED, s, T0);
       return g && (!enemy || g === enemy);
     })!;
@@ -188,7 +188,7 @@ describe('Kampf', () => {
   it('bewachte Fundstellen kann man nicht einfach durchsuchen', () => {
     const s = guarded();
     expect(applyAction(fresh(), { type: 'search', spot: s, at: s.pos, accuracyM: 5 }, ctx()).events[0]).toEqual({ type: 'rejected', reason: 'guarded' });
-    const free = gridSpotsAround(SEED, HOME, 600).find((x) => !guardOf(SEED, x, T0))!;
+    const free = gridSpotsAround(SEED, HOME, 600, T0).find((x) => !guardOf(SEED, x, T0))!;
     expect(engage(fresh(), free).events[0]).toEqual({ type: 'rejected', reason: 'not_guarded' });
   });
 
@@ -278,7 +278,7 @@ describe('Unterholz', () => {
 
 describe('Bleicher Wächter', () => {
   it('bewacht Fundstellen nur nachts', () => {
-    const spots = gridSpotsAround(SEED, HOME, 1500);
+    const spots = gridSpotsAround(SEED, HOME, 1500, T0);
     const day = Date.UTC(2026, 6, 1, 11);
     const night = Date.UTC(2026, 6, 1, 23);
     let atDay = 0;

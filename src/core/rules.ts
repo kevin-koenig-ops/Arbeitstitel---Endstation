@@ -125,7 +125,7 @@ import type {
   Weapon,
   WeaponId,
 } from './types';
-import { resolveGridSpot, resolveSpecialSpot } from './world';
+import { gridSpotAlive, resolveGridSpot, resolveSpecialSpot } from './world';
 import { GOALS } from './progress';
 
 export const SCHEMA_VERSION = 11;
@@ -1031,9 +1031,14 @@ function sumInv(a: Partial<Inventory>, b: Partial<Inventory>): Partial<Inventory
 }
 
 /** Beute für eine Fundstelle würfeln und gutschreiben. */
-/** Kurz-Kennung einer Fundstelle für die Erstfund-Liste. */
+/**
+ * Kurz-Kennung einer Fundstelle für die Erstfund-Liste. Wandernde Fundstellen zählen
+ * pro Kachel: Wer einmal in der Ecke gesucht hat, kennt sie, auch wenn dort inzwischen
+ * etwas anderes liegt.
+ */
 export function spotKey(id: string): number {
-  return hashString(id) % 4294967296;
+  const cell = /^(g:\d+:-?\d+:-?\d+):-?\d+:\d+$/.exec(id);
+  return hashString(cell ? cell[1] : id) % 4294967296;
 }
 
 /** Erster Besuch hier? (merkt ihn sich gleich) */
@@ -1238,7 +1243,7 @@ function makeCache(
   o: { chain?: Cache['chain']; tracks?: boolean } = {},
 ): Cache | null {
   const taken = new Set(state.caches.map((c) => c.spot.id));
-  const cands = gridSpotsAround(ctx.worldSeed, around, maxM).filter((sp) => !taken.has(sp.id) && distanceM(around, sp.pos) >= minM && !ctx.blocked?.(sp.pos));
+  const cands = gridSpotsAround(ctx.worldSeed, around, maxM, ctx.now).filter((sp) => !taken.has(sp.id) && distanceM(around, sp.pos) >= minM && !ctx.blocked?.(sp.pos));
   if (!cands.length) return null;
   const spot = cands[Math.floor(r() * cands.length)];
   // Die Mitte des Suchkreises liegt daneben, das Versteck irgendwo darin
@@ -1333,6 +1338,8 @@ function verifySpot(spot: Spot, ctx: RuleContext): Spot | null {
   if (spot.source === 'grid') {
     const real = resolveGridSpot(ctx.worldSeed, spot.id);
     if (!real || real.kind !== spot.kind || distanceM(real.pos, spot.pos) > 1) return null;
+    // Längst weitergewandert? Dann liegt dort nichts mehr.
+    if (!gridSpotAlive(ctx.worldSeed, spot.id, ctx.now)) return null;
     return real;
   }
   if (!spot.id.startsWith('p:') || !SPOT_KINDS[spot.kind]) return null;

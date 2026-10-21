@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { CHAIN, MEMENTOS, SPECIAL, TRACKS } from '../src/core/content';
+import { CHAIN, GRID_TURN, MEMENTOS, SPECIAL, TRACKS } from '../src/core/content';
 import { distanceM, offsetM } from '../src/core/geo';
-import { applyAction, createPlayer, regionTier } from '../src/core/rules';
+import { applyAction, createPlayer, regionTier, spotKey } from '../src/core/rules';
 import { sectorOf } from '../src/core/explore';
 import type { Cache, Character, GameEvent, PlayerState, Spot } from '../src/core/types';
-import { gridSpotsAround, resolveSpecialSpot, specialPlacesAround } from '../src/core/world';
+import { gridSpotAlive, gridSpotsAround, gridSpotUntil, resolveGridSpot, resolveSpecialSpot, specialPlacesAround } from '../src/core/world';
 
 const SEED = 'erkunden-seed';
 const HOME = { lat: 51.6, lon: 10.2 };
@@ -70,7 +70,7 @@ describe('Neuland', () => {
 describe('Ketten und Spuren', () => {
   const findCache = (pred: (c: Cache) => boolean) => {
     let st = fresh();
-    for (const spot of gridSpotsAround(SEED, HOME, 2500)) {
+    for (const spot of gridSpotsAround(SEED, HOME, 2500, T0)) {
       st = applyAction(st, { type: 'search', spot, at: spot.pos, accuracyM: 5 }, ctx()).state;
       const c = st.caches.find(pred);
       if (c) return { st, c };
@@ -105,5 +105,44 @@ describe('Ketten und Spuren', () => {
     expect(c.trail!.length).toBeGreaterThan(3);
     expect(distanceM(c.trail![c.trail!.length - 1], c.spot.pos)).toBeLessThan(TRACKS.areaM);
     expect(c.areaM).toBe(TRACKS.areaM);
+  });
+});
+
+describe('Wandernde Fundstellen', () => {
+  const HOUR = 3_600_000;
+  const ids = (t: number) => new Set(gridSpotsAround(SEED, HOME, 1500, t).map((s) => s.id));
+  const share = (a: Set<string>, b: Set<string>) => [...a].filter((x) => b.has(x)).length / a.size;
+
+  it('würfeln nach und nach neu, nicht alle auf einmal', () => {
+    const now = ids(T0);
+    expect(share(now, ids(T0 + HOUR))).toBeGreaterThan(0.9);
+    const half = share(now, ids(T0 + 12 * HOUR));
+    expect(half).toBeGreaterThan(0.3);
+    expect(half).toBeLessThan(0.7);
+    expect(share(now, ids(T0 + GRID_TURN.hours * HOUR))).toBe(0);
+  });
+
+  it('liegen nach der Runde woanders', () => {
+    const a = gridSpotsAround(SEED, HOME, 1500, T0);
+    const b = gridSpotsAround(SEED, HOME, 1500, T0 + GRID_TURN.hours * HOUR);
+    const same = a.filter((s) => b.some((x) => distanceM(s.pos, x.pos) < 5));
+    expect(same.length).toBeLessThan(a.length * 0.05);
+  });
+
+  it('lassen sich kurz nach dem Ablauf noch durchsuchen, später nicht mehr', () => {
+    const s = gridSpotsAround(SEED, HOME, 1500, T0)[0];
+    const until = gridSpotUntil(SEED, s.id)!;
+    expect(until).toBeGreaterThan(T0);
+    expect(resolveGridSpot(SEED, s.id)).toEqual(s);
+    expect(gridSpotAlive(SEED, s.id, until + (GRID_TURN.graceMin - 1) * 60_000)).toBe(true);
+    expect(gridSpotAlive(SEED, s.id, until + (GRID_TURN.graceMin + 1) * 60_000)).toBe(false);
+    const st = createPlayer('p', hero, T0);
+    const late = applyAction(st, { type: 'search', spot: s, at: s.pos, accuracyM: 5 }, { now: until + 2 * HOUR, worldSeed: SEED });
+    expect(late.events[0]).toEqual({ type: 'rejected', reason: 'invalid_spot' });
+  });
+
+  it('zählen beim Erstfund pro Ecke, nicht pro Runde', () => {
+    expect(spotKey('g:17:100:200:5:0')).toBe(spotKey('g:17:100:200:6:1'));
+    expect(spotKey('g:17:100:200:5:0')).not.toBe(spotKey('g:17:101:200:5:0'));
   });
 });

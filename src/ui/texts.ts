@@ -5,7 +5,7 @@ import type { RejectReason, SpotKind } from '../core/types';
 export const REJECT_TEXT: Record<RejectReason, string> = {
   too_far: 'Zu weit weg. Geh näher ran.',
   cooldown: 'Hier ist gerade nichts mehr zu holen.',
-  invalid_spot: 'Diese Fundstelle gibt es nicht mehr.',
+  invalid_spot: 'Hier liegt nichts mehr. Die Fundstelle ist weitergewandert.',
   cost: 'Dafür fehlen dir Rohstoffe.',
   locked: 'Das ist noch nicht freigeschaltet.',
   already_built: 'Schon gebaut.',

@@ -40,9 +40,9 @@ Ohne Framework, kleine Hilfsfunktion `h()` in `ui/dom.ts`. Jeder Bildschirm ist 
 
 ## Warum Mehrspieler später einfach wird
 
-**Die Welt ist deterministisch.** Fundstellen werden nicht gespeichert, sondern aus `(Welt-Seed, Kartenkachel)` berechnet (`core/world.ts`). Alle Geräte und der Server berechnen dieselben Fundstellen. Der Server muss keine Millionen Kisten in einer Datenbank halten.
+**Die Welt ist deterministisch.** Fundstellen werden nicht gespeichert, sondern aus `(Welt-Seed, Kartenkachel, Runde)` berechnet (`core/world.ts`). Jede Kachel würfelt etwa einmal am Tag neu (`GRID_TURN`), jede zu ihrer eigenen Uhrzeit, damit sich die Gegend nach und nach verändert. Alle Geräte und der Server berechnen dieselben Fundstellen. Der Server muss keine Millionen Kisten in einer Datenbank halten.
 
-**Fundstellen-IDs sind prüfbar.** Eine Grid-Fundstelle `g:17:x:y:i` kann jeder aus der ID nachrechnen. Die Regeln prüfen das schon heute (`verifySpot`).
+**Fundstellen-IDs sind prüfbar.** Eine Grid-Fundstelle `g:17:x:y:runde:i` kann jeder aus der ID nachrechnen. Die Regeln prüfen das schon heute (`verifySpot`), auch ob sie noch liegt (mit 20 Minuten Nachfrist). Erstfunde zählen pro Kachel, nicht pro Runde.
 
 **Beute ist reproduzierbar.** Was man findet, hängt von `(Seed, Spieler, Fundstelle, Zeitfenster)` ab. Der Server rechnet dasselbe.
 

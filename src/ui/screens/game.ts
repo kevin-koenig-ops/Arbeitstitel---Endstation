@@ -1152,7 +1152,10 @@ export function gameScreen(app: App): Screen {
 
       ticker = window.setInterval(() => {
         renderHud();
-        updateSpots();
+        // Ist eine Fundstelle weitergewandert? Dann die Gegend neu einlesen.
+        const now = app.backend.now();
+        if ([...spots.values()].some((sp) => (app.backend.spotUntil(sp) ?? Infinity) <= now)) void refreshSpots(true);
+        else updateSpots();
       }, 15000);
     },
     destroy() {

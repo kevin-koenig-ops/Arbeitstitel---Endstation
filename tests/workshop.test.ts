@@ -40,7 +40,7 @@ function withWorkbench(): PlayerState {
 
 describe('Rucksack und Lager', () => {
   it('unterwegs: Vorräte in die Taschen, Rohstoffe und Kram in den Rucksack, Sammelstücke nur einmal', () => {
-    const spots = gridSpotsAround('test-seed', { lat: 51.3127, lon: 9.4797 }, 3000).filter((s) => s.kind === 'parcel' || s.kind === 'container');
+    const spots = gridSpotsAround('test-seed', { lat: 51.3127, lon: 9.4797 }, 3000, T0).filter((s) => s.kind === 'parcel' || s.kind === 'container');
     let s = createPlayer('p', hero, T0);
     const lager = { ...s.inventory };
     let kram = 0;
@@ -74,7 +74,7 @@ describe('Rucksack und Lager', () => {
   });
 
   it('eine Niederlage kostet nur etwas aus dem Rucksack, nie aus dem Lager', () => {
-    const spot = gridSpotsAround('test-seed', { lat: 51.3127, lon: 9.4797 }, 1500)[0];
+    const spot = gridSpotsAround('test-seed', { lat: 51.3127, lon: 9.4797 }, 1500, T0)[0];
     const s = createPlayer('p', hero, T0);
     s.pack = { metal: 5, cloth: 3 };
     s.combat = { spot, enemy: 'walker', group: ['walker'], window: 1 };

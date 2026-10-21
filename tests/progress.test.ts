@@ -3,7 +3,7 @@ import type { FurnitureId } from '../src/core/furniture';
 import { CACHE, CART, COOK, DIG, MAX_HEALTH, RADIO, TIER_PERKS } from '../src/core/content';
 import { distanceM } from '../src/core/geo';
 import { claimableGoals, GOALS, rankOf, visibleGoals } from '../src/core/progress';
-import { applyAction, basePerks, cartOf, createPlayer, guardOf, placementProblem, regenMs, searchRangeM, whereToFind, workbenchSlots } from '../src/core/rules';
+import { applyAction, basePerks, cartOf, createPlayer, guardOf, placementProblem, readyAt, regenMs, searchRangeM, whereToFind, workbenchSlots } from '../src/core/rules';
 import type { Action, Character, GameEvent, PlayerState, Spot } from '../src/core/types';
 import { gridSpotsAround } from '../src/core/world';
 
@@ -17,7 +17,7 @@ const act = (s: PlayerState, a: Action, now = T0) => applyAction(s, a, ctx(now))
 const fresh = () => createPlayer('player-1', hero, T0);
 const rich = (): PlayerState => ({ ...fresh(), inventory: { food: 50, water: 50, medicine: 5, wood: 500, metal: 500, stone: 500, cloth: 500, plastic: 500, glass: 500, glue: 500, screws: 500, electronics: 500 } });
 const settled = () => act(rich(), { type: 'chooseSite', site: 'depot' }).state;
-const free = (now = T0) => gridSpotsAround(SEED, HOME, 1500).filter((x) => !guardOf(SEED, x, now) && !cartOf(SEED, x, now));
+const free = (now = T0) => gridSpotsAround(SEED, HOME, 1500, now).filter((x) => !guardOf(SEED, x, now) && !cartOf(SEED, x, now));
 const search = (s: PlayerState, spot: Spot, quality?: 'miss' | 'good' | 'perfect', now = T0) => act(s, { type: 'search', spot, at: spot.pos, accuracyM: 5, quality }, now);
 const loot = (events: GameEvent[]) => events.find((e) => e.type === 'loot') as Extract<GameEvent, { type: 'loot' }>;
 const total = (items: Partial<Record<string, number>>): number => Object.values(items).reduce<number>((a, b) => a + (b ?? 0), 0);
@@ -105,8 +105,11 @@ describe('Looten', () => {
     const spot = free()[1];
     const first = search(fresh(), spot);
     expect(loot(first.events).first).toBe(true);
-    // Später nochmal: kein Erstfund mehr
-    const later = search(first.state, spot, 'good', T0 + 48 * HOUR);
+    // Später nochmal in derselben Ecke: kein Erstfund mehr, auch wenn dort jetzt etwas anderes liegt
+    const cell = spot.id.split(':').slice(0, 4).join(':');
+    const t = T0 + 48 * HOUR;
+    const again = free(t).find((x) => x.id.startsWith(cell + ':'));
+    const later = search(first.state, again ?? spot, 'good', again ? t : readyAt(first.state, spot));
     expect(loot(later.events).first).toBeUndefined();
   });
 
@@ -161,7 +164,7 @@ describe('Looten', () => {
 
 describe('Draußen', () => {
   it('Händlerkisten: für alle gleich, ohne Wache, mit viel mehr Beute', () => {
-    const spots = gridSpotsAround(SEED, HOME, 3000);
+    const spots = gridSpotsAround(SEED, HOME, 3000, T0);
     const carts = spots.filter((s) => cartOf(SEED, s, T0));
     expect(carts.length).toBeGreaterThan(spots.length * CART.chance * 0.4);
     expect(carts.length).toBeLessThan(spots.length * CART.chance * 2);

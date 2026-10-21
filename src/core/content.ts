@@ -469,6 +469,13 @@ export const WORKBENCH_LEVELS: WorkbenchLevel[] = [
   { name: 'Werkstatt mit Akkuschrauber', slots: 8, speed: 0.5, cost: { metal: 6, screws: 5, glue: 3, electronics: 3 } },
 ];
 
+/**
+ * Grid-Fundstellen wandern: Jede Kachel würfelt etwa einmal pro Runde neu (Ort, Art, Anzahl),
+ * jede zu ihrer eigenen Uhrzeit. Nachfrist: So lange lässt sich eine gerade abgelaufene
+ * Fundstelle noch durchsuchen, damit sie einem nicht vor der Nase verschwindet.
+ */
+export const GRID_TURN = { hours: 24, graceMin: 20 };
+
 /** Wie häufig welche Grid-Fundstelle vorkommt. */
 export const GRID_KIND_WEIGHTS: readonly (readonly [SpotKind, number])[] = [
   ['car', 22],

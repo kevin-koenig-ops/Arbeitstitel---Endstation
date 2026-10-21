@@ -65,7 +65,7 @@ describe('Erkundung', () => {
 
 describe('Nacht', () => {
   it('mehr Wächter nachts', () => {
-    const spots = gridSpotsAround(SEED, HOME, 2500);
+    const spots = gridSpotsAround(SEED, HOME, 2500, Date.UTC(2026, 9, 20, 12));
     const day = Date.UTC(2026, 9, 20, 11);
     const night = Date.UTC(2026, 9, 20, 23);
     const count = (t: number) => spots.filter((s) => guardOf(SEED, s, t)).length;
