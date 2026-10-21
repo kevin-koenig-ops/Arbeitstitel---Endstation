@@ -1,6 +1,6 @@
 # Hinweise für Claude
 
-Endzeit-Erkundungsspiel auf der echten Karte (Arbeitstitel „Endstation“). Web-App mit Vite + TypeScript + MapLibre, ohne UI-Framework. Konzept: `docs/KONZEPT.md`, Architektur: `docs/ARCHITEKTUR.md`, nächste Schritte: `docs/ROADMAP.md`.
+Endzeit-Erkundungsspiel auf der echten Karte (Arbeitstitel „Endstation“). Web-App mit Vite + TypeScript + MapLibre, ohne UI-Framework. Konzept: `docs/KONZEPT.md`, Architektur: `docs/ARCHITEKTUR.md`, nächste Schritte: `docs/ROADMAP.md`. Hintergrundgeschichte (Lore): `docs/LORE.md`.
 
 ## Regeln
 
@@ -9,6 +9,7 @@ Endzeit-Erkundungsspiel auf der echten Karte (Arbeitstitel „Endstation“). We
 - Spielinhalte (Fundstellen, Beute, Module, Erinnerungsstücke) gehören als Daten nach `src/core/content.ts`.
 - Spielstand-Format geändert → `SCHEMA_VERSION` erhöhen und Migration in `src/core/save.ts`.
 - Grundsatz „kein Zwang“: Wegbleiben darf nie bestraft werden.
+- Geschichte, Gegner, Erinnerungsstücke und Orte passen zur Lore in `docs/LORE.md` (Kevins Text, nur auf Wunsch ändern).
 - UI-Texte auf Deutsch, Code-Bezeichner auf Englisch, Kommentare auf Deutsch.
 - Der Nutzer ist kein Profi-Entwickler: Erklärungen kurz und verständlich halten.
 

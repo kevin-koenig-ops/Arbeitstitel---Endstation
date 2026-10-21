@@ -4,6 +4,8 @@
 
 Ein Endzeit-Spiel auf der echten Karte, das man nebenbei im Alltag spielt: Handy raus, schauen, was in der Nähe liegt, kurz hingehen, einsammeln.
 
+Wie es zum Weltuntergang kam (Phosphat-Krieg, das Weinen, Elysis, der Flux), steht in der Lore: [LORE.md](LORE.md).
+
 ## Grundsätze
 
 1. **Kein Zwang.** Wegbleiben kostet nichts. Nichts verfällt, nichts wird zerstört. Rausgehen bringt Fortschritt, Zuhausebleiben bestraft nicht. Nach einer Pause gibt es sogar einen Bonus.
