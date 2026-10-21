@@ -2,8 +2,16 @@
 // noch kein Bild gibt, zur Laufzeit auf ein Canvas gezeichnete Muster.
 
 import { rngFrom } from '../core/rng';
+import ackerErde from '../assets/textures/acker-erde.webp';
+import ackerGruen from '../assets/textures/acker-gruen.webp';
+import ackerKorn from '../assets/textures/acker-korn.webp';
+import fels from '../assets/textures/fels.webp';
 import grundboden from '../assets/textures/grundboden.webp';
+import hof from '../assets/textures/hof.webp';
 import rasen from '../assets/textures/rasen.webp';
+import sand from '../assets/textures/sand.webp';
+import schutt from '../assets/textures/schutt.webp';
+import sumpf from '../assets/textures/sumpf.webp';
 import waldboden from '../assets/textures/waldboden.webp';
 import wiese from '../assets/textures/wiese.webp';
 
@@ -15,7 +23,18 @@ const IMAGES: Record<string, { url: string; pr: number }> = {
   'pat-ground': { url: grundboden, pr: 2 },
   'pat-meadow': { url: wiese, pr: 2 },
   'pat-grass': { url: rasen, pr: 2 },
+  // Hof: Steinplatten sollen nicht riesig wirken, deshalb kleiner
+  'pat-yard': { url: hof, pr: 5 },
   'pat-forest-floor': { url: waldboden, pr: 3.5 },
+  'pat-rubble': { url: schutt, pr: 3 },
+  'pat-sand': { url: sand, pr: 2 },
+  'pat-rock': { url: fels, pr: 2.5 },
+  'pat-wetland': { url: sumpf, pr: 2.5 },
+  // Äcker: drei Sorten, damit nicht jedes Feld gleich aussieht
+  'pat-farm-a': { url: ackerErde, pr: 2.5 },
+  'pat-farm-b': { url: ackerGruen, pr: 2.5 },
+  'pat-farm-c': { url: ackerKorn, pr: 2.5 },
+  'pat-farm': { url: ackerErde, pr: 2.5 },
 };
 const loaded = new Map<string, { data: ImageData; pixelRatio: number }>();
 

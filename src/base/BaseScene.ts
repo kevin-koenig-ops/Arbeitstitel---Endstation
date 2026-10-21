@@ -26,6 +26,7 @@ import type { WeatherKind } from '../services/weather';
 import { Assembler, GLOW, LIT, placeMatrix, TemplateCache, type Template } from './bake';
 import { CharacterRig } from './character';
 import { buildEnvironment, type Environment } from './environment';
+import { groundMaterial, groundUV, PLOT_TEX, TINT, type GroundTex } from './groundTextures';
 import { buildFurniture, type LightSpec } from './models';
 import { findPath, nearestWalkable, walkable } from './path';
 import { buildFloor, buildObstacle, buildRoof, buildRoofTrim, buildWall, CUT_H, WALL_H } from './structures';
@@ -325,16 +326,28 @@ export class BaseScene {
     this.clearLayer(this.layers.ground);
     this.clearLayer(this.layers.growth);
     const pal = PLOT_GROUND[d.site];
-    const pos: number[] = [];
-    const col: number[] = [];
+    const tex = PLOT_TEX[d.site];
+    // Ein Puffer pro Bodenart: gemalte Textur (zurückerobert / verwildert) oder schlichte Farbe
+    const bufs = new Map<GroundTex | 'plain', { pos: number[]; col: number[]; uv: number[] }>();
     const c = new THREE.Color();
     const wild = new THREE.Color('#3a4426');
     for (let y = 0; y < PLOT; y++)
       for (let x = 0; x < PLOT; x++) {
         const open = d.idx.unlocked[cellIndex(x, y)] === 1;
         const h = hash(`${x},${y}`);
-        c.set(pal[h % pal.length]);
-        if (!open) c.lerp(wild, 0.55).multiplyScalar(0.8);
+        const kind = open ? tex.open : tex.wild;
+        if (kind) {
+          // Textur: die Farbe tönt nur (verwildert etwas dunkler)
+          const [tr, tg, tb] = TINT[kind];
+          const k = open ? 1 : 0.8;
+          c.setRGB(tr * k, tg * k, tb * k);
+        } else {
+          c.set(pal[h % pal.length]);
+          if (!open) c.lerp(wild, 0.55).multiplyScalar(0.8);
+        }
+        const key = kind ?? 'plain';
+        let b = bufs.get(key);
+        if (!b) bufs.set(key, (b = { pos: [], col: [], uv: [] }));
         // Jedes Feld in 2 × 2 Stücke mit je zwei Dreiecken, leicht unterschiedlich getönt
         const x0 = W(x);
         const z0 = W(y);
@@ -346,21 +359,26 @@ export class BaseScene {
             [qx + 0.5, qz, qx, qz + 0.5, qx + 0.5, qz + 0.5],
           ];
           tris.forEach((t, k) => {
-            const f = 0.97 + (((h >> (q * 2 + k)) & 3) / 3) * 0.06;
+            const f = kind ? 1 : 0.97 + (((h >> (q * 2 + k)) & 3) / 3) * 0.06;
             for (let i = 0; i < 6; i += 2) {
-              pos.push(t[i], 0, t[i + 1]);
-              col.push(c.r * f, c.g * f, c.b * f);
+              b.pos.push(t[i], 0, t[i + 1]);
+              b.col.push(c.r * f, c.g * f, c.b * f);
+              const [u, v] = kind ? groundUV(kind, t[i], t[i + 1]) : [0, 0];
+              b.uv.push(u, v);
             }
           });
         }
       }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-    g.computeVertexNormals();
-    const ground = new THREE.Mesh(g, LIT);
-    ground.receiveShadow = true;
-    this.layers.ground.add(ground);
+    for (const [key, b] of bufs) {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(b.pos, 3));
+      g.setAttribute('color', new THREE.Float32BufferAttribute(b.col, 3));
+      g.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2));
+      g.computeVertexNormals();
+      const ground = new THREE.Mesh(g, key === 'plain' ? LIT : groundMaterial(key));
+      ground.receiveShadow = true;
+      this.layers.ground.add(ground);
+    }
 
     // Bewuchs auf noch nicht zurückeroberten Abschnitten
     const locked: [number, number][] = [];

@@ -3,7 +3,7 @@
 #
 # Aufruf (braucht Python mit Pillow und numpy):
 #   python3 scripts/textur-nahtlos.py kunst/texturen/wiese.jpg src/assets/textures/wiese.webp
-#   [Größe=512] [Übergang=0.14] [Helligkeit=1.0] [Sättigung=1.0]
+#   [Größe=512] [Übergang=0.14] [Helligkeit=1.0] [Sättigung=1.0] [Kontrast=1.0]
 # Daneben entsteht <name>_check.png (3 × 3 gekachelt) zum Prüfen der Ränder; nicht einchecken.
 import sys
 import numpy as np
@@ -14,6 +14,7 @@ size = int(sys.argv[3]) if len(sys.argv) > 3 else 512
 band = float(sys.argv[4]) if len(sys.argv) > 4 else 0.14
 bright = float(sys.argv[5]) if len(sys.argv) > 5 else 1.0
 sat = float(sys.argv[6]) if len(sys.argv) > 6 else 1.0
+contrast = float(sys.argv[7]) if len(sys.argv) > 7 else 1.0
 
 im = Image.open(src).convert('RGB')
 # Gemini-Zeichen o. Ä. am Rand: ein paar Prozent abschneiden, dann quadratisch
@@ -40,6 +41,7 @@ a2 = a1 * m[:, None, None] + ay * (1 - m[:, None, None])
 
 out = Image.fromarray(np.clip(a2, 0, 255).astype(np.uint8)).resize((size, size), Image.LANCZOS)
 out = ImageEnhance.Color(ImageEnhance.Brightness(out).enhance(bright)).enhance(sat)
+out = ImageEnhance.Contrast(out).enhance(contrast)
 out.save(dst, quality=84, method=6)
 print(dst, out.size, 'Mittelfarbe', tuple(int(v) for v in np.asarray(out).reshape(-1, 3).mean(0)))
 

@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { PLOT, type SiteId } from '../core/building';
 import { Assembler, bake, GLOW, LIT } from './bake';
+import { groundMaterial, groundUV, OUTER_TEX, TINT } from './groundTextures';
 import { add, blob, box, cone, cyl, mat, METAL, WOOD, WOOD_DARK } from './models';
 import { buildBush, buildCarWreck, buildTree } from './structures';
 
@@ -181,17 +182,6 @@ function scatter(r: () => number, n: number, rMin: number, rMax: number, ok: (x:
 
 // --- Boden draußen -------------------------------------------------------------------------
 
-const OUTER: Record<SiteId, string[]> = {
-  depot: ['#4f4c46', '#56524b', '#4a4741', '#5a564d'],
-  farm: ['#6b7240', '#73793f', '#646b3c', '#7a7a44'],
-  lake: ['#3f4a2e', '#46502f', '#4a4a30', '#424c30'],
-  fuel: ['#66683f', '#6e6e44', '#5f633c', '#727048'],
-  allotment: ['#5f7038', '#667a3c', '#5a6a36', '#6a7a40'],
-};
-const FAR: Partial<Record<SiteId, string[]>> = {
-  depot: ['#5a5a3a', '#606238', '#4f5434'],
-};
-
 function hillHeight(x: number, z: number) {
   const d = Math.max(Math.abs(x), Math.abs(z)) - HALF - 10;
   if (d <= 0) return 0;
@@ -200,15 +190,21 @@ function hillHeight(x: number, z: number) {
 }
 
 function outerGround(site: SiteId): THREE.Mesh {
-  const r = rnd(site.length * 97);
   const size = 280;
   const step = 2;
   const n = Math.round(size / step);
+  const kind = OUTER_TEX[site];
   const pos: number[] = [];
   const col: number[] = [];
-  const c = new THREE.Color();
-  const near = OUTER[site];
-  const far = FAR[site] ?? near;
+  const uv: number[] = [];
+  // Gemalte Textur, sanft getönt: in der Nähe hell, zum Horizont dunkler, dazu weiche Flecken
+  const tint = (x: number, z: number) => {
+    const d = Math.max(Math.abs(x), Math.abs(z));
+    const far = Math.min(1, Math.max(0, (d - HALF - 15) / 60));
+    const patch = 0.5 + 0.5 * Math.sin(x * 0.11 + Math.cos(z * 0.07) * 2) * Math.cos(z * 0.09 - x * 0.03);
+    return (1 - far * 0.22) * (0.9 + patch * 0.1);
+  };
+  const [tr, tg, tb] = TINT[kind];
   for (let j = 0; j < n; j++)
     for (let i = 0; i < n; i++) {
       const x0 = -size / 2 + i * step;
@@ -218,24 +214,27 @@ function outerGround(site: SiteId): THREE.Mesh {
       const cx = (x0 + x1) / 2;
       const cz = (z0 + z1) / 2;
       if (onPlot(cx, cz, -1.5)) continue;
-      const pal = Math.max(Math.abs(cx), Math.abs(cz)) < HALF + 22 ? near : far;
       const y = (x: number, z: number) => hillHeight(x, z) - 0.03;
       for (const tri of [
         [x0, z0, x0, z1, x1, z0],
         [x1, z0, x0, z1, x1, z1],
       ]) {
-        c.set(pickC(r, pal));
         for (let k = 0; k < 6; k += 2) {
-          pos.push(tri[k], y(tri[k], tri[k + 1]), tri[k + 1]);
-          col.push(c.r, c.g, c.b);
+          const x = tri[k];
+          const z = tri[k + 1];
+          pos.push(x, y(x, z), z);
+          const t = tint(x, z);
+          col.push(t * tr, t * tg, t * tb);
+          uv.push(...groundUV(kind, x, z));
         }
       }
     }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.computeVertexNormals();
-  const mesh = new THREE.Mesh(g, LIT);
+  const mesh = new THREE.Mesh(g, groundMaterial(kind));
   mesh.receiveShadow = true;
   return mesh;
 }
