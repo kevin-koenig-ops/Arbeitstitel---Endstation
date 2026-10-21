@@ -30,6 +30,8 @@ import {
   type PieceId,
   type RoofId,
   type WallId,
+  PLOT,
+  SECTION,
 } from '../../core/building';
 import { MATERIAL_ORDER, RESOURCE_ORDER, RESOURCES } from '../../core/content';
 import { CATEGORY_NAMES, footprint, FURNITURE, FURNITURE_ORDER, isJunk, type FurnitureCategory, type FurnitureId } from '../../core/furniture';
@@ -967,7 +969,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
         'div',
         { class: 'ctx-bar' },
         ctxClose('Abbrechen', () => ((mode = { kind: 'browse' }), render())),
-        h('div', { class: 'ctx-title' }, 'Abschnitt zurückerobern', h('small', null, '6 × 6 m, danach bebaubar')),
+        h('div', { class: 'ctx-title' }, 'Abschnitt zurückerobern', h('small', null, `${SECTION} × ${SECTION} m, danach bebaubar`)),
         h('div', { class: 'ctx-cost' }, costChips(cost, s.inventory)),
         h(
           'div',
@@ -1030,7 +1032,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
       const wasBrowsing = mode.kind === 'browse';
       mode = { kind: 'browse' };
       const walk = control === 'tap' || building;
-      if (hit.cell && walk && !scene.walkTo(hit.cell.x, hit.cell.y) && wasBrowsing && idx().unlocked[hit.cell.y * 36 + hit.cell.x] === 0 && !(building && top === 'land'))
+      if (hit.cell && walk && !scene.walkTo(hit.cell.x, hit.cell.y) && wasBrowsing && idx().unlocked[hit.cell.y * PLOT + hit.cell.x] === 0 && !(building && top === 'land'))
         app.toast('Dieser Teil ist noch zugewuchert. Im Baumodus unter „Gelände“ kannst du ihn zurückerobern.');
     }
     render();

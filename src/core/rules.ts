@@ -99,7 +99,7 @@ import type {
 } from './types';
 import { resolveGridSpot } from './world';
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 const HOUR = 3600_000;
 const REGEN_MS = HEALTH_REGEN_MIN * 60_000;
 const MAX_GPS_SLACK_M = 25;

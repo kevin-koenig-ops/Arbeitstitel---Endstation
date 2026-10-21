@@ -10,6 +10,7 @@ import {
   plotComfort,
   reclaimCost,
   sectionObstacles,
+  START_SECTIONS,
   type PlotIndex,
 } from '../src/core/building';
 import { emptyInventory } from '../src/core/content';
@@ -32,8 +33,8 @@ function settled(): PlayerState {
 
 /** Freies Rechteck (w × h Felder) im Startbereich suchen. */
 function freeRect(idx: PlotIndex, w: number, h: number): { x: number; y: number } {
-  for (let y = 12; y + h <= 24; y++)
-    for (let x = 12; x + w <= 24; x++) {
+  for (let y = 24; y + h <= 48; y++)
+    for (let x = 24; x + w <= 48; x++) {
       let ok = true;
       for (let cy = y; cy < y + h && ok; cy++) for (let cx = x; cx < x + w; cx++) if (!cellFree(idx, cx, cy)) ok = false;
       if (ok) return { x, y };
@@ -170,7 +171,7 @@ describe('Freies Bauen', () => {
     // Kante zwischen zwei gesperrten Feldern
     expect(ev(s, { type: 'buildWalls', piece: 'plankWall', shape: 'line', x1: 0, y1: 1, x2: 2, y2: 1 })).toEqual({ type: 'rejected', reason: 'blocked' });
     // Am Rand des freien Bereichs geht es (eine Seite frei)
-    expect(ev(s, { type: 'buildWalls', piece: 'chainFence', shape: 'line', x1: 12, y1: 12, x2: 14, y2: 12 })).toMatchObject({ type: 'constructed' });
+    expect(ev(s, { type: 'buildWalls', piece: 'chainFence', shape: 'line', x1: 24, y1: 24, x2: 26, y2: 24 })).toMatchObject({ type: 'constructed' });
   });
 
   it('Wand aufwerten behält die Tür, Zaun nimmt sie weg', () => {
@@ -187,11 +188,11 @@ describe('Freies Bauen', () => {
   it('Böden lassen Hindernisse aus, Abreißen gibt alles zurück', () => {
     let s = settled();
     const m = s.inventory.stone;
-    const r = act(s, { type: 'paint', layer: 'floors', piece: 'concreteFloor', x1: 12, y1: 12, x2: 23, y2: 23 });
+    const r = act(s, { type: 'paint', layer: 'floors', piece: 'concreteFloor', x1: 24, y1: 24, x2: 41, y2: 41 });
     expect(r.events[0].type).toBe('constructed');
     s = r.state;
     const placed = Object.keys(activePlot(s)!.floors).length;
-    expect(placed).toBeLessThan(144);
+    expect(placed).toBeLessThan(324);
     expect(s.inventory.stone).toBe(m - placed);
     s = act(s, { type: 'demolish', layer: 'floors', shape: 'rect', x1: 0, y1: 0, x2: PLOT - 1, y2: PLOT - 1 }).state;
     expect(s.inventory.stone).toBe(m);
@@ -229,12 +230,39 @@ describe('Migration', () => {
       base: { items: [{ uid: 1, kind: 'sofa', x: 0, y: 0, rot: 0 }, { uid: 2, kind: 'plant', x: 2, y: 0, rot: 0 }], rubble: [], nextUid: 3 },
     };
     const s = migrate(JSON.parse(JSON.stringify(old)))!;
-    expect(s.schema).toBe(6);
+    expect(s.schema).toBe(7);
     expect(s.base).toEqual({ active: null, plots: {}, found: {} });
     // Sofa: 2 Holz, 4 Stoff, 1 Schraube; Pflanze: 1 Stein, 1 Wasser; 5 Material: 3 Holz, 2 Metall
     expect(s.inventory).toEqual({ ...emptyInventory(), wood: 5, metal: 2, cloth: 4, screws: 1, stone: 1, water: 1 });
     expect('material' in s.inventory).toBe(false);
     expect(s.junk).toEqual({});
     expect(s.workshop).toEqual({ level: 1, jobs: [] });
+  });
+
+  it('Gelände von Version 6 wächst auf 72 m, Gebautes rückt in die Mitte', () => {
+    const now = createPlayer('p', hero, T0);
+    const oldPlot = {
+      sections: ['2,2', '3,2', '2,3', '3,3', '1,2'],
+      cleared: ['2,2:0'],
+      walls: { 'h14,15': { k: 'plankWall' }, 'v16,13': { k: 'plankWall', o: 'door' } },
+      floors: { '14,15': 'plankFloor' },
+      roofs: {},
+      items: [{ uid: 1, kind: 'workbench', x: 14, y: 16, rot: 0 }],
+      nextUid: 2,
+    };
+    const v6 = { ...now, schema: 6, base: { active: 'depot', plots: { depot: oldPlot }, found: {} } };
+    const s = migrate(JSON.parse(JSON.stringify(v6)))!;
+    expect(s.schema).toBe(7);
+    const p = s.base.plots.depot!;
+    expect(p.walls).toEqual({ 'h32,33': { k: 'plankWall' }, 'v34,31': { k: 'plankWall', o: 'door' } });
+    expect(p.floors).toEqual({ '32,33': 'plankFloor' });
+    expect(p.items[0]).toMatchObject({ kind: 'workbench', x: 32, y: 34 });
+    // Alter Abschnitt (1,2) liegt jetzt in Abschnitt (2,3) bzw. (2,2): schon frei
+    expect(p.sections).toEqual(expect.arrayContaining(START_SECTIONS));
+    // Nichts Gebautes liegt unter einem Hindernis
+    const idx = plotIndexOf(s)!;
+    for (const o of idx.obstacles) {
+      expect(o.x + o.w <= 30 || o.x >= 42 || o.y + o.d <= 30 || o.y >= 42).toBe(true);
+    }
   });
 });

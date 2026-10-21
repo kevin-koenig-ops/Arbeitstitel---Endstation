@@ -1,6 +1,6 @@
 // Die Umgebung rund um das Gelände, je nach Schauplatz: Busdepot, Bauernhof, Seeufer,
 // Tankstelle, Schrebergarten. Alles aus einfachen Formen und einmal verschmolzen.
-// Weltkoordinaten: das Gelände liegt bei x, z zwischen -18 und 18. Süden ist +z.
+// Weltkoordinaten: das Gelände liegt bei x, z zwischen -HALF und HALF (36 m). Süden ist +z.
 
 import * as THREE from 'three';
 import { PLOT, type SiteId } from '../core/building';
@@ -10,6 +10,10 @@ import { buildBush, buildCarWreck, buildTree } from './structures';
 
 type G = THREE.Group;
 const HALF = PLOT / 2;
+/** Das Gelände war früher 36 m groß; feste Plätze draußen rücken um so viel nach außen. */
+const GROW = HALF - 18;
+/** Punkt von früher nach außen schieben (nur, was außerhalb des alten Geländes lag). */
+const o = (v: number) => (Math.abs(v) >= 18 ? v + Math.sign(v) * GROW : v);
 
 function rnd(seed: number) {
   let s = (seed * 9301 + 49297) % 233280 || 1;
@@ -197,7 +201,7 @@ function hillHeight(x: number, z: number) {
 
 function outerGround(site: SiteId): THREE.Mesh {
   const r = rnd(site.length * 97);
-  const size = 200;
+  const size = 280;
   const step = 2;
   const n = Math.round(size / step);
   const pos: number[] = [];
@@ -275,18 +279,18 @@ function depot(g: G, r: () => number) {
   fenceRun(g, F, -F, F, F, 'chain', 3);
   fenceRun(g, -F, F, 3, F, 'chain', 4);
   fenceRun(g, 13, F, F, F, 'chain', 5);
-  scatter(r, 6, HALF + 8, 50, (x, z) => !(x > 3 && x < 14 && z > 0), (x, z, i) => put(g, buildCarWreck(i), x, z, r() * 6));
-  scatter(r, 18, HALF + 4, 60, () => true, (x, z, i) => put(g, i % 3 ? buildBush(i) : buildTree('scraggly', i), x, z, r() * 6));
+  scatter(r, 6, HALF + 8, HALF + 32, (x, z) => !(x > 3 && x < 14 && z > 0), (x, z, i) => put(g, buildCarWreck(i), x, z, r() * 6));
+  scatter(r, 18, HALF + 4, HALF + 42, () => true, (x, z, i) => put(g, i % 3 ? buildBush(i) : buildTree('scraggly', i), x, z, r() * 6));
 }
 
 function farm(g: G, r: () => number) {
-  put(g, house(14, 10, 4.5, '#8a3a2a', '#4a3a2a', 0.8, 3), -30, -26, 0.1);
+  put(g, house(14, 10, 4.5, '#8a3a2a', '#4a3a2a', 0.8, 3), o(-30), o(-26), 0.1);
   const silo = new THREE.Group();
   cyl(silo, 2.2, 2.2, 11, mat('#8a8a80'), 0, 0, 0, 12);
   cone(silo, 2.4, 2, mat('#6a6a60'), 0, 11, 0, 12);
   for (let y = 2; y < 11; y += 2.5) cyl(silo, 2.25, 2.25, 0.15, mat('#8a5a3a'), 0, y, 0, 12);
-  put(g, silo, -18, -34);
-  put(g, house(10, 8, 3.2, '#c9bca0', '#6e2e22', 0.4, 7), -36, 6, Math.PI / 2);
+  put(g, silo, o(-18), o(-34));
+  put(g, house(10, 8, 3.2, '#c9bca0', '#6e2e22', 0.4, 7), o(-36), 6, Math.PI / 2);
   // Felder
   field(g, HALF + 6, -50, HALF + 60, -6, 1, 'furrow');
   field(g, HALF + 6, -2, HALF + 60, 40, 2, 'wheat');
@@ -307,7 +311,7 @@ function farm(g: G, r: () => number) {
     blade.rotation.z = -(i / 12) * Math.PI * 2;
   }
   box(pump, 0.1, 0.8, 1.6, mat('#a8a49a'), 0, 9.2, -0.6);
-  put(g, pump, -26, 16);
+  put(g, pump, o(-26), 16);
   // Traktor
   const t = new THREE.Group();
   box(t, 1.4, 1.0, 2.4, mat('#8a3a2a'), 0, 0.6, 0.3);
@@ -319,7 +323,7 @@ function farm(g: G, r: () => number) {
     const f = add(t, new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.3, 10), mat('#1b1a18')), s * 0.8, 0.42, 1.2);
     f.rotation.z = Math.PI / 2;
   }
-  put(g, t, 24, -24, 0.7);
+  put(g, t, o(24), o(-24), 0.7);
   // Heuballen im Feld, Bäume an der Zufahrt
   for (let i = 0; i < 9; i++) {
     const hb = new THREE.Group();
@@ -332,7 +336,7 @@ function farm(g: G, r: () => number) {
     put(g, buildTree('leafy', z), 3.5, z, r() * 6);
     put(g, buildTree('leafy', z + 1), 12.5, z + 3, r() * 6);
   }
-  scatter(r, 14, HALF + 6, 60, (x, z) => x < HALF + 4 && !(x > 2 && x < 14 && z > 0), (x, z, i) => put(g, i % 2 ? buildBush(i) : buildTree('leafy', i + 30), x, z, r() * 6));
+  scatter(r, 14, HALF + 6, HALF + 42, (x, z) => x < HALF + 4 && !(x > 2 && x < 14 && z > 0), (x, z, i) => put(g, i % 2 ? buildBush(i) : buildTree('leafy', i + 30), x, z, r() * 6));
 }
 
 function lake(g: G, r: () => number, extras: THREE.Object3D[]) {
@@ -370,8 +374,8 @@ function lake(g: G, r: () => number, extras: THREE.Object3D[]) {
     put(g, m, -100 + i * 26 + r() * 8, shoreZ - 110 - r() * 20, r() * 3);
   }
   // Wald
-  scatter(r, 260, HALF + 3, 85, (x, z) => z > shoreZ + 4 && !(x > 3 && x < 14 && z > 0), (x, z, i) => put(g, buildTree('pine', i, 0.8 + r() * 0.6), x, z, r() * 6, hillHeight(x, z)));
-  scatter(r, 30, HALF + 3, 50, (_x, z) => z > shoreZ + 2, (x, z, i) => {
+  scatter(r, 260, HALF + 3, HALF + 67, (x, z) => z > shoreZ + 4 && !(x > 3 && x < 14 && z > 0), (x, z, i) => put(g, buildTree('pine', i, 0.8 + r() * 0.6), x, z, r() * 6, hillHeight(x, z)));
+  scatter(r, 30, HALF + 3, HALF + 32, (_x, z) => z > shoreZ + 2, (x, z, i) => {
     const rock = new THREE.Group();
     blob(rock, 0.5 + r() * 0.8, mat(pickC(r, ['#7a766e', '#6a665e'])), 0, 0.2, 0).scale.y = 0.6;
     put(g, rock, x, z, i);
@@ -387,7 +391,7 @@ function lake(g: G, r: () => number, extras: THREE.Object3D[]) {
     const l3 = add(cabin, new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 4.4, 6), mat('#5a3f28')), -3, y + 0.31, 0);
     l3.rotation.x = Math.PI / 2;
   }
-  put(g, cabin, -30, -6, 0.3);
+  put(g, cabin, o(-30), -6, 0.3);
 }
 
 function fuel(g: G, r: () => number) {
@@ -429,13 +433,13 @@ function fuel(g: G, r: () => number) {
     box(pole, 2.2, 0.15, 0.15, mat('#5a4632'), 0, 7.4, 0);
     put(g, pole, x, HALF + 14);
   }
-  scatter(r, 22, HALF + 14, 70, (x, z) => z > HALF + 13 || x > HALF + 4, (x, z, i) => put(g, i % 3 ? buildTree('scraggly', i) : buildBush(i), x, z, r() * 6));
+  scatter(r, 22, HALF + 14, HALF + 52, (x, z) => z > HALF + 13 || x > HALF + 4, (x, z, i) => put(g, i % 3 ? buildTree('scraggly', i) : buildBush(i), x, z, r() * 6));
 }
 
 function allotment(g: G, r: () => number) {
   const cell = 14;
-  for (let gx = -3; gx <= 3; gx++)
-    for (let gz = -3; gz <= 3; gz++) {
+  for (let gx = -5; gx <= 5; gx++)
+    for (let gz = -5; gz <= 5; gz++) {
       if (Math.abs(gx) <= 1 && Math.abs(gz) <= 1) continue;
       const cx = gx * cell;
       const cz = gz * cell;
@@ -458,13 +462,13 @@ function allotment(g: G, r: () => number) {
     }
   // Kieswege
   for (const s of [-1, 1]) {
-    box(g, 2, 0.03, 100, mat('#a0957e'), s * (cell * 1.5), -0.02, 0);
-    box(g, 100, 0.03, 2, mat('#a0957e'), 0, -0.02, s * (cell * 1.5));
+    box(g, 2, 0.03, 180, mat('#a0957e'), s * (HALF + 5), -0.02, 0);
+    box(g, 180, 0.03, 2, mat('#a0957e'), 0, -0.02, s * (HALF + 5));
   }
   box(g, 3, 0.03, 40, mat('#a0957e'), 8, -0.02, HALF + 20);
   // Vereinsheim
   put(g, house(12, 8, 3.2, '#c9b88a', '#5a4632', 0.2, 77), -30, HALF + 12, 0);
-  scatter(r, 10, HALF + 30, 70, () => true, (x, z, i) => put(g, buildTree('leafy', i + 50), x, z, r() * 6));
+  scatter(r, 10, HALF + 30, HALF + 52, () => true, (x, z, i) => put(g, buildTree('leafy', i + 50), x, z, r() * 6));
 }
 
 // --- Zusammenbauen -------------------------------------------------------------------------

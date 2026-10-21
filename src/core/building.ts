@@ -12,10 +12,10 @@ import { FURNITURE, footprint, isJunk, type FurnitureId } from './furniture';
 import { pickWeighted, randInt, rngFrom } from './rng';
 import type { Inventory, JunkBag, PlacedItem, Plot, RejectReason, Resource, SpotKind } from './types';
 
-export const PLOT = 36;
-export const SECTION = 6;
+export const PLOT = 72;
+export const SECTION = 12;
 export const SECTIONS = PLOT / SECTION;
-/** Die vier Abschnitte in der Mitte sind von Anfang an frei (12 × 12 m). */
+/** Die vier Abschnitte in der Mitte sind von Anfang an frei (24 × 24 m). */
 export const START_SECTIONS = ['2,2', '3,2', '2,3', '3,3'];
 
 const RES: Resource[] = RESOURCE_ORDER;
@@ -138,10 +138,10 @@ export interface Obstacle {
 export function sectionObstacles(seed: string, site: SiteId, sx: number, sy: number): Obstacle[] {
   const r = rngFrom('gelaende', seed, site, sx, sy);
   const isStart = START_SECTIONS.includes(`${sx},${sy}`);
-  const n = isStart ? 3 : randInt(r, 3, 5);
+  const n = isStart ? 8 : randInt(r, 10, 14);
   const used = new Uint8Array(SECTION * SECTION);
   const out: Obstacle[] = [];
-  for (let tries = 0; out.length < n && tries < 40; tries++) {
+  for (let tries = 0; out.length < n && tries < 160; tries++) {
     const kind = pickWeighted(r, SITES[site].obstacles);
     const def = OBSTACLES[kind];
     const turn = def.w !== def.d && r() < 0.5;
@@ -248,7 +248,7 @@ export function sectionOf(x: number, y: number): string {
 /** Kosten für den nächsten Abschnitt: wird mit jedem Abschnitt etwas teurer. */
 export function reclaimCost(plot: Plot): Partial<Inventory> {
   const k = Math.max(0, plot.sections.length - START_SECTIONS.length);
-  return { wood: 3 + k, metal: 2 + k, food: 1 + Math.floor(k / 3) };
+  return { wood: 8 + 3 * k, metal: 5 + 2 * k, food: 2 + Math.floor(k / 2) };
 }
 
 /** Darf dieser Abschnitt als Nächstes zurückerobert werden? */

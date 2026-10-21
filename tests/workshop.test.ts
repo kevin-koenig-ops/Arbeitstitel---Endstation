@@ -13,8 +13,8 @@ const ev = (s: PlayerState, a: Action, now = T0) => act(s, a, now).events[0];
 
 function freeRect(idx: PlotIndex, w: number, h: number, skip = 0): { x: number; y: number } {
   let n = 0;
-  for (let y = 12; y + h <= 24; y++)
-    for (let x = 12; x + w <= 24; x++) {
+  for (let y = 24; y + h <= 48; y++)
+    for (let x = 24; x + w <= 48; x++) {
       let ok = true;
       for (let dy = 0; dy < h && ok; dy++) for (let dx = 0; dx < w; dx++) if (!cellFree(idx, x + dx, y + dy)) ok = false;
       if (ok && n++ >= skip) return { x, y };

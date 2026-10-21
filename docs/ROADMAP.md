@@ -79,6 +79,11 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - Umschaltbar in den Einstellungen: Polygon oder Comic (Cel-Shading mit Umrissen)
 - **Testen:** Was gefällt besser? Läuft Comic am Handy flüssig?
 
+## ✅ Zwischenschritt: Größeres Gelände
+
+- Gelände 72 × 72 m statt 36 × 36 m, Startfläche 24 × 24 m statt 12 × 12 m, Abschnitte 12 m
+- Alte Spielstände: Gebautes rückt in die Mitte, schon Freies bleibt frei (Version 7)
+
 ## Iteration 1h (Teil 2): Weitere Werkstätten und Wetter
 
 - Weitere Anlagen mit echten Wartezeiten: Holzofen (Eintopf), Lagerfeuer, Hochbeet, Apfelbaum

@@ -369,9 +369,11 @@ export class BaseScene {
     const locked: [number, number][] = [];
     for (let sy = 0; sy < PLOT / SECTION; sy++)
       for (let sx = 0; sx < PLOT / SECTION; sx++) if (!d.plot.sections.includes(`${sx},${sy}`)) locked.push([sx, sy]);
-    const perBush = 15;
-    const perGrass = 16;
-    const perJunk = d.site === 'depot' || d.site === 'fuel' ? 6 : 3;
+    // Dichte pro Quadratmeter wie früher bei 6-m-Abschnitten
+    const area = (SECTION / 6) ** 2;
+    const perBush = Math.round(15 * area);
+    const perGrass = Math.round(16 * area);
+    const perJunk = Math.round((d.site === 'depot' || d.site === 'fuel' ? 6 : 3) * area);
     const mk = (geo: THREE.BufferGeometry, n: number) => new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.95 }), Math.max(1, locked.length * n));
     const bushes = mk(new THREE.IcosahedronGeometry(1, 1), perBush);
     const grass = mk(new THREE.ConeGeometry(0.12, 1, 5), perGrass);
@@ -964,7 +966,7 @@ export class BaseScene {
   }
 
   zoomBy(f: number) {
-    this.dist = Math.min(95, Math.max(8, this.dist * f));
+    this.dist = Math.min(140, Math.max(8, this.dist * f));
   }
 
   /** Kamera auf einen Punkt (Gelände-Meter) richten. */
@@ -995,7 +997,7 @@ export class BaseScene {
     const needW = size * 1.25;
     const distW = needW / (2 * tanH);
     const distV = (size * 1.3 * Math.sin(this.el)) / (2 * Math.tan(vfov / 2));
-    this.focus((minX + maxX) / 2, (minY + maxY) / 2, Math.min(90, Math.max(12, distW, distV)));
+    this.focus((minX + maxX) / 2, (minY + maxY) / 2, Math.min(130, Math.max(12, distW, distV)));
   }
 
   private resize() {
@@ -1047,7 +1049,7 @@ export class BaseScene {
       this.haze.far = r + 90;
     }
     // Schatten folgen dem Blick
-    const ext = Math.min(34, Math.max(12, r * 0.62));
+    const ext = Math.min(46, Math.max(12, r * 0.62));
     const sc = this.sun.shadow.camera;
     if (sc.right !== ext) {
       sc.left = sc.bottom = -ext;
