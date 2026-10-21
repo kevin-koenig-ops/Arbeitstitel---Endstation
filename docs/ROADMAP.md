@@ -36,16 +36,16 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 - **Der rote Faden:** Linienplan im Hauptmenü als Kapitel-Reise mit sichtbarem Endziel, jeden Samstag eine neue Funk-Folge auf Kanal 4 (zum Nachhören). Details im [Konzept](KONZEPT.md).
 - **Fälle und Rätsel:** Krimi-Fälle mit 3 bis 5 Hinweisen auf der Karte und einer Ermittlungstafel zu Hause (Logikrätsel: wer, wo, womit), dazu Geheimschrift, Funk-Codes und Zahlenschlösser. Falsch raten kostet nichts.
 - **Geschichte in Häppchen:** Erinnerungsstücke werden zu zusammenhängenden Kapiteln, dazu Laborzettel, Archivnotizen und Funksprüche aus der Lore. Die Biologie wird nie erklärt.
-- **Hund als Begleiter:** erschnüffelt draußen Verstecke, schläft zu Hause am Lagerfeuer.
+- **Hund als Begleiter:** erschnüffelt draußen Verstecke, schläft zu Hause am Lagerfeuer. (Mitkämpfen erst als späteres Update, siehe „Ideen für irgendwann“.)
 
 ## Version 1.3: Kampf und Gefahr
 
 - **Mehr Karten und Gegner:** neue Waffenkarten (z. B. Feuer gegen Borkenmänner), seltene Karten als Fund, Gegner-Varianten.
+- **Statuseffekte und Lärm:** Brennt, Vereist, Geblendet, Verlangsamt, Blutet, Verwundbar, Schwach, Adrenalin. Dazu die Lärm-Leiste (laut lockt Heuler an), Kombos und bessere Treffer-Effekte (Anhalten beim Treffer, Zeitlupe beim letzten Kill). Details im [Konzept](KONZEPT.md).
 - **Mehr Kreaturen aus der Lore:** Varianten von Wandlern und Heulern, Wurzelnester, die man ausbrennt.
 - **Schusswaffen:** Pistole, Schrotflinte, Gewehr als seltene Funde. Munition ist knapp, Schüsse sind laut und locken Gegner an.
 - **Gefahrenstufe pro Ausflug:** vorher wählen, mehr Risiko bringt bessere Beute.
 - **Horden auf echten Straßen:** umgehen, durchschleichen oder kämpfen. Lärm beim Durchsuchen lockt an, Stammwege werden mit der Zeit sicher.
-- **Überlebende kämpfen mit** und bringen eigene Aktionen mit (heilen, Falle stellen).
 - **Jagd:** Tiere auf der Karte, manchmal seltene.
 - **Vollmond** macht Gegner stärker, dafür gibt es seltenere Beute.
 
@@ -86,6 +86,7 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 
 ## Ideen für irgendwann
 
+- **Begleiter kämpfen mit (großes Update):** Hund oder Bewohner stehen im Kampf neben dir und bringen eigene Karten ins Deck (heilen, Falle stellen, ablenken).
 - Weitere Haustiere, die mitlaufen und in der Basis wohnen
 - Bahnhöfe als Handelsposten mit wandernden Händlern
 - Aussichtspunkte und Anhöhen decken größere Bereiche der Karte auf

@@ -102,6 +102,21 @@ Knobeln passt perfekt zu „draußen kurz, zu Hause die Tiefe“: Hinweise finde
 - **Klassen:** Jede Vorgeschichte bringt 2 bis 3 eigene Karten mit (Rettungsdienst: „Erste Hilfe“, Werkstatt: „Improvisieren“, Hof & Wald: „Fährte lesen“, Kurierdienst: „Haken schlagen“). Ab dem Rang Streifer wählt man eine Richtung aus der Lore: **Landstreifer** (Feuer, Fallen, stark im Umland) oder **Stadtstreifer** (leise, länger in Roten Zonen). Klassenkarten machen höchstens ein Viertel des Decks aus, wechseln geht zu Hause. Man kann sich nie verskillen. Noch offen: Wird die Vorgeschichte selbst die Klasse oder getrennt davon?
 - **Dungeons (Rote Zonen):** eine Kette aus 3 bis 5 Kämpfen. Gesundheit und Waffen bleiben von Kampf zu Kampf. Dazwischen rasten oder plündern. Der Atemschutz ist die Uhr: nach einer festen Zahl Runden muss man raus, mit dem, was man hat. Abbrechen geht jederzeit. Nur vor Ort.
 - **Raids (Nester):** einmal pro Woche ein Nest mit großem Lebensbalken für alle Spieler. Jeder kämpft seine Runden, wann es passt, auch von zu Hause. Belohnung nach Anteil. Endgegner mit Phasen (ab halber Gesundheit ein neues Muster).
+- **Eine Figur, viele Fähigkeiten:** Anders als bei Raid Shadow Legends sammelt man keine Helden. Man spielt immer die eigene Figur, die Vielfalt kommt aus den Fähigkeitenkarten im Deck. Jede Runde zieht man zufällig 4 Karten aus dem Deck und wählt, welche man spielt: Zufall bei der Hand, Entscheidung beim Spielen.
+- **Statuseffekte** (ohne Magie, alles Endzeit), nach und nach freigeschaltet:
+  - **Brennt:** Schaden jede Runde (Brandflasche). Stark gegen Borkenmänner.
+  - **Vereist:** Gegner setzt eine Runde aus (Feuerlöscher).
+  - **Geblendet:** trifft schlechter (Rauchdose, Taschenlampe).
+  - **Verlangsamt:** rückt nicht nach vorn (Krähenfüße).
+  - **Blutet:** Schaden beim Bewegen (Klingen, Stacheldraht).
+  - **Benommen:** Ausholen bricht ab (gibt es schon: Tritt).
+  - **Verwundbar / Schwach:** nimmt mehr Schaden / macht weniger.
+  - **Adrenalin** (für dich): nach einem Kill nächste Runde mehr Energie.
+- **Lärm-Leiste:** Laute Karten (Schüsse, Autoalarm, Werfen) füllen sie. Ist sie voll, kommt ein Heuler oder ein weiterer Wandler dazu. Leise Karten sind schwächer, aber sicher. Passt zur Lore: Heuler jagen nach Gehör.
+- **Kombos** machen die Tiefe: Ölfass anzünden (alle vorne brennen), erst vereisen und dann ein schwerer Schlag, der doppelt trifft, Autoalarm werfen, damit der Heuler hinläuft statt zu schreien.
+- **Effekte, die sich gut anfühlen:** Feuer und Funken, Eis-Splitter, Rauch, kurzes Anhalten des Bildes beim Treffer, Zeitlupe beim letzten Kill, Kamera-Wackeln, Karten, die sichtbar zum Gegner fliegen.
+- **Tempo:** Draußen bleiben Kämpfe kurz (2 bis 4 Runden, wenige Effekte). Die volle Tiefe gibt es bei Raids und Roten Zonen. Am Anfang nur Schlagen, Ausweichen, Verbinden, Statuseffekte kommen langsam dazu.
+- **Begleiter später als Update:** Hund oder Bewohner kämpfen mit und bringen eigene Karten ins Deck. Nicht für den Start, sondern als großes Update irgendwann.
 
 ## Fortschritt
 
