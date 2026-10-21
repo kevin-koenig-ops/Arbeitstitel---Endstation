@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { PLOT, type SiteId } from '../core/building';
 import { Assembler, bake, GLOW, LIT } from './bake';
-import { add, blob, box, buildBus, cone, cyl, mat, METAL, PAT, WOOD, WOOD_DARK } from './models';
+import { add, blob, box, buildBus, cone, cyl, mat, METAL, WOOD, WOOD_DARK } from './models';
 import { buildBush, buildCarWreck, buildTree } from './structures';
 
 type G = THREE.Group;
@@ -234,7 +234,6 @@ function outerGround(site: SiteId): THREE.Mesh {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  g.setAttribute('pat', new THREE.Float32BufferAttribute(new Float32Array(pos.length / 3).fill(PAT.ground), 1));
   g.computeVertexNormals();
   const mesh = new THREE.Mesh(g, LIT);
   mesh.receiveShadow = true;

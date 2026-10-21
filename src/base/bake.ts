@@ -9,8 +9,6 @@ export interface Part {
   col: Float32Array;
   /** Normalen: rund bei runden Formen (Bäume, Fässer), sonst flach pro Fläche. */
   nrm: Float32Array;
-  /** Oberflächenart je Ecke (für den Stil „Gemalt“), siehe PAT in models.ts. */
-  pat: Float32Array;
 }
 
 export interface Template {
@@ -52,8 +50,8 @@ function isRound(g: THREE.BufferGeometry): boolean {
 export function bake(group: THREE.Object3D): Template {
   group.updateMatrixWorld(true);
   const inv = new THREE.Matrix4().copy(group.matrixWorld).invert();
-  const lit = { pos: [] as number[], col: [] as number[], nrm: [] as number[], pat: [] as number[] };
-  const glow = { pos: [] as number[], col: [] as number[], nrm: [] as number[], pat: [] as number[] };
+  const lit = { pos: [] as number[], col: [] as number[], nrm: [] as number[] };
+  const glow = { pos: [] as number[], col: [] as number[], nrm: [] as number[] };
   const n = new THREE.Vector3();
   const a = new THREE.Vector3();
   const b = new THREE.Vector3();
@@ -75,10 +73,7 @@ export function bake(group: THREE.Object3D): Template {
     const g = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry;
     const p = g.getAttribute('position');
     const gn = isRound(mesh.geometry) ? g.getAttribute('normal') : null;
-    // Fertige Modelle (Modellpaket) bringen ihre Farben pro Ecke mit
-    const vc = mat.vertexColors ? g.getAttribute('color') : null;
     nm.getNormalMatrix(mt);
-    const pat = (mat.userData?.pat as number | undefined) ?? 0;
     let target = lit;
     color.copy(mat.color);
     if ((mat as unknown as THREE.MeshBasicMaterial).isMeshBasicMaterial) target = glow;
@@ -89,9 +84,7 @@ export function bake(group: THREE.Object3D): Template {
     for (let i = 0; i < p.count; i++) {
       v.fromBufferAttribute(p, i).applyMatrix4(mt);
       target.pos.push(v.x, v.y, v.z);
-      if (vc) target.col.push(color.r * vc.getX(i), color.g * vc.getY(i), color.b * vc.getZ(i));
-      else target.col.push(color.r, color.g, color.b);
-      target.pat.push(pat);
+      target.col.push(color.r, color.g, color.b);
       box.expandByPoint(v);
       if (gn) {
         n.fromBufferAttribute(gn, i).applyMatrix3(nm).normalize();
@@ -107,7 +100,7 @@ export function bake(group: THREE.Object3D): Template {
     }
     if (g !== mesh.geometry) g.dispose();
   });
-  const part = (x: typeof lit): Part => ({ pos: new Float32Array(x.pos), col: new Float32Array(x.col), nrm: new Float32Array(x.nrm), pat: new Float32Array(x.pat) });
+  const part = (x: typeof lit): Part => ({ pos: new Float32Array(x.pos), col: new Float32Array(x.col), nrm: new Float32Array(x.nrm) });
   return {
     lit: part(lit),
     glow: part(glow),
@@ -135,7 +128,6 @@ export class Assembler {
     const pos = new Float32Array(this.count);
     const col = new Float32Array(this.count);
     const nrm = new Float32Array(this.count);
-    const pat = new Float32Array(this.count / 3);
     let o = 0;
     for (const { p, m } of this.parts) {
       const e = m.elements;
@@ -161,14 +153,12 @@ export class Assembler {
         nrm[o + i + 2] = rz / l;
       }
       col.set(p.col, o);
-      pat.set(p.pat, o / 3);
       o += src.length;
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
-    g.setAttribute('pat', new THREE.BufferAttribute(pat, 1));
     g.computeBoundingSphere();
     return g;
   }

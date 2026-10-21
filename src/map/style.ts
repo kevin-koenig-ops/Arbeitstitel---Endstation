@@ -158,16 +158,6 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
     },
     // Nah dran: nur Grundrisse; die Häuser selbst kommen aus der Detail-Ebene
     { id: 'buildings-flat', type: 'fill', minzoom: DECOR_MINZOOM, ...from('building'), paint: { 'fill-color': '#2b2823' } },
-    // Comic-Stil: dunkle Umrisse am Fuß der Häuser und Bäume (sonst ausgeblendet)
-    {
-      id: 'decor-outline',
-      type: 'line',
-      source: 'decor',
-      minzoom: DECOR_MINZOOM,
-      filter: ['==', ['get', 'b'], 0],
-      layout: { visibility: 'none', 'line-join': 'round' },
-      paint: { 'line-color': '#1b130d', 'line-width': ['interpolate', ['linear'], ['zoom'], 16, 0.8, 19, 2, 21, 3.5] },
-    },
     // Detail-Ebene (map/decor.ts): Häuser mit Dächern und Ruinen, Bäume, Autowracks
     {
       id: 'decor',

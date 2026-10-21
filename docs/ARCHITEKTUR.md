@@ -48,7 +48,7 @@ Ohne Framework, kleine Hilfsfunktion `h()` in `ui/dom.ts`. Jeder Bildschirm ist 
 
 **Aktionen statt Zustandsänderungen.** Der Client sagt „ich durchsuche X an Position P“, nicht „ich habe jetzt 5 Wasser“. Genau das wird später zur API.
 
-**Grafikstil.** Alle 3D-Ansichten zeichnen über `StyledRenderer` (`base/comic.ts`). Im Comic-Stil werden die Materialien gegen Toon-Materialien getauscht (Farben bleiben verknüpft) und ein zweiter Schritt zieht Umrisse aus Tiefensprüngen und starken Farbwechseln. Polygon zeichnet wie bisher direkt. Der Stil „Gemalt“ (`base/painted.ts`) tauscht auf weich schattierte Materialien mit Oberflächen aus dem Shader (Pinselstruktur, Holz, Stein, Rost, Gras, Laub; welche Art, steht im Attribut `pat` der verschmolzenen Meshes bzw. in `material.userData.pat`). Danach folgen feine braune Linien, weiche Verschattung in Ecken, Leuchten um Lampen und Feuer und eine warme Farbstimmung. Quader bekommen dort abgerundete Kanten (`base/softBox.ts`), auf freiem Boden wachsen Grasbüschel.
+**Grafik.** Alle 3D-Ansichten zeichnen direkt mit three.js in einem einzigen Look (Low-Poly, Farben pro Ecke). Ausprobiert und wieder entfernt wurden: Comic- und Gemalt-Stil, fertige Modellpakete (Quaternius) und eine 3D-Welt auf der Karte. Der Stand liegt in Git (Commit `4cc884c`), falls etwas davon zurückkommen soll.
 
 **Werktisch mit echten Wartezeiten.** Ein Auftrag speichert nur, wann er fertig ist (`endsAt`, aus `ctx.now`). Was fertig ist, rechnet `readyParts` beim Abholen aus. Kein Hintergrund-Timer nötig, die App darf zu sein, und ein Server kann es genauso nachrechnen.
 
@@ -83,7 +83,6 @@ Ohne Framework, kleine Hilfsfunktion `h()` in `ui/dom.ts`. Jeder Bildschirm ist 
 - **Echte Karte:** Vektorkacheln von OpenFreeMap (OpenMapTiles-Schema, Daten von OpenStreetMap), kostenlos und ohne API-Schlüssel. Der Endzeit-Stil steckt in `map/style.ts`, die Texturen (Wald, Felder, Schutt, Boden) werden in `map/patterns.ts` zur Laufzeit gezeichnet.
 - **Demo-Dorf:** `map/demoWorld.json`, erzeugt von `scripts/gen-demo-world.mjs`. Gleiche Ebenen- und Klassennamen wie die echten Kacheln, deshalb gilt derselbe Stil.
 - **Echte Orte:** `GameMap.poiCandidates()` liest Supermärkte, Apotheken, Haltestellen usw. aus den geladenen Kacheln. Welche OSM-Werte zu welcher Fundstelle werden, steht in `core/content.ts` (`POI_KINDS`).
-- **3D-Welt auf der Karte:** `map/worldPlan.ts` plant aus den Kartendaten (ohne three.js), wie jedes Haus aussieht (Grundriss, Stockwerke, Sattel-, Walm- oder Flachdach, intakt, ausgebrannt oder Ruine) und wo Bäume, Autowracks, Laternen, Masten und Kram am Straßenrand stehen. `map/world3d.ts` baut daraus eine eigene MapLibre-Ebene mit three.js: Häuser als eine Form mit Fassaden-Shader (Fenster, Läden, Ruß, Ziegel), alles andere per Instancing. Einstellung „Häuser auf der Karte“: *Detailreich* (Standard), *Stadt-Bausatz* (die nächsten Häuser bekommen Wände aus Quaternius-Bauteilen) oder *Einfach* (die alten Blöcke aus `map/decor.ts`).
 
 ## Zwei Build-Ziele
 
@@ -97,7 +96,6 @@ Ohne Framework, kleine Hilfsfunktion `h()` in `ui/dom.ts`. Jeder Bildschirm ist 
 - `src/base/bake.ts`: verschmilzt alles zu wenigen großen Meshes mit Farben pro Ecke. Ein Gelände mit Hunderten Teilen braucht so nur eine Handvoll Zeichenaufrufe.
 - `src/base/character.ts`: die Spielfigur, `figureView.ts` zeigt sie bei der Erstellung, auf der Karte und als Porträt.
 - `src/base/path.ts`: Wegfindung der Figur (Wände sperren, Türen lassen durch).
-- `src/base/modelPack.ts`: die zentrale Liste für fertige Modelle (Stilprobe). Welche Datei welche Rolle spielt (Spielfigur je Frisur, Gegner, Kulisse, Möbel, Hindernisse), Laden, Einpassen in Grundflächen und Figuren mit Bewegungsabläufen. Ein anderes Paket = andere Dateien und diese Liste anpassen. Umgewandelt werden die Pakete mit `scripts/import-models.mjs` (Zombie-Kit), `import-interior.mjs` (Möbel) und `import-citykit.mjs` (Fassaden). Einstellung „Figuren und Kulisse“: Modellpaket oder Eigenbau.
 - `src/ui/art.ts`: gemalte Hintergrundbilder (Hauptmenü, Start, Charaktererstellung, Einstieg, Kampf, Schauplätze).
 - Oberfläche: `src/ui/base/baseView.ts`, `sitePicker.ts`.
 

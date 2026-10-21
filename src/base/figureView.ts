@@ -2,8 +2,6 @@
 // und als kleine Live-Ansicht (Charaktererstellung, Spielerfigur auf der Karte).
 
 import * as THREE from 'three';
-import { StyledRenderer } from './comic';
-import { graphicsStyle } from './gfxStyle';
 import type { Character } from '../core/types';
 import { blobShadow, CharacterRig } from './character';
 
@@ -12,12 +10,11 @@ type Look = Character['look'];
 // --- Porträts -------------------------------------------------------------------------
 
 let portraitRenderer: THREE.WebGLRenderer | null = null;
-let portraitStyled: StyledRenderer | null = null;
 const portraitCache = new Map<string, string>();
 
 /** Kopf und Schultern als Bild (PNG-Daten-URL), transparent. */
 export function renderPortrait(look: Look, size = 128): string {
-  const key = `${look.hair}|${look.color}|${look.skin}|${size}|${graphicsStyle()}`;
+  const key = `${look.hair}|${look.color}|${look.skin}|${size}`;
   const hit = portraitCache.get(key);
   if (hit) return hit;
   if (!portraitRenderer) {
@@ -43,8 +40,7 @@ export function renderPortrait(look: Look, size = 128): string {
   const cam = new THREE.PerspectiveCamera(26, 1, 0.1, 20);
   cam.position.set(0.12, 1.78, 1.5);
   cam.lookAt(0, 1.62, 0);
-  if (!portraitStyled) portraitStyled = new StyledRenderer(r, 1.6, false);
-  portraitStyled.render(scene, cam);
+  r.render(scene, cam);
   const url = r.domElement.toDataURL('image/png');
   rig.dispose();
   portraitCache.set(key, url);
@@ -63,7 +59,6 @@ export interface FigureViewOpts {
 export class FigureView {
   readonly canvas: HTMLCanvasElement;
   private renderer: THREE.WebGLRenderer;
-  private styled: StyledRenderer;
   private scene = new THREE.Scene();
   private camera: THREE.PerspectiveCamera;
   private rig: CharacterRig | null = null;
@@ -80,8 +75,6 @@ export class FigureView {
   constructor(private opts: FigureViewOpts) {
     const stage = opts.mode === 'stage';
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    // Auf der Karte wird die Figur stark verkleinert: dort dickere Linien
-    this.styled = new StyledRenderer(this.renderer, opts.mode === 'marker' ? 2 : 1.5, opts.mode !== 'marker');
     this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     this.renderer.setSize(opts.width, opts.height);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -206,14 +199,14 @@ export class FigureView {
     this.yaw += d * Math.min(1, dt * 8);
     this.holder.rotation.y = this.yaw;
     this.rig.update(t, dt, this.moving);
-    this.styled.render(this.scene, this.camera);
+    this.renderer.render(this.scene, this.camera);
   }
 
   private renderOnce() {
     if (!this.rig) return;
     this.rig.update(performance.now() / 1000, 0, 0);
     this.holder.rotation.y = this.yaw;
-    this.styled.render(this.scene, this.camera);
+    this.renderer.render(this.scene, this.camera);
   }
 
   /** Auf dem Sockel kann man die Figur mit dem Finger drehen. */
@@ -239,7 +232,6 @@ export class FigureView {
 
   dispose() {
     this.stop();
-    this.styled.dispose();
     this.rig?.dispose();
     this.renderer.dispose();
     this.renderer.forceContextLoss();

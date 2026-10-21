@@ -12,12 +12,6 @@ import { FogOfWar } from './fogOfWar';
 import demoWorld from './demoWorld.json';
 import { patternImage } from './patterns';
 import { buildStyle, DECOR_MINZOOM, loadRealSource } from './style';
-import type { DayPhase } from '../core/sun';
-import { planWorld } from './worldPlan';
-import type { World3D } from './world3d';
-
-/** Wie die Häuser auf der Karte aussehen (Einstellungen). */
-export type MapHouses = 'detail' | 'citykit' | 'simple';
 
 /** Umkreis der Detail-Ebene. Dahinter liegt ohnehin Nebel. */
 const DECOR_RADIUS_M = 550;
@@ -61,14 +55,9 @@ interface Options {
   onError: (msg: string) => void;
   onBaseTap?: () => void;
   onCacheTap?: (id: string) => void;
-  /** Häuser: 3D mit Fassaden (Standard), mit Stadt-Bausatz oder einfache Blöcke. */
-  houses?: MapHouses;
 }
 
 const ll = (p: LatLon): [number, number] => [p.lon, p.lat];
-
-/** Der Stadt-Bausatz wird nur einmal geladen. */
-let cityKit: Promise<import('./world3d').CityKit> | null = null;
 
 /** Körpergröße der Spielfigur in Metern: Sie steht maßstabsgetreu auf der Karte. */
 const PERSON_M = 1.8;
@@ -98,9 +87,6 @@ export class GameMap {
   private decorCenter: LatLon | null = null;
   private tilesDirty = true;
   private decorTimer = 0;
-  private world3d: World3D | null = null;
-  private houses: MapHouses = 'detail';
-  private phase: DayPhase = 'day';
 
   constructor(
     private container: HTMLElement,
@@ -170,10 +156,7 @@ export class GameMap {
 
     await new Promise<void>((resolve) => this.map.once('load', () => resolve()));
     this.loaded = true;
-    this.setComic(this.comic);
     this.fog = new FogOfWar(this.map);
-    this.houses = this.opts.houses ?? 'detail';
-    if (this.houses !== 'simple') void this.enable3d();
     if (this.pendingRange) this.setRange(this.pendingRange.c, this.pendingRange.r);
     if (this.pendingCaches) this.setCaches(this.pendingCaches);
   }
@@ -205,17 +188,6 @@ export class GameMap {
       });
       this.cacheMarkers.set(c.id, new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(ll(c.center)).addTo(this.map));
     }
-  }
-
-  private comic = false;
-
-  /** Comic-Stil auf der Karte: flache Seiten ohne Verlauf und dunkle Umrisse. */
-  setComic(on: boolean) {
-    this.comic = on;
-    if (!this.loaded) return;
-    if (this.world3d) return;
-    for (const id of ['decor', 'buildings']) if (this.map.getLayer(id)) this.map.setPaintProperty(id, 'fill-extrusion-vertical-gradient', !on);
-    if (this.map.getLayer('decor-outline')) this.map.setLayoutProperty('decor-outline', 'visibility', on ? 'visible' : 'none');
   }
 
   setPlayer(pos: LatLon, avatarSvg: string) {
@@ -407,110 +379,8 @@ export class GameMap {
     this.decorTimer = window.setTimeout(() => this.buildDecor(center), 30);
   }
 
-  // --- 3D-Welt (Häuser mit Fassaden, Bäume, Autos, Kram) ------------------------------------
-
-  /** 3D-Ebene einschalten. Klappt das nicht (altes Handy), bleiben die einfachen Blöcke. */
-  private async enable3d() {
-    if (this.world3d) return;
-    try {
-      const mod = await import('./world3d');
-      const w = new mod.World3D();
-      w.minZoom = DECOR_MINZOOM;
-      const before = this.map.getLayer('street-names') ? 'street-names' : undefined;
-      this.map.addLayer(w, before);
-      w.setPhase(this.phase);
-      this.world3d = w;
-      void this.syncCityKit();
-      try {
-        if (localStorage.getItem('endstation.debug')) (window as unknown as { __w3d?: unknown }).__w3d = w;
-      } catch {
-        /* egal */
-      }
-      for (const id of ['decor', 'decor-outline']) if (this.map.getLayer(id)) this.map.setLayoutProperty(id, 'visibility', 'none');
-      this.decorCenter = null;
-      this.tilesDirty = true;
-      this.scheduleDecor();
-      // Kulissen-Teile aus dem Modellpaket nachladen, dann neu aufbauen
-      const pack = await import('../base/modelPack');
-      if (await pack.loadProps()) {
-        this.decorCenter = null;
-        this.tilesDirty = true;
-        this.scheduleDecor();
-      }
-    } catch (err) {
-      console.warn('[3D-Karte]', err);
-      this.disable3d();
-    }
-  }
-
-  private disable3d() {
-    if (this.world3d && this.map.getLayer(this.world3d.id)) this.map.removeLayer(this.world3d.id);
-    this.world3d = null;
-    if (this.map.getLayer('decor')) this.map.setLayoutProperty('decor', 'visibility', 'visible');
-    this.setComic(this.comic);
-    this.decorCenter = null;
-    this.tilesDirty = true;
-    this.scheduleDecor();
-  }
-
-  /** Stadt-Bausatz laden (nur bei „Stadt-Bausatz“), sonst ausschalten. */
-  private async syncCityKit() {
-    const w = this.world3d;
-    if (!w) return;
-    if (this.houses !== 'citykit') {
-      w.setCityKit(null);
-      return;
-    }
-    try {
-      const mod = await import('./world3d');
-      cityKit ??= mod.CityKit.load();
-      const kit = await cityKit;
-      if (this.world3d !== w || this.houses !== 'citykit') return;
-      w.setCityKit(kit);
-      this.decorCenter = null;
-      this.tilesDirty = true;
-      this.scheduleDecor();
-    } catch (err) {
-      console.warn('[Stadt-Bausatz]', err);
-      cityKit = null;
-    }
-  }
-
-  /** Einstellung „Häuser auf der Karte“ umgestellt. */
-  setHouses(mode: MapHouses) {
-    if (mode === this.houses) return;
-    this.houses = mode;
-    if (!this.loaded) return;
-    if (mode === 'simple') this.disable3d();
-    else if (!this.world3d) void this.enable3d();
-    else {
-      void this.syncCityKit();
-      this.decorCenter = null;
-      this.tilesDirty = true;
-      this.scheduleDecor();
-    }
-  }
-
-  /** Tageszeit für die 3D-Welt (Licht, erleuchtete Fenster). */
-  setPhase(phase: DayPhase) {
-    this.phase = phase;
-    this.world3d?.setPhase(phase);
-  }
-
   private buildDecor(center: LatLon) {
     const t0 = performance.now();
-    if (this.world3d) {
-      try {
-        const plan = planWorld(this.collectDecorInput(center, DECOR_RADIUS_M + 250), center, DECOR_RADIUS_M);
-        this.world3d.setPlan(plan);
-        (this.map.getSource('decor') as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: [] });
-        this.decorCenter = center;
-        this.container.dataset.decor = JSON.stringify({ ...this.world3d.stats, plan: Math.round(performance.now() - t0) });
-      } catch (err) {
-        console.warn('[3D-Karte]', err);
-      }
-      return;
-    }
     try {
       const res = generateDecor(this.collectDecorInput(center, DECOR_RADIUS_M + 250), center, DECOR_RADIUS_M);
       (this.map.getSource('decor') as GeoJSONSource | undefined)?.setData({

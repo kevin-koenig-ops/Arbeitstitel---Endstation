@@ -226,6 +226,6 @@ Name, Aussehen (Frisur, Hautton, Jacke) und eine Vorgeschichte mit kleinem Vorte
 
 Bus-Zielanzeige trifft Endzeit: LED-Punktschrift in Bernstein, dunkle Paneele, das Hauptmenü als Linienplan mit Haltestellen. Fundbelege sehen aus wie Kassenzettel, Erinnerungsstücke sind handschriftliche Zettel.
 
-**Fertige Modelle und 3D-Karte (Stilprobe):** Einstellungen → Grafik → „Figuren und Kulisse“ (Modellpaket oder Eigenbau) und „Häuser auf der Karte“ (Detailreich, Stadt-Bausatz, Einfach). Die Karte zeigt echte Grundrisse als Häuser mit Fenstern und Dächern, manche ausgebrannt oder als Ruine, dazu Bäume, Autowracks, Laternen und Kram am Straßenrand. Hauptmenü, Start, Charaktererstellung, Einstieg, Kampf und Schauplätze haben gemalte Hintergrundbilder.
+**Gemalte Hintergrundbilder** für Start, Hauptmenü, Charaktererstellung, Einstieg, Kampf und Schauplätze.
 
-**Grafikstil zum Vergleichen** (Einstellungen → Grafik): *Polygon* (kantig, weiches Licht) oder *Comic* (Cel-Shading: flächige Farben in wenigen Stufen, dunkle Umrisslinien, kräftigere Farben). Comic wirkt in Endstation, Kampf, Charaktererstellung und bei der Figur auf der Karte voll; die Karte selbst bekommt nur flache Hausseiten und dunkle Kanten am Fuß der Häuser.
+**Grafikstil: noch offen.** Im Spiel gibt es einen einzigen Look (Low-Poly), ohne Grafik-Schalter. Gewünscht ist ein Comic-Look wie in einem Handyspiel, das Kevin kennt; er sucht dafür eine Referenz. Ausprobiert und wieder entfernt: Comic- und Gemalt-Stil per Shader, fertige Modellpakete (Quaternius) für Figuren, Möbel und Kulisse, eine 3D-Welt auf der Karte mit Fassaden und Kram an den Straßen. Alles liegt in Git (Commit 4cc884c).

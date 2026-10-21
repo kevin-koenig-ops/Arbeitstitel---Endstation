@@ -13,14 +13,9 @@ export const METAL = '#3b3f3a';
 
 const mats = new Map<string, THREE.Material>();
 
-/** Oberflächenarten für den Stil „Gemalt“ (Pinselstruktur, Maserung, Rost …). */
-export const PAT = { plain: 0, ground: 1, leaf: 2, wood: 3, stone: 4, metal: 5 } as const;
-export type Pat = (typeof PAT)[keyof typeof PAT];
-
-/** Matte, flach schattierte Farbe (wird geteilt). pat: Oberflächenart für „Gemalt“. */
-export function mat(color: string, opts: { emissive?: string; emissiveIntensity?: number; transparent?: boolean; opacity?: number; pat?: Pat } = {}) {
-  const pat = opts.pat ?? (color === WOOD || color === WOOD_DARK ? PAT.wood : PAT.plain);
-  const key = `${color}|${opts.emissive ?? ''}|${opts.emissiveIntensity ?? ''}|${opts.opacity ?? ''}|${pat}`;
+/** Matte, flach schattierte Farbe (wird geteilt). */
+export function mat(color: string, opts: { emissive?: string; emissiveIntensity?: number; transparent?: boolean; opacity?: number } = {}) {
+  const key = `${color}|${opts.emissive ?? ''}|${opts.emissiveIntensity ?? ''}|${opts.opacity ?? ''}`;
   let m = mats.get(key);
   if (!m) {
     const params: THREE.MeshStandardMaterialParameters = { color, roughness: 0.88, metalness: 0.02, flatShading: true };
@@ -33,7 +28,6 @@ export function mat(color: string, opts: { emissive?: string; emissiveIntensity?
       params.opacity = opts.opacity ?? 1;
     }
     m = new THREE.MeshStandardMaterial(params);
-    m.userData.pat = pat;
     mats.set(key, m);
   }
   return m;

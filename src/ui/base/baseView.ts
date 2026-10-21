@@ -42,8 +42,6 @@ import type { DayPhase } from '../../core/sun';
 import type { WeatherKind } from '../../services/weather';
 import type { Action, Inventory, PlayerState, SpotKind } from '../../core/types';
 import { BaseScene, type Hit } from '../../base/BaseScene';
-import { modelSet } from '../../base/modelChoice';
-import { loadPack } from '../../base/modelPack';
 import { WALL_H } from '../../base/structures';
 import { thumbnails } from '../../base/thumbs';
 import { atBase, getBasePlace, setBasePlace } from '../../services/basePlace';
@@ -203,11 +201,6 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   el.dataset.control = control;
 
   const scene = new BaseScene(stage);
-  // Modellpaket (Stilprobe): Figur, Möbel und Hindernisse nachladen und dann tauschen
-  if (modelSet() === 'pack')
-    void loadPack().then((ok) => {
-      if (ok && el.isConnected) scene.refreshModels();
-    });
   scene.setPhase(opts.phase());
   scene.setWeather(opts.weather());
   el.dataset.phase = opts.phase();
@@ -1295,7 +1288,6 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
           mode = { kind: 'selected', uid };
           render();
         },
-        focus: (x: number, y: number, dist?: number) => scene.focus(x, y, dist),
       };
   } catch {
     // egal

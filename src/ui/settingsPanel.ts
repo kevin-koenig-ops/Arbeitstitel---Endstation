@@ -127,45 +127,6 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
     h(
       'section',
       { class: 'set-group' },
-      h('h2', null, 'Grafik'),
-      h(
-        'div',
-        { class: 'set-row' },
-        h('div', { class: 'set-label', id: 'lbl-gfx' }, 'Grafikstil', h('small', null, 'Polygon: kantig, mit weichem Licht. Comic: flächige Farben und dunkle Umrisse wie im Zeichentrick. Gemalt: weiche Formen, Pinselstruktur und warmes Licht (Stilprobe).')),
-        segmented('graphics', 'lbl-gfx', [
-          ['poly', 'Polygon'],
-          ['comic', 'Comic'],
-          ['painted', 'Gemalt'],
-        ]),
-      ),
-      h(
-        'div',
-        { class: 'set-row' },
-        h('div', { class: 'set-label', id: 'lbl-models' }, 'Figuren und Kulisse', h('small', null, 'Modellpaket: fertige 3D-Modelle (Quaternius, frei nutzbar) für Figuren, Gegner, Autos und Kram. Eigenbau: unsere selbst gebauten Formen. Stilprobe zum Vergleichen.')),
-        segmented('models', 'lbl-models', [
-          ['pack', 'Modellpaket'],
-          ['own', 'Eigenbau'],
-        ]),
-      ),
-      h(
-        'div',
-        { class: 'set-row' },
-        h(
-          'div',
-          { class: 'set-label', id: 'lbl-houses' },
-          'Häuser auf der Karte',
-          h('small', null, 'Detailreich: echte Grundrisse mit Fenstern, Dächern, Ruinen, dazu Autos und Kram an den Straßen. Stadt-Bausatz: Häuser in der Nähe aus Bauteilen des Quaternius „Downtown City MegaKit“ (Stilprobe). Einfach: schlichte Blöcke, schont alte Handys.'),
-        ),
-        segmented('mapHouses', 'lbl-houses', [
-          ['detail', 'Detailreich'],
-          ['citykit', 'Stadt-Bausatz'],
-          ['simple', 'Einfach'],
-        ]),
-      ),
-    ),
-    h(
-      'section',
-      { class: 'set-group' },
       h('h2', null, 'Zum Ausprobieren'),
       h('p', { class: 'note' }, 'Tageszeit und Wetter erzwingen, um die Stimmungen zu sehen. Ändert nur die Optik, nicht Beute oder Gegner.'),
       h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-phase' }, 'Tageszeit'), phaseSelect),

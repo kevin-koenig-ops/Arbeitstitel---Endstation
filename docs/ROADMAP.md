@@ -11,11 +11,12 @@ Version 1.0 ist fertig, wenn der ganze Kreislauf ohne Lücken läuft: rausgehen,
 12. **Draußen-Test und Fehlerrunde:** eine Woche echt spielen, dann alles Hakelige reparieren. Dazu der Taschenmodus: Bildschirm schwarz, GPS läuft weiter, Vibration bei Fundstellen.
 13. **Feinschliff nach dem Test:** Zahlen für Beute, Kämpfe und Stufen anhand echter Spielrunden nachstellen (das Rechenmodell dafür gibt es schon).
 14. **Drinnen und draußen im Gleichgewicht:** Zu Hause muss es immer etwas zu tun geben, draußen das Besondere. Mehr Startmaterial, „Ums Haus streifen“ ein paarmal am Tag, Ziele auch für zu Hause, das Rechenmodell mit „Stubenhocker“ und „Läufer“. Details im [Konzept](KONZEPT.md).
-15. **Grafik-Stilprobe mit fertigen Modellen (zum Testen da, Entscheidung offen):** Kampf, Endstation (Figur, Möbel, Hindernisse) und Karte mit Quaternius-Paketen (CC0): „Zombie Apocalypse Kit“, „Ultimate House Interior Pack“, „Downtown City MegaKit“. Dazu die Karte als 3D-Welt mit echten Grundrissen, Fenstern, Dächern, Bäumen, Autowracks und Kram an den Straßen, und gemalte Hintergrundbilder. Schalter in den Einstellungen („Figuren und Kulisse“, „Häuser auf der Karte“). Noch offen: Charaktererstellung und Porträts zeigen weiter die eigene Figur; Aussehen der Paket-Figur nur über die Frisur.
+15. **Grafikstil finden:** Kevin sucht eine Referenz für den gewünschten Comic-Look, danach bauen wir genau den. Ausprobiert und wieder entfernt: Comic- und Gemalt-Stil, Quaternius-Modellpakete, 3D-Karte mit Fassaden (liegt in Git, Commit 4cc884c). Gemalte Hintergrundbilder sind drin.
+15b. **Handy-Oberfläche überarbeiten:** Die Bedienung auf dem Handy ist noch nicht gut. Gemeinsam überlegen, was wohin gehört (Karte, Endstation, Kampf, Menüs), dann umbauen.
 16. **Wahrzeichen auf der Karte:** echte Apotheken, Supermärkte, Baumärkte, Tankstellen und Haltestellen als 3D-Gebäude aus dem echten Grundriss plus Modell-Teilen (Schild, vernagelte Fenster, Einkaufswagen). Nur in der Nähe geladen, nie an sensiblen Orten. Kommt nach der Entscheidung zur Stilprobe, damit es gleich im richtigen Stil ist. Details im [Konzept](KONZEPT.md).
 17. **Gemütliche Rituale, erste Fassung:** Samstagabend am Lagerfeuer mit einem Lagerfeuerlied pro Woche, die Leiste „Heute zu Hause“ mit 2 bis 3 Überraschungen am Tag und „Willkommen zurück“ nach einer Pause. Braucht Klang (Punkt 11). Details im [Konzept](KONZEPT.md).
 
-**Entschieden:** Kampf als kurze Taktik mit Karten statt Echtzeit. **Noch offen:** Grafikstil (Polygon, Comic, Gemalt oder 2D mit gemalten Bildern), Endziel (Vorschlag aus der Lore: „Die Linie 0 fährt wieder“, mit deinen Leuten zur Küste).
+**Entschieden:** Kampf als kurze Taktik mit Karten statt Echtzeit. **Noch offen:** Grafikstil (Comic-Look nach Referenz), Endziel (Vorschlag aus der Lore: „Die Linie 0 fährt wieder“, mit deinen Leuten zur Küste).
 
 ## Version 1.1: Karten, Klassen, Dungeons
 
@@ -63,7 +64,7 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 
 ## Version 2.0: Konten und Gemeinschaft
 
-- **Konto** (z. B. Google-Login, Server in der EU): Spielstand auf mehreren Geräten, der Gast-Spielstand wird übernommen. Der Server rechnet mit denselben Spielregeln (`src/core`).
+- **Konto** (z. B. Google-Login): Spielstand auf mehreren Geräten, der Gast-Spielstand wird übernommen. Erste Stufe ohne eigenen Server: Spielstand im versteckten App-Ordner des eigenen Google Drive, bei zwei Geräten gewinnt der neuere Stand (mit Rückfrage). Für Mehrspieler (Raids für alle, Ranglisten) später ein Server in der EU, der mit denselben Spielregeln rechnet (`src/core`).
 - **Spuren anderer Spieler:** Notizen aus vorgegebenen Bausteinen (wie bei Dark Souls, kein freier Text), Vorratskisten, Warnschilder, Verstecke.
 - **Basen besuchen:** nur virtuell über Freundesliste oder Code, nie mit echtem Ort.
 - **Saisons:** alle 8 bis 10 Wochen ein neues Kapitel mit neuer Kreatur und neuem Raid-Boss, alte Saisons bleiben spielbar. Nach dem Endziel öffnet sich „Linie 1“.
@@ -79,7 +80,7 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 ## Technik nebenher
 
 - **Offline-Modus:** Karte der Umgebung zwischenspeichern (Service Worker).
-- **Echte App** für App Store und Play Store (z. B. Capacitor): Schritte und Kilometer im Hintergrund über Apple Health / Health Connect (nur Kilometer, keine Orte), optional Hintergrund-GPS.
+- **Echte App** (Capacitor): zuerst eine Android-APK, die GitHub bei jedem Hochladen baut (zum Selbst-Installieren), später Play Store (einmalig 25 $) und App Store (99 €/Jahr, braucht einen Mac). Schritte und Kilometer im Hintergrund über Apple Health / Health Connect (nur Kilometer, keine Orte), optional Hintergrund-GPS.
 - **Benachrichtigungen:** freundlich und abschaltbar („Dein Eintopf ist fertig“), nie Druck.
 - **Smartwatch-Anzeige.**
 

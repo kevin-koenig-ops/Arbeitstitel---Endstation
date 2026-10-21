@@ -4,9 +4,6 @@
 // Wände vor einem Raum werden abgesenkt, damit man hineinsieht (wie bei Die Sims).
 
 import * as THREE from 'three';
-import { StyledRenderer } from './comic';
-import { graphicsStyle } from './gfxStyle';
-import { grassiness } from './painted';
 import {
   cellIndex,
   cellKey,
@@ -21,15 +18,15 @@ import {
   type PlotIndex,
   type SiteId,
 } from '../core/building';
-import { footprint, FURNITURE as FURNITURE_DEFS, type FurnitureId } from '../core/furniture';
+import { footprint, type FurnitureId } from '../core/furniture';
 import { hashString } from '../core/rng';
 import type { DayPhase } from '../core/sun';
 import type { Character, Plot } from '../core/types';
 import type { WeatherKind } from '../services/weather';
 import { Assembler, GLOW, LIT, placeMatrix, TemplateCache, type Template } from './bake';
-import { furnitureFromPack, makePlayerRig, packFurniture, packObstacle, type PlayerRig } from './modelPack';
+import { CharacterRig } from './character';
 import { buildEnvironment, type Environment } from './environment';
-import { buildFurniture, PAT, type LightSpec } from './models';
+import { buildFurniture, type LightSpec } from './models';
 import { findPath, nearestWalkable, walkable } from './path';
 import { buildFloor, buildObstacle, buildRoof, buildRoofTrim, buildWall, CUT_H, WALL_H } from './structures';
 
@@ -75,13 +72,6 @@ const PLOT_GROUND: Record<SiteId, string[]> = {
   allotment: ['#62763c', '#6a7e40', '#5d6e38', '#667a3c'],
 };
 
-/** Licht im Stil „Gemalt“: wärmer, heller, mit hellem Dunst wie auf einem Gemälde. */
-const PAINTED_PHASES: Record<DayPhase, { hemi: [string, string, number]; sun: [string, number, [number, number, number]]; exposure: number; haze: string }> = {
-  day: { hemi: ['#fff0d6', '#8a7356', 1.55], sun: ['#ffd49a', 2.9, [-0.6, 0.72, 0.42]], exposure: 1.12, haze: '#c9aa84' },
-  dusk: { hemi: ['#f2b88f', '#5a4038', 1.15], sun: ['#ff9452', 2.3, [-0.85, 0.33, 0.3]], exposure: 1.05, haze: '#8f5f4a' },
-  night: { hemi: ['#6a7cb0', '#22252f', 1.05], sun: ['#a9bce6', 0.95, [0.4, 0.8, -0.35]], exposure: 1.2, haze: '#151a26' },
-};
-
 const W = (px: number) => px - HALF;
 const hash = (s: string) => hashString(s);
 
@@ -92,7 +82,6 @@ function edgeWorld(e: EdgeKey): { x: number; z: number; ry: number } {
 
 export class BaseScene {
   readonly renderer: THREE.WebGLRenderer;
-  private styled: StyledRenderer;
   private scene = new THREE.Scene();
   private haze = new THREE.Fog('#000000', 30, 90);
   private camera = new THREE.PerspectiveCamera(34, 1, 0.5, 500);
@@ -113,9 +102,8 @@ export class BaseScene {
   private env: Environment | null = null;
   private envSite: SiteId | null = null;
   private roomAt: Int16Array = new Int16Array(PLOT * PLOT).fill(-1);
-  private layers: Record<'ground' | 'growth' | 'tufts' | 'obstacles' | 'floors' | 'walls' | 'roofs' | 'items', THREE.Object3D> = {
+  private layers: Record<'ground' | 'growth' | 'obstacles' | 'floors' | 'walls' | 'roofs' | 'items', THREE.Object3D> = {
     ground: new THREE.Group(),
-    tufts: new THREE.Group(),
     growth: new THREE.Group(),
     obstacles: new THREE.Group(),
     floors: new THREE.Group(),
@@ -149,8 +137,7 @@ export class BaseScene {
   private sectionMarks: THREE.InstancedMesh;
 
   // Figur
-  private rig: PlayerRig | null = null;
-  private look: Character['look'] | null = null;
+  private rig: CharacterRig | null = null;
   private lookKey = '';
   private charPos = new THREE.Vector2(HALF, HALF);
   private charHeading = 0;
@@ -188,7 +175,6 @@ export class BaseScene {
 
   constructor(private host: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    this.styled = new StyledRenderer(this.renderer, 1.2);
     this.renderer.setPixelRatio(Math.min(1.75, window.devicePixelRatio || 1));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -272,13 +258,6 @@ export class BaseScene {
       this.sig.floors = floors;
       this.rebuildFloors();
     }
-    if (graphicsStyle() === 'painted') {
-      const tufts = sections + obs + floors + d.plot.items.map((i) => `${i.kind}${i.x},${i.y},${i.rot}`).join(';');
-      if (this.sig.tufts !== tufts) {
-        this.sig.tufts = tufts;
-        this.rebuildTufts();
-      }
-    }
     this.rebuildWalls();
     this.rebuildRoofs();
     this.rebuildItems();
@@ -293,8 +272,7 @@ export class BaseScene {
       this.scene.remove(this.rig.root);
       this.rig.dispose();
     }
-    this.look = look;
-    this.rig = makePlayerRig(look);
+    this.rig = new CharacterRig(look);
     this.scene.add(this.rig.root);
     this.charLight.position.set(0.25, 1.5, 0.3);
     this.rig.root.add(this.charLight);
@@ -351,17 +329,11 @@ export class BaseScene {
     const col: number[] = [];
     const c = new THREE.Color();
     const wild = new THREE.Color('#3a4426');
-    // Gemalt: keine Kacheln, der Boden bekommt seine Struktur im Shader
-    const painted = graphicsStyle() === 'painted';
-    const avg = new THREE.Color(0, 0, 0);
-    for (const s of pal) avg.add(new THREE.Color(s));
-    avg.multiplyScalar(1 / pal.length);
     for (let y = 0; y < PLOT; y++)
       for (let x = 0; x < PLOT; x++) {
         const open = d.idx.unlocked[cellIndex(x, y)] === 1;
         const h = hash(`${x},${y}`);
-        if (painted) c.copy(avg);
-        else c.set(pal[h % pal.length]);
+        c.set(pal[h % pal.length]);
         if (!open) c.lerp(wild, 0.55).multiplyScalar(0.8);
         // Jedes Feld in 2 × 2 Stücke mit je zwei Dreiecken, leicht unterschiedlich getönt
         const x0 = W(x);
@@ -374,7 +346,7 @@ export class BaseScene {
             [qx + 0.5, qz, qx, qz + 0.5, qx + 0.5, qz + 0.5],
           ];
           tris.forEach((t, k) => {
-            const f = painted ? 1 : 0.97 + (((h >> (q * 2 + k)) & 3) / 3) * 0.06;
+            const f = 0.97 + (((h >> (q * 2 + k)) & 3) / 3) * 0.06;
             for (let i = 0; i < 6; i += 2) {
               pos.push(t[i], 0, t[i + 1]);
               col.push(c.r * f, c.g * f, c.b * f);
@@ -385,7 +357,6 @@ export class BaseScene {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-    g.setAttribute('pat', new THREE.Float32BufferAttribute(new Float32Array(pos.length / 3).fill(PAT.ground), 1));
     g.computeVertexNormals();
     const ground = new THREE.Mesh(g, LIT);
     ground.receiveShadow = true;
@@ -400,14 +371,10 @@ export class BaseScene {
     const perBush = Math.round(15 * area);
     const perGrass = Math.round(16 * area);
     const perJunk = Math.round((d.site === 'depot' || d.site === 'fuel' ? 6 : 3) * area);
-    const mk = (geo: THREE.BufferGeometry, n: number, pat: number) => {
-      const m = new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.95 });
-      m.userData.pat = pat;
-      return new THREE.InstancedMesh(geo, m, Math.max(1, locked.length * n));
-    };
-    const bushes = mk(new THREE.IcosahedronGeometry(1, 1), perBush, PAT.leaf);
-    const grass = mk(new THREE.ConeGeometry(0.12, 1, 5), perGrass, PAT.leaf);
-    const junk = mk(new THREE.BoxGeometry(1, 1, 1), perJunk, PAT.stone);
+    const mk = (geo: THREE.BufferGeometry, n: number) => new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.95 }), Math.max(1, locked.length * n));
+    const bushes = mk(new THREE.IcosahedronGeometry(1, 1), perBush);
+    const grass = mk(new THREE.ConeGeometry(0.12, 1, 5), perGrass);
+    const junk = mk(new THREE.BoxGeometry(1, 1, 1), perJunk);
     const greens = ['#3f5a34', '#4f6b3a', '#5d6b3a', '#46603a', '#6b6a3a', '#56603a'].map((s) => new THREE.Color(s));
     const dry = ['#7a7a44', '#8a8450', '#6b6a3a', '#8f8a5a'].map((s) => new THREE.Color(s));
     const urban = d.site === 'depot' || d.site === 'fuel';
@@ -494,11 +461,7 @@ export class BaseScene {
     const glow = new Assembler();
     for (const o of d.idx.obstacles) {
       const variant = hash(o.id) % 4;
-      const pack = furnitureFromPack();
-      const t = this.cache.get(`o:${o.kind}:${d.site}:${variant}${pack ? ':pack' : ''}`, () => {
-        const def = OBSTACLES[o.kind];
-        return (pack ? packObstacle(o.kind, variant, def.w, def.d) : null) ?? buildObstacle(o.kind, d.site, variant);
-      });
+      const t = this.cache.get(`o:${o.kind}:${d.site}:${variant}`, () => buildObstacle(o.kind, d.site, variant));
       const turned = o.w !== OBSTACLES[o.kind].w;
       const ry = (turned ? Math.PI / 2 : 0) + (o.w === o.d ? (variant % 4) * (Math.PI / 2) : 0);
       const mm = placeMatrix(W(o.x + o.w / 2), 0, W(o.y + o.d / 2), ry);
@@ -507,67 +470,6 @@ export class BaseScene {
       this.obstacleBoxes.push({ id: o.id, box: t.box.clone().applyMatrix4(mm) });
     }
     this.addMeshes(this.layers.obstacles, lit, glow);
-  }
-
-  /** Stil „Gemalt“: Grasbüschel und ein paar Blüten auf freiem Boden, dichter in den Grasflecken. */
-  private rebuildTufts() {
-    const d = this.data!;
-    this.clearLayer(this.layers.tufts);
-    const blocked = new Uint8Array(PLOT * PLOT);
-    const block = (x: number, y: number, w: number, h: number) => {
-      for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) if (x + dx >= 0 && y + dy >= 0 && x + dx < PLOT && y + dy < PLOT) blocked[cellIndex(x + dx, y + dy)] = 1;
-    };
-    for (const k of Object.keys(d.plot.floors)) {
-      const [x, y] = k.split(',').map(Number);
-      block(x, y, 1, 1);
-    }
-    for (const o of d.idx.obstacles) block(o.x, o.y, o.w, o.d);
-    for (const it of d.plot.items) {
-      const f = footprint(it.kind, it.rot);
-      block(it.x, it.y, f.w, f.d);
-    }
-    const spots: { x: number; z: number; s: number; flower: number }[] = [];
-    for (let y = 0; y < PLOT; y++)
-      for (let x = 0; x < PLOT; x++) {
-        const ci = cellIndex(x, y);
-        if (d.idx.unlocked[ci] !== 1 || blocked[ci]) continue;
-        const h = hash(`t${x},${y}`);
-        const g = grassiness(W(x + 0.5), W(y + 0.5));
-        const n = g > 0.7 ? 3 : g > 0.45 ? 1 : 0;
-        for (let i = 0; i < n; i++) {
-          const r1 = ((h >>> (i * 4)) & 15) / 15;
-          const r2 = ((h >>> (i * 4 + 2)) & 15) / 15;
-          spots.push({ x: W(x + 0.1 + r1 * 0.8), z: W(y + 0.1 + r2 * 0.8), s: 0.08 + ((h >>> (i + 3)) & 7) * 0.01, flower: (h >>> (i * 3 + 7)) % 9 });
-        }
-      }
-    if (!spots.length) return;
-    const leaf = new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.95 });
-    leaf.userData.pat = PAT.leaf;
-    const tufts = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), leaf, spots.length);
-    const flowers = spots.filter((p) => p.flower < 2);
-    const bloom = new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.8 });
-    const blooms = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), bloom, Math.max(1, flowers.length));
-    const greens = ['#3a5226', '#44602a', '#4e6a2c', '#3f5a24'].map((c) => new THREE.Color(c));
-    const petals = ['#e8d36a', '#ece6da', '#c9a6e0'].map((c) => new THREE.Color(c));
-    const m = new THREE.Matrix4();
-    const q = new THREE.Quaternion();
-    spots.forEach((p, i) => {
-      m.compose(new THREE.Vector3(p.x, p.s * 0.2, p.z), q, new THREE.Vector3(p.s * 1.4, p.s * 0.6, p.s * 1.4));
-      tufts.setMatrixAt(i, m);
-      tufts.setColorAt(i, greens[i % greens.length]);
-    });
-    flowers.forEach((p, i) => {
-      m.compose(new THREE.Vector3(p.x + p.s * 0.4, p.s * 0.6, p.z), q, new THREE.Vector3(0.045, 0.035, 0.045));
-      blooms.setMatrixAt(i, m);
-      blooms.setColorAt(i, petals[i % petals.length]);
-    });
-    blooms.count = flowers.length;
-    for (const im of [tufts, blooms]) {
-      im.receiveShadow = true;
-      im.instanceMatrix.needsUpdate = true;
-      if (im.instanceColor) im.instanceColor.needsUpdate = true;
-      this.layers.tufts.add(im);
-    }
   }
 
   private rebuildFloors() {
@@ -656,32 +558,11 @@ export class BaseScene {
   }
 
   private furnitureTemplate(kind: FurnitureId): Template {
-    const pack = furnitureFromPack();
-    return this.cache.get(`f:${kind}${pack ? ':pack' : ''}`, () => {
+    return this.cache.get(`f:${kind}`, () => {
       const m = buildFurniture(kind);
       this.lightSpecs.set(kind, m.light);
-      // Modellpaket (Stilprobe): fertiges Möbelstück, Licht und Flammen wie beim eigenen
-      const def = FURNITURE_DEFS[kind];
-      const model = pack ? packFurniture(kind, def.w, def.d) : null;
-      if (!model) return m.group;
-      m.group.traverse((o) => {
-        const mesh = o as THREE.Mesh;
-        if (mesh.isMesh && mesh.name === 'flame') model.add(mesh.clone());
-      });
-      return model;
+      return m.group;
     });
-  }
-
-  /** Modellpaket geladen oder umgestellt: Figur, Möbel und Hindernisse neu aufbauen. */
-  refreshModels() {
-    if (this.look) {
-      const pos = this.rig?.root.position.clone();
-      this.lookKey = '';
-      this.setLook(this.look);
-      if (pos) this.rig?.root.position.copy(pos);
-    }
-    this.sig = {};
-    if (this.data) this.setData(this.data);
   }
 
   private itemMatrix(kind: FurnitureId, x: number, y: number, rot: number): THREE.Matrix4 {
@@ -763,7 +644,7 @@ export class BaseScene {
   }
 
   private applyAtmosphere() {
-    const p = graphicsStyle() === 'painted' ? { ...PHASES[this.phase], ...PAINTED_PHASES[this.phase] } : PHASES[this.phase];
+    const p = PHASES[this.phase];
     const w = this.weather;
     const sunF = { clear: 1, cloudy: 0.55, fog: 0.4, rain: 0.35, snow: 0.6, storm: 0.25 }[w];
     const hemiF = { clear: 1, cloudy: 0.95, fog: 1, rain: 0.85, snow: 1.08, storm: 0.75 }[w];
@@ -849,7 +730,7 @@ export class BaseScene {
         const pos = (g.getAttribute('position').array as Float32Array).slice();
         const nrm = new Float32Array(pos.length);
         for (let i = 1; i < nrm.length; i += 3) nrm[i] = 1;
-        a.add({ pos, col: new Float32Array(pos.length).fill(1), nrm, pat: new Float32Array(pos.length / 3) }, f.matrix);
+        a.add({ pos, col: new Float32Array(pos.length).fill(1), nrm }, f.matrix);
       }
       this.ghost = new THREE.Mesh(a.geometry(), this.ghostMats.ok);
       this.ghost.renderOrder = 4;
@@ -1370,7 +1251,7 @@ export class BaseScene {
     this.updateLights(t);
     this.updateWeather(dt);
     if (this.sectionMarks.count) (this.sectionMarks.material as THREE.MeshBasicMaterial).opacity = 0.32 + 0.14 * Math.sin(t * 3);
-    this.styled.render(this.scene, this.camera);
+    this.renderer.render(this.scene, this.camera);
   }
 
   dispose() {
@@ -1380,7 +1261,6 @@ export class BaseScene {
     this.env?.dispose();
     this.rig?.dispose();
     this.precip?.obj.geometry.dispose();
-    this.styled.dispose();
     this.renderer.dispose();
     this.renderer.forceContextLoss();
     this.renderer.domElement.remove();
@@ -1400,7 +1280,6 @@ export function renderThumbnails(jobs: ThumbJob[], size = 112): Record<string, s
   r.setSize(size, size);
   r.toneMapping = THREE.ACESFilmicToneMapping;
   r.outputColorSpace = THREE.SRGBColorSpace;
-  const styled = new StyledRenderer(r, 1.4, false);
   const scene = new THREE.Scene();
   scene.add(new THREE.HemisphereLight('#fff1d8', '#4b4538', 1.4));
   const d = new THREE.DirectionalLight('#ffe0b0', 2.4);
@@ -1416,7 +1295,7 @@ export function renderThumbnails(jobs: ThumbJob[], size = 112): Record<string, s
     const s = bb.getSize(new THREE.Vector3()).length();
     cam.position.set(c.x + s * 1.25, c.y + s * 1.05, c.z + s * 1.6);
     cam.lookAt(c);
-    styled.render(scene, cam);
+    r.render(scene, cam);
     out[job.key] = r.domElement.toDataURL('image/png');
     scene.remove(g);
     g.traverse((o) => {
@@ -1424,7 +1303,6 @@ export function renderThumbnails(jobs: ThumbJob[], size = 112): Record<string, s
       if (m.isMesh) m.geometry.dispose();
     });
   }
-  styled.dispose();
   r.dispose();
   r.forceContextLoss();
   return out;
