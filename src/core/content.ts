@@ -1,18 +1,37 @@
 // Spielinhalte als reine Daten. Neue Fundorte, Gegenstände oder Ausbauten
 // kommen hier dazu, ohne dass sich die Logik ändern muss.
 
-import type { BackgroundId, EnemyId, Inventory, ModuleId, Quality, Resource, SpotKind, Weapon, WeaponId } from './types';
+import type { BackgroundId, EnemyId, Inventory, JunkId, Material, ModuleId, Quality, Resource, SpotKind, Survival, Weapon, WeaponId } from './types';
 
-export const RESOURCE_ORDER: Resource[] = ['food', 'water', 'medicine', 'material'];
+export const SURVIVAL_ORDER: Survival[] = ['food', 'water', 'medicine'];
+/** Rohstoffe, grob von häufig nach selten. */
+export const MATERIAL_ORDER: Material[] = ['wood', 'metal', 'stone', 'cloth', 'plastic', 'glass', 'glue', 'screws', 'electronics'];
+export const RESOURCE_ORDER: Resource[] = [...SURVIVAL_ORDER, ...MATERIAL_ORDER];
 
-export const RESOURCES: Record<Resource, { name: string }> = {
+export function isMaterial(r: Resource): r is Material {
+  return (MATERIAL_ORDER as Resource[]).includes(r);
+}
+
+export const RESOURCES: Record<Resource, { name: string; where?: string }> = {
   food: { name: 'Nahrung' },
   water: { name: 'Wasser' },
   medicine: { name: 'Medizin' },
-  material: { name: 'Material' },
+  wood: { name: 'Holz', where: 'Schuppen, Bäume, Baumarkt' },
+  metal: { name: 'Metall', where: 'Autos, Schrott, Werkzeug' },
+  stone: { name: 'Stein', where: 'Schutt und Felsen in der Endstation' },
+  cloth: { name: 'Stoff', where: 'Rucksäcke, Kleidercontainer, Teddys' },
+  plastic: { name: 'Kunststoff', where: 'Fast überall, besonders Pakete' },
+  glass: { name: 'Glas', where: 'Flaschen, Spiegel, Fernseher' },
+  glue: { name: 'Kleber', where: 'Baumarkt, Klebeband, Pakete' },
+  screws: { name: 'Schrauben', where: 'Werkzeugkästen, Schuppen, Autos' },
+  electronics: { name: 'Elektronik', where: 'Radios, Batterien, Fernseher' },
 };
 
-export const START_INVENTORY: Inventory = { food: 2, water: 2, medicine: 0, material: 3 };
+export function emptyInventory(): Inventory {
+  return Object.fromEntries(RESOURCE_ORDER.map((r) => [r, 0])) as Inventory;
+}
+
+export const START_INVENTORY: Inventory = { ...emptyInventory(), food: 2, water: 2, wood: 3, metal: 2 };
 
 /** Basis-Suchradius in Metern. GPS ist draußen meist auf 5–20 m genau. */
 export const BASE_SEARCH_RANGE_M = 45;
@@ -32,6 +51,9 @@ export interface SpotKindDef {
   hint: string;
   cooldownMin: number;
   loot: LootRule[];
+  /** Chance auf ein Fundstück und welche es hier gibt (mit Gewicht). */
+  junkChance: number;
+  junk: readonly (readonly [JunkId, number])[];
   mementoChance: number;
 }
 
@@ -39,61 +61,89 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
   // --- überall verteilt (Grid) ---
   car: {
     names: ['Verlassenes Auto', 'Ausgebrannter Kombi', 'Liegengebliebener Lieferwagen', 'Auto mit offener Tür'],
-    hint: 'Kofferraum, Handschuhfach, Werkzeug',
+    hint: 'Metall, Kunststoff, Werkzeug im Kofferraum',
     cooldownMin: 60,
     loot: [
-      { res: 'material', min: 1, max: 3, chance: 1 },
+      { res: 'metal', min: 1, max: 2, chance: 1 },
+      { res: 'plastic', min: 1, max: 1, chance: 0.5 },
+      { res: 'glass', min: 1, max: 1, chance: 0.3 },
+      { res: 'screws', min: 1, max: 1, chance: 0.25 },
       { res: 'water', min: 1, max: 1, chance: 0.4 },
       { res: 'food', min: 1, max: 1, chance: 0.25 },
     ],
+    junkChance: 0.35,
+    junk: [['carBattery', 3], ['gasCan', 3], ['trafficCone', 2], ['toolbox', 2], ['radio', 2], ['tape', 1], ['teddy', 1], ['guitar', 1]],
     mementoChance: 0.06,
   },
   backpack: {
     names: ['Zurückgelassener Rucksack', 'Reisetasche am Wegrand', 'Verlorener Schulranzen'],
-    hint: 'Proviant, Wasser, manchmal Verbandszeug',
+    hint: 'Proviant, Wasser, Stoff, manchmal Verbandszeug',
     cooldownMin: 60,
     loot: [
       { res: 'food', min: 1, max: 2, chance: 0.7 },
       { res: 'water', min: 1, max: 2, chance: 0.6 },
+      { res: 'cloth', min: 1, max: 1, chance: 0.5 },
       { res: 'medicine', min: 1, max: 1, chance: 0.3 },
+      { res: 'plastic', min: 1, max: 1, chance: 0.3 },
     ],
+    junkChance: 0.35,
+    junk: [['teddy', 3], ['sneakers', 3], ['rubberDuck', 2], ['radio', 1]],
     mementoChance: 0.1,
   },
   shed: {
     names: ['Gartenlaube', 'Geräteschuppen', 'Schrebergarten'],
-    hint: 'Eingemachtes, Werkzeug, Bretter',
+    hint: 'Eingemachtes, Holz, Werkzeug, Schrauben',
     cooldownMin: 60,
     loot: [
+      { res: 'wood', min: 1, max: 2, chance: 0.85 },
       { res: 'food', min: 1, max: 2, chance: 0.6 },
-      { res: 'material', min: 1, max: 2, chance: 0.7 },
+      { res: 'metal', min: 1, max: 1, chance: 0.4 },
+      { res: 'screws', min: 1, max: 1, chance: 0.3 },
+      { res: 'glue', min: 1, max: 1, chance: 0.2 },
     ],
+    junkChance: 0.3,
+    junk: [['toolbox', 2], ['wallClock', 2], ['vase', 2], ['bike', 1], ['sewingMachine', 1], ['phone', 1]],
     mementoChance: 0.06,
   },
   container: {
     names: ['Altkleidercontainer', 'Umgekippter Müllcontainer', 'Bauschuttmulde'],
-    hint: 'Stoff, Schrott, mit Glück Verbandszeug',
+    hint: 'Stoff, Kunststoff, Schrott, mit Glück Verbandszeug',
     cooldownMin: 60,
     loot: [
-      { res: 'material', min: 1, max: 2, chance: 0.8 },
-      { res: 'medicine', min: 1, max: 1, chance: 0.35 },
+      { res: 'cloth', min: 1, max: 2, chance: 0.7 },
+      { res: 'plastic', min: 1, max: 1, chance: 0.6 },
+      { res: 'metal', min: 1, max: 1, chance: 0.4 },
+      { res: 'stone', min: 1, max: 2, chance: 0.3 },
+      { res: 'medicine', min: 1, max: 1, chance: 0.3 },
     ],
+    junkChance: 0.4,
+    junk: [['sneakers', 2], ['teddy', 2], ['toaster', 2], ['mirror', 2], ['bottles', 2], ['tv', 1], ['typewriter', 1], ['phone', 1], ['painting', 1], ['globe', 1]],
     mementoChance: 0.05,
   },
   hide: {
     names: ['Hochsitz', 'Jagdhütte', 'Alter Unterstand'],
-    hint: 'Dosen, Wasserflaschen',
+    hint: 'Dosen, Wasserflaschen, Bretter',
     cooldownMin: 60,
     loot: [
       { res: 'food', min: 1, max: 2, chance: 0.6 },
       { res: 'water', min: 1, max: 1, chance: 0.5 },
+      { res: 'wood', min: 1, max: 2, chance: 0.6 },
+      { res: 'cloth', min: 1, max: 1, chance: 0.3 },
     ],
+    junkChance: 0.25,
+    junk: [['radio', 2], ['bottles', 2], ['guitar', 1]],
     mementoChance: 0.08,
   },
   barrel: {
     names: ['Regentonne', 'Wassertank', 'Volle Zisterne'],
     hint: 'Wasser, abgekocht trinkbar',
     cooldownMin: 60,
-    loot: [{ res: 'water', min: 2, max: 3, chance: 1 }],
+    loot: [
+      { res: 'water', min: 2, max: 3, chance: 1 },
+      { res: 'metal', min: 1, max: 1, chance: 0.3 },
+    ],
+    junkChance: 0.08,
+    junk: [['bottles', 1]],
     mementoChance: 0.02,
   },
   parcel: {
@@ -102,21 +152,30 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     cooldownMin: 90,
     loot: [
       { res: 'food', min: 1, max: 3, chance: 0.6 },
+      { res: 'plastic', min: 1, max: 2, chance: 0.6 },
       { res: 'medicine', min: 1, max: 2, chance: 0.45 },
-      { res: 'material', min: 2, max: 3, chance: 0.6 },
+      { res: 'electronics', min: 1, max: 1, chance: 0.35 },
+      { res: 'glue', min: 1, max: 1, chance: 0.35 },
+      { res: 'cloth', min: 1, max: 1, chance: 0.3 },
     ],
+    junkChance: 0.55,
+    junk: [['radio', 2], ['globe', 2], ['tv', 1], ['typewriter', 1], ['painting', 1], ['teddy', 1], ['rubberDuck', 1], ['sewingMachine', 1], ['tape', 1], ['mirror', 1], ['guitar', 1], ['toaster', 1], ['wallClock', 1]],
     mementoChance: 0.18,
   },
   // --- echte Orte aus der Karte (POI) ---
   market: {
     names: ['Geplünderter Supermarkt', 'Dorfladen', 'Bäckerei mit Vorratskeller'],
-    hint: 'Viel Nahrung und Wasser',
+    hint: 'Viel Nahrung und Wasser, dazu Kunststoff und Glas',
     cooldownMin: 180,
     loot: [
       { res: 'food', min: 3, max: 5, chance: 1 },
       { res: 'water', min: 2, max: 4, chance: 0.9 },
+      { res: 'plastic', min: 1, max: 2, chance: 0.5 },
+      { res: 'glass', min: 1, max: 1, chance: 0.4 },
       { res: 'medicine', min: 1, max: 1, chance: 0.2 },
     ],
+    junkChance: 0.25,
+    junk: [['bottles', 3], ['toaster', 1], ['vase', 1], ['rubberDuck', 1]],
     mementoChance: 0.12,
   },
   pharmacy: {
@@ -126,17 +185,28 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     loot: [
       { res: 'medicine', min: 2, max: 4, chance: 1 },
       { res: 'water', min: 1, max: 1, chance: 0.5 },
+      { res: 'plastic', min: 1, max: 1, chance: 0.5 },
+      { res: 'glass', min: 1, max: 1, chance: 0.4 },
     ],
+    junkChance: 0.15,
+    junk: [['bottles', 1]],
     mementoChance: 0.12,
   },
   hardware: {
     names: ['Baumarkt', 'Kfz-Werkstatt', 'Gartencenter'],
-    hint: 'Jede Menge Material',
+    hint: 'Holz, Metall, Schrauben, Kleber. Hier gibt es alles zum Bauen.',
     cooldownMin: 180,
     loot: [
-      { res: 'material', min: 4, max: 7, chance: 1 },
+      { res: 'wood', min: 2, max: 4, chance: 1 },
+      { res: 'metal', min: 2, max: 3, chance: 0.9 },
+      { res: 'screws', min: 1, max: 2, chance: 0.7 },
+      { res: 'glue', min: 1, max: 2, chance: 0.6 },
+      { res: 'stone', min: 1, max: 2, chance: 0.4 },
+      { res: 'glass', min: 1, max: 1, chance: 0.3 },
       { res: 'water', min: 1, max: 2, chance: 0.3 },
     ],
+    junkChance: 0.3,
+    junk: [['toolbox', 3], ['tape', 3], ['carBattery', 1], ['gasCan', 1], ['trafficCone', 1]],
     mementoChance: 0.1,
   },
   fuel: {
@@ -146,15 +216,24 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     loot: [
       { res: 'food', min: 1, max: 2, chance: 0.9 },
       { res: 'water', min: 1, max: 2, chance: 0.9 },
-      { res: 'material', min: 1, max: 3, chance: 0.7 },
+      { res: 'plastic', min: 1, max: 2, chance: 0.6 },
+      { res: 'metal', min: 1, max: 1, chance: 0.5 },
+      { res: 'electronics', min: 1, max: 1, chance: 0.2 },
     ],
+    junkChance: 0.35,
+    junk: [['gasCan', 3], ['carBattery', 2], ['bottles', 2], ['radio', 1], ['trafficCone', 1], ['toolbox', 1]],
     mementoChance: 0.1,
   },
   well: {
     names: ['Trinkbrunnen', 'Alte Wasserpumpe', 'Dorfbrunnen'],
     hint: 'Sauberes Wasser',
     cooldownMin: 120,
-    loot: [{ res: 'water', min: 3, max: 5, chance: 1 }],
+    loot: [
+      { res: 'water', min: 3, max: 5, chance: 1 },
+      { res: 'stone', min: 1, max: 1, chance: 0.3 },
+    ],
+    junkChance: 0.05,
+    junk: [['bottles', 1]],
     mementoChance: 0.04,
   },
   stop: {
@@ -164,11 +243,78 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     loot: [
       { res: 'food', min: 1, max: 1, chance: 0.5 },
       { res: 'water', min: 1, max: 1, chance: 0.5 },
-      { res: 'material', min: 1, max: 2, chance: 0.7 },
+      { res: 'metal', min: 1, max: 1, chance: 0.5 },
+      { res: 'plastic', min: 1, max: 1, chance: 0.4 },
+      { res: 'glass', min: 1, max: 1, chance: 0.3 },
     ],
+    junkChance: 0.3,
+    junk: [['phone', 2], ['trafficCone', 2], ['wallClock', 1], ['bike', 1], ['teddy', 1], ['sneakers', 1]],
     mementoChance: 0.2,
   },
 };
+
+/** Bewachte Fundstellen haben eher ein Fundstück. */
+export const GUARD_JUNK_BONUS = 0.2;
+
+// --- Fundstücke -------------------------------------------------------------------
+
+export interface JunkDef {
+  name: string;
+  desc: string;
+  /** Was beim Zerlegen herauskommt. */
+  parts: Partial<Record<Material, number>>;
+  /** Minuten am Werktisch auf Stufe 1. */
+  minutes: number;
+  /** Als Deko: Grundfläche, Ebene (Boden oder Wand) und Gemütlichkeit. */
+  w: number;
+  d: number;
+  layer: 'object' | 'wall';
+  comfort: number;
+}
+
+export const JUNK: Record<JunkId, JunkDef> = {
+  teddy: { name: 'Teddybär', desc: 'Ein Ohr fehlt. Hat sicher jemanden getröstet.', parts: { cloth: 2, plastic: 1 }, minutes: 3, w: 1, d: 1, layer: 'object', comfort: 4 },
+  wallClock: { name: 'Wanduhr', desc: 'Tickt nicht mehr. Zeigt trotzdem eine schöne Zeit.', parts: { wood: 1, glass: 1, screws: 1 }, minutes: 5, w: 1, d: 1, layer: 'wall', comfort: 3 },
+  radio: { name: 'Kofferradio', desc: 'Rauscht nur noch. Oder?', parts: { plastic: 2, electronics: 1, screws: 1 }, minutes: 6, w: 1, d: 1, layer: 'object', comfort: 3 },
+  toaster: { name: 'Toaster', desc: 'Zwei Schlitze, null Toast.', parts: { metal: 2, electronics: 1 }, minutes: 4, w: 1, d: 1, layer: 'object', comfort: 1 },
+  tv: { name: 'Röhrenfernseher', desc: 'Schwer wie ein Kühlschrank. Bild gibt es keins mehr.', parts: { glass: 2, electronics: 2, plastic: 1, screws: 1 }, minutes: 12, w: 1, d: 1, layer: 'object', comfort: 3 },
+  phone: { name: 'Wählscheibentelefon', desc: 'Niemand ruft mehr an. Hoffen kann man trotzdem.', parts: { plastic: 2, electronics: 1 }, minutes: 4, w: 1, d: 1, layer: 'object', comfort: 2 },
+  typewriter: { name: 'Schreibmaschine', desc: 'Das Farbband ist trocken. Die Tasten klappern noch.', parts: { metal: 3, screws: 2 }, minutes: 8, w: 1, d: 1, layer: 'object', comfort: 3 },
+  guitar: { name: 'Gitarre', desc: 'Zwei Saiten fehlen. Für Lagerfeuerlieder reicht es.', parts: { wood: 2, metal: 1, glue: 1 }, minutes: 6, w: 1, d: 1, layer: 'object', comfort: 5 },
+  globe: { name: 'Globus', desc: 'Die Grenzen darauf gibt es nicht mehr.', parts: { plastic: 1, metal: 1, glue: 1 }, minutes: 4, w: 1, d: 1, layer: 'object', comfort: 3 },
+  vase: { name: 'Blumenvase', desc: 'Ohne Blumen. Noch.', parts: { glass: 2 }, minutes: 2, w: 1, d: 1, layer: 'object', comfort: 2 },
+  mirror: { name: 'Spiegel', desc: 'Ein paar Sprünge. Du siehst müde aus.', parts: { glass: 2, wood: 1 }, minutes: 4, w: 1, d: 1, layer: 'wall', comfort: 2 },
+  toolbox: { name: 'Werkzeugkasten', desc: 'Schraubenschlüssel in allen Größen, nur nicht in der richtigen.', parts: { metal: 2, screws: 3 }, minutes: 6, w: 1, d: 1, layer: 'object', comfort: 1 },
+  bike: { name: 'Fahrrad', desc: 'Platten vorne, Platten hinten.', parts: { metal: 3, plastic: 1, screws: 1 }, minutes: 10, w: 2, d: 1, layer: 'object', comfort: 2 },
+  rubberDuck: { name: 'Quietscheente', desc: 'Quietscht noch. Wunderbar sinnlos.', parts: { plastic: 1 }, minutes: 1, w: 1, d: 1, layer: 'object', comfort: 2 },
+  painting: { name: 'Ölgemälde', desc: 'Eine Landschaft mit Kühen. Irgendwer fand das schön.', parts: { wood: 1, cloth: 1, glue: 1 }, minutes: 5, w: 1, d: 1, layer: 'wall', comfort: 4 },
+  sewingMachine: { name: 'Nähmaschine', desc: 'Mit Fußpedal. Läuft ganz ohne Strom.', parts: { metal: 2, screws: 2, wood: 1 }, minutes: 8, w: 1, d: 1, layer: 'object', comfort: 3 },
+  trafficCone: { name: 'Leitkegel', desc: 'Orange. Sehr orange.', parts: { plastic: 2 }, minutes: 1, w: 1, d: 1, layer: 'object', comfort: 1 },
+  bottles: { name: 'Flaschenkiste', desc: 'Leergut. Pfand gibt es keins mehr.', parts: { glass: 3, plastic: 1 }, minutes: 3, w: 1, d: 1, layer: 'object', comfort: 1 },
+  carBattery: { name: 'Autobatterie', desc: 'Schwer und noch ein kleines bisschen geladen.', parts: { electronics: 2, metal: 1, plastic: 1 }, minutes: 6, w: 1, d: 1, layer: 'object', comfort: 0 },
+  gasCan: { name: 'Benzinkanister', desc: 'Leer. Riecht aber noch.', parts: { plastic: 2 }, minutes: 2, w: 1, d: 1, layer: 'object', comfort: 0 },
+  tape: { name: 'Klebebandrollen', desc: 'Hält die Welt zusammen.', parts: { glue: 2, plastic: 1 }, minutes: 2, w: 1, d: 1, layer: 'object', comfort: 0 },
+  sneakers: { name: 'Turnschuhe', desc: 'Kaum getragen. Leider zwei linke.', parts: { cloth: 1, plastic: 1 }, minutes: 2, w: 1, d: 1, layer: 'object', comfort: 1 },
+};
+export const JUNK_ORDER = Object.keys(JUNK) as JunkId[];
+
+// --- Werktisch -----------------------------------------------------------------------
+
+export interface WorkbenchLevel {
+  /** Wie viele Fundstücke gleichzeitig auf dem Tisch liegen dürfen (auch fertige). */
+  slots: number;
+  /** Faktor auf die Zerlegezeit. */
+  speed: number;
+  /** Kosten für diese Stufe (Stufe 1 ist der Werktisch selbst). */
+  cost: Partial<Inventory>;
+  name: string;
+}
+
+export const WORKBENCH_LEVELS: WorkbenchLevel[] = [
+  { name: 'Werktisch', slots: 3, speed: 1, cost: {} },
+  { name: 'Werktisch mit Schraubstock', slots: 5, speed: 0.75, cost: { wood: 4, metal: 4, screws: 3, glue: 2 } },
+  { name: 'Werkstatt mit Akkuschrauber', slots: 8, speed: 0.5, cost: { metal: 6, screws: 5, glue: 3, electronics: 3 } },
+];
 
 /** Wie häufig welche Grid-Fundstelle vorkommt. */
 export const GRID_KIND_WEIGHTS: readonly (readonly [SpotKind, number])[] = [
@@ -244,9 +390,9 @@ export const BACKGROUNDS: Record<BackgroundId, BackgroundDef> = {
   },
   workshop: {
     name: 'Werkstatt',
-    perk: 'Findet öfter Material',
+    perk: 'Findet öfter Metall',
     story: 'In deiner Werkstatt lief jeder Motor wieder. Fast jeder.',
-    bonusRes: 'material',
+    bonusRes: 'metal',
   },
   farm: {
     name: 'Hof & Wald',
@@ -286,33 +432,33 @@ export const MODULES: Record<ModuleId, ModuleDef> = {
   rainBarrel: {
     name: 'Regenfass',
     desc: 'Sammelt Regenwasser: 1 Wasser alle 3 Stunden, bis zu 6.',
-    cost: { material: 6 },
+    cost: { metal: 3, plastic: 2 },
     requires: [],
     produces: { res: 'water', every_h: 3, cap: 6 },
   },
   workbench: {
     name: 'Werkbank',
-    desc: '+1 Material bei jeder Suche, bei der du Material findest. Schaltet weiteren Ausbau frei.',
-    cost: { material: 12 },
+    desc: '+1 Rohstoff bei jeder Suche, bei der du Rohstoffe findest. Schaltet weiteren Ausbau frei.',
+    cost: { wood: 6, metal: 4, screws: 2 },
     requires: [],
   },
   roofGarden: {
     name: 'Dachgarten',
     desc: 'Kartoffeln und Bohnen auf dem Dach: 1 Nahrung alle 4 Stunden, bis zu 6.',
-    cost: { material: 10, water: 4 },
+    cost: { wood: 6, plastic: 2, water: 4 },
     requires: ['workbench'],
     produces: { res: 'food', every_h: 4, cap: 6 },
   },
   medBay: {
     name: 'Sanitätsecke',
     desc: 'Eine Liege und ein Medizinschrank. Hier kannst du bald Verletzte versorgen.',
-    cost: { material: 14, medicine: 3 },
+    cost: { wood: 4, cloth: 3, glass: 1, medicine: 3 },
     requires: ['workbench'],
   },
   radio: {
     name: 'Funkgerät',
     desc: 'Eine Antenne auf dem Dach. Empfängt bald Signale anderer Überlebender.',
-    cost: { material: 20, medicine: 1 },
+    cost: { metal: 6, electronics: 3, plastic: 2 },
     requires: ['workbench'],
   },
 };
@@ -401,9 +547,9 @@ export const FIST_DAMAGE = 1;
 export const WEAPON_ORDER: WeaponId[] = ['crowbar', 'bat', 'crossbow'];
 
 export const WEAPONS: Record<WeaponId, WeaponDef> = {
-  crowbar: { name: 'Brechstange', dmg: 2, dur: 14, cost: { material: 4 }, desc: 'Öffnet Türen und Schädel.' },
-  bat: { name: 'Nagelschläger', dmg: 3, dur: 16, cost: { material: 8 }, requires: 'workbench', desc: 'Ein Baseballschläger mit ein paar Nägeln.' },
-  crossbow: { name: 'Armbrust', dmg: 4, dur: 12, cost: { material: 14, medicine: 1 }, requires: 'workbench', desc: 'Leise und kräftig. Die Bolzen nutzen sich ab.' },
+  crowbar: { name: 'Brechstange', dmg: 2, dur: 14, cost: { metal: 3 }, desc: 'Öffnet Türen und Schädel.' },
+  bat: { name: 'Nagelschläger', dmg: 3, dur: 16, cost: { wood: 3, metal: 2 }, requires: 'workbench', desc: 'Ein Baseballschläger mit ein paar Nägeln.' },
+  crossbow: { name: 'Armbrust', dmg: 4, dur: 12, cost: { wood: 3, metal: 4, screws: 2, glue: 1 }, requires: 'workbench', desc: 'Leise und kräftig. Die Bolzen nutzen sich ab.' },
 };
 
 export const START_WEAPONS: Weapon[] = [{ kind: 'crowbar', dur: WEAPONS.crowbar.dur }];

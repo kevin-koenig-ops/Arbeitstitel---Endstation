@@ -12,6 +12,7 @@ import {
   sectionObstacles,
   type PlotIndex,
 } from '../src/core/building';
+import { emptyInventory } from '../src/core/content';
 import { FURNITURE } from '../src/core/furniture';
 import { activePlot, applyAction, comfortTier, createPlayer, knowsBlueprint, placementProblem, plotIndexOf } from '../src/core/rules';
 import { migrate } from '../src/core/save';
@@ -25,7 +26,7 @@ const ev = (s: PlayerState, a: Action) => act(s, a).events[0];
 
 /** Spieler mit gewähltem Busdepot und vollen Taschen. */
 function settled(): PlayerState {
-  const s = { ...createPlayer('p', hero, T0), inventory: { food: 50, water: 50, medicine: 5, material: 500 } };
+  const s = { ...createPlayer('p', hero, T0), inventory: { food: 50, water: 50, medicine: 5, wood: 500, metal: 500, stone: 500, cloth: 500, plastic: 500, glass: 500, glue: 500, screws: 500, electronics: 500 } };
   return act(s, { type: 'chooseSite', site: 'depot' }).state;
 }
 
@@ -81,9 +82,9 @@ describe('Gelände', () => {
     expect(idx.obstacles.length).toBeGreaterThanOrEqual(8);
     const o = idx.obstacles[0];
     expect(placementProblem(s, 'chair', o.x, o.y, 0)).toBe('blocked');
-    const before = s.inventory.material;
+    const before = { ...s.inventory };
     s = act(s, { type: 'clearObstacle', id: o.id }).state;
-    expect(s.inventory.material).toBe(before + (OBSTACLES[o.kind].reward.material ?? 0));
+    for (const [k, v] of Object.entries(OBSTACLES[o.kind].reward)) expect(s.inventory[k as keyof typeof before]).toBe(before[k as keyof typeof before] + (v ?? 0));
     expect(placementProblem(s, 'chair', o.x, o.y, 0)).toBeNull();
     expect(ev(s, { type: 'clearObstacle', id: o.id })).toEqual({ type: 'rejected', reason: 'not_found' });
   });
@@ -96,9 +97,9 @@ describe('Gelände', () => {
     s = act(s, { type: 'reclaim', sx: 1, sy: 2 }).state;
     expect(activePlot(s)!.sections).toContain('1,2');
     const c2 = reclaimCost(activePlot(s)!);
-    expect(c2.material).toBeGreaterThan(c1.material ?? 0);
+    expect(c2.wood).toBeGreaterThan(c1.wood ?? 0);
     expect(ev(s, { type: 'reclaim', sx: 0, sy: 2 }).type).toBe('reclaimed');
-    const poor = { ...s, inventory: { food: 0, water: 0, medicine: 0, material: 0 } };
+    const poor = { ...s, inventory: emptyInventory() };
     expect(ev(poor, { type: 'reclaim', sx: 4, sy: 2 })).toEqual({ type: 'rejected', reason: 'cost' });
   });
 });
@@ -107,12 +108,12 @@ describe('Freies Bauen', () => {
   it('baut einen Raum mit Tür, Dach und Boden und erkennt ihn', () => {
     let s = settled();
     const { x, y } = freeRect(plotIndexOf(s)!, 4, 4);
-    const m0 = s.inventory.material;
+    const m0 = s.inventory.wood;
     // 3 × 3 Felder: Ecken (x,y) bis (x+3,y+3) = 12 Wandstücke
     const r = act(s, { type: 'buildWalls', piece: 'plankWall', shape: 'room', x1: x, y1: y, x2: x + 3, y2: y + 3 });
     expect(r.events[0]).toMatchObject({ type: 'constructed', layer: 'walls', count: 12 });
     s = r.state;
-    expect(s.inventory.material).toBe(m0 - 12);
+    expect(s.inventory.wood).toBe(m0 - 12);
     // Nochmal dasselbe: nichts zu tun
     expect(ev(s, { type: 'buildWalls', piece: 'plankWall', shape: 'room', x1: x, y1: y, x2: x + 3, y2: y + 3 })).toEqual({ type: 'rejected', reason: 'nothing' });
     // Tür in die Südwand
@@ -152,11 +153,12 @@ describe('Freies Bauen', () => {
     expect(placementProblem(s, 'poster', x, y + 1, 0)).toBe('blocked');
     // Möbel quer durch eine Wand: nein
     expect(placementProblem(s, 'mattress', x, y, 1)).toBe('blocked');
-    const m = s.inventory.material;
+    const m = { ...s.inventory };
     const r = act(s, { type: 'demolish', layer: 'walls', shape: 'line', x1: x, y1: y + 1, x2: x + 3, y2: y + 1 });
     expect(r.events[0]).toMatchObject({ type: 'demolished', count: 3, stored: 1 });
     s = r.state;
-    expect(s.inventory.material).toBe(m + 3 + (FURNITURE.poster.cost.material ?? 0));
+    expect(s.inventory.metal).toBe(m.metal + 3);
+    expect(s.inventory.plastic).toBe(m.plastic + (FURNITURE.poster.cost.plastic ?? 0));
     expect(activePlot(s)!.items).toHaveLength(0);
   });
 
@@ -184,15 +186,15 @@ describe('Freies Bauen', () => {
 
   it('Böden lassen Hindernisse aus, Abreißen gibt alles zurück', () => {
     let s = settled();
-    const m = s.inventory.material;
+    const m = s.inventory.stone;
     const r = act(s, { type: 'paint', layer: 'floors', piece: 'concreteFloor', x1: 12, y1: 12, x2: 23, y2: 23 });
     expect(r.events[0].type).toBe('constructed');
     s = r.state;
     const placed = Object.keys(activePlot(s)!.floors).length;
     expect(placed).toBeLessThan(144);
-    expect(s.inventory.material).toBe(m - placed);
+    expect(s.inventory.stone).toBe(m - placed);
     s = act(s, { type: 'demolish', layer: 'floors', shape: 'rect', x1: 0, y1: 0, x2: PLOT - 1, y2: PLOT - 1 }).state;
-    expect(s.inventory.material).toBe(m);
+    expect(s.inventory.stone).toBe(m);
   });
 
   it('gesperrte Baupläne', () => {
@@ -217,17 +219,22 @@ describe('Freies Bauen', () => {
 });
 
 describe('Migration', () => {
-  it('alte Wartehalle (Version 4) wird zu Material', () => {
+  it('alte Wartehalle (Version 4) wird zu Rohstoffen, altes Material zu Holz und Metall', () => {
+    const { junk, workshop, ...rest } = createPlayer('p', hero, T0);
+    void junk, workshop;
     const old = {
-      ...createPlayer('p', hero, T0),
+      ...rest,
       schema: 4,
-      inventory: { food: 0, water: 0, medicine: 0, material: 1 },
+      inventory: { food: 0, water: 0, medicine: 0, material: 5 },
       base: { items: [{ uid: 1, kind: 'sofa', x: 0, y: 0, rot: 0 }, { uid: 2, kind: 'plant', x: 2, y: 0, rot: 0 }], rubble: [], nextUid: 3 },
     };
     const s = migrate(JSON.parse(JSON.stringify(old)))!;
-    expect(s.schema).toBe(5);
+    expect(s.schema).toBe(6);
     expect(s.base).toEqual({ active: null, plots: {}, found: {} });
-    expect(s.inventory.material).toBe(1 + 8 + 1);
-    expect(s.inventory.water).toBe(1);
+    // Sofa: 2 Holz, 4 Stoff, 1 Schraube; Pflanze: 1 Stein, 1 Wasser; 5 Material: 3 Holz, 2 Metall
+    expect(s.inventory).toEqual({ ...emptyInventory(), wood: 5, metal: 2, cloth: 4, screws: 1, stone: 1, water: 1 });
+    expect('material' in s.inventory).toBe(false);
+    expect(s.junk).toEqual({});
+    expect(s.workshop).toEqual({ level: 1, jobs: [] });
   });
 });

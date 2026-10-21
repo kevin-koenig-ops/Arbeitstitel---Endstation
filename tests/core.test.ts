@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MODULES } from '../src/core/content';
+import { emptyInventory, MODULES } from '../src/core/content';
 import { distanceM, offsetM } from '../src/core/geo';
 import { applyAction, createPlayer, currentHealth, guardOf, pendingHarvest, readyAt, searchRangeM } from '../src/core/rules';
 import { migrate } from '../src/core/save';
@@ -109,20 +109,20 @@ describe('Durchsuchen', () => {
 });
 
 describe('Bus-Ausbau', () => {
-  it('baut nur mit genug Material und in der richtigen Reihenfolge', () => {
+  it('baut nur mit genug Rohstoffen und in der richtigen Reihenfolge', () => {
     let s = fresh();
     expect(applyAction(s, { type: 'build', module: 'rainBarrel' }, ctx()).events[0]).toEqual({ type: 'rejected', reason: 'cost' });
-    s = { ...s, inventory: { ...s.inventory, material: 40, water: 10, medicine: 5 } };
+    s = { ...s, inventory: { ...s.inventory, wood: 40, metal: 40, screws: 10, plastic: 10, water: 10, medicine: 5 } };
     expect(applyAction(s, { type: 'build', module: 'roofGarden' }, ctx()).events[0]).toEqual({ type: 'rejected', reason: 'locked' });
     s = applyAction(s, { type: 'build', module: 'workbench' }, ctx()).state;
-    expect(s.inventory.material).toBe(40 - (MODULES.workbench.cost.material ?? 0));
+    expect(s.inventory.wood).toBe(40 - (MODULES.workbench.cost.wood ?? 0));
     s = applyAction(s, { type: 'build', module: 'roofGarden' }, ctx()).state;
     expect(s.bus.modules.roofGarden).toBeDefined();
   });
 
   it('produziert passiv und behält den angefangenen Rest', () => {
     let s = fresh();
-    s = { ...s, inventory: { ...s.inventory, material: 10 } };
+    s = { ...s, inventory: { ...s.inventory, metal: 10, plastic: 10 } };
     s = applyAction(s, { type: 'build', module: 'rainBarrel' }, ctx()).state;
     expect(pendingHarvest(s, T0 + 7 * HOUR)).toEqual({ water: 2 });
     const h = applyAction(s, { type: 'harvest' }, ctx(T0 + 7 * HOUR));
@@ -145,7 +145,7 @@ describe('Spielstand', () => {
     void health, healthAt, weapons, combat;
     const old = { ...v1, schema: 1, stats: { searches: 7 } };
     const m = migrate(JSON.parse(JSON.stringify(old)))!;
-    expect(m.schema).toBe(5);
+    expect(m.schema).toBe(6);
     expect(m.base).toEqual({ active: null, plots: {}, found: {} });
     expect(m.explored).toEqual({});
     expect(m.health).toBe(10);
@@ -185,7 +185,7 @@ describe('Kampf', () => {
     expect(st.weapons[0].dur).toBeLessThan(14);
   });
 
-  it('Ausweichen schützt, Ablenken kostet Material und betäubt', () => {
+  it('Ausweichen schützt, Ablenken kostet Metall und betäubt', () => {
     const s = guarded();
     const st = engage(fresh(), s).state;
     const d = hit(st, 'perfect', 'dodge');
@@ -195,7 +195,7 @@ describe('Kampf', () => {
     const x = hit(st, 'good', 'distract');
     const xr = x.events[0];
     expect(xr.type === 'round' && xr.stunned && xr.taken === 0).toBe(true);
-    expect(x.state.inventory.material).toBe(st.inventory.material - 1);
+    expect(x.state.inventory.metal).toBe(st.inventory.metal - 1);
   });
 
   it('verliert man, fällt nur etwas aus dem Rucksack, und die Gesundheit kommt zurück', () => {
@@ -222,7 +222,7 @@ describe('Kampf', () => {
   });
 
   it('Waffen herstellen und mit Medizin heilen', () => {
-    let st = { ...fresh(), inventory: { food: 0, water: 0, medicine: 2, material: 30 }, health: 5 };
+    let st: PlayerState = { ...fresh(), inventory: { ...emptyInventory(), medicine: 2, wood: 30, metal: 30, screws: 10 }, health: 5 };
     expect(applyAction(st, { type: 'craft', weapon: 'bat' }, ctx()).events[0]).toEqual({ type: 'rejected', reason: 'locked' });
     st = applyAction(st, { type: 'build', module: 'workbench' }, ctx()).state;
     st = applyAction(st, { type: 'craft', weapon: 'bat' }, ctx()).state;

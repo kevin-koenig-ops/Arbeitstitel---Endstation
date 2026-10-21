@@ -6,7 +6,7 @@ export const REJECT_TEXT: Record<RejectReason, string> = {
   too_far: 'Zu weit weg. Geh näher ran.',
   cooldown: 'Hier ist gerade nichts mehr zu holen.',
   invalid_spot: 'Diese Fundstelle gibt es nicht mehr.',
-  cost: 'Dafür fehlen dir Vorräte.',
+  cost: 'Dafür fehlen dir Rohstoffe.',
   locked: 'Das ist noch nicht freigeschaltet.',
   already_built: 'Schon gebaut.',
   nothing: 'Hier gibt es gerade nichts.',
@@ -22,4 +22,9 @@ export const REJECT_TEXT: Record<RejectReason, string> = {
   no_site: 'Such dir zuerst einen Schauplatz für deine Endstation aus.',
   no_wall: 'Das geht nur an einer passenden Wand.',
   not_adjacent: 'Nur Abschnitte direkt neben deinem Gelände.',
+  no_workbench: 'Dafür brauchst du einen Werktisch in deiner Endstation.',
+  queue_full: 'Der Werktisch ist voll. Hol erst etwas ab oder rüste ihn auf.',
+  no_junk: 'Davon hast du keins mehr im Rucksack.',
+  only_one: 'Davon gibt es nur einen. Aufrüsten statt neu bauen.',
+  max_level: 'Schon voll ausgebaut.',
 };

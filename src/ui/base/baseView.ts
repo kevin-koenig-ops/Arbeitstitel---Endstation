@@ -31,10 +31,10 @@ import {
   type RoofId,
   type WallId,
 } from '../../core/building';
-import { RESOURCE_ORDER, RESOURCES } from '../../core/content';
-import { CATEGORY_NAMES, footprint, FURNITURE, FURNITURE_ORDER, type FurnitureCategory, type FurnitureId } from '../../core/furniture';
+import { MATERIAL_ORDER, RESOURCE_ORDER, RESOURCES } from '../../core/content';
+import { CATEGORY_NAMES, footprint, FURNITURE, FURNITURE_ORDER, isJunk, type FurnitureCategory, type FurnitureId } from '../../core/furniture';
 import { distanceM, formatDistance } from '../../core/geo';
-import { activePlot, canAfford, comfortTier, knowsBlueprint, placementProblem, plotIndexOf } from '../../core/rules';
+import { activePlot, canAfford, comfortTier, knowsBlueprint, placementProblem, plotIndexOf, readyParts } from '../../core/rules';
 import type { DayPhase } from '../../core/sun';
 import type { WeatherKind } from '../../services/weather';
 import type { Action, Inventory, PlayerState, SpotKind } from '../../core/types';
@@ -45,11 +45,12 @@ import { atBase, getBasePlace, setBasePlace } from '../../services/basePlace';
 import type { Fix } from '../../services/location';
 import type { App } from '../app';
 import { append, clear, h, svgEl } from '../dom';
-import { costChips, itemsLine } from '../game/busPanel';
+import { costChips, itemsLine } from '../game/chips';
 import { icon, resIcon } from '../icons';
 import { REJECT_TEXT } from '../texts';
 import { Joystick, useButton } from '../joystick';
 import { openSitePicker } from './sitePicker';
+import { openWorkshop } from './workshop';
 
 export { openSitePicker };
 
@@ -138,12 +139,13 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   const titleEl = h('div', { class: 'base-title' });
   const comfortEl = h('div', { class: 'comfort' });
   const resEl = h('div', { class: 'base-res' });
+  const workChip = h('button', { class: 'work-chip', type: 'button', hidden: true, onclick: () => openWork() });
   const away = h('div', { class: 'base-away', hidden: true });
   const head = h(
     'header',
     { class: 'base-head' },
     h('div', { class: 'base-title-row' }, titleEl, h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Schließen', onclick: () => close() }, svgEl(icon('close')))),
-    h('div', { class: 'base-info' }, comfortEl, resEl),
+    h('div', { class: 'base-info' }, comfortEl, resEl, workChip),
     away,
   );
   // Seitenleiste im Baumodus und schwebende Leiste für Auswahl/Bestätigung
@@ -245,7 +247,13 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
       c.rooms ? h('span', { class: 'comfort-rooms' }, `${c.rooms} ${c.rooms === 1 ? 'Raum' : 'Räume'}`) : null,
     ]);
     clear(resEl);
-    for (const r of RESOURCE_ORDER) resEl.append(h('span', { class: 'cost-chip', title: RESOURCES[r].name }, svgEl(resIcon(r, 14)), String(s.inventory[r])));
+    for (const r of MATERIAL_ORDER) resEl.append(h('span', { class: 'cost-chip' + (s.inventory[r] ? '' : ' zero'), title: RESOURCES[r].name }, svgEl(resIcon(r, 14)), String(s.inventory[r])));
+    const ready = readyParts(s, app.backend.now()).count;
+    const running = s.workshop.jobs.length - ready;
+    workChip.hidden = !s.workshop.jobs.length;
+    clear(workChip);
+    workChip.classList.toggle('ready', ready > 0);
+    workChip.append(svgEl(icon('wrench', 15)), ready ? `${ready} fertig` : `${running} in Arbeit`);
     const f = opts.getFix();
     const place = getBasePlace();
     if (here()) {
@@ -273,6 +281,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   // --- Unterer Bereich -------------------------------------------------------------------
   const setBuilding = (on: boolean) => {
     if (on && !needHere()) return;
+    if (on) work?.close();
     building = on;
     mode = { kind: 'browse' };
     render();
@@ -308,8 +317,35 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     renderControls();
     requestAnimationFrame(() => {
       const w = el.clientWidth || 1;
-      scene.setViewShift(0, building && !focus ? panel.offsetWidth / (2 * w) : 0);
+      scene.setViewShift(0, work ? work.el.offsetWidth / (2 * w) : building && !focus ? panel.offsetWidth / (2 * w) : 0);
     });
+  };
+
+  // --- Werktisch ----------------------------------------------------------------------------
+  let work: ReturnType<typeof openWorkshop> | null = null;
+  const openWork = () => {
+    if (work) return;
+    const bench = plot().items.find((i) => i.kind === 'workbench');
+    if (!bench) return app.toast('Stell zuerst einen Werktisch auf (Baumodus, Einrichten).');
+    building = false;
+    mode = { kind: 'browse' };
+    el.dataset.workshop = 'on';
+    render();
+    const f = footprint(bench.kind, bench.rot);
+    scene.focus(bench.x + f.w / 2, bench.y + f.d / 2);
+    work = openWorkshop(app, el, {
+      needHere,
+      onChanged: () => {
+        opts.onChanged();
+        renderHead();
+      },
+      onClose: () => {
+        work = null;
+        el.dataset.workshop = 'off';
+        render();
+      },
+    });
+    requestAnimationFrame(() => scene.setViewShift(0, (work?.el.offsetWidth ?? 0) / (2 * (el.clientWidth || 1))));
   };
 
   // --- Steuerung im Ansichtsmodus: Joystick und Benutzen ---------------------------------
@@ -320,6 +356,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     const t = scene.findInteract();
     if (!t) return;
     if (t.kind === 'item') {
+      if (plot().items.find((i) => i.uid === t.uid)?.kind === 'workbench') return openWork();
       mode = { kind: 'selected', uid: t.uid };
       return render();
     }
@@ -351,7 +388,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     const refreshUse = () => {
       const t = scene.findInteract();
       if (!t) return use?.setLabel(null);
-      if (t.kind === 'item') return use?.setLabel('Ansehen');
+      if (t.kind === 'item') return use?.setLabel(plot().items.find((i) => i.uid === t.uid)?.kind === 'workbench' ? 'Werktisch' : 'Ansehen');
       const o = idx().obstacles.find((x) => x.id === t.id);
       use?.setLabel(o ? OBSTACLES[o.kind].verb : null);
     };
@@ -392,14 +429,16 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   // --- Einrichten ------------------------------------------------------------------------
   const renderFurnish = () => {
     const s = st();
-    const thumbs = thumbnails(FURNITURE_ORDER, []);
-    const cats: (FurnitureCategory | 'all')[] = ['all', 'moebel', 'licht', 'deko', 'garten'];
+    // Fundstücke nur zeigen, wenn man welche hat
+    const visible = FURNITURE_ORDER.filter((k) => !isJunk(k) || (s.junk[k] ?? 0) > 0);
+    const cats: (FurnitureCategory | 'all')[] = ['all', 'moebel', 'licht', 'deko', 'garten', 'fund'];
     const tabs = h(
       'div',
       { class: 'drawer-tabs', role: 'tablist' },
       cats.map((c) => h('button', { type: 'button', role: 'tab', 'aria-selected': String(furnTab === c), onclick: () => ((furnTab = c), render()) }, c === 'all' ? 'Alles' : CATEGORY_NAMES[c])),
     );
-    const kinds = FURNITURE_ORDER.filter((k) => furnTab === 'all' || FURNITURE[k].category === furnTab).sort((a, b) => Number(knowsBlueprint(s, b)) - Number(knowsBlueprint(s, a)));
+    const kinds = visible.filter((k) => furnTab === 'all' || FURNITURE[k].category === furnTab).sort((a, b) => Number(knowsBlueprint(s, b)) - Number(knowsBlueprint(s, a)));
+    const thumbs = thumbnails(kinds, []);
     const list = h(
       'div',
       { class: 'drawer-list' },
@@ -407,24 +446,32 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
         const def = FURNITURE[k];
         const known = knowsBlueprint(s, k);
         const afford = canAfford(s.inventory, def.cost);
+        const junkN = isJunk(k) ? (s.junk[k] ?? 0) : 0;
         return h(
           'button',
-          { class: 'fcard' + (known ? '' : ' locked') + (known && !afford ? ' poor' : ''), type: 'button', onclick: () => startPlace(k), 'aria-label': `${def.name}${known ? '' : ', Bauplan fehlt'}` },
+          { class: 'fcard' + (known ? '' : ' locked') + (known && !afford ? ' poor' : '') + (isJunk(k) ? ' found' : ''), type: 'button', onclick: () => startPlace(k), 'aria-label': `${def.name}${known ? '' : ', Bauplan fehlt'}` },
           h('span', { class: 'fthumb' }, thumbs[`f:${k}`] ? h('img', { src: thumbs[`f:${k}`], alt: '' }) : null, known ? null : svgEl(icon('lock', 16), 'flock')),
           h('span', { class: 'fname' }, def.name),
-          known ? costChips(def.cost, s.inventory) : h('span', { class: 'fhint' }, whereToFind(k)),
+          isJunk(k) ? h('span', { class: 'fhint found' }, `Fundstück ×${junkN}`) : known ? costChips(def.cost, s.inventory) : h('span', { class: 'fhint' }, whereToFind(k)),
         );
       }),
     );
     const left = idx().obstacles.length;
-    append(panelBody, [tabs, list, h('p', { class: 'drawer-hint' }, left && plot().items.length < 2 ? 'Tipp: Räum Schutt und Gestrüpp weg, dann ist Platz.' : 'Tippe ein Teil an, dann stellst du es auf.')]);
+    const hint =
+      furnTab === 'fund' && !kinds.length
+        ? 'Noch keine Fundstücke. Draußen findest du Teddys, Radios, Uhren und mehr. Aufstellen oder am Werktisch zerlegen.'
+        : left && plot().items.length < 2
+          ? 'Tipp: Räum Schutt und Gestrüpp weg, dann ist Platz.'
+          : 'Tippe ein Teil an, dann stellst du es auf.';
+    append(panelBody, [tabs, list, h('p', { class: 'drawer-hint' }, hint)]);
   };
 
   const startPlace = (k: FurnitureId) => {
     const s = st();
     const def = FURNITURE[k];
     if (!knowsBlueprint(s, k)) return app.toast(`${def.name}: ${whereToFind(k)}.`);
-    if (!canAfford(s.inventory, def.cost)) return app.toast(`Für ${def.name} fehlt dir Material.`, 'warn');
+    if (isJunk(k) && !(s.junk[k] ?? 0)) return app.toast(`${def.name}: keins mehr im Rucksack.`, 'warn');
+    if (!canAfford(s.inventory, def.cost)) return app.toast(`Für ${def.name} fehlen dir Rohstoffe.`, 'warn');
     if (!needHere()) return;
     const c = scene.characterCell();
     let best: Pt | null = null;
@@ -547,10 +594,11 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
         'div',
         { class: 'ctx-bar' },
         ctxClose('Fertig', () => ((mode = { kind: 'browse' }), render())),
-        h('div', { class: 'ctx-title', title: def.desc }, def.name, h('small', null, `Gemütlichkeit +${def.comfort}`)),
+        h('div', { class: 'ctx-title', title: def.desc }, def.name, h('small', null, it.kind === 'workbench' ? 'Zerlegt Fundstücke in Rohstoffe' : isJunk(it.kind) ? `Fundstück · Gemütlichkeit +${def.comfort}` : `Gemütlichkeit +${def.comfort}`)),
         h(
           'div',
           { class: 'ctx-actions' },
+          it.kind === 'workbench' ? h('button', { class: 'btn small', type: 'button', onclick: () => openWork() }, svgEl(icon('wrench', 16)), 'Werktisch') : null,
           h(
             'button',
             { class: 'btn ghost small', type: 'button', onclick: () => needHere() && ((mode = { kind: 'place', item: it.kind, x: it.x, y: it.y, rot: it.rot, uid }), render()) },
@@ -564,13 +612,13 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
               onclick: async () => {
                 if (!needHere()) return;
                 if (await dispatch({ type: 'store', uid })) {
-                  app.toast(`${def.name} eingelagert. Material zurück.`);
+                  app.toast(isJunk(it.kind) ? `${def.name} ist wieder im Rucksack.` : `${def.name} eingelagert. Rohstoffe zurück.`);
                   mode = { kind: 'browse' };
                   render();
                 }
               },
             },
-            'Einlagern',
+            isJunk(it.kind) ? 'In den Rucksack' : 'Einlagern',
           ),
         ),
       ),
@@ -1003,7 +1051,8 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   el.dataset.weather = opts.weather();
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
-      if (mode.kind !== 'browse') {
+      if (work) work.close();
+      else if (mode.kind !== 'browse') {
         mode = { kind: 'browse' };
         render();
       } else if (building) setBuilding(false);
@@ -1015,6 +1064,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   };
   window.addEventListener('keydown', onKey);
   const close = () => {
+    work?.close();
     clearInterval(tick);
     clearInterval(useTimer);
     window.removeEventListener('keydown', onKey);

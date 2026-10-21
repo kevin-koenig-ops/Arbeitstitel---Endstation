@@ -1,8 +1,22 @@
-// Der Bus: Ausbau, Vorräte, Erinnerungsstücke.
+// Der Bus: Ausbau, Rucksack (Vorräte, Rohstoffe, Fundstücke), Erinnerungsstücke.
 
-import { FIST_DAMAGE, HEAL_AMOUNT, MAX_HEALTH, MEMENTOS, MODULE_ORDER, MODULES, RESOURCE_ORDER, RESOURCES, WEAPON_ORDER, WEAPONS } from '../../core/content';
+import {
+  FIST_DAMAGE,
+  HEAL_AMOUNT,
+  JUNK,
+  JUNK_ORDER,
+  MATERIAL_ORDER,
+  MAX_HEALTH,
+  MEMENTOS,
+  MODULE_ORDER,
+  MODULES,
+  RESOURCES,
+  SURVIVAL_ORDER,
+  WEAPON_ORDER,
+  WEAPONS,
+} from '../../core/content';
 import { bestWeapon, canAfford, currentHealth, dayNumber, moduleUnlocked, nextHealthIn, pendingHarvest } from '../../core/rules';
-import type { Inventory, ModuleId } from '../../core/types';
+import type { ModuleId } from '../../core/types';
 import type { App } from '../app';
 import { busSvg } from '../busArt';
 import { clear, h, svgEl } from '../dom';
@@ -10,27 +24,15 @@ import { icon, resIcon } from '../icons';
 import { REJECT_TEXT } from '../texts';
 import { exploredStats } from '../../core/explore';
 import { formatWait } from './spotSheet';
+import { costChips, itemsLine, junkThumb, partsChips } from './chips';
 
-type Tab = 'build' | 'gear' | 'stock' | 'memories';
+export { costChips, itemsLine, junkThumb, partsChips };
 
-export function costChips(cost: Partial<Inventory>, have?: Inventory) {
-  return h(
-    'span',
-    { class: 'cost' },
-    RESOURCE_ORDER.filter((r) => cost[r]).map((r) =>
-      h('span', { class: 'cost-chip' + (have && have[r] < (cost[r] ?? 0) ? ' short' : ''), title: RESOURCES[r].name }, svgEl(resIcon(r, 15)), String(cost[r])),
-    ),
-  );
-}
+export type BusTab = 'build' | 'gear' | 'stock' | 'memories';
+type Tab = BusTab;
 
-export function itemsLine(items: Partial<Inventory>) {
-  return RESOURCE_ORDER.filter((r) => items[r])
-    .map((r) => `${items[r]} ${RESOURCES[r].name}`)
-    .join(', ');
-}
-
-export function openBusPanel(app: App, host: HTMLElement, onClose: () => void, onChanged: () => void) {
-  let tab: Tab = 'build';
+export function openBusPanel(app: App, host: HTMLElement, onClose: () => void, onChanged: () => void, startTab: Tab = 'build') {
+  let tab: Tab = startTab;
   const art = h('div', { class: 'bus-stage' });
   const harvestHost = h('div', { class: 'harvest-host' });
   const body = h('div', { class: 'bus-body' });
@@ -38,7 +40,7 @@ export function openBusPanel(app: App, host: HTMLElement, onClose: () => void, o
 
   const tabBtn = (id: Tab, label: string) =>
     h('button', { type: 'button', role: 'tab', 'data-tab': id, onclick: () => ((tab = id), render()) }, label);
-  tabs.append(tabBtn('build', 'Ausbau'), tabBtn('gear', 'Waffen'), tabBtn('stock', 'Vorräte'), tabBtn('memories', 'Funde'));
+  tabs.append(tabBtn('build', 'Ausbau'), tabBtn('gear', 'Waffen'), tabBtn('stock', 'Rucksack'), tabBtn('memories', 'Funde'));
 
   const render = () => {
     const s = app.backend.current()!;
@@ -211,14 +213,45 @@ export function openBusPanel(app: App, host: HTMLElement, onClose: () => void, o
 
   const stockView = () => {
     const s = app.backend.current()!;
+    const owned = JUNK_ORDER.filter((j) => (s.junk[j] ?? 0) > 0);
     return h(
       'div',
       { class: 'stock' },
+      h('h3', { class: 'stock-head' }, 'Zum Überleben'),
       h(
         'ul',
         { class: 'stock-list' },
-        RESOURCE_ORDER.map((r) => h('li', null, svgEl(resIcon(r, 26)), h('span', { class: 'stock-name' }, RESOURCES[r].name), h('span', { class: 'stock-num' }, String(s.inventory[r])))),
+        SURVIVAL_ORDER.map((r) => h('li', null, svgEl(resIcon(r, 26)), h('span', { class: 'stock-name' }, RESOURCES[r].name), h('span', { class: 'stock-num' }, String(s.inventory[r])))),
       ),
+      h('h3', { class: 'stock-head' }, 'Rohstoffe'),
+      h(
+        'ul',
+        { class: 'stock-list mats' },
+        MATERIAL_ORDER.map((r) =>
+          h(
+            'li',
+            { class: s.inventory[r] ? '' : 'empty', title: RESOURCES[r].where ?? '' },
+            svgEl(resIcon(r, 24)),
+            h('span', { class: 'stock-name' }, RESOURCES[r].name, h('small', null, RESOURCES[r].where ?? '')),
+            h('span', { class: 'stock-num' }, String(s.inventory[r])),
+          ),
+        ),
+      ),
+      h('h3', { class: 'stock-head' }, 'Fundstücke', h('small', null, 'In der Endstation aufstellen oder am Werktisch zerlegen')),
+      owned.length
+        ? h(
+            'ul',
+            { class: 'junk-list' },
+            owned.map((j) =>
+              h(
+                'li',
+                null,
+                junkThumb(j, 52),
+                h('div', { class: 'junk-main' }, h('b', null, JUNK[j].name, (s.junk[j] ?? 0) > 1 ? h('span', { class: 'junk-n' }, ` ×${s.junk[j]}`) : null), h('small', null, JUNK[j].desc), h('span', { class: 'junk-parts' }, 'Zerlegt: ', partsChips(j))),
+              ),
+            ),
+          )
+        : h('p', { class: 'stock-empty' }, 'Noch keine Fundstücke. Sie liegen draußen in Autos, Containern, Paketen und Schuppen.'),
       h(
         'dl',
         { class: 'stats' },

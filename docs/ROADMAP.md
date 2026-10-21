@@ -65,9 +65,18 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - Steuerung: Umstellen wirkt sofort, flüssiges Laufen ohne Ruckeln, Joystick mit großer Griff-Fläche, Benutzen-Taste reagiert beim Drücken, Kamera folgt nach dem Umschauen wieder
 - Baumodus: Leiste fährt beim Auswählen weg, flache Aktionszeile unten
 
-## Iteration 1h: Werkstätten und Wetter
+## ✅ Iteration 1h (Teil 1): Rohstoffe, Fundstücke, Werktisch
 
-- Möbel werden zu Werkstätten mit echten Wartezeiten: Werktisch, Holzofen, Lagerfeuer, Hochbeet, Apfelbaum
+- „Material“ aufgeteilt in neun Rohstoffe (Holz, Metall, Stein, Stoff, Kunststoff, Glas, Kleber, Schrauben, Elektronik), alle Kosten und Fundorte neu
+- 22 Fundstücke mit 3D-Modell: als Deko aufstellen oder am Werktisch zerlegen
+- Werktisch zerlegt in echter Zeit, Fertiges wartet, drei Ausbaustufen; Werktisch, Ofen, Solarpaneel, Regentonne nur einmal
+- Rucksack-Ansicht, Fundstücke auf dem Fundbeleg, Hinweis am Endstation-Knopf, Spielstand Version 6
+
+**Testen:** Reicht die Menge an Rohstoffen? Was fehlt am häufigsten? Sind die Wartezeiten angenehm?
+
+## Iteration 1h (Teil 2): Weitere Werkstätten und Wetter
+
+- Weitere Anlagen mit echten Wartezeiten: Holzofen (Eintopf), Lagerfeuer, Hochbeet, Apfelbaum
 - Jede Anlage nur einmal, dafür in Stufen aufrüstbar (kein Umbauen, keine fünf Regentonnen)
 - Regentonne füllt sich bei echtem Regen, Solarpaneel bei Sonne, Windrad bei Wind
 - Bus-Ausbauten und Basis zusammenführen
@@ -126,6 +135,10 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - **Taschenmodus (Web-App, bald):** schwarzer Bildschirm, Grafik pausiert, GPS läuft weiter (Wake Lock), Vibration bei Fundstelle in Reichweite.
 - **Echte App (später, Capacitor):** Schritte und Kilometer im Hintergrund über Apple Health / Health Connect (nur Kilometer, keine Orte), optional Hintergrund-GPS für den Kartennebel.
 - **Benachrichtigungen:** freundlich und abschaltbar („Dein Eintopf ist fertig“), nie Druck.
+
+## Kampf überarbeiten (später, wichtig)
+
+- Der Prototyp fühlt sich noch nicht gut an. Später gründlich überarbeiten, zusammen mit mehr Kreaturen und Schusswaffen.
 
 ## Kampf 2.0 (Idee)
 

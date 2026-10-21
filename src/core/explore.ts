@@ -28,8 +28,8 @@ export interface SectorLevel {
 }
 
 export const SECTOR_LEVELS: SectorLevel[] = [
-  { pct: 0.25, name: 'erkundet', reward: { material: 2, food: 1 } },
-  { pct: 0.5, name: 'gesichert', reward: { material: 4, water: 2, medicine: 1 } },
+  { pct: 0.25, name: 'erkundet', reward: { wood: 2, metal: 1, food: 1 } },
+  { pct: 0.5, name: 'gesichert', reward: { wood: 2, metal: 2, screws: 1, water: 2, medicine: 1 } },
 ];
 
 export const chunkKey = (cx: number, cy: number) => `${cx}:${cy}`;

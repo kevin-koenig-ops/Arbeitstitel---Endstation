@@ -48,7 +48,9 @@ Ohne Framework, kleine Hilfsfunktion `h()` in `ui/dom.ts`. Jeder Bildschirm ist 
 
 **Aktionen statt Zustandsänderungen.** Der Client sagt „ich durchsuche X an Position P“, nicht „ich habe jetzt 5 Wasser“. Genau das wird später zur API.
 
-**Spielstand mit Versionsnummer.** `schema` im Spielstand plus `core/save.ts` für Migrationen. Wichtig, wenn Spielstände vom Gerät ins Konto umziehen. Beispiel: Version 1 → 2 hat Gesundheit, Waffen und Kampf ergänzt, 3 → 4 die Endstation, 4 → 5 das große Gelände (die alte Wartehalle wurde dabei zu Material).
+**Werktisch mit echten Wartezeiten.** Ein Auftrag speichert nur, wann er fertig ist (`endsAt`, aus `ctx.now`). Was fertig ist, rechnet `readyParts` beim Abholen aus. Kein Hintergrund-Timer nötig, die App darf zu sein, und ein Server kann es genauso nachrechnen.
+
+**Spielstand mit Versionsnummer.** `schema` im Spielstand plus `core/save.ts` für Migrationen. Wichtig, wenn Spielstände vom Gerät ins Konto umziehen. Beispiel: Version 1 → 2 hat Gesundheit, Waffen und Kampf ergänzt, 3 → 4 die Endstation, 4 → 5 das große Gelände (die alte Wartehalle wurde dabei zu Material), 5 → 6 die Rohstoffe (altes Material wird halb Holz, halb Metall), Fundstücke und den Werktisch.
 
 **Erkundung ist serverfähig.** Aufgedeckte Zellen (Zoom 19, ~50 m) liegen als Bitfelder pro Block (Zoom 13, 64×64 Zellen) im Spielstand (`core/explore.ts`), wenige Kilobyte auch nach viel Herumlaufen. Die Tageszeit rechnet `core/sun.ts` aus dem Sonnenstand, ohne Netzwerk, also kann der Server sie genauso bestimmen. Das Wetter ist nur Optik und Timing auf dem Gerät.
 

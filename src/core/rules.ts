@@ -13,7 +13,10 @@ import {
   FIRST_MEMENTO,
   FIST_DAMAGE,
   GUARD_CHANCE,
+  GUARD_JUNK_BONUS,
   GUARD_LOOT_FACTOR,
+  isMaterial,
+  JUNK,
   GUARD_MEMENTO_BONUS,
   HEAL_AMOUNT,
   HEAL_IN_COMBAT,
@@ -33,6 +36,7 @@ import {
   START_INVENTORY,
   START_WEAPONS,
   WEAPONS,
+  WORKBENCH_LEVELS,
 } from './content';
 import { ExploredView, revealAround, SECTOR_LEVELS } from './explore';
 import {
@@ -62,6 +66,7 @@ import {
   SITE_ORDER,
   SITE_PLAN_CHANCE,
   SITES,
+  storeItem,
   type BlueprintId,
   type FloorId,
   type OpeningId,
@@ -70,7 +75,7 @@ import {
   type SiteId,
   type WallId,
 } from './building';
-import { FURNITURE, type FurnitureId } from './furniture';
+import { FURNITURE, isJunk, type FurnitureId } from './furniture';
 import { distanceM } from './geo';
 import { dayPhase } from './sun';
 import { pickWeighted, randInt, rngFrom } from './rng';
@@ -81,6 +86,8 @@ import type {
   EnemyId,
   GameEvent,
   Inventory,
+  JunkId,
+  Material,
   ModuleId,
   Plot,
   PlayerState,
@@ -92,7 +99,7 @@ import type {
 } from './types';
 import { resolveGridSpot } from './world';
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 const HOUR = 3600_000;
 const REGEN_MS = HEALTH_REGEN_MIN * 60_000;
 const MAX_GPS_SLACK_M = 25;
@@ -105,6 +112,8 @@ export function createPlayer(playerId: string, character: Character, now: number
     lastActiveAt: now,
     character,
     inventory: { ...START_INVENTORY },
+    junk: {},
+    workshop: { level: 1, jobs: [] },
     bus: { modules: {} },
     spots: {},
     collection: {},
@@ -226,6 +235,39 @@ export function siteStatus(state: PlayerState, site: SiteId): 'home' | 'found' |
   return 'hidden';
 }
 
+// --- Werktisch ----------------------------------------------------------------------
+
+/** Steht am aktiven Schauplatz ein Werktisch? */
+export function hasWorkbench(state: PlayerState): boolean {
+  return !!activePlot(state)?.items.some((i) => i.kind === 'workbench');
+}
+
+export function workbenchLevel(state: PlayerState) {
+  return WORKBENCH_LEVELS[Math.max(0, Math.min(WORKBENCH_LEVELS.length - 1, state.workshop.level - 1))];
+}
+
+/** Wie lange dauert das Zerlegen auf der aktuellen Stufe (Millisekunden)? */
+export function dismantleMs(state: PlayerState, junk: JunkId): number {
+  return Math.round(JUNK[junk].minutes * 60_000 * workbenchLevel(state).speed);
+}
+
+/** Fertig Zerlegtes, das auf dem Werktisch zum Abholen bereitliegt. */
+export function readyParts(state: PlayerState, now: number): { items: Partial<Inventory>; count: number } {
+  const items: Partial<Inventory> = {};
+  let count = 0;
+  for (const job of state.workshop.jobs) {
+    if (job.endsAt > now) continue;
+    count++;
+    for (const [k, v] of Object.entries(JUNK[job.junk].parts) as [Material, number][]) items[k] = (items[k] ?? 0) + v;
+  }
+  return { items, count };
+}
+
+/** Wieviel liegt im Rucksack an Fundstücken? */
+export function junkCount(state: PlayerState): number {
+  return Object.values(state.junk).reduce((a, b) => a + (b ?? 0), 0);
+}
+
 /** Was liegt im Bus zum Abholen bereit (Regenfass, Dachgarten)? */
 export function pendingHarvest(state: PlayerState, now: number): Partial<Inventory> {
   const out: Partial<Inventory> = {};
@@ -294,7 +336,7 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
         break;
       }
       if (move === 'heal' && state.inventory.medicine < 1) return reject('no_medicine');
-      if (move === 'distract' && state.inventory.material < 1) return reject('cost');
+      if (move === 'distract' && state.inventory.metal < 1) return reject('cost');
 
       const r = rngFrom(ctx.worldSeed, state.playerId, 'kampf', c.spot.id, c.window, c.round);
       let dealt = 0;
@@ -320,7 +362,7 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
         dodged = quality !== 'miss';
         c.opening = quality === 'perfect' || (quality === 'good' && r() < 0.5);
       } else if (move === 'distract') {
-        state.inventory.material -= 1;
+        state.inventory.metal -= 1;
         stunned = quality !== 'miss';
       } else if (move === 'heal') {
         state.inventory.medicine -= 1;
@@ -375,10 +417,11 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
         state.stats.kills += kills;
         events.push({ type: 'combatWon', enemy: c.enemy, kills, weaponBroke });
         const loot = lootSpot(state, c.spot, ctx, true);
-        // Jeder weitere erledigte Gegner bringt etwas Material
+        // Jeder weitere erledigte Gegner bringt etwas vom Haupt-Rohstoff der Fundstelle
         if (kills > 1) {
-          loot.items.material = (loot.items.material ?? 0) + (kills - 1);
-          state.inventory.material += kills - 1;
+          const main = SPOT_KINDS[c.spot.kind].loot.find((l) => isMaterial(l.res))?.res ?? 'metal';
+          loot.items[main] = (loot.items[main] ?? 0) + (kills - 1);
+          state.inventory[main] += kills - 1;
         }
         events.push(loot);
       } else if (action.outcome === 'lost') {
@@ -483,11 +526,14 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       const plot = activePlot(state);
       if (!plot) return reject('no_site');
       if (!knowsBlueprint(state, action.kind)) return reject('no_blueprint');
+      const junk = isJunk(action.kind) ? action.kind : null;
+      if (junk && !(state.junk[junk] ?? 0)) return reject('no_junk');
       if (!canAfford(state.inventory, def.cost)) return reject('cost');
       const rot = ((action.rot % 4) + 4) % 4;
       const problem = placementProblem(state, action.kind, action.x, action.y, rot);
       if (problem) return reject(problem);
       for (const k of RESOURCE_ORDER) state.inventory[k] -= def.cost[k] ?? 0;
+      if (junk) takeJunk(state, junk);
       const uid = plot.nextUid++;
       plot.items.push({ uid, kind: action.kind, x: action.x, y: action.y, rot });
       events.push({ type: 'placed', uid, kind: action.kind });
@@ -515,10 +561,9 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       const it = plot.items.find((i) => i.uid === action.uid);
       if (!it) return reject('not_found');
       // Einlagern gibt alles zurück: Umräumen soll nie etwas kosten.
-      const refund = FURNITURE[it.kind].cost;
-      for (const k of RESOURCE_ORDER) state.inventory[k] += refund[k] ?? 0;
+      const refund = storeItem(state, it);
       plot.items = plot.items.filter((i) => i.uid !== it.uid);
-      events.push({ type: 'stored', uid: it.uid, refund });
+      events.push({ type: 'stored', uid: it.uid, refund, junk: isJunk(it.kind) ? it.kind : undefined });
       break;
     }
 
@@ -536,7 +581,7 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       if (plan.blocked.length) return reject('blocked');
       if (!plan.keys.length) return reject('nothing');
       if (!planAffordable(state.inventory, plan)) return reject('cost');
-      const stored = applyPlan(state.inventory, plot, plan, (k) => {
+      const stored = applyPlan(state, plot, plan, (k) => {
         const old = plot.walls[k];
         const keep = old && PIECES[old.k].group === def.group ? old.o : undefined;
         plot.walls[k] = keep ? { k: piece, o: keep } : { k: piece };
@@ -559,7 +604,7 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       if (plan.blocked.length) return reject('no_wall');
       if (!plan.keys.length) return reject('nothing');
       if (!planAffordable(state.inventory, plan)) return reject('cost');
-      const stored = applyPlan(state.inventory, plot, plan, (k) => {
+      const stored = applyPlan(state, plot, plan, (k) => {
         plot.walls[k] = { ...plot.walls[k], o: piece };
       });
       events.push({ type: 'constructed', layer: 'openings', count: plan.keys.length, cost: plan.cost, refund: sumInv(plan.refund, stored), stored: new Set(plan.store).size });
@@ -580,7 +625,7 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       if (!plan.keys.length) return reject(plan.blocked.length ? 'blocked' : 'nothing');
       if (!planAffordable(state.inventory, plan)) return reject('cost');
       const layer = action.layer;
-      applyPlan(state.inventory, plot, plan, (k) => {
+      applyPlan(state, plot, plan, (k) => {
         (plot[layer] as Record<string, string>)[k] = piece;
       });
       events.push({ type: 'constructed', layer, count: plan.keys.length, cost: plan.cost, refund: plan.refund, stored: 0 });
@@ -600,12 +645,48 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
           : rectCells(x1, y1, x2, y2).map(([x, y]) => cellKey(x, y));
       const plan = planDemolish(idx, plot, layer, keys);
       if (!plan.keys.length) return reject('nothing');
-      const stored = applyPlan(state.inventory, plot, plan, (k) => {
+      const stored = applyPlan(state, plot, plan, (k) => {
         if (layer === 'walls') delete plot.walls[k];
         else if (layer === 'openings') plot.walls[k] = { k: plot.walls[k].k };
         else delete plot[layer][k];
       });
       events.push({ type: 'demolished', layer, count: plan.keys.length, refund: sumInv(plan.refund, stored), stored: new Set(plan.store).size });
+      break;
+    }
+
+    case 'dismantle': {
+      if (!JUNK[action.junk]) return reject('not_found');
+      if (!hasWorkbench(state)) return reject('no_workbench');
+      if (!(state.junk[action.junk] ?? 0)) return reject('no_junk');
+      const ws = state.workshop;
+      if (ws.jobs.length >= workbenchLevel(state).slots) return reject('queue_full');
+      // Der Werktisch arbeitet eins nach dem anderen ab, in echter Zeit
+      const last = ws.jobs.length ? ws.jobs[ws.jobs.length - 1].endsAt : 0;
+      const endsAt = Math.max(ctx.now, last) + dismantleMs(state, action.junk);
+      takeJunk(state, action.junk);
+      ws.jobs.push({ junk: action.junk, endsAt });
+      events.push({ type: 'dismantleQueued', junk: action.junk, endsAt });
+      break;
+    }
+
+    case 'collect': {
+      if (!hasWorkbench(state)) return reject('no_workbench');
+      const { items, count } = readyParts(state, ctx.now);
+      if (!count) return reject('nothing');
+      state.workshop.jobs = state.workshop.jobs.filter((j) => j.endsAt > ctx.now);
+      for (const k of Object.keys(items) as Resource[]) state.inventory[k] += items[k] ?? 0;
+      events.push({ type: 'collected', items, count });
+      break;
+    }
+
+    case 'upgradeWorkbench': {
+      if (!hasWorkbench(state)) return reject('no_workbench');
+      const next = WORKBENCH_LEVELS[state.workshop.level];
+      if (!next) return reject('max_level');
+      if (!canAfford(state.inventory, next.cost)) return reject('cost');
+      for (const k of RESOURCE_ORDER) state.inventory[k] -= next.cost[k] ?? 0;
+      state.workshop.level += 1;
+      events.push({ type: 'workbenchUpgraded', level: state.workshop.level });
       break;
     }
 
@@ -691,13 +772,21 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, guarded: boo
     items[bonusRes] = (items[bonusRes] ?? 0) + 1;
     perk = bonusRes;
   }
-  // Werkbank
-  if (state.bus.modules.workbench && items.material) items.material += 1;
+  // Werkbank im Bus: +1 vom ersten gefundenen Rohstoff
+  const firstMat = (Object.keys(items) as Resource[]).find(isMaterial);
+  if (state.bus.modules.workbench && firstMat) items[firstMat] = (items[firstMat] ?? 0) + 1;
   // Rückkehr-Bonus
   const bonus = state.returnBonus;
   if (bonus) for (const k of Object.keys(items) as Resource[]) items[k] = (items[k] ?? 0) * 2;
 
   for (const k of Object.keys(items) as Resource[]) state.inventory[k] += items[k] ?? 0;
+
+  // Fundstück
+  let junk: JunkId | undefined;
+  if (def.junk.length && r() < Math.min(0.9, def.junkChance + (guarded ? GUARD_JUNK_BONUS : 0))) {
+    junk = pickWeighted(r, def.junk);
+    state.junk[junk] = (state.junk[junk] ?? 0) + 1;
+  }
 
   // Erinnerungsstück
   let memento: string | undefined;
@@ -729,7 +818,13 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, guarded: boo
   state.returnBonus = false;
   state.stats.searches += 1;
   pruneSpots(state, ctx.now);
-  return { type: 'loot', spotId: spot.id, items, memento, bonus, perk, night, blueprint, site };
+  return { type: 'loot', spotId: spot.id, items, junk, memento, bonus, perk, night, blueprint, site };
+}
+
+function takeJunk(state: PlayerState, junk: JunkId) {
+  const n = (state.junk[junk] ?? 0) - 1;
+  if (n > 0) state.junk[junk] = n;
+  else delete state.junk[junk];
 }
 
 /** Bei einer Niederlage fällt etwas aus dem Rucksack. Nie viel, nie der Bus. */

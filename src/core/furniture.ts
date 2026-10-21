@@ -2,9 +2,11 @@
 // Neue Teile kommen hier dazu; das 3D-Modell dazu steht in src/base/models.ts.
 // Wände, Böden, Dächer und das Gelände stehen in building.ts.
 
-import type { Inventory } from './types';
+import { JUNK, JUNK_ORDER } from './content';
+import type { Inventory, JunkId } from './types';
 
-export type FurnitureId =
+/** Gebaute Möbel (mit Rohstoffen und teils Bauplan). */
+export type BuiltFurnitureId =
   | 'bench'
   | 'crates'
   | 'fireBarrel'
@@ -42,7 +44,10 @@ export type FurnitureId =
   | 'flowerBed'
   | 'appleTree';
 
-export type FurnitureCategory = 'moebel' | 'licht' | 'deko' | 'garten';
+/** Alles, was man aufstellen kann: gebaute Möbel und Fundstücke von draußen. */
+export type FurnitureId = BuiltFurnitureId | JunkId;
+
+export type FurnitureCategory = 'moebel' | 'licht' | 'deko' | 'garten' | 'fund';
 
 /**
  * Ebene eines Teils:
@@ -64,55 +69,72 @@ export interface FurnitureDef {
   /** Ohne Bauplan sofort baubar? */
   starter?: boolean;
   desc: string;
+  /** Ein Fundstück: kostet nichts, verbraucht aber das Stück aus dem Rucksack. */
+  junk?: boolean;
+  /** Nützliche Anlage: gibt es nur einmal (aufrüsten statt mehrfach bauen). */
+  unique?: boolean;
 }
 
-const M = (material: number, more: Partial<Inventory> = {}): Partial<Inventory> => ({ material, ...more });
-
-export const FURNITURE: Record<FurnitureId, FurnitureDef> = {
+const BUILT: Record<BuiltFurnitureId, FurnitureDef> = {
   // --- Möbel ---
-  bench: { name: 'Wartebank', category: 'moebel', w: 2, d: 1, layer: 'object', comfort: 3, cost: M(3), starter: true, desc: 'Die alte Bank von der Haltestelle.' },
-  mattress: { name: 'Matratze', category: 'moebel', w: 2, d: 1, layer: 'object', comfort: 4, cost: M(3), starter: true, desc: 'Besser als der Boden.' },
-  table: { name: 'Holztisch', category: 'moebel', w: 1, d: 1, layer: 'object', comfort: 2, cost: M(3), starter: true, desc: 'Für Karten, Konserven und Kartenspiele.' },
-  chair: { name: 'Stuhl', category: 'moebel', w: 1, d: 1, layer: 'object', comfort: 1, cost: M(2), starter: true, desc: 'Wackelt nur ein bisschen.' },
-  workbench: { name: 'Werktisch', category: 'moebel', w: 2, d: 1, layer: 'object', comfort: 2, cost: M(4), starter: true, desc: 'Hier wird gesägt, geschraubt und geflickt.' },
-  sofa: { name: 'Sofa', category: 'moebel', w: 2, d: 1, layer: 'object', comfort: 7, cost: M(8), desc: 'Durchgesessen und herrlich bequem.' },
-  shelf: { name: 'Bücherregal', category: 'moebel', w: 1, d: 1, layer: 'object', comfort: 4, cost: M(5), desc: 'Geschichten für die Abende.' },
-  busSeat: { name: 'Bus-Sitzreihe', category: 'moebel', w: 2, d: 1, layer: 'object', comfort: 4, cost: M(5), desc: 'Aus einem alten Gelenkbus ausgebaut.' },
-  fridge: { name: 'Kühlschrank', category: 'moebel', w: 1, d: 1, layer: 'object', comfort: 3, cost: M(6), desc: 'Kühlt nicht, schließt aber gut.' },
-  bed: { name: 'Doppelbett', category: 'moebel', w: 2, d: 2, layer: 'object', comfort: 9, cost: M(10), desc: 'Ein richtiges Bett. Mit Kissen. Wahnsinn.' },
-  kitchen: { name: 'Küchenzeile', category: 'moebel', w: 2, d: 1, layer: 'object', comfort: 5, cost: M(7), desc: 'Spüle, Arbeitsplatte, Gewürzregal.' },
-  hammock: { name: 'Hängematte', category: 'moebel', w: 3, d: 1, layer: 'object', comfort: 6, cost: M(5), desc: 'Zwischen zwei Pfosten. Schaukeln, bis die Sterne kommen.' },
+  bench: { name: 'Wartebank', category: 'moebel', w: 2, d: 1, layer: 'object', comfort: 3, cost: { wood: 2, metal: 1 }, starter: true, desc: 'Die alte Bank von der Haltestelle.' },
+  mattress: { name: 'Matratze', category: 'moebel', w: 2, d: 1, layer: 'object', comfort: 4, cost: { cloth: 3 }, starter: true, desc: 'Besser als der Boden.' },
+  table: { name: 'Holztisch', category: 'moebel', w: 1, d: 1, layer: 'object', comfort: 2, cost: { wood: 3 }, starter: true, desc: 'Für Karten, Konserven und Kartenspiele.' },
+  chair: { name: 'Stuhl', category: 'moebel', w: 1, d: 1, layer: 'object', comfort: 1, cost: { wood: 2 }, starter: true, desc: 'Wackelt nur ein bisschen.' },
+  workbench: { name: 'Werktisch', category: 'moebel', w: 2, d: 1, layer: 'object', comfort: 2, cost: { wood: 3, metal: 2 }, starter: true, unique: true, desc: 'Zerlegt Fundstücke in Rohstoffe, in echter Zeit. Gibt es nur einmal, lässt sich aufrüsten.' },
+  sofa: { name: 'Sofa', category: 'moebel', w: 2, d: 1, layer: 'object', comfort: 7, cost: { wood: 2, cloth: 4, screws: 1 }, desc: 'Durchgesessen und herrlich bequem.' },
+  shelf: { name: 'Bücherregal', category: 'moebel', w: 1, d: 1, layer: 'object', comfort: 4, cost: { wood: 4, screws: 1 }, desc: 'Geschichten für die Abende.' },
+  busSeat: { name: 'Bus-Sitzreihe', category: 'moebel', w: 2, d: 1, layer: 'object', comfort: 4, cost: { metal: 2, cloth: 2, screws: 1 }, desc: 'Aus einem alten Gelenkbus ausgebaut.' },
+  fridge: { name: 'Kühlschrank', category: 'moebel', w: 1, d: 1, layer: 'object', comfort: 3, cost: { metal: 3, plastic: 2 }, desc: 'Kühlt nicht, schließt aber gut.' },
+  bed: { name: 'Doppelbett', category: 'moebel', w: 2, d: 2, layer: 'object', comfort: 9, cost: { wood: 5, cloth: 4, screws: 2 }, desc: 'Ein richtiges Bett. Mit Kissen. Wahnsinn.' },
+  kitchen: { name: 'Küchenzeile', category: 'moebel', w: 2, d: 1, layer: 'object', comfort: 5, cost: { wood: 3, metal: 2, stone: 1, screws: 1 }, desc: 'Spüle, Arbeitsplatte, Gewürzregal.' },
+  hammock: { name: 'Hängematte', category: 'moebel', w: 3, d: 1, layer: 'object', comfort: 6, cost: { cloth: 3, wood: 2 }, desc: 'Zwischen zwei Pfosten. Schaukeln, bis die Sterne kommen.' },
   // --- Licht ---
-  fireBarrel: { name: 'Feuertonne', category: 'licht', w: 1, d: 1, layer: 'object', comfort: 4, cost: M(3), starter: true, desc: 'Wärme und Licht für lange Abende.' },
-  campfire: { name: 'Lagerfeuer', category: 'licht', w: 1, d: 1, layer: 'object', comfort: 4, cost: M(2), starter: true, desc: 'Ein Ring aus Steinen, ein paar Scheite. Mehr braucht es nicht.' },
-  lamp: { name: 'Stehlampe', category: 'licht', w: 1, d: 1, layer: 'object', comfort: 4, cost: M(5), desc: 'Läuft mit einer Autobatterie.' },
-  vending: { name: 'Getränkeautomat', category: 'licht', w: 1, d: 1, layer: 'object', comfort: 5, cost: M(7), desc: 'Leuchtet noch. Leer ist er trotzdem.' },
-  fairyLights: { name: 'Lichterkette', category: 'licht', w: 2, d: 1, layer: 'object', comfort: 6, cost: M(4), desc: 'Macht aus einer Ruine ein Zuhause.' },
-  stove: { name: 'Holzofen', category: 'licht', w: 1, d: 1, layer: 'object', comfort: 6, cost: M(7), desc: 'Gusseisen, mit Ofenrohr. Knistert so schön.' },
-  streetLamp: { name: 'Straßenlaterne', category: 'licht', w: 1, d: 1, layer: 'object', comfort: 3, cost: M(5), desc: 'Von der Hauptstraße abgeschraubt. Leuchtet wieder.' },
+  fireBarrel: { name: 'Feuertonne', category: 'licht', w: 1, d: 1, layer: 'object', comfort: 4, cost: { metal: 2, wood: 1 }, starter: true, desc: 'Wärme und Licht für lange Abende.' },
+  campfire: { name: 'Lagerfeuer', category: 'licht', w: 1, d: 1, layer: 'object', comfort: 4, cost: { stone: 2, wood: 1 }, starter: true, desc: 'Ein Ring aus Steinen, ein paar Scheite. Mehr braucht es nicht.' },
+  lamp: { name: 'Stehlampe', category: 'licht', w: 1, d: 1, layer: 'object', comfort: 4, cost: { metal: 1, glass: 1, electronics: 1, cloth: 1 }, desc: 'Läuft mit einer Autobatterie.' },
+  vending: { name: 'Getränkeautomat', category: 'licht', w: 1, d: 1, layer: 'object', comfort: 5, cost: { metal: 3, glass: 2, electronics: 2, plastic: 1 }, desc: 'Leuchtet noch. Leer ist er trotzdem.' },
+  fairyLights: { name: 'Lichterkette', category: 'licht', w: 2, d: 1, layer: 'object', comfort: 6, cost: { electronics: 1, plastic: 1, glass: 1 }, desc: 'Macht aus einer Ruine ein Zuhause.' },
+  stove: { name: 'Holzofen', category: 'licht', w: 1, d: 1, layer: 'object', comfort: 6, cost: { metal: 4, stone: 1, screws: 1 }, unique: true, desc: 'Gusseisen, mit Ofenrohr. Knistert so schön.' },
+  streetLamp: { name: 'Straßenlaterne', category: 'licht', w: 1, d: 1, layer: 'object', comfort: 3, cost: { metal: 3, glass: 1, electronics: 1 }, desc: 'Von der Hauptstraße abgeschraubt. Leuchtet wieder.' },
   // --- Deko ---
-  crates: { name: 'Kistenstapel', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 1, cost: M(2), starter: true, desc: 'Stauraum. Und Deko, irgendwie.' },
-  rug: { name: 'Teppich', category: 'deko', w: 2, d: 2, layer: 'floor', comfort: 3, cost: M(2), starter: true, desc: 'Fast wie früher.' },
-  poster: { name: 'Poster', category: 'deko', w: 1, d: 1, layer: 'wall', comfort: 2, cost: M(1), starter: true, desc: 'Ein Konzert, das nie stattfand. Hängt an einer Wand.' },
-  washline: { name: 'Wäscheleine', category: 'deko', w: 2, d: 1, layer: 'object', comfort: 2, cost: M(2), starter: true, desc: 'Frische Wäsche. Ein Zeichen, dass hier jemand lebt.' },
-  toolwall: { name: 'Werkzeugwand', category: 'deko', w: 2, d: 1, layer: 'object', comfort: 3, cost: M(6), desc: 'Jedes Werkzeug an seinem Platz.' },
-  clock: { name: 'Bahnhofsuhr', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 5, cost: M(6), desc: 'Steht auf fünf vor zwölf. Für immer.' },
-  timetable: { name: 'Fahrplantafel', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 3, cost: M(3), desc: 'Linie 0: alle 10 Minuten. Früher.' },
-  medCabinet: { name: 'Sanitätsschrank', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 3, cost: M(4, { medicine: 1 }), desc: 'Verbandszeug immer griffbereit.' },
-  picture: { name: 'Familienfoto', category: 'deko', w: 1, d: 1, layer: 'wall', comfort: 4, cost: M(2), desc: 'Fremde Leute, die lachen. Trotzdem schön. Hängt an einer Wand.' },
-  dartboard: { name: 'Dartscheibe', category: 'deko', w: 1, d: 1, layer: 'wall', comfort: 3, cost: M(2), desc: 'Drei Pfeile fehlen. Einer steckt noch. Hängt an einer Wand.' },
-  gnome: { name: 'Gartenzwerg', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 2, cost: M(2), desc: 'Hat alles überlebt. Lächelt immer noch.' },
-  solarPanel: { name: 'Solarpaneel', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 2, cost: M(6), desc: 'Strom von der Sonne. Ein Stück Zukunft.' },
+  crates: { name: 'Kistenstapel', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 1, cost: { wood: 2 }, starter: true, desc: 'Stauraum. Und Deko, irgendwie.' },
+  rug: { name: 'Teppich', category: 'deko', w: 2, d: 2, layer: 'floor', comfort: 3, cost: { cloth: 2 }, starter: true, desc: 'Fast wie früher.' },
+  poster: { name: 'Poster', category: 'deko', w: 1, d: 1, layer: 'wall', comfort: 2, cost: { plastic: 1 }, starter: true, desc: 'Ein Konzert, das nie stattfand. Hängt an einer Wand.' },
+  washline: { name: 'Wäscheleine', category: 'deko', w: 2, d: 1, layer: 'object', comfort: 2, cost: { wood: 1, cloth: 1 }, starter: true, desc: 'Frische Wäsche. Ein Zeichen, dass hier jemand lebt.' },
+  toolwall: { name: 'Werkzeugwand', category: 'deko', w: 2, d: 1, layer: 'object', comfort: 3, cost: { wood: 2, metal: 2, screws: 2 }, desc: 'Jedes Werkzeug an seinem Platz.' },
+  clock: { name: 'Bahnhofsuhr', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 5, cost: { metal: 2, glass: 1, electronics: 1 }, desc: 'Steht auf fünf vor zwölf. Für immer.' },
+  timetable: { name: 'Fahrplantafel', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 3, cost: { metal: 1, glass: 1 }, desc: 'Linie 0: alle 10 Minuten. Früher.' },
+  medCabinet: { name: 'Sanitätsschrank', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 3, cost: { metal: 2, glass: 1, medicine: 1 }, desc: 'Verbandszeug immer griffbereit.' },
+  picture: { name: 'Familienfoto', category: 'deko', w: 1, d: 1, layer: 'wall', comfort: 4, cost: { wood: 1, glass: 1 }, desc: 'Fremde Leute, die lachen. Trotzdem schön. Hängt an einer Wand.' },
+  dartboard: { name: 'Dartscheibe', category: 'deko', w: 1, d: 1, layer: 'wall', comfort: 3, cost: { wood: 1, metal: 1 }, desc: 'Drei Pfeile fehlen. Einer steckt noch. Hängt an einer Wand.' },
+  gnome: { name: 'Gartenzwerg', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 2, cost: { stone: 2 }, desc: 'Hat alles überlebt. Lächelt immer noch.' },
+  solarPanel: { name: 'Solarpaneel', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 2, cost: { glass: 2, electronics: 2, metal: 1 }, unique: true, desc: 'Strom von der Sonne. Ein Stück Zukunft.' },
   // --- Garten ---
-  plant: { name: 'Pflanzenkübel', category: 'garten', w: 1, d: 1, layer: 'object', comfort: 2, cost: M(1, { water: 1 }), starter: true, desc: 'Etwas Grünes zwischen dem Beton.' },
-  rainBarrel: { name: 'Regentonne', category: 'garten', w: 1, d: 1, layer: 'object', comfort: 2, cost: M(3), starter: true, desc: 'Fängt auf, was vom Himmel kommt.' },
-  flowerBed: { name: 'Blumenbeet', category: 'garten', w: 2, d: 1, layer: 'object', comfort: 3, cost: M(2, { water: 1 }), starter: true, desc: 'Ringelblumen und Kapuzinerkresse.' },
-  raisedBed: { name: 'Hochbeet', category: 'garten', w: 2, d: 1, layer: 'object', comfort: 4, cost: M(5, { water: 2 }), desc: 'Kräuter und Tomaten.' },
-  appleTree: { name: 'Apfelbäumchen', category: 'garten', w: 1, d: 1, layer: 'object', comfort: 5, cost: M(2, { water: 2, food: 1 }), desc: 'In ein paar Jahren gibt es Äpfel. Wenn alles gut geht.' },
+  plant: { name: 'Pflanzenkübel', category: 'garten', w: 1, d: 1, layer: 'object', comfort: 2, cost: { stone: 1, water: 1 }, starter: true, desc: 'Etwas Grünes zwischen dem Beton.' },
+  rainBarrel: { name: 'Regentonne', category: 'garten', w: 1, d: 1, layer: 'object', comfort: 2, cost: { plastic: 2, metal: 1 }, starter: true, unique: true, desc: 'Fängt auf, was vom Himmel kommt.' },
+  flowerBed: { name: 'Blumenbeet', category: 'garten', w: 2, d: 1, layer: 'object', comfort: 3, cost: { wood: 1, water: 1 }, starter: true, desc: 'Ringelblumen und Kapuzinerkresse.' },
+  raisedBed: { name: 'Hochbeet', category: 'garten', w: 2, d: 1, layer: 'object', comfort: 4, cost: { wood: 4, water: 2 }, desc: 'Kräuter und Tomaten.' },
+  appleTree: { name: 'Apfelbäumchen', category: 'garten', w: 1, d: 1, layer: 'object', comfort: 5, cost: { water: 2, food: 1 }, desc: 'In ein paar Jahren gibt es Äpfel. Wenn alles gut geht.' },
 };
 
+/** Fundstücke als Deko: Werte kommen aus content.ts. */
+const FOUND = Object.fromEntries(
+  JUNK_ORDER.map((id) => {
+    const j = JUNK[id];
+    const def: FurnitureDef = { name: j.name, category: 'fund', w: j.w, d: j.d, layer: j.layer, comfort: j.comfort, cost: {}, starter: true, junk: true, desc: j.desc };
+    return [id, def];
+  }),
+) as Record<JunkId, FurnitureDef>;
+
+export const FURNITURE: Record<FurnitureId, FurnitureDef> = { ...BUILT, ...FOUND };
+
 export const FURNITURE_ORDER = Object.keys(FURNITURE) as FurnitureId[];
-export const CATEGORY_NAMES: Record<FurnitureCategory, string> = { moebel: 'Möbel', licht: 'Licht', deko: 'Deko', garten: 'Garten' };
+export const CATEGORY_NAMES: Record<FurnitureCategory, string> = { moebel: 'Möbel', licht: 'Licht', deko: 'Deko', garten: 'Garten', fund: 'Fundstücke' };
+
+export function isJunk(kind: FurnitureId): kind is JunkId {
+  return !!FURNITURE[kind]?.junk;
+}
 
 /** Grundfläche unter Berücksichtigung der Drehung. */
 export function footprint(kind: FurnitureId, rot: number): { w: number; d: number } {

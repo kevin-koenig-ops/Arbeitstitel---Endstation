@@ -7,7 +7,19 @@ const P: Record<string, string> = {
   food: '<path d="M6 6.5h12V19a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1z"/><ellipse cx="12" cy="6.5" rx="6" ry="2"/><path d="M6 11h12M6 15.5h12"/>',
   water: '<path d="M10 2.5h4V5l2 3v12a1.5 1.5 0 0 1-1.5 1.5h-5A1.5 1.5 0 0 1 8 20V8l2-3z"/><path d="M8 12.5h8M8 16.5h8"/>',
   medicine: '<rect x="3" y="6.5" width="18" height="13.5" rx="1.5"/><path d="M9 6.5V4h6v2.5M12 10v6.5M8.75 13.25h6.5"/>',
-  material: '<path d="M12 2.5l8.2 4.75v9.5L12 21.5l-8.2-4.75v-9.5z"/><circle cx="12" cy="12" r="3.4"/>',
+  // Rohstoffe
+  wood: '<path d="M3 8.5l12.5-4 5.5 2.5-12.5 4z"/><path d="M3 8.5v4.5l5.5 2.5V11M21 7v4.5l-12.5 4"/><ellipse cx="5.8" cy="11.6" rx="1.4" ry="2"/><path d="M3 15.5v3.5l5.5 2.5 12.5-4V13.5"/>',
+  metal: '<path d="M4 7.5h16v3H4zM4 13.5h16v3H4z"/><path d="M7 10.5v3M17 10.5v3"/>',
+  stone: '<path d="M4 18.5l2-7 5-4 6 1.5 3.5 5-2 4.5z"/><path d="M11 7.5l1.5 5 5.5 1.5M12.5 12.5L6 11.5"/>',
+  cloth: '<path d="M8 3.5L4 6v5l2.5-1V20.5h11V10l2.5 1V6l-4-2.5c-.5 1.6-2 2.7-4 2.7s-3.5-1.1-4-2.7z"/>',
+  plastic: '<path d="M10 2.5h4v2.5l1.5 1.5v14a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-14L10 5z"/><path d="M8.5 11h7M8.5 15.5h7"/>',
+  glass: '<path d="M7 3h10l-1.2 7.5a3.8 3.8 0 0 1-7.6 0z"/><path d="M12 14.5v6M8.5 20.5h7M8 6.5h8"/>',
+  glue: '<path d="M8 9h8v11a1.5 1.5 0 0 1-1.5 1.5h-5A1.5 1.5 0 0 1 8 20z"/><path d="M10 9V6.5h4V9M11 6.5L12 2.5l1 4M8 13.5h8"/>',
+  screws: '<path d="M8 3.5h8l-1 3H9z"/><path d="M12 6.5v14M9.5 9l5 1.5M9.5 12l5 1.5M9.5 15l5 1.5M10.5 18l3 1"/>',
+  electronics: '<rect x="6" y="6" width="12" height="12" rx="1.5"/><rect x="9.5" y="9.5" width="5" height="5"/><path d="M9 6V3M15 6V3M9 21v-3M15 21v-3M6 9H3M6 15H3M21 9h-3M21 15h-3"/>',
+  // Rucksack / Fundstücke / Werktisch
+  junk: '<path d="M4 9.5h16v10.5H4z"/><path d="M3 6.5h18v3H3zM10 13h4"/>',
+  upgrade: '<path d="M12 20.5V5M6 11l6-6 6 6M5 20.5h14"/>',
   // Fundstellen
   car: '<path d="M3 16.5v-4.2L5.2 7h13.6l2.2 5.3v4.2z"/><circle cx="7.5" cy="16.8" r="1.9"/><circle cx="16.5" cy="16.8" r="1.9"/><path d="M3.2 12.3h17.6"/>',
   backpack: '<path d="M7 9a5 5 0 0 1 10 0v11.5H7z"/><path d="M9.5 5.2V3h5v2.2M7 13.5h10M10 16.5h4"/>',

@@ -476,6 +476,237 @@ const BUILDERS: Record<FurnitureId, (g: THREE.Group) => LightSpec | void> = {
       add(g, new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), mat('#b0472f')), x, y, z);
     blob(g, 0.2, mat('#3b2f22'), 0, 0.02, 0).scale.set(1.4, 0.25, 1.4);
   },
+
+  // --- Fundstücke von draußen (Deko) ---
+  teddy(g) {
+    const fur = mat('#a0743f');
+    const light = mat('#c9a070');
+    blob(g, 0.15, fur, 0, 0.16, 0);
+    blob(g, 0.11, fur, 0, 0.4, 0.02);
+    blob(g, 0.05, light, 0, 0.38, 0.11);
+    blob(g, 0.018, mat('#1d1a17'), 0, 0.4, 0.155);
+    for (const x of [-0.04, 0.04]) blob(g, 0.016, mat('#1d1a17'), x, 0.44, 0.115);
+    blob(g, 0.045, fur, -0.08, 0.5, 0); // nur ein Ohr
+    for (const x of [-0.08, 0.08]) blob(g, 0.06, fur, x, 0.06, 0.12);
+    for (const x of [-0.15, 0.15]) blob(g, 0.055, fur, x, 0.2, 0.05);
+    blob(g, 0.06, light, 0, 0.16, 0.11);
+  },
+  wallClock(g) {
+    const face = (r: number, c: THREE.Material, z: number) => {
+      const d = add(g, new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.03, 20), c), 0, 1.6, z);
+      d.rotation.x = Math.PI / 2;
+    };
+    face(0.22, mat(WOOD_DARK), -0.44);
+    face(0.18, mat('#ece4cc'), -0.425);
+    box(g, 0.015, 0.13, 0.01, mat('#1d1a17'), 0, 1.6, -0.405).rotation.z = 0.5;
+    box(g, 0.015, 0.09, 0.01, mat('#1d1a17'), 0, 1.6, -0.403).rotation.z = -1.6;
+    box(g, 0.08, 0.3, 0.03, mat(WOOD_DARK), 0, 1.15, -0.44);
+    cyl(g, 0.04, 0.04, 0.012, mat('#c9a23a'), 0, 1.2, -0.42, 10).rotation.x = Math.PI / 2;
+  },
+  radio(g) {
+    box(g, 0.5, 0.4, 0.4, mat('#9b7b4f'), 0, 0, 0);
+    box(g, 0.52, 0.04, 0.42, mat(WOOD_DARK), 0, 0.18, 0);
+    box(g, 0.42, 0.24, 0.14, mat('#3a4a3f'), 0, 0.4, 0);
+    const sp = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.02, 14), mat('#1d1d1b')), -0.09, 0.52, 0.07);
+    sp.rotation.x = Math.PI / 2;
+    box(g, 0.14, 0.05, 0.02, mat('#d8c99a'), 0.1, 0.55, 0.065);
+    box(g, 0.3, 0.025, 0.03, mat('#1d1d1b'), 0, 0.66, 0);
+    box(g, 0.012, 0.36, 0.012, mat('#a8a59c'), 0.17, 0.64, -0.03).rotation.z = -0.35;
+  },
+  toaster(g) {
+    box(g, 0.5, 0.4, 0.4, mat('#9b7b4f'), 0, 0, 0);
+    box(g, 0.52, 0.04, 0.42, mat(WOOD_DARK), 0, 0.18, 0);
+    box(g, 0.3, 0.18, 0.17, mat('#b8b4aa'), 0, 0.4, 0);
+    for (const x of [-0.05, 0.05]) box(g, 0.2, 0.012, 0.03, mat('#1d1d1b'), 0, 0.58, x);
+    box(g, 0.03, 0.05, 0.02, mat('#1d1d1b'), 0.16, 0.48, 0);
+  },
+  tv(g) {
+    for (const x of [-0.25, 0.25]) for (const z of [-0.18, 0.18]) box(g, 0.04, 0.32, 0.04, mat(WOOD_DARK), x, 0, z);
+    box(g, 0.6, 0.04, 0.44, mat(WOOD), 0, 0.32, 0);
+    box(g, 0.58, 0.46, 0.46, mat('#4a443a'), 0, 0.36, -0.02);
+    box(g, 0.46, 0.36, 0.02, mat('#24302f'), -0.04, 0.4, 0.21);
+    box(g, 0.06, 0.04, 0.02, mat('#b8b4aa'), 0.23, 0.6, 0.215);
+    box(g, 0.06, 0.04, 0.02, mat('#b8b4aa'), 0.23, 0.5, 0.215);
+    for (const s of [-1, 1]) box(g, 0.01, 0.45, 0.01, mat('#a8a59c'), s * 0.08, 0.95, -0.05).rotation.z = s * -0.5;
+  },
+  phone(g) {
+    cyl(g, 0.2, 0.2, 0.03, mat(WOOD), 0, 0.55, 0, 12);
+    cyl(g, 0.03, 0.04, 0.55, mat(WOOD_DARK), 0, 0, 0, 8);
+    cyl(g, 0.14, 0.16, 0.03, mat(WOOD_DARK), 0, 0, 0, 10);
+    box(g, 0.2, 0.08, 0.2, mat('#8a2f24'), 0, 0.58, 0);
+    const dial = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.012, 14), mat('#ece4cc')), 0, 0.655, 0.03);
+    dial.rotation.x = -0.4;
+    box(g, 0.24, 0.04, 0.06, mat('#8a2f24'), 0, 0.68, -0.07);
+  },
+  typewriter(g) {
+    box(g, 0.5, 0.4, 0.4, mat('#9b7b4f'), 0, 0, 0);
+    box(g, 0.52, 0.04, 0.42, mat(WOOD_DARK), 0, 0.18, 0);
+    box(g, 0.36, 0.1, 0.28, mat('#2f3a35'), 0, 0.4, 0.02);
+    for (let row = 0; row < 3; row++) box(g, 0.28, 0.015, 0.04, mat('#d8d2c2'), 0, 0.5 + row * 0.012, 0.1 - row * 0.05);
+    cyl(g, 0.03, 0.03, 0.38, mat('#1d1d1b'), 0, 0.5, -0.08, 8).rotation.z = Math.PI / 2;
+    box(g, 0.2, 0.18, 0.005, mat('#f2ede0'), 0, 0.53, -0.1).rotation.x = -0.2;
+  },
+  guitar(g) {
+    const wood = mat('#b0702f');
+    const tilt = new THREE.Group();
+    tilt.rotation.z = 0.12;
+    g.add(tilt);
+    const disc = (r: number, y: number) => {
+      const d = add(tilt, new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.09, 18), wood), 0, y, 0);
+      d.rotation.x = Math.PI / 2;
+    };
+    disc(0.19, 0.22);
+    disc(0.15, 0.45);
+    const hole = add(tilt, new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.01, 12), mat('#1d1a17')), 0, 0.42, 0.046);
+    hole.rotation.x = Math.PI / 2;
+    box(tilt, 0.06, 0.55, 0.03, mat(WOOD_DARK), 0, 0.55, 0.01);
+    box(tilt, 0.08, 0.14, 0.03, mat(WOOD_DARK), 0, 1.1, 0.01);
+    box(tilt, 0.012, 0.75, 0.005, mat('#d8d2c2'), 0, 0.42, 0.05);
+    box(g, 0.3, 0.04, 0.2, mat('#3b3f3a'), 0, 0, 0);
+  },
+  globe(g) {
+    cyl(g, 0.16, 0.18, 0.04, mat(WOOD_DARK), 0, 0, 0, 10);
+    cyl(g, 0.025, 0.03, 0.7, mat(WOOD_DARK), 0, 0.04, 0, 8);
+    const ball = add(g, new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 2), mat('#3f6a8a')), 0, 0.95, 0);
+    ball.rotation.z = 0.4;
+    for (const [x, y, z, s] of [
+      [0.1, 1.02, 0.14, 0.09],
+      [-0.12, 0.92, 0.12, 0.07],
+      [0.05, 0.85, -0.17, 0.08],
+    ])
+      blob(g, s, mat('#6b8a4a'), x, y, z);
+    const arc = add(g, new THREE.Mesh(new THREE.TorusGeometry(0.23, 0.012, 4, 20, Math.PI), mat('#c9a23a')), 0, 0.95, 0);
+    arc.rotation.z = -Math.PI / 2 + 0.4;
+  },
+  vase(g) {
+    const glass = mat('#5f8f8a', { transparent: true, opacity: 0.8 });
+    cyl(g, 0.09, 0.07, 0.04, glass, 0, 0, 0, 10);
+    cyl(g, 0.13, 0.09, 0.22, glass, 0, 0.04, 0, 10);
+    cyl(g, 0.06, 0.13, 0.12, glass, 0, 0.26, 0, 10);
+    cyl(g, 0.08, 0.06, 0.08, glass, 0, 0.38, 0, 10);
+  },
+  mirror(g) {
+    box(g, 0.56, 0.86, 0.04, mat(WOOD), 0, 1.0, -0.44);
+    box(g, 0.46, 0.76, 0.012, mat('#c9d6dc'), 0, 1.05, -0.415);
+    box(g, 0.006, 0.4, 0.004, mat('#eef4f6'), 0.06, 1.25, -0.407).rotation.z = 0.6;
+    box(g, 0.006, 0.22, 0.004, mat('#eef4f6'), -0.02, 1.15, -0.407).rotation.z = -0.4;
+  },
+  toolbox(g) {
+    const red = mat('#b0472f');
+    box(g, 0.5, 0.22, 0.24, red, 0, 0, 0);
+    box(g, 0.52, 0.03, 0.26, mat('#8a3424'), 0, 0.22, 0);
+    for (const x of [-0.12, 0.12]) box(g, 0.03, 0.08, 0.03, mat('#3b3f3a'), x, 0.25, 0);
+    box(g, 0.28, 0.025, 0.03, mat('#3b3f3a'), 0, 0.32, 0);
+    box(g, 0.3, 0.02, 0.04, mat('#a8a59c'), 0.1, 0, 0.26, 0.5);
+  },
+  bike(g) {
+    const frame = mat('#3f5a7a');
+    for (const x of [-0.55, 0.55]) {
+      const w = add(g, new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.03, 6, 22), mat('#1d1d1b')), x, 0.34, 0);
+      w.castShadow = true;
+      cyl(g, 0.03, 0.03, 0.06, mat('#a8a59c'), x, 0.31, 0, 6).rotation.x = Math.PI / 2;
+    }
+    const bar = (x1: number, y1: number, x2: number, y2: number) => {
+      const len = Math.hypot(x2 - x1, y2 - y1);
+      const b = box(g, len, 0.035, 0.035, frame, (x1 + x2) / 2, (y1 + y2) / 2 - 0.0175, 0);
+      b.rotation.z = Math.atan2(y2 - y1, x2 - x1);
+    };
+    bar(-0.55, 0.34, -0.05, 0.36);
+    bar(-0.05, 0.36, 0.45, 0.78);
+    bar(-0.05, 0.36, -0.15, 0.8);
+    bar(-0.15, 0.78, 0.42, 0.78);
+    bar(-0.55, 0.34, -0.15, 0.78);
+    bar(0.55, 0.34, 0.45, 0.85);
+    box(g, 0.22, 0.05, 0.1, mat('#1d1d1b'), -0.17, 0.82, 0);
+    box(g, 0.04, 0.04, 0.5, mat('#1d1d1b'), 0.45, 0.88, 0);
+  },
+  rubberDuck(g) {
+    cyl(g, 0.3, 0.26, 0.26, mat('#8a8f88'), 0, 0, 0, 14);
+    cyl(g, 0.28, 0.28, 0.01, mat('#6f9ab0'), 0, 0.22, 0, 14);
+    const y = mat('#f2c230');
+    blob(g, 0.08, y, 0, 0.25, 0);
+    blob(g, 0.05, y, 0.05, 0.34, 0);
+    cone(g, 0.025, 0.06, mat('#e8792a'), 0.1, 0.33, 0, 5).rotation.z = -Math.PI / 2;
+  },
+  painting(g) {
+    box(g, 0.76, 0.6, 0.05, mat('#a8853a'), 0, 1.2, -0.44);
+    box(g, 0.64, 0.24, 0.012, mat('#9cb8c8'), 0, 1.48, -0.41);
+    box(g, 0.64, 0.24, 0.012, mat('#6b8a4a'), 0, 1.26, -0.41);
+    box(g, 0.1, 0.06, 0.008, mat('#ece6d8'), -0.1, 1.33, -0.402);
+    box(g, 0.04, 0.03, 0.008, mat('#2a2826'), -0.08, 1.34, -0.399);
+    box(g, 0.08, 0.05, 0.008, mat('#ece6d8'), 0.15, 1.31, -0.402);
+  },
+  sewingMachine(g) {
+    const iron = mat('#2a2826');
+    for (const x of [-0.26, 0.26]) box(g, 0.05, 0.72, 0.36, iron, x, 0, 0);
+    box(g, 0.47, 0.05, 0.05, iron, 0, 0.12, 0.1);
+    box(g, 0.64, 0.04, 0.42, mat(WOOD), 0, 0.72, 0);
+    box(g, 0.38, 0.06, 0.16, iron, 0, 0.76, 0);
+    box(g, 0.08, 0.2, 0.12, iron, 0.14, 0.82, 0);
+    box(g, 0.3, 0.07, 0.1, iron, 0.0, 0.96, 0);
+    box(g, 0.05, 0.12, 0.06, iron, -0.13, 0.86, 0);
+    box(g, 0.2, 0.012, 0.012, mat('#c9a23a'), 0.02, 1.0, 0.051);
+    cyl(g, 0.05, 0.05, 0.03, mat('#a8a59c'), 0.2, 0.92, 0, 10).rotation.x = Math.PI / 2;
+  },
+  trafficCone(g) {
+    box(g, 0.4, 0.04, 0.4, mat('#1d1d1b'), 0, 0, 0);
+    const orange = mat('#e8792a');
+    cyl(g, 0.03, 0.16, 0.6, orange, 0, 0.04, 0, 10);
+    cyl(g, 0.105, 0.125, 0.08, mat('#ece6d8'), 0, 0.22, 0, 10);
+    cyl(g, 0.06, 0.08, 0.07, mat('#ece6d8'), 0, 0.4, 0, 10);
+  },
+  bottles(g) {
+    const crate = mat('#3f6a3f');
+    box(g, 0.44, 0.28, 0.32, crate, 0, 0, 0);
+    box(g, 0.46, 0.03, 0.34, mat('#355a35'), 0, 0.28, 0);
+    const glass = [mat('#3f6a3a', { transparent: true, opacity: 0.85 }), mat('#7a4a22', { transparent: true, opacity: 0.85 })];
+    for (let i = 0; i < 3; i++)
+      for (let j = 0; j < 2; j++) {
+        const x = -0.14 + i * 0.14;
+        const z = -0.07 + j * 0.14;
+        cyl(g, 0.035, 0.035, 0.12, glass[(i + j) % 2], x, 0.28, z, 8);
+        cyl(g, 0.014, 0.03, 0.08, glass[(i + j) % 2], x, 0.4, z, 8);
+      }
+  },
+  carBattery(g) {
+    box(g, 0.34, 0.2, 0.18, mat('#1d1d1b'), 0, 0, 0);
+    box(g, 0.34, 0.02, 0.18, mat('#3b3f3a'), 0, 0.2, 0);
+    cyl(g, 0.02, 0.02, 0.04, mat('#b0472f'), -0.11, 0.22, 0, 6);
+    cyl(g, 0.02, 0.02, 0.04, mat('#2a2826'), 0.11, 0.22, 0, 6);
+    box(g, 0.12, 0.06, 0.005, mat('#e6c13a'), 0, 0.08, 0.092);
+  },
+  gasCan(g) {
+    const red = mat('#9e2b20');
+    box(g, 0.36, 0.46, 0.17, red, 0, 0, 0);
+    box(g, 0.2, 0.04, 0.06, red, -0.06, 0.48, 0);
+    box(g, 0.05, 0.06, 0.05, mat('#2a2826'), 0.13, 0.46, 0);
+    box(g, 0.3, 0.03, 0.005, mat('#b8352a'), 0, 0.15, 0.087).rotation.z = 0.6;
+    box(g, 0.3, 0.03, 0.005, mat('#b8352a'), 0, 0.15, 0.087).rotation.z = -0.6;
+  },
+  tape(g) {
+    const roll = (x: number, y: number, z: number, c: string) => {
+      const t = add(g, new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.035, 6, 16), mat(c)), x, y, z);
+      t.rotation.x = Math.PI / 2;
+    };
+    roll(0, 0.035, 0, '#a8a59c');
+    roll(0.02, 0.105, 0.01, '#a8a59c');
+    roll(-0.01, 0.175, 0, '#b8935a');
+    roll(0.2, 0.035, 0.1, '#5f6a7a');
+  },
+  sneakers(g) {
+    const shoe = (x: number, z: number, ry: number) => {
+      const s = new THREE.Group();
+      s.position.set(x, 0, z);
+      s.rotation.y = ry;
+      g.add(s);
+      box(s, 0.11, 0.03, 0.3, mat('#ece6d8'), 0, 0, 0);
+      box(s, 0.1, 0.07, 0.22, mat('#ddd8cc'), 0, 0.03, -0.03);
+      box(s, 0.1, 0.05, 0.1, mat('#ddd8cc'), 0, 0.03, 0.1);
+      box(s, 0.102, 0.02, 0.18, mat('#b0472f'), 0, 0.05, -0.01);
+    };
+    shoe(-0.08, 0, 0.15);
+    shoe(0.09, 0.03, 0.15); // ja, zwei linke
+  },
 };
 
 export function buildFurniture(kind: FurnitureId): Model {

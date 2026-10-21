@@ -7,9 +7,10 @@
 //   "h x,y" = waagerechte Kante oberhalb von Feld (x, y), von Ecke (x,y) bis (x+1,y)
 //   "v x,y" = senkrechte Kante links von Feld (x, y), von Ecke (x,y) bis (x,y+1)
 
-import { FURNITURE, footprint, type FurnitureId } from './furniture';
+import { RESOURCE_ORDER } from './content';
+import { FURNITURE, footprint, isJunk, type FurnitureId } from './furniture';
 import { pickWeighted, randInt, rngFrom } from './rng';
-import type { Inventory, PlacedItem, Plot, RejectReason, Resource, SpotKind } from './types';
+import type { Inventory, JunkBag, PlacedItem, Plot, RejectReason, Resource, SpotKind } from './types';
 
 export const PLOT = 36;
 export const SECTION = 6;
@@ -17,7 +18,7 @@ export const SECTIONS = PLOT / SECTION;
 /** Die vier Abschnitte in der Mitte sind von Anfang an frei (12 × 12 m). */
 export const START_SECTIONS = ['2,2', '3,2', '2,3', '3,3'];
 
-const RES: Resource[] = ['food', 'water', 'medicine', 'material'];
+const RES: Resource[] = RESOURCE_ORDER;
 
 // --- Schauplätze -------------------------------------------------------------------
 
@@ -108,20 +109,20 @@ export interface ObstacleDef {
 }
 
 export const OBSTACLES: Record<ObstacleKind, ObstacleDef> = {
-  rubble: { name: 'Schutthaufen', w: 2, d: 2, reward: { material: 3 }, verb: 'Wegräumen' },
-  debris: { name: 'Trümmer', w: 1, d: 1, reward: { material: 1 }, verb: 'Wegräumen' },
-  wreck: { name: 'Autowrack', w: 2, d: 4, reward: { material: 6 }, verb: 'Ausschlachten' },
-  tires: { name: 'Reifenstapel', w: 1, d: 1, reward: { material: 2 }, verb: 'Wegrollen' },
-  trash: { name: 'Müllsäcke', w: 2, d: 1, reward: { material: 2 }, verb: 'Durchwühlen' },
-  bush: { name: 'Gestrüpp', w: 1, d: 1, reward: { material: 1 }, verb: 'Roden' },
-  hay: { name: 'Heuballen', w: 1, d: 1, reward: { material: 1 }, verb: 'Wegrollen' },
-  tree: { name: 'Baum', w: 1, d: 1, reward: { material: 3 }, verb: 'Fällen' },
-  deadTree: { name: 'Toter Baum', w: 1, d: 1, reward: { material: 2 }, verb: 'Fällen' },
-  rock: { name: 'Felsbrocken', w: 1, d: 1, reward: { material: 1 }, verb: 'Zerschlagen' },
-  driftwood: { name: 'Treibholz', w: 2, d: 1, reward: { material: 2 }, verb: 'Einsammeln' },
-  barrels: { name: 'Alte Fässer', w: 1, d: 1, reward: { material: 1, water: 1 }, verb: 'Leeren' },
-  compost: { name: 'Komposthaufen', w: 1, d: 1, reward: { material: 1, food: 1 }, verb: 'Umgraben' },
-  cart: { name: 'Leiterwagen', w: 2, d: 1, reward: { material: 3 }, verb: 'Zerlegen' },
+  rubble: { name: 'Schutthaufen', w: 2, d: 2, reward: { stone: 3 }, verb: 'Wegräumen' },
+  debris: { name: 'Trümmer', w: 1, d: 1, reward: { stone: 1 }, verb: 'Wegräumen' },
+  wreck: { name: 'Autowrack', w: 2, d: 4, reward: { metal: 4, glass: 1, plastic: 1, screws: 1 }, verb: 'Ausschlachten' },
+  tires: { name: 'Reifenstapel', w: 1, d: 1, reward: { plastic: 2 }, verb: 'Wegrollen' },
+  trash: { name: 'Müllsäcke', w: 2, d: 1, reward: { plastic: 1, cloth: 1 }, verb: 'Durchwühlen' },
+  bush: { name: 'Gestrüpp', w: 1, d: 1, reward: { wood: 1 }, verb: 'Roden' },
+  hay: { name: 'Heuballen', w: 1, d: 1, reward: { wood: 1 }, verb: 'Wegrollen' },
+  tree: { name: 'Baum', w: 1, d: 1, reward: { wood: 3 }, verb: 'Fällen' },
+  deadTree: { name: 'Toter Baum', w: 1, d: 1, reward: { wood: 2 }, verb: 'Fällen' },
+  rock: { name: 'Felsbrocken', w: 1, d: 1, reward: { stone: 2 }, verb: 'Zerschlagen' },
+  driftwood: { name: 'Treibholz', w: 2, d: 1, reward: { wood: 2 }, verb: 'Einsammeln' },
+  barrels: { name: 'Alte Fässer', w: 1, d: 1, reward: { metal: 1, water: 1 }, verb: 'Leeren' },
+  compost: { name: 'Komposthaufen', w: 1, d: 1, reward: { wood: 1, food: 1 }, verb: 'Umgraben' },
+  cart: { name: 'Leiterwagen', w: 2, d: 1, reward: { wood: 2, metal: 1 }, verb: 'Zerlegen' },
 };
 
 export interface Obstacle {
@@ -177,23 +178,23 @@ export interface PieceDef {
 }
 
 export const PIECES: Record<PieceId, PieceDef> = {
-  plankWall: { name: 'Bretterwand', group: 'wall', cost: { material: 1 }, starter: true, desc: 'Alte Bretter, krumm genagelt. Hält.' },
-  sheetWall: { name: 'Wellblechwand', group: 'wall', cost: { material: 1 }, starter: true, desc: 'Laut bei Regen, aber dicht.' },
-  brickWall: { name: 'Ziegelmauer', group: 'wall', cost: { material: 2 }, desc: 'Stein auf Stein. Für die Ewigkeit.' },
-  chainFence: { name: 'Maschendrahtzaun', group: 'fence', cost: { material: 1 }, starter: true, desc: 'Zeigt, wo dein Gelände anfängt.' },
-  picketFence: { name: 'Lattenzaun', group: 'fence', cost: { material: 1 }, desc: 'Weiß gestrichen, fast wie im Bilderbuch.' },
-  door: { name: 'Tür', group: 'opening', fits: 'wall', cost: { material: 2 }, starter: true, desc: 'Damit man rein und raus kommt.' },
-  window: { name: 'Fenster', group: 'opening', fits: 'wall', cost: { material: 2 }, starter: true, desc: 'Licht rein, Blick raus.' },
+  plankWall: { name: 'Bretterwand', group: 'wall', cost: { wood: 1 }, starter: true, desc: 'Alte Bretter, krumm genagelt. Hält.' },
+  sheetWall: { name: 'Wellblechwand', group: 'wall', cost: { metal: 1 }, starter: true, desc: 'Laut bei Regen, aber dicht.' },
+  brickWall: { name: 'Ziegelmauer', group: 'wall', cost: { stone: 2 }, desc: 'Stein auf Stein. Für die Ewigkeit.' },
+  chainFence: { name: 'Maschendrahtzaun', group: 'fence', cost: { metal: 1 }, starter: true, desc: 'Zeigt, wo dein Gelände anfängt.' },
+  picketFence: { name: 'Lattenzaun', group: 'fence', cost: { wood: 1 }, desc: 'Weiß gestrichen, fast wie im Bilderbuch.' },
+  door: { name: 'Tür', group: 'opening', fits: 'wall', cost: { wood: 2 }, starter: true, desc: 'Damit man rein und raus kommt.' },
+  window: { name: 'Fenster', group: 'opening', fits: 'wall', cost: { glass: 1, wood: 1 }, starter: true, desc: 'Licht rein, Blick raus.' },
   arch: { name: 'Durchgang', group: 'opening', fits: 'wall', cost: {}, starter: true, desc: 'Ein offenes Loch in der Wand, für Räume ohne Tür.' },
-  gate: { name: 'Gartentor', group: 'opening', fits: 'fence', cost: { material: 1 }, starter: true, desc: 'Ein Tor im Zaun.' },
-  plankFloor: { name: 'Dielenboden', group: 'floor', cost: { material: 1 }, starter: true, desc: 'Warm unter den Füßen.' },
-  concreteFloor: { name: 'Betonplatten', group: 'floor', cost: { material: 1 }, starter: true, desc: 'Grau, eben, unkaputtbar.' },
-  gravelFloor: { name: 'Kiesweg', group: 'floor', cost: { material: 1 }, starter: true, desc: 'Knirscht bei jedem Schritt.' },
-  tileFloor: { name: 'Fliesen', group: 'floor', cost: { material: 2 }, desc: 'Schachbrettmuster. Sehr schick.' },
-  carpetFloor: { name: 'Teppichboden', group: 'floor', cost: { material: 2 }, desc: 'Weich, gemütlich, ein bisschen muffig.' },
-  tarpRoof: { name: 'Plane', group: 'roof', cost: { material: 1 }, starter: true, desc: 'Hält den gröbsten Regen ab.' },
-  sheetRoof: { name: 'Wellblechdach', group: 'roof', cost: { material: 1 }, starter: true, desc: 'Prasselt herrlich, wenn es regnet.' },
-  tileRoof: { name: 'Ziegeldach', group: 'roof', cost: { material: 2 }, desc: 'Rote Ziegel. Ein richtiges Haus.' },
+  gate: { name: 'Gartentor', group: 'opening', fits: 'fence', cost: { wood: 1, metal: 1 }, starter: true, desc: 'Ein Tor im Zaun.' },
+  plankFloor: { name: 'Dielenboden', group: 'floor', cost: { wood: 1 }, starter: true, desc: 'Warm unter den Füßen.' },
+  concreteFloor: { name: 'Betonplatten', group: 'floor', cost: { stone: 1 }, starter: true, desc: 'Grau, eben, unkaputtbar.' },
+  gravelFloor: { name: 'Kiesweg', group: 'floor', cost: { stone: 1 }, starter: true, desc: 'Knirscht bei jedem Schritt.' },
+  tileFloor: { name: 'Fliesen', group: 'floor', cost: { stone: 1, glue: 1 }, desc: 'Schachbrettmuster. Sehr schick.' },
+  carpetFloor: { name: 'Teppichboden', group: 'floor', cost: { cloth: 1, glue: 1 }, desc: 'Weich, gemütlich, ein bisschen muffig.' },
+  tarpRoof: { name: 'Plane', group: 'roof', cost: { plastic: 1 }, starter: true, desc: 'Hält den gröbsten Regen ab.' },
+  sheetRoof: { name: 'Wellblechdach', group: 'roof', cost: { metal: 1 }, starter: true, desc: 'Prasselt herrlich, wenn es regnet.' },
+  tileRoof: { name: 'Ziegeldach', group: 'roof', cost: { stone: 2 }, desc: 'Rote Ziegel. Ein richtiges Haus.' },
 };
 export const PIECE_ORDER = Object.keys(PIECES) as PieceId[];
 
@@ -247,7 +248,7 @@ export function sectionOf(x: number, y: number): string {
 /** Kosten für den nächsten Abschnitt: wird mit jedem Abschnitt etwas teurer. */
 export function reclaimCost(plot: Plot): Partial<Inventory> {
   const k = Math.max(0, plot.sections.length - START_SECTIONS.length);
-  return { material: 6 + 2 * k, food: 1 + Math.floor(k / 3) };
+  return { wood: 3 + k, metal: 2 + k, food: 1 + Math.floor(k / 3) };
 }
 
 /** Darf dieser Abschnitt als Nächstes zurückerobert werden? */
@@ -397,6 +398,8 @@ export function itemsOnEdge(idx: PlotIndex, edge: EdgeKey): number[] {
 export function itemProblem(idx: PlotIndex, plot: Plot, kind: FurnitureId, x: number, y: number, rot: number, ignoreUid?: number): RejectReason | null {
   const def = FURNITURE[kind];
   if (!Number.isInteger(x) || !Number.isInteger(y)) return 'blocked';
+  // Nützliche Anlagen gibt es nur einmal (aufrüsten statt mehrfach bauen)
+  if (def.unique && plot.items.some((i) => i.kind === kind && i.uid !== ignoreUid)) return 'only_one';
   const { w, d } = footprint(kind, rot);
   for (let cy = y; cy < y + d; cy++) for (let cx = x; cx < x + w; cx++) if (!cellFree(idx, cx, cy)) return 'blocked';
   if (def.layer === 'wall') {
@@ -549,16 +552,28 @@ export function planAffordable(inv: Inventory, plan: BuildPlan): boolean {
   return RES.every((r) => inv[r] + (plan.refund[r] ?? 0) >= (plan.cost[r] ?? 0));
 }
 
-/** Plan anwenden: Material abziehen/gutschreiben, Teile einlagern. Gibt die Rückerstattung der eingelagerten Teile zurück. */
-export function applyPlan(inv: Inventory, plot: Plot, plan: BuildPlan, change: (key: string) => void): Partial<Inventory> {
+/** Ein aufgestelltes Teil zurück ins Lager: Rohstoffe zurück, Fundstücke wieder in den Rucksack. */
+export function storeItem(bag: { inventory: Inventory; junk: JunkBag }, it: PlacedItem): Partial<Inventory> {
+  if (isJunk(it.kind)) {
+    bag.junk[it.kind] = (bag.junk[it.kind] ?? 0) + 1;
+    return {};
+  }
+  const refund = FURNITURE[it.kind].cost;
+  for (const r of RES) bag.inventory[r] += refund[r] ?? 0;
+  return { ...refund };
+}
+
+/** Plan anwenden: Rohstoffe abziehen/gutschreiben, Teile einlagern. Gibt die Rückerstattung der eingelagerten Teile zurück. */
+export function applyPlan(bag: { inventory: Inventory; junk: JunkBag }, plot: Plot, plan: BuildPlan, change: (key: string) => void): Partial<Inventory> {
   const storedRefund: Partial<Inventory> = {};
   for (const uid of new Set(plan.store)) {
     const it = plot.items.find((i) => i.uid === uid);
     if (!it) continue;
-    addTo(storedRefund, FURNITURE[it.kind].cost);
+    addTo(storedRefund, storeItem(bag, it));
     plot.items = plot.items.filter((i) => i.uid !== uid);
   }
-  for (const r of RES) inv[r] += (plan.refund[r] ?? 0) + (storedRefund[r] ?? 0) - (plan.cost[r] ?? 0);
+  const inv = bag.inventory;
+  for (const r of RES) inv[r] += (plan.refund[r] ?? 0) - (plan.cost[r] ?? 0);
   for (const k of plan.keys) change(k);
   return storedRefund;
 }

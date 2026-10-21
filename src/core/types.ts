@@ -7,8 +7,50 @@ export type { FurnitureId, SiteId };
 // Browser-Abhängigkeiten. Derselbe Code kann später unverändert auf einem Server
 // laufen und dort entscheiden, was ein Spieler findet.
 
-export type Resource = 'food' | 'water' | 'medicine' | 'material';
+/** Zum Überleben: wird verbraucht. */
+export type Survival = 'food' | 'water' | 'medicine';
+/** Rohstoffe: zum Bauen, Basteln und Aufrüsten. */
+export type Material = 'wood' | 'metal' | 'stone' | 'cloth' | 'plastic' | 'glass' | 'glue' | 'screws' | 'electronics';
+export type Resource = Survival | Material;
 export type Inventory = Record<Resource, number>;
+
+/** Fundstücke: Kram von draußen. Als Deko aufstellen oder am Werktisch zerlegen. */
+export type JunkId =
+  | 'teddy'
+  | 'wallClock'
+  | 'radio'
+  | 'toaster'
+  | 'tv'
+  | 'phone'
+  | 'typewriter'
+  | 'guitar'
+  | 'globe'
+  | 'vase'
+  | 'mirror'
+  | 'toolbox'
+  | 'bike'
+  | 'rubberDuck'
+  | 'painting'
+  | 'sewingMachine'
+  | 'trafficCone'
+  | 'bottles'
+  | 'carBattery'
+  | 'gasCan'
+  | 'tape'
+  | 'sneakers';
+export type JunkBag = Partial<Record<JunkId, number>>;
+
+/** Ein Auftrag am Werktisch: Fundstück wird bis endsAt zerlegt. */
+export interface WorkshopJob {
+  junk: JunkId;
+  endsAt: number;
+}
+export interface Workshop {
+  /** Ausbaustufe des Werktischs (1–3). */
+  level: number;
+  /** Aufträge in Reihenfolge; fertige warten, bis man sie abholt. */
+  jobs: WorkshopJob[];
+}
 
 export interface LatLon {
   lat: number;
@@ -127,6 +169,10 @@ export interface PlayerState {
   lastActiveAt: number;
   character: Character;
   inventory: Inventory;
+  /** Fundstücke im Rucksack: id -> Anzahl. */
+  junk: JunkBag;
+  /** Werktisch in der Endstation (Zerlegen mit Wartezeit). */
+  workshop: Workshop;
   bus: { modules: Partial<Record<ModuleId, BuiltModule>> };
   /** Wann welche Fundstelle zuletzt durchsucht wurde (für die Abklingzeit). */
   spots: Record<string, number>;
@@ -180,7 +226,13 @@ export type Action =
   /** Böden oder Dächer in einem Rechteck (Felder). */
   | { type: 'paint'; layer: 'floors' | 'roofs'; piece: FloorId | RoofId; x1: number; y1: number; x2: number; y2: number }
   /** Abreißen: Wände/Öffnungen als Linie oder Rechteck (Ecken), Böden/Dächer als Rechteck (Felder). */
-  | { type: 'demolish'; layer: 'walls' | 'openings' | 'floors' | 'roofs'; shape: 'line' | 'room' | 'rect'; x1: number; y1: number; x2: number; y2: number };
+  | { type: 'demolish'; layer: 'walls' | 'openings' | 'floors' | 'roofs'; shape: 'line' | 'room' | 'rect'; x1: number; y1: number; x2: number; y2: number }
+  /** Fundstück auf den Werktisch legen (wird mit Wartezeit zerlegt). */
+  | { type: 'dismantle'; junk: JunkId }
+  /** Fertig Zerlegtes vom Werktisch nehmen. */
+  | { type: 'collect' }
+  /** Werktisch eine Stufe aufrüsten. */
+  | { type: 'upgradeWorkbench' };
 
 export type RejectReason =
   | 'too_far'
@@ -201,16 +253,21 @@ export type RejectReason =
   | 'not_found'
   | 'no_site'
   | 'no_wall'
-  | 'not_adjacent';
+  | 'not_adjacent'
+  | 'no_workbench'
+  | 'queue_full'
+  | 'no_junk'
+  | 'only_one'
+  | 'max_level';
 
 export type GameEvent =
-  | { type: 'loot'; spotId: string; items: Partial<Inventory>; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: BlueprintId; site?: SiteId }
+  | { type: 'loot'; spotId: string; items: Partial<Inventory>; junk?: JunkId; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: BlueprintId; site?: SiteId }
   | { type: 'siteChosen'; site: SiteId; first: boolean }
   | { type: 'reclaimed'; section: string; cost: Partial<Inventory> }
   | { type: 'obstacleCleared'; id: string; kind: ObstacleKind; reward: Partial<Inventory> }
   | { type: 'placed'; uid: number; kind: FurnitureId }
   | { type: 'moved'; uid: number }
-  | { type: 'stored'; uid: number; refund: Partial<Inventory> }
+  | { type: 'stored'; uid: number; refund: Partial<Inventory>; junk?: JunkId }
   | { type: 'constructed'; layer: 'walls' | 'openings' | 'floors' | 'roofs'; count: number; cost: Partial<Inventory>; refund: Partial<Inventory>; stored: number }
   | { type: 'demolished'; layer: 'walls' | 'openings' | 'floors' | 'roofs'; count: number; refund: Partial<Inventory>; stored: number }
   | { type: 'explored'; added: number }
@@ -235,6 +292,9 @@ export type GameEvent =
   | { type: 'fled'; weaponBroke?: WeaponId }
   | { type: 'crafted'; weapon: WeaponId }
   | { type: 'healed'; amount: number }
+  | { type: 'dismantleQueued'; junk: JunkId; endsAt: number }
+  | { type: 'collected'; items: Partial<Inventory>; count: number }
+  | { type: 'workbenchUpgraded'; level: number }
   | { type: 'rejected'; reason: RejectReason };
 
 export interface RuleContext {

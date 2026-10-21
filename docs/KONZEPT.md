@@ -10,25 +10,34 @@ Ein Endzeit-Spiel auf der echten Karte, das man nebenbei im Alltag spielt: Handy
 2. **Die echte Welt, anders erzählt.** Die Karte ist die echte Umgebung, aber im Endzeit-Look: Ruinen, verwilderte Wälder, Staub, Nebel.
 3. **Auch auf dem Dorf spielbar.** Fundstellen gibt es überall, nicht nur an Sehenswürdigkeiten. Jedes Dorf hat Bushaltestellen, Gärten, Feldwege.
 4. **Datenschutz.** Den Ort deiner Endstation legst du selbst fest, er bleibt aber nur auf deinem Gerät. Andere Spieler (und später der Server) erfahren nie, wo sie steht.
-5. **Tagsüber raus, abends einrichten.** Draußen sammelst du Material und Baupläne, zu Hause baust du in Ruhe deine Endstation aus, gern auch vom Bett aus.
+5. **Tagsüber raus, abends einrichten.** Draußen sammelst du Rohstoffe, Fundstücke und Baupläne, zu Hause baust du in Ruhe deine Endstation aus, gern auch vom Bett aus.
 6. **Eins statt viele.** Jede nützliche Anlage (Regentonne, Werkbank, Windrad, Ofen …) gibt es nur einmal. Statt mehr davon zu bauen, wird sie in Stufen aufgerüstet und bleibt dabei stehen, wo sie steht. Niemand soll ständig umbauen müssen. Deko darf man beliebig oft aufstellen.
 
 ## Kernschleife
 
 1. **Erkunden:** Fundstellen leuchten auf der Karte. Wenn man nah genug ist (ca. 45 m), kann man sie durchsuchen.
-2. **Sammeln:** Nahrung, Wasser, Medizin, Material. Echte Orte bringen mehr: Supermarkt → Nahrung, Apotheke → Medizin, Baumarkt → Material.
-3. **Ausbauen:** Mit Material wird der Bus ausgebaut. Manche Ausbauten produzieren von allein (Regenfass, Dachgarten).
+2. **Sammeln:** Nahrung, Wasser, Medizin zum Überleben, dazu Rohstoffe und Fundstücke. Echte Orte bringen mehr: Supermarkt → Nahrung, Apotheke → Medizin, Baumarkt → Holz, Metall, Schrauben, Kleber.
+3. **Ausbauen:** Mit Rohstoffen werden Bus und Endstation ausgebaut. Manche Ausbauten produzieren von allein (Regenfass, Dachgarten).
 4. **Entdecken:** Selten findet man Erinnerungsstücke, kleine Notizen und Fundsachen, die nach und nach erzählen, was passiert ist.
+
+## Rohstoffe und Fundstücke
+
+- **Neun Rohstoffe** statt „Material“: Holz, Metall, Stein, Stoff, Kunststoff, Glas, Kleber, Schrauben, Elektronik. Grob von häufig nach selten. Jedes Bauteil kostet genau, woraus es besteht (Bretterwand = Holz, Fenster = Glas und Holz, Stehlampe braucht Elektronik).
+- **Wo es was gibt:** Autos → Metall, Kunststoff; Schuppen → Holz, Schrauben; Kleidercontainer → Stoff; Pakete → Elektronik, Kleber; Baumarkt → fast alles zum Bauen. Stein kommt vor allem aus Schutt und Felsen in der Endstation.
+- **Fundstücke** (22 Stück, z. B. Teddybär, Wanduhr, Kofferradio, Röhrenfernseher, Gitarre, Fahrrad, Quietscheente): liegen draußen, je nach Ort. Man kann sie **behalten und als Deko aufstellen** oder **am Werktisch zerlegen** (Teddy → Stoff und Kunststoff, Radio → Kunststoff, Elektronik, Schrauben).
+- **Der Werktisch** steht in der Endstation und zerlegt in echter Zeit, eins nach dem anderen (1–12 Minuten pro Stück). Er arbeitet weiter, auch wenn die App zu ist. Fertiges wartet auf dem Tisch, nichts verdirbt. Ein grünes Zeichen am Endstation-Knopf zeigt, dass etwas bereitliegt.
+- **Eins statt viele:** Werktisch, Holzofen, Solarpaneel und Regentonne gibt es nur einmal. Der Werktisch lässt sich in drei Stufen aufrüsten (mehr Plätze, schneller).
+- **Rucksack:** Ein Tipp auf die Vorräte oben öffnet ihn: Vorräte, Rohstoffe (mit Fundorten) und Fundstücke.
 
 ## Die Endstation (Basisbau, das Herzstück für abends)
 
 - **Ort festlegen:** Beim ersten Tippen auf das Haus-Symbol errichtest du deine Endstation dort, wo du gerade bist. Bauen kannst du nur in ihrer Nähe (~150 m, drinnen ist GPS ungenau). Umziehen geht jederzeit, alles kommt mit.
 - **Nur auf dem Gerät:** Der Ort steht nicht im Spielstand. Bau-Aktionen schicken keine Position mit.
 - **Schauplatz:** Zum Start wählst du Busdepot, Bauernhof oder Seeufer. Tankstelle, Schrebergarten und die beiden nicht gewählten findest du draußen als Lageplan. Jeder Schauplatz ist ein eigenes Gelände mit eigener Umgebung (Depothalle und Buswracks, Felder und Silo, See mit Steg und Wald …). Was du baust, bleibt stehen, auch wenn du wechselst.
-- **Gelände zurückerobern:** 36 × 36 m in 6 × 6 Abschnitten. Am Anfang sind die mittleren 12 × 12 m frei, drumherum Gestrüpp und Schrott. Jeder angrenzende Abschnitt kostet etwas mehr Material und Nahrung. Darin liegen Hindernisse (Schutt, Wracks, Bäume …), die beim Wegräumen etwas bringen. Bäume darf man auch stehen lassen.
+- **Gelände zurückerobern:** 36 × 36 m in 6 × 6 Abschnitten. Am Anfang sind die mittleren 12 × 12 m frei, drumherum Gestrüpp und Schrott. Jeder angrenzende Abschnitt kostet etwas mehr Holz, Metall und Nahrung. Darin liegen Hindernisse (Schutt, Wracks, Bäume …), die beim Wegräumen etwas bringen. Bäume darf man auch stehen lassen.
 - **Frei bauen:** Wände und Zäune von Ecke zu Ecke ziehen (als Linie oder gleich als Raum), Türen, Fenster und Durchgänge einsetzen, Böden und Dächer aufziehen. Abreißen gibt immer alles zurück.
 - **Räume:** Rundum Wände und ein Dach machen einen Raum. Möbel drinnen zählen anderthalbfach, jeder Raum bringt Bonus-Gemütlichkeit (mehr mit Boden).
-- **Einrichten:** 36 Möbel- und Deko-Teile (Möbel, Licht, Deko, Garten), manche hängen an der Wand. Doppelte Teile zählen nur halb.
+- **Einrichten:** 36 Möbel- und Deko-Teile (Möbel, Licht, Deko, Garten), manche hängen an der Wand, dazu alle Fundstücke (eigener Reiter). Doppelte Teile zählen nur halb.
 - **Gemütlichkeit:** Ruine → Notlager → Unterschlupf → Zuhause → Gemütliches Zuhause → Schmuckstück → Oase.
 - **Baupläne** findest du draußen an passenden Orten: Bahnhofsuhr an Haltestellen, Ziegelmauer und Holzofen im Baumarkt, Küchenzeile im Supermarkt …
 - **Deine Figur** wohnt dort und läuft hin, wo du hintippst.
@@ -89,7 +98,7 @@ Name, Aussehen (Frisur, Hautton, Jacke) und eine Vorgeschichte mit kleinem Vorte
 | Vorgeschichte | Vorteil |
 |---|---|
 | Rettungsdienst | Findet öfter Medizin |
-| Werkstatt | Findet öfter Material |
+| Werkstatt | Findet öfter Metall |
 | Hof & Wald | Findet öfter Nahrung |
 | Kurierdienst | Größerer Suchradius (+20 m) |
 

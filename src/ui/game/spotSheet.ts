@@ -1,6 +1,6 @@
 // Untere Karte für eine Fundstelle: Infos, Durchsuchen, Fundbeleg.
 
-import { BACKGROUNDS, ENEMIES, HEALTH_REGEN_MIN, MEMENTOS, MIN_HEALTH_TO_FIGHT, RESOURCE_ORDER, RESOURCES, SPOT_KINDS } from '../../core/content';
+import { BACKGROUNDS, ENEMIES, HEALTH_REGEN_MIN, JUNK, MEMENTOS, MIN_HEALTH_TO_FIGHT, RESOURCE_ORDER, RESOURCES, SPOT_KINDS } from '../../core/content';
 import { distanceM, formatDistance } from '../../core/geo';
 import { currentHealth, nextHealthIn, readyAt, searchRangeM } from '../../core/rules';
 import type { GameEvent, LatLon, Spot } from '../../core/types';
@@ -8,6 +8,7 @@ import type { Fix } from '../../services/location';
 import type { App } from '../app';
 import { append, clear, h, reducedMotion, sleep, svgEl } from '../dom';
 import { icon, resIcon, spotIcon } from '../icons';
+import { junkThumb } from './chips';
 import { REJECT_TEXT } from '../texts';
 import { blueprintName, SITES } from '../../core/building';
 import { enemySvg } from '../zombies';
@@ -102,7 +103,8 @@ export class SpotSheet {
       button = h('button', { class: 'btn wide', type: 'button', disabled: true }, fix ? `Noch ${formatDistance(Math.max(0, dist - range))} näher ran` : 'Kein Standort');
     }
 
-    const likely = RESOURCE_ORDER.filter((r) => def.loot.some((l) => l.res === r));
+    // Die wahrscheinlichsten Funde (höchste Chance zuerst), dazu ob es Fundstücke gibt
+    const likely = [...def.loot].sort((a, b) => b.chance - a.chance).slice(0, 4).map((l) => l.res);
     clear(this.el);
     append(this.el, [
       h('button', { class: 'sheet-close iconbtn small', type: 'button', 'aria-label': 'Schließen', onclick: () => this.close() }, svgEl(icon('close', 18))),
@@ -133,7 +135,12 @@ export class SpotSheet {
       h(
         'div',
         { class: 'sheet-meta' },
-        h('span', { class: 'likely' }, likely.map((r) => h('span', { class: 'likely-chip', title: RESOURCES[r].name }, svgEl(resIcon(r, 16)), RESOURCES[r].name))),
+        h(
+          'span',
+          { class: 'likely' },
+          likely.map((r) => h('span', { class: 'likely-chip', title: RESOURCES[r].name }, svgEl(resIcon(r, 16)), RESOURCES[r].name)),
+          def.junkChance >= 0.2 ? h('span', { class: 'likely-chip junk', title: 'Fundstücke' }, svgEl(icon('junk', 16)), 'Fundstücke') : null,
+        ),
         h('span', { class: 'sheet-status' + (inRange && wait <= 0 ? ' near' : '') }, status),
       ),
       button,
@@ -206,6 +213,7 @@ export class SpotSheet {
         note ? h('p', { class: 'receipt-note' }, note) : null,
         ev.bonus ? h('p', { class: 'receipt-note' }, 'Rückkehr-Bonus: alles doppelt') : null,
         ev.night ? h('p', { class: 'receipt-note' }, 'Nachtbonus: 30 % mehr') : null,
+        ev.junk ? h('p', { class: 'receipt-blueprint junk' }, junkThumb(ev.junk, 40), h('span', null, h('b', null, `Fundstück: ${JUNK[ev.junk].name}`), h('small', null, JUNK[ev.junk].desc))) : null,
         ev.blueprint ? h('p', { class: 'receipt-blueprint' }, svgEl(icon('blueprint', 18)), `Bauplan gefunden: ${blueprintName(ev.blueprint)}`) : null,
         ev.site ? h('p', { class: 'receipt-blueprint site' }, svgEl(icon('map', 18)), `Lageplan gefunden: ${SITES[ev.site].name}! Ein neuer Ort für deine Endstation.`) : null,
       ),
