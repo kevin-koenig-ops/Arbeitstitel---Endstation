@@ -4,16 +4,19 @@ Alle geplanten Features an einer Stelle: erst was für Version 1.0 noch fehlt, d
 
 ## Version 1.0: was noch fehlt
 
-Version 1.0 ist fertig, wenn der ganze Kreislauf ohne Lücken läuft: rausgehen, finden, heimkommen, auspacken, bauen. Pakete 1–3 (Bus raus, Rucksack und Lager, Fundbuch) sind erledigt.
+Version 1.0 ist fertig, wenn der ganze Kreislauf ohne Lücken läuft: rausgehen, finden, heimkommen, auspacken, bauen. **Schwerpunkt seit 21.10.: erst ein rundes Kern-Gameplay, danach neue Features.** Pakete 1–3 (Bus raus, Rucksack und Lager, Fundbuch) sind erledigt.
 
-4. **Anlagen mit Nutzen** (jede einmal, aufrüstbar): Regentonne und Hochbeet sammeln schon von selbst. Es fehlen Holzofen (Eintopf: Nahrung und Gesundheit), Sanitätsschrank (stellt Medizin her) und Funkgerät (Hinweise auf Verstecke).
-5. **Mehr Spaß beim Erkunden:** Neu entdeckte Fundorte geben beim ersten Mal doppelt, Hinweise führen zu Verstecken mit seltenen Sachen, seltene Ereignisse auf der Karte (z. B. ein Versorgungsabwurf, der Stunden bleibt).
-6. **Kampf gut genug:** eine Steuerung festlegen, ausbalancieren, klares Feedback. Die Gegner heißen und wirken wie in der Lore: Wandler, Kriecher, Borkenmann, Heuler.
-7. **Einstieg:** die ersten 10 Minuten geführt: erste Fundstelle, Endstation errichten, erstes Bauen, erster Werktisch-Auftrag.
-8. **Klang:** Geräusche für Fund, Bauen, Kampf und Heimkehr.
-9. **Draußen-Test und Fehlerrunde:** eine Woche echt spielen, dann alles Hakelige reparieren. Dazu der Taschenmodus: Bildschirm schwarz, GPS läuft weiter, Vibration bei Fundstellen.
+4. **Progress-Gerüst:** Die Stufen der Endstation schalten wirklich etwas frei. Eine Zielleiste zeigt immer 2–3 nächste Ziele mit kleiner Belohnung. Der Streifer-Ruf wird zum Rang.
+5. **Looten neu:** kurze Mini-Spiele je nach Fundort (Schloss knacken, wühlen, hebeln), „Weiter wühlen?“ mit Lärm und Risiko, Seltenheitsfarben und Beute, die sichtbar in den Rucksack fliegt.
+6. **Kampf neu als kurze Taktik:** Gegner zeigen an, was sie vorhaben, du spielst pro Runde Aktionen aus deiner Ausrüstung (Karten). Gebaute Waffen werden neue Karten. Gegner wie in der Lore: Wandler, Kriecher, Borkenmann, Heuler.
+7. **Draußen beleben:** Erstfund-Bonus, Versorgungsabwürfe für ein paar Stunden, Verstecke über Hinweise (heiß und kalt). Die Endstation sagt, was fehlt und wo es das gibt.
+8. **Basenbau-Feinschliff und Anlagen mit Nutzen:** Holzofen (Eintopf: Nahrung und Gesundheit), Sanitätsschrank (Medizin), Funkgerät (Hinweise auf Verstecke). Regentonne und Hochbeet laufen schon.
+9. **Balancing:** den Fluss der Rohstoffe im Code durchrechnen (wie lange bis zum ersten Haus, zur Stufe „Zuhause“, zur Armbrust) und die Zahlen abstimmen.
+10. **Einstieg:** die ersten 10 Minuten geführt, über die Zielleiste.
+11. **Klang:** Geräusche für Fund, Bauen, Kampf und Heimkehr.
+12. **Draußen-Test und Fehlerrunde:** eine Woche echt spielen, dann alles Hakelige reparieren. Dazu der Taschenmodus: Bildschirm schwarz, GPS läuft weiter, Vibration bei Fundstellen.
 
-**Noch offen (nach dem Testen entscheiden):** Kampfsteuerung (Tasten oder Gesten), Grafikstil (Polygon, Comic, Gemalt oder 2D mit gemalten Bildern), Endziel (Vorschlag aus der Lore: „Die Linie 0 fährt wieder“, mit deinen Leuten zur Küste).
+**Entschieden:** Kampf als kurze Taktik mit Karten statt Echtzeit. **Noch offen:** Grafikstil (Polygon, Comic, Gemalt oder 2D mit gemalten Bildern), Endziel (Vorschlag aus der Lore: „Die Linie 0 fährt wieder“, mit deinen Leuten zur Küste).
 
 ## Version 1.1: Geschichte und Bewohner
 
