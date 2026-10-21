@@ -63,6 +63,16 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
   const wMajor = z([[12, 1.5], [15, 6], [17, 16], [19, 46], [21, 150]]);
   const wMinor = z([[13, 0.8], [15, 3], [17, 10], [19, 30], [21, 100]]);
 
+  /** Weicher Rand einer Fläche (siehe unten bei den Flächen). */
+  const softW = z([[13, 2], [15, 8], [17, 32], [19, 128], [21, 512]], 2);
+  const soft = (id: string, src: ReturnType<typeof from>, color: string | ExpressionSpecification): LayerSpecification => ({
+    id: `soft-${id}`,
+    type: 'line',
+    ...src,
+    layout: { 'line-join': 'round' },
+    paint: { 'line-color': color, 'line-width': softW, 'line-blur': softW, 'line-opacity': 0.85 },
+  });
+
   const layers: LayerSpecification[] = [
     { id: 'ground', type: 'background', paint: { 'background-pattern': 'pat-ground' } },
 
@@ -101,6 +111,22 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
       paint: { 'fill-pattern': ['step', ['zoom'], 'pat-forest', DECOR_MINZOOM, 'pat-forest-floor'] },
     },
     { id: 'landcover-wood-edge', type: 'line', ...from('landcover', cls('wood', 'forest')), paint: { 'line-color': '#3c4a28', 'line-width': 3, 'line-blur': 3, 'line-opacity': 0.6 } },
+
+    // Weiche Übergänge: ein breiter, ganz unscharfer Streifen in der Mittelfarbe der Textur
+    // liegt auf jeder Kante und blendet in die Nachbarfläche über (etwa 8 m breit).
+    soft('residential', from('landuse', cls('residential', 'suburb', 'neighbourhood')), '#827a5d'),
+    soft('industrial', from('landuse', cls('industrial', 'commercial', 'retail', 'railway', 'garages', 'quarry')), '#7b6e5c'),
+    soft('farm', from('landcover', cls('farmland')), ['match', ['%', ['to-number', ['coalesce', ['id'], 0]], 3], 0, '#5d4b32', 1, '#544b31', '#736141'] as ExpressionSpecification),
+    soft(
+      'grass',
+      from('landcover', cls('grass', 'meadow')),
+      ['match', ['coalesce', ['get', 'subclass'], ''], ['park', 'garden', 'village_green', 'recreation_ground', 'golf_course', 'flowerbed'], '#969657', '#9a955a'] as ExpressionSpecification,
+    ),
+    soft('green', from('landuse', cls('pitch', 'playground', 'stadium', 'park', 'school')), '#969657'),
+    soft('sand', from('landcover', cls('sand')), '#c0a991'),
+    soft('rock', from('landcover', cls('rock')), '#908871'),
+    soft('wetland', from('landcover', cls('wetland')), '#534d38'),
+    soft('wood', from('landcover', cls('wood', 'forest')), ['step', ['zoom'], '#4f5a33', DECOR_MINZOOM, '#6a4f37'] as ExpressionSpecification),
 
     // Wasser mit hellem Ufer
     { id: 'water-shore', type: 'line', ...from('water'), paint: { 'line-color': C.waterEdge, 'line-width': z([[14, 1.5], [17, 5], [20, 12]]), 'line-blur': 2, 'line-opacity': 0.9 } },
