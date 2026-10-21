@@ -2,15 +2,19 @@
 // noch kein Bild gibt, zur Laufzeit auf ein Canvas gezeichnete Muster.
 
 import { rngFrom } from '../core/rng';
+import grundboden from '../assets/textures/grundboden.webp';
+import rasen from '../assets/textures/rasen.webp';
 import waldboden from '../assets/textures/waldboden.webp';
 import wiese from '../assets/textures/wiese.webp';
 
 /**
- * Gemalte Texturen (512 × 512, nahtlos). Ersetzen das gezeichnete Muster gleichen Namens.
+ * Gemalte Texturen (512 × 512, nahtlos gemacht mit scripts/textur-nahtlos.py; Originale in kunst/texturen). Ersetzen das gezeichnete Muster gleichen Namens.
  * pr: je größer, desto kleiner erscheint das Bild auf der Karte (2 = 256 Bildpunkte breit).
  */
 const IMAGES: Record<string, { url: string; pr: number }> = {
+  'pat-ground': { url: grundboden, pr: 2 },
   'pat-meadow': { url: wiese, pr: 2 },
+  'pat-grass': { url: rasen, pr: 2 },
   'pat-forest-floor': { url: waldboden, pr: 3.5 },
 };
 const loaded = new Map<string, { data: ImageData; pixelRatio: number }>();
