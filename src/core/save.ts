@@ -3,9 +3,9 @@
 // Umzug vom Gerät in ein Konto).
 
 import { cellIndex, PLOT, SECTION, sectionObstacles, START_SECTIONS, type SiteId } from './building';
-import { MAX_HEALTH, RESOURCE_ORDER, START_WEAPONS } from './content';
+import { COLLECTIBLES, KRAM, MAX_HEALTH, RESOURCE_ORDER, START_WEAPONS } from './content';
 import { FURNITURE, type FurnitureId } from './furniture';
-import { SCHEMA_VERSION } from './rules';
+import { checkSets, SCHEMA_VERSION } from './rules';
 import type { PlayerState } from './types';
 
 type Raw = Record<string, unknown> & { schema?: number };
@@ -52,6 +52,71 @@ const MIGRATIONS: Record<number, (s: Raw) => void> = {
     inv.metal += Math.floor(m / 2);
     s.junk = {};
     s.workshop = { level: 1, jobs: [] };
+  },
+  // Version 7 -> 8: Der Bus fällt weg (Ausbauten kommen als Rohstoffe zurück), Rucksack und Lager
+  // werden getrennt, Fundstücke werden zu Kram (zerlegen) und Sammelstücken (einmalig, fürs Fundbuch).
+  7: (s) => {
+    const now = Number(s.lastActiveAt) || 0;
+    const inv = s.inventory as Record<string, number>;
+    const add = (items: Record<string, number> | undefined, f = 1) => {
+      for (const [k, v] of Object.entries(items ?? {})) inv[k] = (inv[k] ?? 0) + v * f;
+    };
+    // Bus
+    const bus = s.bus as { modules?: Record<string, { lastHarvestAt?: number }> } | undefined;
+    for (const [id, m] of Object.entries(bus?.modules ?? {})) {
+      add(OLD_MODULE_COST[id]);
+      const prod = OLD_PRODUCTION[id];
+      if (prod && m) add({ [prod.res]: Math.min(prod.cap, Math.floor((now - (m.lastHarvestAt ?? now)) / (prod.everyH * 3600_000))) });
+    }
+    delete s.bus;
+    // Fundstücke aufteilen
+    const kram: Record<string, number> = {};
+    const found: Record<string, number> = {};
+    for (const [id, n] of Object.entries((s.junk ?? {}) as Record<string, number>)) {
+      if (id in KRAM) kram[id] = (kram[id] ?? 0) + n;
+      else if (id in COLLECTIBLES) {
+        found[id] = now;
+        add(LEGACY_PARTS[id], n - 1);
+      }
+    }
+    delete s.junk;
+    // Aufgestellter Kram kommt ins Lager, aufgestellte Sammelstücke gelten als gefunden (doppelte werden zu Rohstoffen)
+    const placed = new Set<string>();
+    const base = s.base as { plots?: Record<string, { items: { kind: string; at?: number }[] }> };
+    for (const plot of Object.values(base?.plots ?? {})) {
+      plot.items = plot.items.filter((it) => {
+        if (it.kind in KRAM) {
+          kram[it.kind] = (kram[it.kind] ?? 0) + 1;
+          return false;
+        }
+        if (it.kind in COLLECTIBLES) {
+          found[it.kind] ??= now;
+          if (placed.has(it.kind)) {
+            add(LEGACY_PARTS[it.kind]);
+            return false;
+          }
+          placed.add(it.kind);
+        }
+        // Anlagen laufen ab jetzt
+        if (FURNITURE[it.kind as FurnitureId]?.produces) it.at = now;
+        return true;
+      });
+    }
+    // Werktisch: Kram bleibt in Arbeit, Sammelstücke werden gleich zu Rohstoffen
+    const ws = s.workshop as { jobs?: { junk?: string; kram?: string; endsAt: number }[] } | undefined;
+    if (ws?.jobs)
+      ws.jobs = ws.jobs.flatMap((j) => {
+        const id = j.kram ?? j.junk ?? '';
+        if (id in KRAM) return [{ kram: id, endsAt: j.endsAt }];
+        add(LEGACY_PARTS[id]);
+        return [];
+      });
+    s.kram = kram;
+    s.collectibles = found;
+    s.sets = {};
+    s.pack = {};
+    s.packKram = {};
+    checkSets(s as unknown as PlayerState, now);
   },
   // Version 6 -> 7: Das Gelände ist doppelt so groß (72 × 72 m statt 36 × 36 m, Abschnitte 12 m).
   // Alles Gebaute rückt in die Mitte, frei Gewesenes bleibt frei und aufgeräumt.
@@ -123,3 +188,32 @@ export function migrate(raw: unknown): PlayerState | null {
   if (s.schema !== SCHEMA_VERSION) return null;
   return s as unknown as PlayerState;
 }
+
+/** Kosten der alten Bus-Ausbauten (zum Zurückgeben beim Umzug in Version 8). */
+const OLD_MODULE_COST: Record<string, Record<string, number>> = {
+  rainBarrel: { metal: 3, plastic: 2 },
+  workbench: { wood: 6, metal: 4, screws: 2 },
+  roofGarden: { wood: 6, plastic: 2, water: 4 },
+  medBay: { wood: 4, cloth: 3, glass: 1, medicine: 3 },
+  radio: { metal: 6, electronics: 3, plastic: 2 },
+};
+const OLD_PRODUCTION: Record<string, { res: string; everyH: number; cap: number }> = {
+  rainBarrel: { res: 'water', everyH: 3, cap: 6 },
+  roofGarden: { res: 'food', everyH: 4, cap: 6 },
+};
+/** Was frühere Fundstücke (jetzt Sammelstücke) beim Zerlegen gebracht hätten. */
+const LEGACY_PARTS: Record<string, Record<string, number>> = {
+  teddy: { cloth: 2, plastic: 1 },
+  wallClock: { wood: 1, glass: 1, screws: 1 },
+  tv: { glass: 2, electronics: 2, plastic: 1, screws: 1 },
+  phone: { plastic: 2, electronics: 1 },
+  typewriter: { metal: 3, screws: 2 },
+  guitar: { wood: 2, metal: 1, glue: 1 },
+  globe: { plastic: 1, metal: 1, glue: 1 },
+  vase: { glass: 2 },
+  mirror: { glass: 2, wood: 1 },
+  bike: { metal: 3, plastic: 1, screws: 1 },
+  rubberDuck: { plastic: 1 },
+  painting: { wood: 1, cloth: 1, glue: 1 },
+  sewingMachine: { metal: 2, screws: 2, wood: 1 },
+};

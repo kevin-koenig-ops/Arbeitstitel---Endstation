@@ -1,7 +1,7 @@
 // Spielinhalte als reine Daten. Neue Fundorte, Gegenstände oder Ausbauten
 // kommen hier dazu, ohne dass sich die Logik ändern muss.
 
-import type { BackgroundId, EnemyId, Inventory, JunkId, Material, ModuleId, Quality, Resource, SpotKind, Survival, Weapon, WeaponId } from './types';
+import type { BackgroundId, CollectibleId, EnemyId, Inventory, KramId, Material, Quality, Resource, SetId, SpotKind, Survival, Weapon, WeaponId } from './types';
 
 export const SURVIVAL_ORDER: Survival[] = ['food', 'water', 'medicine'];
 /** Rohstoffe, grob von häufig nach selten. */
@@ -51,9 +51,11 @@ export interface SpotKindDef {
   hint: string;
   cooldownMin: number;
   loot: LootRule[];
-  /** Chance auf ein Fundstück und welche es hier gibt (mit Gewicht). */
-  junkChance: number;
-  junk: readonly (readonly [JunkId, number])[];
+  /** Chance auf Kram und welcher hier liegt (mit Gewicht). */
+  kramChance: number;
+  kram: readonly (readonly [KramId, number])[];
+  /** Welche Sammelstücke man hier finden kann (jedes nur einmal im Spiel). */
+  collectibles: readonly CollectibleId[];
   mementoChance: number;
 }
 
@@ -71,8 +73,9 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
       { res: 'water', min: 1, max: 1, chance: 0.4 },
       { res: 'food', min: 1, max: 1, chance: 0.25 },
     ],
-    junkChance: 0.35,
-    junk: [['carBattery', 3], ['gasCan', 3], ['trafficCone', 2], ['toolbox', 2], ['radio', 2], ['tape', 1], ['teddy', 1], ['guitar', 1]],
+    kramChance: 0.4,
+    kram: [['carBattery', 3], ['gasCan', 3], ['trafficCone', 2], ['toolbox', 2], ['radio', 2], ['cableReel', 1], ['tape', 1], ['brokenPhone', 1]],
+    collectibles: ['guitar', 'teddy'],
     mementoChance: 0.06,
   },
   backpack: {
@@ -86,8 +89,9 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
       { res: 'medicine', min: 1, max: 1, chance: 0.3 },
       { res: 'plastic', min: 1, max: 1, chance: 0.3 },
     ],
-    junkChance: 0.35,
-    junk: [['teddy', 3], ['sneakers', 3], ['rubberDuck', 2], ['radio', 1]],
+    kramChance: 0.4,
+    kram: [['sneakers', 3], ['blanket', 2], ['flashlight', 2], ['tinCans', 2], ['brokenPhone', 2], ['radio', 1]],
+    collectibles: ['teddy', 'rubberDuck'],
     mementoChance: 0.1,
   },
   shed: {
@@ -101,8 +105,9 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
       { res: 'screws', min: 1, max: 1, chance: 0.3 },
       { res: 'glue', min: 1, max: 1, chance: 0.2 },
     ],
-    junkChance: 0.3,
-    junk: [['toolbox', 2], ['wallClock', 2], ['vase', 2], ['bike', 1], ['sewingMachine', 1], ['phone', 1]],
+    kramChance: 0.35,
+    kram: [['toolbox', 2], ['screwBox', 2], ['fruitCrate', 3], ['tinCans', 1], ['superglue', 1], ['pan', 1]],
+    collectibles: ['wallClock', 'vase', 'bike', 'sewingMachine'],
     mementoChance: 0.06,
   },
   container: {
@@ -116,8 +121,9 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
       { res: 'stone', min: 1, max: 2, chance: 0.3 },
       { res: 'medicine', min: 1, max: 1, chance: 0.3 },
     ],
-    junkChance: 0.4,
-    junk: [['sneakers', 2], ['teddy', 2], ['toaster', 2], ['mirror', 2], ['bottles', 2], ['tv', 1], ['typewriter', 1], ['phone', 1], ['painting', 1], ['globe', 1]],
+    kramChance: 0.45,
+    kram: [['sneakers', 2], ['blanket', 3], ['toaster', 2], ['bottles', 2], ['pan', 2], ['brokenPhone', 1], ['cableReel', 1]],
+    collectibles: ['mirror', 'painting', 'tv', 'phone'],
     mementoChance: 0.05,
   },
   hide: {
@@ -130,8 +136,9 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
       { res: 'wood', min: 1, max: 2, chance: 0.6 },
       { res: 'cloth', min: 1, max: 1, chance: 0.3 },
     ],
-    junkChance: 0.25,
-    junk: [['radio', 2], ['bottles', 2], ['guitar', 1]],
+    kramChance: 0.3,
+    kram: [['tinCans', 3], ['bottles', 2], ['flashlight', 2], ['blanket', 1], ['radio', 1]],
+    collectibles: ['guitar'],
     mementoChance: 0.08,
   },
   barrel: {
@@ -142,8 +149,9 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
       { res: 'water', min: 2, max: 3, chance: 1 },
       { res: 'metal', min: 1, max: 1, chance: 0.3 },
     ],
-    junkChance: 0.08,
-    junk: [['bottles', 1]],
+    kramChance: 0.1,
+    kram: [['bottles', 1], ['tinCans', 1]],
+    collectibles: [],
     mementoChance: 0.02,
   },
   parcel: {
@@ -158,8 +166,9 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
       { res: 'glue', min: 1, max: 1, chance: 0.35 },
       { res: 'cloth', min: 1, max: 1, chance: 0.3 },
     ],
-    junkChance: 0.55,
-    junk: [['radio', 2], ['globe', 2], ['tv', 1], ['typewriter', 1], ['painting', 1], ['teddy', 1], ['rubberDuck', 1], ['sewingMachine', 1], ['tape', 1], ['mirror', 1], ['guitar', 1], ['toaster', 1], ['wallClock', 1]],
+    kramChance: 0.55,
+    kram: [['radio', 2], ['brokenPhone', 2], ['cableReel', 2], ['superglue', 2], ['tape', 1], ['flashlight', 1], ['toaster', 1], ['screwBox', 1]],
+    collectibles: ['globe', 'typewriter', 'painting', 'teddy', 'rubberDuck', 'sewingMachine', 'wallClock', 'guitar'],
     mementoChance: 0.18,
   },
   // --- echte Orte aus der Karte (POI) ---
@@ -174,8 +183,9 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
       { res: 'glass', min: 1, max: 1, chance: 0.4 },
       { res: 'medicine', min: 1, max: 1, chance: 0.2 },
     ],
-    junkChance: 0.25,
-    junk: [['bottles', 3], ['toaster', 1], ['vase', 1], ['rubberDuck', 1]],
+    kramChance: 0.3,
+    kram: [['bottles', 3], ['tinCans', 3], ['pan', 1], ['toaster', 1]],
+    collectibles: ['vase', 'rubberDuck'],
     mementoChance: 0.12,
   },
   pharmacy: {
@@ -188,8 +198,9 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
       { res: 'plastic', min: 1, max: 1, chance: 0.5 },
       { res: 'glass', min: 1, max: 1, chance: 0.4 },
     ],
-    junkChance: 0.15,
-    junk: [['bottles', 1]],
+    kramChance: 0.15,
+    kram: [['bottles', 1], ['blanket', 1]],
+    collectibles: [],
     mementoChance: 0.12,
   },
   hardware: {
@@ -205,8 +216,9 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
       { res: 'glass', min: 1, max: 1, chance: 0.3 },
       { res: 'water', min: 1, max: 2, chance: 0.3 },
     ],
-    junkChance: 0.3,
-    junk: [['toolbox', 3], ['tape', 3], ['carBattery', 1], ['gasCan', 1], ['trafficCone', 1]],
+    kramChance: 0.4,
+    kram: [['toolbox', 3], ['tape', 3], ['screwBox', 3], ['superglue', 2], ['cableReel', 2], ['carBattery', 1], ['gasCan', 1]],
+    collectibles: [],
     mementoChance: 0.1,
   },
   fuel: {
@@ -220,8 +232,9 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
       { res: 'metal', min: 1, max: 1, chance: 0.5 },
       { res: 'electronics', min: 1, max: 1, chance: 0.2 },
     ],
-    junkChance: 0.35,
-    junk: [['gasCan', 3], ['carBattery', 2], ['bottles', 2], ['radio', 1], ['trafficCone', 1], ['toolbox', 1]],
+    kramChance: 0.4,
+    kram: [['gasCan', 3], ['carBattery', 2], ['bottles', 2], ['tinCans', 2], ['flashlight', 1], ['trafficCone', 1]],
+    collectibles: [],
     mementoChance: 0.1,
   },
   well: {
@@ -232,8 +245,9 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
       { res: 'water', min: 3, max: 5, chance: 1 },
       { res: 'stone', min: 1, max: 1, chance: 0.3 },
     ],
-    junkChance: 0.05,
-    junk: [['bottles', 1]],
+    kramChance: 0.06,
+    kram: [['bottles', 1]],
+    collectibles: [],
     mementoChance: 0.04,
   },
   stop: {
@@ -247,24 +261,57 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
       { res: 'plastic', min: 1, max: 1, chance: 0.4 },
       { res: 'glass', min: 1, max: 1, chance: 0.3 },
     ],
-    junkChance: 0.3,
-    junk: [['phone', 2], ['trafficCone', 2], ['wallClock', 1], ['bike', 1], ['teddy', 1], ['sneakers', 1]],
+    kramChance: 0.3,
+    kram: [['trafficCone', 2], ['brokenPhone', 2], ['sneakers', 1], ['flashlight', 1]],
+    collectibles: ['phone', 'bike', 'teddy'],
     mementoChance: 0.2,
   },
 };
 
-/** Bewachte Fundstellen haben eher ein Fundstück. */
-export const GUARD_JUNK_BONUS = 0.2;
+/** Bewachte Fundstellen haben eher Kram. */
+export const GUARD_KRAM_BONUS = 0.2;
+/** Chance auf ein Sammelstück (wenn es hier noch eins zu finden gibt). */
+export const COLLECT_CHANCE = { grid: 0.07, poi: 0.12 };
+export const GUARD_COLLECT_BONUS = 0.08;
 
-// --- Fundstücke -------------------------------------------------------------------
+// --- Kram (zum Zerlegen) -------------------------------------------------------------
 
-export interface JunkDef {
+export interface KramDef {
   name: string;
   desc: string;
-  /** Was beim Zerlegen herauskommt. */
+  /** Was beim Zerlegen herauskommt (wie bei Fallout: man sieht es vorher). */
   parts: Partial<Record<Material, number>>;
   /** Minuten am Werktisch auf Stufe 1. */
   minutes: number;
+}
+
+export const KRAM: Record<KramId, KramDef> = {
+  toaster: { name: 'Toaster', desc: 'Zwei Schlitze, null Toast.', parts: { metal: 2, electronics: 1 }, minutes: 4 },
+  toolbox: { name: 'Werkzeugkasten', desc: 'Schraubenschlüssel in allen Größen, nur nicht in der richtigen.', parts: { metal: 2, screws: 3 }, minutes: 6 },
+  trafficCone: { name: 'Leitkegel', desc: 'Orange. Sehr orange.', parts: { plastic: 2 }, minutes: 1 },
+  bottles: { name: 'Flaschenkiste', desc: 'Leergut. Pfand gibt es keins mehr.', parts: { glass: 3, plastic: 1 }, minutes: 3 },
+  carBattery: { name: 'Autobatterie', desc: 'Schwer und noch ein kleines bisschen geladen.', parts: { electronics: 2, metal: 1, plastic: 1 }, minutes: 6 },
+  gasCan: { name: 'Benzinkanister', desc: 'Leer. Riecht aber noch.', parts: { plastic: 2 }, minutes: 2 },
+  tape: { name: 'Klebebandrollen', desc: 'Hält die Welt zusammen.', parts: { glue: 2, plastic: 1 }, minutes: 2 },
+  sneakers: { name: 'Turnschuhe', desc: 'Kaum getragen. Leider zwei linke.', parts: { cloth: 1, plastic: 1 }, minutes: 2 },
+  radio: { name: 'Kofferradio', desc: 'Rauscht nur noch. Oder?', parts: { plastic: 2, electronics: 1, screws: 1 }, minutes: 6 },
+  tinCans: { name: 'Leere Konservendosen', desc: 'Ravioli, Ravioli, Erbsensuppe.', parts: { metal: 2 }, minutes: 1 },
+  blanket: { name: 'Alte Wolldecke', desc: 'Kratzt, wärmt aber.', parts: { cloth: 2 }, minutes: 2 },
+  flashlight: { name: 'Taschenlampe', desc: 'Die Batterien sind hin, das Glas nicht.', parts: { plastic: 1, glass: 1, electronics: 1 }, minutes: 3 },
+  cableReel: { name: 'Kabeltrommel', desc: 'Fünfzig Meter Kupfer und ein Knoten.', parts: { metal: 1, plastic: 1, electronics: 1 }, minutes: 4 },
+  screwBox: { name: 'Schachtel Schrauben', desc: 'Sortiert. Wer macht so was?', parts: { screws: 3 }, minutes: 1 },
+  fruitCrate: { name: 'Obstkiste', desc: 'Riecht noch nach Äpfeln.', parts: { wood: 2 }, minutes: 1 },
+  pan: { name: 'Bratpfanne', desc: 'Gusseisen. Taugt zur Not auch als Waffe.', parts: { metal: 2 }, minutes: 2 },
+  brokenPhone: { name: 'Kaputtes Handy', desc: 'Der Akku ist leer. Für immer.', parts: { electronics: 1, glass: 1, plastic: 1 }, minutes: 3 },
+  superglue: { name: 'Sekundenkleber', desc: 'Zwei Tuben, eine ist noch zu.', parts: { glue: 1 }, minutes: 1 },
+};
+export const KRAM_ORDER = Object.keys(KRAM) as KramId[];
+
+// --- Sammelstücke (einmalig, fürs Fundbuch) ----------------------------------------------
+
+export interface CollectibleDef {
+  name: string;
+  desc: string;
   /** Als Deko: Grundfläche, Ebene (Boden oder Wand) und Gemütlichkeit. */
   w: number;
   d: number;
@@ -272,36 +319,43 @@ export interface JunkDef {
   comfort: number;
 }
 
-export const JUNK: Record<JunkId, JunkDef> = {
-  teddy: { name: 'Teddybär', desc: 'Ein Ohr fehlt. Hat sicher jemanden getröstet.', parts: { cloth: 2, plastic: 1 }, minutes: 3, w: 1, d: 1, layer: 'object', comfort: 4 },
-  wallClock: { name: 'Wanduhr', desc: 'Tickt nicht mehr. Zeigt trotzdem eine schöne Zeit.', parts: { wood: 1, glass: 1, screws: 1 }, minutes: 5, w: 1, d: 1, layer: 'wall', comfort: 3 },
-  radio: { name: 'Kofferradio', desc: 'Rauscht nur noch. Oder?', parts: { plastic: 2, electronics: 1, screws: 1 }, minutes: 6, w: 1, d: 1, layer: 'object', comfort: 3 },
-  toaster: { name: 'Toaster', desc: 'Zwei Schlitze, null Toast.', parts: { metal: 2, electronics: 1 }, minutes: 4, w: 1, d: 1, layer: 'object', comfort: 1 },
-  tv: { name: 'Röhrenfernseher', desc: 'Schwer wie ein Kühlschrank. Bild gibt es keins mehr.', parts: { glass: 2, electronics: 2, plastic: 1, screws: 1 }, minutes: 12, w: 1, d: 1, layer: 'object', comfort: 3 },
-  phone: { name: 'Wählscheibentelefon', desc: 'Niemand ruft mehr an. Hoffen kann man trotzdem.', parts: { plastic: 2, electronics: 1 }, minutes: 4, w: 1, d: 1, layer: 'object', comfort: 2 },
-  typewriter: { name: 'Schreibmaschine', desc: 'Das Farbband ist trocken. Die Tasten klappern noch.', parts: { metal: 3, screws: 2 }, minutes: 8, w: 1, d: 1, layer: 'object', comfort: 3 },
-  guitar: { name: 'Gitarre', desc: 'Zwei Saiten fehlen. Für Lagerfeuerlieder reicht es.', parts: { wood: 2, metal: 1, glue: 1 }, minutes: 6, w: 1, d: 1, layer: 'object', comfort: 5 },
-  globe: { name: 'Globus', desc: 'Die Grenzen darauf gibt es nicht mehr.', parts: { plastic: 1, metal: 1, glue: 1 }, minutes: 4, w: 1, d: 1, layer: 'object', comfort: 3 },
-  vase: { name: 'Blumenvase', desc: 'Ohne Blumen. Noch.', parts: { glass: 2 }, minutes: 2, w: 1, d: 1, layer: 'object', comfort: 2 },
-  mirror: { name: 'Spiegel', desc: 'Ein paar Sprünge. Du siehst müde aus.', parts: { glass: 2, wood: 1 }, minutes: 4, w: 1, d: 1, layer: 'wall', comfort: 2 },
-  toolbox: { name: 'Werkzeugkasten', desc: 'Schraubenschlüssel in allen Größen, nur nicht in der richtigen.', parts: { metal: 2, screws: 3 }, minutes: 6, w: 1, d: 1, layer: 'object', comfort: 1 },
-  bike: { name: 'Fahrrad', desc: 'Platten vorne, Platten hinten.', parts: { metal: 3, plastic: 1, screws: 1 }, minutes: 10, w: 2, d: 1, layer: 'object', comfort: 2 },
-  rubberDuck: { name: 'Quietscheente', desc: 'Quietscht noch. Wunderbar sinnlos.', parts: { plastic: 1 }, minutes: 1, w: 1, d: 1, layer: 'object', comfort: 2 },
-  painting: { name: 'Ölgemälde', desc: 'Eine Landschaft mit Kühen. Irgendwer fand das schön.', parts: { wood: 1, cloth: 1, glue: 1 }, minutes: 5, w: 1, d: 1, layer: 'wall', comfort: 4 },
-  sewingMachine: { name: 'Nähmaschine', desc: 'Mit Fußpedal. Läuft ganz ohne Strom.', parts: { metal: 2, screws: 2, wood: 1 }, minutes: 8, w: 1, d: 1, layer: 'object', comfort: 3 },
-  trafficCone: { name: 'Leitkegel', desc: 'Orange. Sehr orange.', parts: { plastic: 2 }, minutes: 1, w: 1, d: 1, layer: 'object', comfort: 1 },
-  bottles: { name: 'Flaschenkiste', desc: 'Leergut. Pfand gibt es keins mehr.', parts: { glass: 3, plastic: 1 }, minutes: 3, w: 1, d: 1, layer: 'object', comfort: 1 },
-  carBattery: { name: 'Autobatterie', desc: 'Schwer und noch ein kleines bisschen geladen.', parts: { electronics: 2, metal: 1, plastic: 1 }, minutes: 6, w: 1, d: 1, layer: 'object', comfort: 0 },
-  gasCan: { name: 'Benzinkanister', desc: 'Leer. Riecht aber noch.', parts: { plastic: 2 }, minutes: 2, w: 1, d: 1, layer: 'object', comfort: 0 },
-  tape: { name: 'Klebebandrollen', desc: 'Hält die Welt zusammen.', parts: { glue: 2, plastic: 1 }, minutes: 2, w: 1, d: 1, layer: 'object', comfort: 0 },
-  sneakers: { name: 'Turnschuhe', desc: 'Kaum getragen. Leider zwei linke.', parts: { cloth: 1, plastic: 1 }, minutes: 2, w: 1, d: 1, layer: 'object', comfort: 1 },
+export const COLLECTIBLES: Record<CollectibleId, CollectibleDef> = {
+  teddy: { name: 'Teddybär', desc: 'Ein Ohr fehlt. Hat sicher jemanden getröstet.', w: 1, d: 1, layer: 'object', comfort: 4 },
+  rubberDuck: { name: 'Quietscheente', desc: 'Quietscht noch. Wunderbar sinnlos.', w: 1, d: 1, layer: 'object', comfort: 3 },
+  bike: { name: 'Fahrrad', desc: 'Platten vorne, Platten hinten.', w: 2, d: 1, layer: 'object', comfort: 3 },
+  tv: { name: 'Röhrenfernseher', desc: 'Schwer wie ein Kühlschrank. Bild gibt es keins mehr.', w: 1, d: 1, layer: 'object', comfort: 4 },
+  phone: { name: 'Wählscheibentelefon', desc: 'Niemand ruft mehr an. Hoffen kann man trotzdem.', w: 1, d: 1, layer: 'object', comfort: 3 },
+  wallClock: { name: 'Wanduhr', desc: 'Tickt nicht mehr. Zeigt trotzdem eine schöne Zeit.', w: 1, d: 1, layer: 'wall', comfort: 4 },
+  painting: { name: 'Ölgemälde', desc: 'Eine Landschaft mit Kühen. Irgendwer fand das schön.', w: 1, d: 1, layer: 'wall', comfort: 5 },
+  typewriter: { name: 'Schreibmaschine', desc: 'Das Farbband ist trocken. Die Tasten klappern noch.', w: 1, d: 1, layer: 'object', comfort: 4 },
+  globe: { name: 'Globus', desc: 'Die Grenzen darauf gibt es nicht mehr.', w: 1, d: 1, layer: 'object', comfort: 4 },
+  sewingMachine: { name: 'Nähmaschine', desc: 'Mit Fußpedal. Läuft ganz ohne Strom.', w: 1, d: 1, layer: 'object', comfort: 4 },
+  vase: { name: 'Blumenvase', desc: 'Ohne Blumen. Noch.', w: 1, d: 1, layer: 'object', comfort: 3 },
+  mirror: { name: 'Spiegel', desc: 'Ein paar Sprünge. Du siehst müde aus.', w: 1, d: 1, layer: 'wall', comfort: 3 },
+  guitar: { name: 'Gitarre', desc: 'Zwei Saiten fehlen. Für Lagerfeuerlieder reicht es.', w: 1, d: 1, layer: 'object', comfort: 6 },
 };
-export const JUNK_ORDER = Object.keys(JUNK) as JunkId[];
+export const COLLECTIBLE_ORDER = Object.keys(COLLECTIBLES) as CollectibleId[];
+
+export interface SetDef {
+  name: string;
+  items: CollectibleId[];
+  /** Belohnung, wenn das Set voll ist: ein Bauplan (falls noch unbekannt) und Rohstoffe ins Lager. */
+  blueprint: 'sofa' | 'shelf' | 'bed' | 'lamp';
+  reward: Partial<Inventory>;
+}
+
+export const SETS: Record<SetId, SetDef> = {
+  kinderzimmer: { name: 'Kinderzimmer', items: ['teddy', 'rubberDuck', 'bike'], blueprint: 'bed', reward: { cloth: 4, wood: 4 } },
+  wohnzimmer: { name: 'Wohnzimmer 1985', items: ['tv', 'phone', 'wallClock', 'painting'], blueprint: 'sofa', reward: { electronics: 3, screws: 3 } },
+  arbeitszimmer: { name: 'Arbeitszimmer', items: ['typewriter', 'globe', 'sewingMachine'], blueprint: 'shelf', reward: { glue: 3, metal: 4 } },
+  gutestube: { name: 'Gute Stube', items: ['vase', 'mirror', 'guitar'], blueprint: 'lamp', reward: { glass: 3, wood: 4 } },
+};
+export const SET_ORDER = Object.keys(SETS) as SetId[];
 
 // --- Werktisch -----------------------------------------------------------------------
 
 export interface WorkbenchLevel {
-  /** Wie viele Fundstücke gleichzeitig auf dem Tisch liegen dürfen (auch fertige). */
+  /** Wie viel Kram gleichzeitig auf dem Tisch liegen dürfen (auch fertige). */
   slots: number;
   /** Faktor auf die Zerlegezeit. */
   speed: number;
@@ -416,53 +470,6 @@ export const JACKET_COLORS = ['#7a5a3a', '#4f5d3a', '#3d4b5c', '#7d3b2c', '#8a80
 export const SKIN_TONES = ['#e2b896', '#c18f6a', '#8d5f42', '#5c3d2b'] as const;
 export const HAIR_COLOR = '#2a211a';
 
-// --- Bus-Ausbau ----------------------------------------------------------------
-
-export interface ModuleDef {
-  name: string;
-  desc: string;
-  cost: Partial<Inventory>;
-  requires: ModuleId[];
-  produces?: { res: Resource; every_h: number; cap: number };
-}
-
-export const MODULE_ORDER: ModuleId[] = ['rainBarrel', 'workbench', 'roofGarden', 'medBay', 'radio'];
-
-export const MODULES: Record<ModuleId, ModuleDef> = {
-  rainBarrel: {
-    name: 'Regenfass',
-    desc: 'Sammelt Regenwasser: 1 Wasser alle 3 Stunden, bis zu 6.',
-    cost: { metal: 3, plastic: 2 },
-    requires: [],
-    produces: { res: 'water', every_h: 3, cap: 6 },
-  },
-  workbench: {
-    name: 'Werkbank',
-    desc: '+1 Rohstoff bei jeder Suche, bei der du Rohstoffe findest. Schaltet weiteren Ausbau frei.',
-    cost: { wood: 6, metal: 4, screws: 2 },
-    requires: [],
-  },
-  roofGarden: {
-    name: 'Dachgarten',
-    desc: 'Kartoffeln und Bohnen auf dem Dach: 1 Nahrung alle 4 Stunden, bis zu 6.',
-    cost: { wood: 6, plastic: 2, water: 4 },
-    requires: ['workbench'],
-    produces: { res: 'food', every_h: 4, cap: 6 },
-  },
-  medBay: {
-    name: 'Sanitätsecke',
-    desc: 'Eine Liege und ein Medizinschrank. Hier kannst du bald Verletzte versorgen.',
-    cost: { wood: 4, cloth: 3, glass: 1, medicine: 3 },
-    requires: ['workbench'],
-  },
-  radio: {
-    name: 'Funkgerät',
-    desc: 'Eine Antenne auf dem Dach. Empfängt bald Signale anderer Überlebender.',
-    cost: { metal: 6, electronics: 3, plastic: 2 },
-    requires: ['workbench'],
-  },
-};
-
 // --- Erinnerungsstücke (Sammelobjekte) ------------------------------------------
 
 export interface MementoDef {
@@ -486,7 +493,7 @@ export const MEMENTOS: MementoDef[] = [
   { id: 'clipping', title: 'Zeitungsausschnitt', text: 'Nur die Überschrift ist lesbar: „Behörden raten zur Ruhe“.' },
 ];
 
-/** Das allererste Fundstück, damit die Sammlung sofort startet. */
+/** Das allererste Erinnerungsstück, damit die Sammlung sofort startet. */
 export const FIRST_MEMENTO = 'polaroid';
 
 // --- Kampf -------------------------------------------------------------------------
@@ -537,7 +544,8 @@ export interface WeaponDef {
   dmg: number;
   dur: number;
   cost: Partial<Inventory>;
-  requires?: ModuleId;
+  /** Nötige Stufe des Werktischs. */
+  level: number;
   desc: string;
 }
 
@@ -547,9 +555,9 @@ export const FIST_DAMAGE = 1;
 export const WEAPON_ORDER: WeaponId[] = ['crowbar', 'bat', 'crossbow'];
 
 export const WEAPONS: Record<WeaponId, WeaponDef> = {
-  crowbar: { name: 'Brechstange', dmg: 2, dur: 14, cost: { metal: 3 }, desc: 'Öffnet Türen und Schädel.' },
-  bat: { name: 'Nagelschläger', dmg: 3, dur: 16, cost: { wood: 3, metal: 2 }, requires: 'workbench', desc: 'Ein Baseballschläger mit ein paar Nägeln.' },
-  crossbow: { name: 'Armbrust', dmg: 4, dur: 12, cost: { wood: 3, metal: 4, screws: 2, glue: 1 }, requires: 'workbench', desc: 'Leise und kräftig. Die Bolzen nutzen sich ab.' },
+  crowbar: { name: 'Brechstange', dmg: 2, dur: 14, cost: { metal: 3 }, level: 1, desc: 'Öffnet Türen und Schädel.' },
+  bat: { name: 'Nagelschläger', dmg: 3, dur: 16, cost: { wood: 3, metal: 2 }, level: 1, desc: 'Ein Baseballschläger mit ein paar Nägeln.' },
+  crossbow: { name: 'Armbrust', dmg: 4, dur: 12, cost: { wood: 3, metal: 4, screws: 2, glue: 1 }, level: 2, desc: 'Leise und kräftig. Die Bolzen nutzen sich ab.' },
 };
 
 export const START_WEAPONS: Weapon[] = [{ kind: 'crowbar', dur: WEAPONS.crowbar.dur }];

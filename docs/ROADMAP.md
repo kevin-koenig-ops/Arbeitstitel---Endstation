@@ -84,12 +84,24 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - Gelände 72 × 72 m statt 36 × 36 m, Startfläche 24 × 24 m statt 12 × 12 m, Abschnitte 12 m
 - Alte Spielstände: Gebautes rückt in die Mitte, schon Freies bleibt frei (Version 7)
 
+## ✅ Version 1.0, Paket 1–3: Bus raus, Rucksack und Lager, Kram und Sammelstücke
+
+- Der Bus ist kein Ausbau-Ort mehr. Alte Bus-Ausbauten werden zu Rohstoffen, die Regentonne steht jetzt in der Endstation
+- Rucksack unterwegs, Lager zu Hause: Auspacken in der Endstation, gebaut wird aus dem Lager, eine Niederlage kostet nur etwas aus dem Rucksack
+- Kram (18 Sorten, mehrfach) zum Zerlegen, mit sichtbarem Inhalt wie bei Fallout; 9 neue 3D-Modelle
+- Sammelstücke (13, jedes nur einmal) fürs Fundbuch und als Deko; vier Sets mit Bauplan und Rohstoffen als Belohnung
+- Fundbuch mit Umrissen und Fundort-Hinweisen, Fundbeleg zeigt „Neu im Fundbuch“ und den Set-Fortschritt
+- Anlagen produzieren selbst (Regentonne, Hochbeet), Abholen direkt in der Endstation
+- Werktisch baut jetzt auch Waffen; Lager als Seitenleiste (hochkant als Blatt von unten)
+- Spielstand Version 8
+
+**Testen:** Ist Auspacken zu Hause ein schöner Moment oder lästig? Findet man genug Sammelstücke? Ist klar, was im Rucksack und was im Lager ist?
+
 ## Iteration 1h (Teil 2): Weitere Werkstätten und Wetter
 
 - Weitere Anlagen mit echten Wartezeiten: Holzofen (Eintopf), Lagerfeuer, Hochbeet, Apfelbaum
 - Jede Anlage nur einmal, dafür in Stufen aufrüstbar (kein Umbauen, keine fünf Regentonnen)
 - Regentonne füllt sich bei echtem Regen, Solarpaneel bei Sonne, Windrad bei Wind
-- Bus-Ausbauten und Basis zusammenführen
 - Gemütlichkeit wirkt sich aus (z. B. schnellere Erholung)
 
 ## Iteration 2: Geschichte und Überlebende (Tiefe)

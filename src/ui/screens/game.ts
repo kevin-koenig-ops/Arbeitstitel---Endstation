@@ -1,10 +1,10 @@
 // Der Spielbildschirm: Karte, Standort, Fundstellen, HUD und Overlays.
 
 import { FALLBACK_START, IS_PREVIEW, VIEW_RADIUS_M } from '../../config';
-import { ENEMIES, MATERIAL_ORDER, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, SURVIVAL_ORDER } from '../../core/content';
+import { ENEMIES, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, SURVIVAL_ORDER } from '../../core/content';
 import { ExploredView, SECTOR_LEVELS, sectorOf } from '../../core/explore';
 import { bearingDeg, distanceM } from '../../core/geo';
-import { currentHealth, dayNumber, pendingHarvest, readyAt, readyParts, searchRangeM } from '../../core/rules';
+import { currentHealth, dayNumber, packCount, pendingHarvest, readyAt, readyParts, searchRangeM } from '../../core/rules';
 import type { LatLon, Resource, Spot } from '../../core/types';
 import { DEMO, GameMap, type SpotView } from '../../map/GameMap';
 import {
@@ -20,7 +20,7 @@ import { avatarSvg } from '../avatar';
 import { faceEl, loadPortraits } from '../portrait';
 import { Joystick, useButton } from '../joystick';
 import { append, clear, h, svgEl } from '../dom';
-import { openBusPanel, type BusTab } from '../game/busPanel';
+import { openPackPanel, type PackTab } from '../game/packPanel';
 import { getBasePlace } from '../../services/basePlace';
 import { openBattle } from '../game/battle';
 import { AmbienceController, ambienceEffects, currentAmbience, guardSightM, PHASE_NAMES, WEATHER_NAMES, type Ambience } from '../game/ambience';
@@ -113,26 +113,24 @@ export function gameScreen(app: App): Screen {
 
   const dayEl = h('span', { class: 'who-day' });
   const hpEl = h('span', { class: 'who-hp', 'aria-label': 'Gesundheit' });
-  // Oben: Vorräte zum Überleben einzeln, Rohstoffe und Fundstücke zusammengefasst.
+  // Oben: Vorräte zum Überleben einzeln, dazu wie voll der Rucksack ist.
   // Antippen öffnet den Rucksack.
-  type ChipKey = Resource | 'mats' | 'junk';
+  type ChipKey = Resource | 'pack';
   const chips = {} as Record<ChipKey, { el: HTMLElement; num: HTMLElement; last: number }>;
   const chip = (k: ChipKey, title: string, ic: string) => {
     const num = h('b', null, '0');
-    const el = h('span', { class: 'res-chip' + (k === 'mats' || k === 'junk' ? ' sum' : ''), title }, svgEl(icon(ic, 18)), num);
+    const el = h('span', { class: 'res-chip' + (k === 'pack' ? ' sum' : ''), title }, svgEl(icon(ic, 18)), num);
     chips[k] = { el, num, last: -1 };
     return el;
   };
   const resBar = h(
     'button',
-    { class: 'res-bar', type: 'button', 'aria-label': 'Rucksack öffnen', onclick: () => openBus('stock') },
+    { class: 'res-bar', type: 'button', 'aria-label': 'Rucksack öffnen', onclick: () => openPack('pack') },
     SURVIVAL_ORDER.map((r) => chip(r, RESOURCES[r].name, r)),
-    chip('mats', 'Rohstoffe', 'wood'),
-    chip('junk', 'Fundstücke', 'junk'),
+    chip('pack', 'Im Rucksack (Rohstoffe und Kram)', 'backpack'),
   );
   const banners = h('div', { class: 'banners' });
   const locChip = h('div', { class: 'loc-chip' });
-  const busBadge = h('span', { class: 'bus-badge', hidden: true });
   const locateBtn = h('button', { class: 'iconbtn locate', type: 'button', 'aria-label': 'Auf mich zentrieren', onclick: () => recenter() }, svgEl(icon('locate')));
   const homeBadge = h('span', { class: 'home-badge', hidden: true }, '+');
   const homeBtn = h('button', { class: 'iconbtn home', type: 'button', 'aria-label': 'Deine Endstation', onclick: () => void openBase() }, svgEl(icon('home')), homeBadge);
@@ -144,7 +142,7 @@ export function gameScreen(app: App): Screen {
       { class: 'hud-top' },
       h(
         'button',
-        { class: 'who', type: 'button', 'aria-label': 'Bus und Vorräte öffnen', onclick: () => openBus() },
+        { class: 'who', type: 'button', 'aria-label': 'Gesundheit und Waffen', onclick: () => openPack('gear') },
         whoFace,
         h('span', { class: 'who-text' }, h('span', { class: 'who-name' }, state0.character.name), dayEl, hpEl),
       ),
@@ -158,7 +156,7 @@ export function gameScreen(app: App): Screen {
       { class: 'hud-bottom' },
       locChip,
       homeBtn,
-      h('button', { class: 'bus-btn', type: 'button', onclick: () => openBus() }, svgEl(icon('bus', 26)), h('span', null, 'Bus'), busBadge),
+      h('button', { class: 'pack-btn', type: 'button', onclick: () => openPack('pack') }, svgEl(icon('backpack', 26)), h('span', null, 'Rucksack')),
       locateBtn,
     ),
   );
@@ -192,6 +190,13 @@ export function gameScreen(app: App): Screen {
     },
   });
 
+  // Zum Testen: einen Fundbeleg zeigen, ohne hinzulaufen
+  if (localStorage.getItem('endstation.debug'))
+    (window as unknown as { __loot?: unknown }).__loot = (ev: Parameters<SpotSheet['showLoot']>[1]) => {
+      const sp = [...spots.values()][0];
+      if (sp) sheet.showLoot(sp, { ...ev, spotId: sp.id });
+    };
+
   // --- HUD -----------------------------------------------------------------------
   const renderHud = () => {
     const s = app.backend.current();
@@ -207,8 +212,7 @@ export function gameScreen(app: App): Screen {
     hpEl.setAttribute('aria-label', `Gesundheit ${hp} von ${MAX_HEALTH}`);
     const totals: [ChipKey, number][] = [
       ...SURVIVAL_ORDER.map((r): [ChipKey, number] => [r, s.inventory[r]]),
-      ['mats', MATERIAL_ORDER.reduce((a, r) => a + s.inventory[r], 0)],
-      ['junk', Object.values(s.junk).reduce((a, b) => a + (b ?? 0), 0)],
+      ['pack', packCount(s)],
     ];
     for (const [k, v] of totals) {
       const c = chips[k];
@@ -220,17 +224,15 @@ export function gameScreen(app: App): Screen {
       c.last = v;
       c.num.textContent = String(v);
     }
-    // Am Werktisch liegt Zerlegtes bereit: kleines Zeichen am Endstation-Knopf
+    // Zu Hause wartet etwas (Werktisch fertig, Regentonne voll): kleines Zeichen am Endstation-Knopf
     if (getBasePlace()) {
-      const ready = readyParts(s, app.backend.now()).count;
+      const now = app.backend.now();
+      const ready = readyParts(s, now).count + Object.values(pendingHarvest(s, now)).reduce((a, b) => a + (b ?? 0), 0);
       homeBadge.hidden = ready === 0;
       homeBadge.textContent = String(ready);
       homeBadge.classList.add('ready');
-      homeBtn.setAttribute('aria-label', ready ? `Deine Endstation: ${ready} am Werktisch fertig` : 'Deine Endstation');
+      homeBtn.setAttribute('aria-label', ready ? `Deine Endstation: ${ready} Sachen zum Abholen` : 'Deine Endstation');
     }
-    const pending = Object.values(pendingHarvest(s, app.backend.now())).reduce((a, b) => a + (b ?? 0), 0);
-    busBadge.hidden = pending === 0;
-    busBadge.textContent = String(pending);
   };
 
   const renderLocChip = () => {
@@ -634,10 +636,10 @@ export function gameScreen(app: App): Screen {
     });
   };
 
-  const openBus = (tab: BusTab = 'build') => {
+  const openPack = (tab: PackTab = 'pack') => {
     sheet.close();
     closeOverlay();
-    overlay = openBusPanel(
+    overlay = openPackPanel(
       app,
       overlayHost,
       closeOverlay,

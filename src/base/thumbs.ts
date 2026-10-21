@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { PIECES, type FloorId, type OpeningId, type PieceId, type RoofId, type WallId } from '../core/building';
 import type { FurnitureId } from '../core/furniture';
+import type { KramId } from '../core/types';
 import { renderThumbnails, type ThumbJob } from './BaseScene';
 import { buildFurniture } from './models';
 import { buildFloor, buildRoof, buildWall, WALL_H } from './structures';
@@ -47,7 +48,7 @@ function pieceModel(id: PieceId): THREE.Object3D {
 }
 
 /** Fehlende Vorschaubilder rendern und alle zurückgeben (Schlüssel "f:kind" bzw. "p:id"). */
-export function thumbnails(furniture: FurnitureId[], pieces: PieceId[]): Record<string, string> {
+export function thumbnails(furniture: (FurnitureId | KramId)[], pieces: PieceId[]): Record<string, string> {
   const cache = (caches[graphicsStyle()] ??= {});
   const jobs: ThumbJob[] = [];
   for (const k of furniture) if (!cache[`f:${k}`]) jobs.push({ key: `f:${k}`, build: () => buildFurniture(k).group });

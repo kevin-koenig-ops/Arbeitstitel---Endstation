@@ -14,12 +14,32 @@ export type Material = 'wood' | 'metal' | 'stone' | 'cloth' | 'plastic' | 'glass
 export type Resource = Survival | Material;
 export type Inventory = Record<Resource, number>;
 
-/** Fundstücke: Kram von draußen. Als Deko aufstellen oder am Werktisch zerlegen. */
-export type JunkId =
+/** Kram: häufige Dinge von draußen, die man am Werktisch zu Rohstoffen zerlegt. */
+export type KramId =
+  | 'toaster'
+  | 'toolbox'
+  | 'trafficCone'
+  | 'bottles'
+  | 'carBattery'
+  | 'gasCan'
+  | 'tape'
+  | 'sneakers'
+  | 'radio'
+  | 'tinCans'
+  | 'blanket'
+  | 'flashlight'
+  | 'cableReel'
+  | 'screwBox'
+  | 'fruitCrate'
+  | 'pan'
+  | 'brokenPhone'
+  | 'superglue';
+export type KramBag = Partial<Record<KramId, number>>;
+
+/** Sammelstücke: selten, jedes gibt es nur einmal. Fürs Fundbuch und zum Aufstellen. */
+export type CollectibleId =
   | 'teddy'
   | 'wallClock'
-  | 'radio'
-  | 'toaster'
   | 'tv'
   | 'phone'
   | 'typewriter'
@@ -27,22 +47,17 @@ export type JunkId =
   | 'globe'
   | 'vase'
   | 'mirror'
-  | 'toolbox'
   | 'bike'
   | 'rubberDuck'
   | 'painting'
-  | 'sewingMachine'
-  | 'trafficCone'
-  | 'bottles'
-  | 'carBattery'
-  | 'gasCan'
-  | 'tape'
-  | 'sneakers';
-export type JunkBag = Partial<Record<JunkId, number>>;
+  | 'sewingMachine';
 
-/** Ein Auftrag am Werktisch: Fundstück wird bis endsAt zerlegt. */
+/** Sammel-Sets im Fundbuch. */
+export type SetId = 'wohnzimmer' | 'arbeitszimmer' | 'kinderzimmer' | 'gutestube';
+
+/** Ein Auftrag am Werktisch: Kram wird bis endsAt zerlegt. */
 export interface WorkshopJob {
-  junk: JunkId;
+  kram: KramId;
   endsAt: number;
 }
 export interface Workshop {
@@ -107,7 +122,6 @@ export interface Combat {
   /** Zeitfenster der Bewachung (für Beute und Zufall). */
   window: number;
 }
-export type ModuleId = 'rainBarrel' | 'workbench' | 'roofGarden' | 'medBay' | 'radio';
 
 export interface Character {
   name: string;
@@ -122,6 +136,8 @@ export interface PlacedItem {
   y: number;
   /** Drehung in 90°-Schritten (0–3). */
   rot: number;
+  /** Anlagen (Regentonne, Hochbeet): bis wann die Erträge abgeholt sind. */
+  at?: number;
 }
 
 export interface WallPiece {
@@ -155,11 +171,6 @@ export interface BaseState {
   found: Partial<Record<SiteId, number>>;
 }
 
-export interface BuiltModule {
-  builtAt: number;
-  /** Zeitpunkt, bis zu dem die passive Produktion abgeholt wurde. */
-  lastHarvestAt: number;
-}
 
 /** Kompletter Spielstand eines Spielers. Wird lokal gespeichert, später auf dem Server. */
 export interface PlayerState {
@@ -168,12 +179,20 @@ export interface PlayerState {
   createdAt: number;
   lastActiveAt: number;
   character: Character;
+  /** Vorräte (Nahrung, Wasser, Medizin) und das Lager zu Hause (Rohstoffe). */
   inventory: Inventory;
-  /** Fundstücke im Rucksack: id -> Anzahl. */
-  junk: JunkBag;
+  /** Kram im Lager zu Hause: id -> Anzahl. */
+  kram: KramBag;
+  /** Rucksack: was unterwegs gefunden wurde und noch nicht ausgepackt ist (nur Rohstoffe). */
+  pack: Partial<Inventory>;
+  /** Kram im Rucksack. */
+  packKram: KramBag;
+  /** Gefundene Sammelstücke: id -> Fundzeitpunkt. */
+  collectibles: Partial<Record<CollectibleId, number>>;
+  /** Vollständige Sets: id -> Zeitpunkt (Belohnung gab es dann). */
+  sets: Partial<Record<SetId, number>>;
   /** Werktisch in der Endstation (Zerlegen mit Wartezeit). */
   workshop: Workshop;
-  bus: { modules: Partial<Record<ModuleId, BuiltModule>> };
   /** Wann welche Fundstelle zuletzt durchsucht wurde (für die Abklingzeit). */
   spots: Record<string, number>;
   /** Gefundene Erinnerungsstücke: id -> Fundzeitpunkt. */
@@ -203,8 +222,10 @@ export interface PlayerState {
 export type Action =
   | { type: 'session' }
   | { type: 'search'; spot: Spot; at: LatLon; accuracyM: number }
-  | { type: 'build'; module: ModuleId }
-  | { type: 'harvest' }
+  /** Ertrag einer Anlage (Regentonne, Hochbeet) abholen. */
+  | { type: 'harvest'; uid: number }
+  /** Zu Hause: alles aus dem Rucksack ins Lager. */
+  | { type: 'unpack' }
   | { type: 'engage'; spot: Spot; at: LatLon; accuracyM: number }
   | { type: 'fight'; move: CombatMove; quality: Quality }
   /** Ergebnis eines Echtzeitkampfs (Kampf 2.0). Später prüft der Server es anhand der Eingaben nach. */
@@ -227,8 +248,8 @@ export type Action =
   | { type: 'paint'; layer: 'floors' | 'roofs'; piece: FloorId | RoofId; x1: number; y1: number; x2: number; y2: number }
   /** Abreißen: Wände/Öffnungen als Linie oder Rechteck (Ecken), Böden/Dächer als Rechteck (Felder). */
   | { type: 'demolish'; layer: 'walls' | 'openings' | 'floors' | 'roofs'; shape: 'line' | 'room' | 'rect'; x1: number; y1: number; x2: number; y2: number }
-  /** Fundstück auf den Werktisch legen (wird mit Wartezeit zerlegt). */
-  | { type: 'dismantle'; junk: JunkId }
+  /** Kram aus dem Lager auf den Werktisch legen (wird mit Wartezeit zerlegt). */
+  | { type: 'dismantle'; kram: KramId }
   /** Fertig Zerlegtes vom Werktisch nehmen. */
   | { type: 'collect' }
   /** Werktisch eine Stufe aufrüsten. */
@@ -261,18 +282,17 @@ export type RejectReason =
   | 'max_level';
 
 export type GameEvent =
-  | { type: 'loot'; spotId: string; items: Partial<Inventory>; junk?: JunkId; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: BlueprintId; site?: SiteId }
+  | { type: 'loot'; spotId: string; items: Partial<Inventory>; kram?: KramId; collectible?: CollectibleId; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: BlueprintId; site?: SiteId }
   | { type: 'siteChosen'; site: SiteId; first: boolean }
   | { type: 'reclaimed'; section: string; cost: Partial<Inventory> }
   | { type: 'obstacleCleared'; id: string; kind: ObstacleKind; reward: Partial<Inventory> }
   | { type: 'placed'; uid: number; kind: FurnitureId }
   | { type: 'moved'; uid: number }
-  | { type: 'stored'; uid: number; refund: Partial<Inventory>; junk?: JunkId }
+  | { type: 'stored'; uid: number; refund: Partial<Inventory> }
   | { type: 'constructed'; layer: 'walls' | 'openings' | 'floors' | 'roofs'; count: number; cost: Partial<Inventory>; refund: Partial<Inventory>; stored: number }
   | { type: 'demolished'; layer: 'walls' | 'openings' | 'floors' | 'roofs'; count: number; refund: Partial<Inventory>; stored: number }
   | { type: 'explored'; added: number }
   | { type: 'sector'; key: string; level: number; reward: Partial<Inventory> }
-  | { type: 'built'; module: ModuleId }
   | { type: 'harvested'; items: Partial<Inventory> }
   | { type: 'returnBonus' }
   | { type: 'combatStarted'; enemy: EnemyId }
@@ -292,7 +312,9 @@ export type GameEvent =
   | { type: 'fled'; weaponBroke?: WeaponId }
   | { type: 'crafted'; weapon: WeaponId }
   | { type: 'healed'; amount: number }
-  | { type: 'dismantleQueued'; junk: JunkId; endsAt: number }
+  | { type: 'dismantleQueued'; kram: KramId; endsAt: number }
+  | { type: 'unpacked'; items: Partial<Inventory>; kram: KramBag }
+  | { type: 'setCompleted'; set: SetId; items: Partial<Inventory>; blueprint?: BlueprintId }
   | { type: 'collected'; items: Partial<Inventory>; count: number }
   | { type: 'workbenchUpgraded'; level: number }
   | { type: 'rejected'; reason: RejectReason };

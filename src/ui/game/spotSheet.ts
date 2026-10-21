@@ -1,14 +1,14 @@
 // Untere Karte für eine Fundstelle: Infos, Durchsuchen, Fundbeleg.
 
-import { BACKGROUNDS, ENEMIES, HEALTH_REGEN_MIN, JUNK, MEMENTOS, MIN_HEALTH_TO_FIGHT, RESOURCE_ORDER, RESOURCES, SPOT_KINDS } from '../../core/content';
+import { BACKGROUNDS, COLLECTIBLES, ENEMIES, HEALTH_REGEN_MIN, isMaterial, KRAM, MEMENTOS, MIN_HEALTH_TO_FIGHT, RESOURCE_ORDER, RESOURCES, SETS, SET_ORDER, SPOT_KINDS } from '../../core/content';
 import { distanceM, formatDistance } from '../../core/geo';
 import { currentHealth, nextHealthIn, readyAt, searchRangeM } from '../../core/rules';
-import type { GameEvent, LatLon, Spot } from '../../core/types';
+import type { CollectibleId, GameEvent, LatLon, Spot } from '../../core/types';
 import type { Fix } from '../../services/location';
 import type { App } from '../app';
 import { append, clear, h, reducedMotion, sleep, svgEl } from '../dom';
 import { icon, resIcon, spotIcon } from '../icons';
-import { junkThumb } from './chips';
+import { partsChips, thingThumb } from './chips';
 import { REJECT_TEXT } from '../texts';
 import { blueprintName, SITES } from '../../core/building';
 import { enemySvg } from '../zombies';
@@ -103,7 +103,7 @@ export class SpotSheet {
       button = h('button', { class: 'btn wide', type: 'button', disabled: true }, fix ? `Noch ${formatDistance(Math.max(0, dist - range))} näher ran` : 'Kein Standort');
     }
 
-    // Die wahrscheinlichsten Funde (höchste Chance zuerst), dazu ob es Fundstücke gibt
+    // Die wahrscheinlichsten Funde (höchste Chance zuerst), dazu ob es Kram gibt
     const likely = [...def.loot].sort((a, b) => b.chance - a.chance).slice(0, 4).map((l) => l.res);
     clear(this.el);
     append(this.el, [
@@ -139,7 +139,7 @@ export class SpotSheet {
           'span',
           { class: 'likely' },
           likely.map((r) => h('span', { class: 'likely-chip', title: RESOURCES[r].name }, svgEl(resIcon(r, 16)), RESOURCES[r].name)),
-          def.junkChance >= 0.2 ? h('span', { class: 'likely-chip junk', title: 'Fundstücke' }, svgEl(icon('junk', 16)), 'Fundstücke') : null,
+          def.kramChance >= 0.2 ? h('span', { class: 'likely-chip junk', title: 'Kram zum Zerlegen' }, svgEl(icon('junk', 16)), 'Kram') : null,
         ),
         h('span', { class: 'sheet-status' + (inRange && wait <= 0 ? ' near' : '') }, status),
       ),
@@ -188,6 +188,34 @@ export class SpotSheet {
     this.showReceipt(spot, ev, note);
   }
 
+  /** Neues Sammelstück: groß zeigen, dazu wie weit das Set ist. */
+  private collectibleNote(id: CollectibleId) {
+    const state = this.ctx.app.backend.current()!;
+    const setId = SET_ORDER.find((k) => SETS[k].items.includes(id));
+    const set = setId ? SETS[setId] : null;
+    const have = set ? set.items.filter((c) => state.collectibles[c]).length : 0;
+    const done = set && have === set.items.length;
+    return h(
+      'div',
+      { class: 'receipt-find' },
+      thingThumb(id, 64),
+      h(
+        'div',
+        null,
+        h('div', { class: 'receipt-find-kicker' }, svgEl(icon('memento', 14)), 'Neu im Fundbuch'),
+        h('b', null, COLLECTIBLES[id].name),
+        h('small', null, COLLECTIBLES[id].desc),
+        set
+          ? h(
+              'span',
+              { class: 'receipt-set' + (done ? ' done' : '') },
+              done ? `Set „${set.name}“ komplett! Bauplan ${blueprintName(set.blueprint)} und Rohstoffe liegen im Lager.` : `Set „${set.name}“: ${have} von ${set.items.length}`,
+            )
+          : null,
+      ),
+    );
+  }
+
   private showReceipt(spot: Spot, ev: Extract<GameEvent, { type: 'loot' }>, note?: string) {
     this.mode = 'receipt';
     const state = this.ctx.app.backend.current()!;
@@ -202,6 +230,7 @@ export class SpotSheet {
         { class: 'receipt' },
         h('div', { class: 'receipt-head' }, h('span', null, 'Fundbeleg'), h('span', null, `Nr. ${String(state.stats.searches).padStart(4, '0')} · ${time}`)),
         h('div', { class: 'receipt-place' }, spot.name),
+        ev.collectible ? this.collectibleNote(ev.collectible) : null,
         h(
           'ul',
           { class: 'receipt-items' },
@@ -213,7 +242,17 @@ export class SpotSheet {
         note ? h('p', { class: 'receipt-note' }, note) : null,
         ev.bonus ? h('p', { class: 'receipt-note' }, 'Rückkehr-Bonus: alles doppelt') : null,
         ev.night ? h('p', { class: 'receipt-note' }, 'Nachtbonus: 30 % mehr') : null,
-        ev.junk ? h('p', { class: 'receipt-blueprint junk' }, junkThumb(ev.junk, 40), h('span', null, h('b', null, `Fundstück: ${JUNK[ev.junk].name}`), h('small', null, JUNK[ev.junk].desc))) : null,
+        ev.kram
+          ? h(
+              'p',
+              { class: 'receipt-blueprint junk' },
+              thingThumb(ev.kram, 40),
+              h('span', null, h('b', null, `Kram: ${KRAM[ev.kram].name}`), h('span', { class: 'junk-parts' }, 'Enthält ', partsChips(ev.kram))),
+            )
+          : null,
+        state.stats.searches <= 4 && RESOURCE_ORDER.some((r) => ev.items[r] && isMaterial(r))
+          ? h('p', { class: 'receipt-note' }, 'Rohstoffe und Kram kommen in den Rucksack. Zu Hause packst du aus.')
+          : null,
         ev.blueprint ? h('p', { class: 'receipt-blueprint' }, svgEl(icon('blueprint', 18)), `Bauplan gefunden: ${blueprintName(ev.blueprint)}`) : null,
         ev.site ? h('p', { class: 'receipt-blueprint site' }, svgEl(icon('map', 18)), `Lageplan gefunden: ${SITES[ev.site].name}! Ein neuer Ort für deine Endstation.`) : null,
       ),

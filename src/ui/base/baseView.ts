@@ -34,9 +34,9 @@ import {
   SECTION,
 } from '../../core/building';
 import { MATERIAL_ORDER, RESOURCE_ORDER, RESOURCES } from '../../core/content';
-import { CATEGORY_NAMES, footprint, FURNITURE, FURNITURE_ORDER, isJunk, type FurnitureCategory, type FurnitureId } from '../../core/furniture';
+import { CATEGORY_NAMES, footprint, FURNITURE, FURNITURE_ORDER, isCollectible, type FurnitureCategory, type FurnitureId } from '../../core/furniture';
 import { distanceM, formatDistance } from '../../core/geo';
-import { activePlot, canAfford, comfortTier, knowsBlueprint, placementProblem, plotIndexOf, readyParts } from '../../core/rules';
+import { activePlot, canAfford, collectiblePlaced, comfortTier, itemYield, knowsBlueprint, packCount, pendingHarvest, placementProblem, plotIndexOf, readyParts } from '../../core/rules';
 import type { DayPhase } from '../../core/sun';
 import type { WeatherKind } from '../../services/weather';
 import type { Action, Inventory, PlayerState, SpotKind } from '../../core/types';
@@ -53,6 +53,7 @@ import { REJECT_TEXT } from '../texts';
 import { Joystick, useButton } from '../joystick';
 import { openSitePicker } from './sitePicker';
 import { openWorkshop } from './workshop';
+import { openLager, unpack } from './lager';
 
 export { openSitePicker };
 
@@ -140,14 +141,17 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   const stage = h('div', { class: 'base-stage' });
   const titleEl = h('div', { class: 'base-title' });
   const comfortEl = h('div', { class: 'comfort' });
-  const resEl = h('div', { class: 'base-res' });
+  const resEl = h('button', { class: 'base-res', type: 'button', 'aria-label': 'Lager öffnen', title: 'Lager öffnen', onclick: () => openStore() });
   const workChip = h('button', { class: 'work-chip', type: 'button', hidden: true, onclick: () => openWork() });
+  const harvestChip = h('button', { class: 'work-chip ready', type: 'button', hidden: true, onclick: () => void harvestAll() });
+  const packCard = h('button', { class: 'pack-card', type: 'button', hidden: true, onclick: () => void doUnpack() });
   const away = h('div', { class: 'base-away', hidden: true });
   const head = h(
     'header',
     { class: 'base-head' },
     h('div', { class: 'base-title-row' }, titleEl, h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Schließen', onclick: () => close() }, svgEl(icon('close')))),
-    h('div', { class: 'base-info' }, comfortEl, resEl, workChip),
+    h('div', { class: 'base-info' }, comfortEl, resEl, workChip, harvestChip),
+    packCard,
     away,
   );
   // Seitenleiste im Baumodus und schwebende Leiste für Auswahl/Bestätigung
@@ -249,6 +253,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
       c.rooms ? h('span', { class: 'comfort-rooms' }, `${c.rooms} ${c.rooms === 1 ? 'Raum' : 'Räume'}`) : null,
     ]);
     clear(resEl);
+    resEl.append(h('span', { class: 'base-res-label' }, svgEl(icon('home', 14)), 'Lager'));
     for (const r of MATERIAL_ORDER) resEl.append(h('span', { class: 'cost-chip' + (s.inventory[r] ? '' : ' zero'), title: RESOURCES[r].name }, svgEl(resIcon(r, 14)), String(s.inventory[r])));
     const ready = readyParts(s, app.backend.now()).count;
     const running = s.workshop.jobs.length - ready;
@@ -256,6 +261,14 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     clear(workChip);
     workChip.classList.toggle('ready', ready > 0);
     workChip.append(svgEl(icon('wrench', 15)), ready ? `${ready} fertig` : `${running} in Arbeit`);
+    const harvest = pendingHarvest(s, app.backend.now());
+    harvestChip.hidden = !Object.keys(harvest).length;
+    clear(harvestChip);
+    harvestChip.append(svgEl(icon('check', 15)), `Abholen: ${itemsLine(harvest)}`);
+    const n = packCount(s);
+    packCard.hidden = !(n > 0 && here());
+    clear(packCard);
+    packCard.append(svgEl(icon('backpack', 22)), h('span', null, h('b', null, 'Rucksack auspacken'), h('small', null, `${n} ${n === 1 ? 'Sache' : 'Sachen'} kommen ins Lager`)));
     const f = opts.getFix();
     const place = getBasePlace();
     if (here()) {
@@ -319,16 +332,28 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     renderControls();
     requestAnimationFrame(() => {
       const w = el.clientWidth || 1;
-      scene.setViewShift(0, work ? work.el.offsetWidth / (2 * w) : building && !focus ? panel.offsetWidth / (2 * w) : 0);
+      if (work) return shiftForSide();
+      scene.setViewShift(0, building && !focus ? panel.offsetWidth / (2 * w) : 0);
     });
   };
 
+  /** Seitenleiste (Werktisch, Lager) offen: Ansicht so verschieben, dass das Gelände frei bleibt.
+   *  Hochkant liegt die Leiste unten, sonst rechts. */
+  const shiftForSide = () => {
+    const w = el.clientWidth || 1;
+    const hh = el.clientHeight || 1;
+    if (!work) return scene.setViewShift(0, 0);
+    if (hh > w) scene.setViewShift(work.el.offsetHeight / (2 * hh), 0);
+    else scene.setViewShift(0, work.el.offsetWidth / (2 * w));
+  };
+
   // --- Werktisch ----------------------------------------------------------------------------
-  let work: ReturnType<typeof openWorkshop> | null = null;
+  let work: (ReturnType<typeof openWorkshop> & { kind?: 'store' }) | null = null;
   const openWork = () => {
-    if (work) return;
+    if (work && !work.kind) return;
     const bench = plot().items.find((i) => i.kind === 'workbench');
     if (!bench) return app.toast('Stell zuerst einen Werktisch auf (Baumodus, Einrichten).');
+    work?.close();
     building = false;
     mode = { kind: 'browse' };
     el.dataset.workshop = 'on';
@@ -347,7 +372,58 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
         render();
       },
     });
-    requestAnimationFrame(() => scene.setViewShift(0, (work?.el.offsetWidth ?? 0) / (2 * (el.clientWidth || 1))));
+    requestAnimationFrame(shiftForSide);
+  };
+
+  // --- Lager ---------------------------------------------------------------------------------
+  const openStore = () => {
+    if (work?.kind === 'store') return;
+    work?.close();
+    building = false;
+    mode = { kind: 'browse' };
+    el.dataset.workshop = 'on';
+    render();
+    const panel = openLager(app, el, {
+      needHere,
+      onChanged: () => {
+        opts.onChanged();
+        renderHead();
+      },
+      onClose: () => {
+        work = null;
+        el.dataset.workshop = 'off';
+        render();
+      },
+      place: (id) => {
+        work?.close();
+        startPlace(id);
+      },
+      openWorkshop: () => openWork(),
+    });
+    work = { ...panel, kind: 'store' };
+    requestAnimationFrame(shiftForSide);
+  };
+
+  const doUnpack = async () => {
+    if (!needHere()) return;
+    const msg = await unpack(app);
+    if (msg) app.toast(`Ausgepackt: ${msg}. Liegt jetzt im Lager.`, 'good');
+    opts.onChanged();
+    render();
+  };
+
+  /** Alle Anlagen leeren (Regentonne, Hochbeet). */
+  const harvestAll = async () => {
+    if (!needHere()) return;
+    const got: Partial<Inventory> = {};
+    for (const it of plot().items.filter((i) => itemYield(i, app.backend.now()) > 0)) {
+      const res = await app.backend.dispatch({ type: 'harvest', uid: it.uid });
+      const ev = res.events[0];
+      if (ev.type === 'harvested') for (const r of RESOURCE_ORDER) if (ev.items[r]) got[r] = (got[r] ?? 0) + (ev.items[r] ?? 0);
+    }
+    if (Object.keys(got).length) app.toast(`Abgeholt: ${itemsLine(got)}`, 'good');
+    opts.onChanged();
+    render();
   };
 
   // --- Steuerung im Ansichtsmodus: Joystick und Benutzen ---------------------------------
@@ -358,7 +434,15 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     const t = scene.findInteract();
     if (!t) return;
     if (t.kind === 'item') {
-      if (plot().items.find((i) => i.uid === t.uid)?.kind === 'workbench') return openWork();
+      const it = plot().items.find((i) => i.uid === t.uid);
+      if (it?.kind === 'workbench') return openWork();
+      if (it && itemYield(it, app.backend.now()) > 0 && here()) {
+        const res = await app.backend.dispatch({ type: 'harvest', uid: it.uid });
+        const ev = res.events[0];
+        if (ev.type === 'harvested') app.toast(`Abgeholt: ${itemsLine(ev.items)}`, 'good');
+        opts.onChanged();
+        return render();
+      }
       mode = { kind: 'selected', uid: t.uid };
       return render();
     }
@@ -390,7 +474,10 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     const refreshUse = () => {
       const t = scene.findInteract();
       if (!t) return use?.setLabel(null);
-      if (t.kind === 'item') return use?.setLabel(plot().items.find((i) => i.uid === t.uid)?.kind === 'workbench' ? 'Werktisch' : 'Ansehen');
+      if (t.kind === 'item') {
+        const it = plot().items.find((i) => i.uid === t.uid);
+        return use?.setLabel(it?.kind === 'workbench' ? 'Werktisch' : it && itemYield(it, app.backend.now()) > 0 ? 'Abholen' : 'Ansehen');
+      }
       const o = idx().obstacles.find((x) => x.id === t.id);
       use?.setLabel(o ? OBSTACLES[o.kind].verb : null);
     };
@@ -431,8 +518,8 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   // --- Einrichten ------------------------------------------------------------------------
   const renderFurnish = () => {
     const s = st();
-    // Fundstücke nur zeigen, wenn man welche hat
-    const visible = FURNITURE_ORDER.filter((k) => !isJunk(k) || (s.junk[k] ?? 0) > 0);
+    // Sammelstücke nur zeigen, wenn man sie gefunden hat und sie noch im Lager liegen
+    const visible = FURNITURE_ORDER.filter((k) => !isCollectible(k) || (s.collectibles[k] && !collectiblePlaced(s, k)));
     const cats: (FurnitureCategory | 'all')[] = ['all', 'moebel', 'licht', 'deko', 'garten', 'fund'];
     const tabs = h(
       'div',
@@ -448,20 +535,19 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
         const def = FURNITURE[k];
         const known = knowsBlueprint(s, k);
         const afford = canAfford(s.inventory, def.cost);
-        const junkN = isJunk(k) ? (s.junk[k] ?? 0) : 0;
         return h(
           'button',
-          { class: 'fcard' + (known ? '' : ' locked') + (known && !afford ? ' poor' : '') + (isJunk(k) ? ' found' : ''), type: 'button', onclick: () => startPlace(k), 'aria-label': `${def.name}${known ? '' : ', Bauplan fehlt'}` },
+          { class: 'fcard' + (known ? '' : ' locked') + (known && !afford ? ' poor' : '') + (isCollectible(k) ? ' found' : ''), type: 'button', onclick: () => startPlace(k), 'aria-label': `${def.name}${known ? '' : ', Bauplan fehlt'}` },
           h('span', { class: 'fthumb' }, thumbs[`f:${k}`] ? h('img', { src: thumbs[`f:${k}`], alt: '' }) : null, known ? null : svgEl(icon('lock', 16), 'flock')),
           h('span', { class: 'fname' }, def.name),
-          isJunk(k) ? h('span', { class: 'fhint found' }, `Fundstück ×${junkN}`) : known ? costChips(def.cost, s.inventory) : h('span', { class: 'fhint' }, whereToFind(k)),
+          isCollectible(k) ? h('span', { class: 'fhint found' }, 'Sammelstück') : known ? costChips(def.cost, s.inventory) : h('span', { class: 'fhint' }, whereToFind(k)),
         );
       }),
     );
     const left = idx().obstacles.length;
     const hint =
       furnTab === 'fund' && !kinds.length
-        ? 'Noch keine Fundstücke. Draußen findest du Teddys, Radios, Uhren und mehr. Aufstellen oder am Werktisch zerlegen.'
+        ? 'Keine Sammelstücke im Lager. Draußen findest du Teddys, Uhren, Gitarren und mehr, jedes nur einmal.'
         : left && plot().items.length < 2
           ? 'Tipp: Räum Schutt und Gestrüpp weg, dann ist Platz.'
           : 'Tippe ein Teil an, dann stellst du es auf.';
@@ -472,7 +558,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     const s = st();
     const def = FURNITURE[k];
     if (!knowsBlueprint(s, k)) return app.toast(`${def.name}: ${whereToFind(k)}.`);
-    if (isJunk(k) && !(s.junk[k] ?? 0)) return app.toast(`${def.name}: keins mehr im Rucksack.`, 'warn');
+    if (isCollectible(k) && (!s.collectibles[k] || collectiblePlaced(s, k))) return app.toast(`${def.name} steht schon.`, 'warn');
     if (!canAfford(s.inventory, def.cost)) return app.toast(`Für ${def.name} fehlen dir Rohstoffe.`, 'warn');
     if (!needHere()) return;
     const c = scene.characterCell();
@@ -591,16 +677,46 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     const f = footprint(it.kind, it.rot);
     scene.mark(it.x, it.y, f.w, f.d);
     const def = FURNITURE[it.kind];
+    const prod = def.produces;
+    const ready = itemYield(it, app.backend.now());
+    const sub =
+      it.kind === 'workbench'
+        ? 'Zerlegt Kram in Rohstoffe'
+        : prod
+          ? ready
+            ? `${ready} ${RESOURCES[prod.res].name} bereit`
+            : `Alle ${prod.everyH} Std. 1 ${RESOURCES[prod.res].name}, sammelt bis ${prod.cap}`
+          : isCollectible(it.kind)
+            ? `Sammelstück · Gemütlichkeit +${def.comfort}`
+            : `Gemütlichkeit +${def.comfort}`;
     ctx.append(
       h(
         'div',
         { class: 'ctx-bar' },
         ctxClose('Fertig', () => ((mode = { kind: 'browse' }), render())),
-        h('div', { class: 'ctx-title', title: def.desc }, def.name, h('small', null, it.kind === 'workbench' ? 'Zerlegt Fundstücke in Rohstoffe' : isJunk(it.kind) ? `Fundstück · Gemütlichkeit +${def.comfort}` : `Gemütlichkeit +${def.comfort}`)),
+        h('div', { class: 'ctx-title', title: def.desc }, def.name, h('small', null, sub)),
         h(
           'div',
           { class: 'ctx-actions' },
           it.kind === 'workbench' ? h('button', { class: 'btn small', type: 'button', onclick: () => openWork() }, svgEl(icon('wrench', 16)), 'Werktisch') : null,
+          prod && ready
+            ? h(
+                'button',
+                {
+                  class: 'btn small',
+                  type: 'button',
+                  onclick: async () => {
+                    if (!needHere()) return;
+                    const res = await dispatch({ type: 'harvest', uid });
+                    const ev = res?.events[0];
+                    if (ev?.type === 'harvested') app.toast(`Abgeholt: ${itemsLine(ev.items)}`, 'good');
+                    render();
+                  },
+                },
+                svgEl(resIcon(prod.res, 16)),
+                'Abholen',
+              )
+            : null,
           h(
             'button',
             { class: 'btn ghost small', type: 'button', onclick: () => needHere() && ((mode = { kind: 'place', item: it.kind, x: it.x, y: it.y, rot: it.rot, uid }), render()) },
@@ -614,13 +730,13 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
               onclick: async () => {
                 if (!needHere()) return;
                 if (await dispatch({ type: 'store', uid })) {
-                  app.toast(isJunk(it.kind) ? `${def.name} ist wieder im Rucksack.` : `${def.name} eingelagert. Rohstoffe zurück.`);
+                  app.toast(isCollectible(it.kind) ? `${def.name} liegt wieder im Lager.` : `${def.name} eingelagert. Rohstoffe zurück.`);
                   mode = { kind: 'browse' };
                   render();
                 }
               },
             },
-            isJunk(it.kind) ? 'In den Rucksack' : 'Einlagern',
+            isCollectible(it.kind) ? 'Ins Lager' : 'Einlagern',
           ),
         ),
       ),

@@ -8,9 +8,9 @@
 //   "v x,y" = senkrechte Kante links von Feld (x, y), von Ecke (x,y) bis (x,y+1)
 
 import { RESOURCE_ORDER } from './content';
-import { FURNITURE, footprint, isJunk, type FurnitureId } from './furniture';
+import { FURNITURE, footprint, isCollectible, type FurnitureId } from './furniture';
 import { pickWeighted, randInt, rngFrom } from './rng';
-import type { Inventory, JunkBag, PlacedItem, Plot, RejectReason, Resource, SpotKind } from './types';
+import type { Inventory, PlacedItem, Plot, RejectReason, Resource, SpotKind } from './types';
 
 export const PLOT = 72;
 export const SECTION = 12;
@@ -552,19 +552,16 @@ export function planAffordable(inv: Inventory, plan: BuildPlan): boolean {
   return RES.every((r) => inv[r] + (plan.refund[r] ?? 0) >= (plan.cost[r] ?? 0));
 }
 
-/** Ein aufgestelltes Teil zurück ins Lager: Rohstoffe zurück, Fundstücke wieder in den Rucksack. */
-export function storeItem(bag: { inventory: Inventory; junk: JunkBag }, it: PlacedItem): Partial<Inventory> {
-  if (isJunk(it.kind)) {
-    bag.junk[it.kind] = (bag.junk[it.kind] ?? 0) + 1;
-    return {};
-  }
+/** Ein aufgestelltes Teil zurück ins Lager: Rohstoffe zurück. Sammelstücke bleiben einfach im Besitz. */
+export function storeItem(bag: { inventory: Inventory }, it: PlacedItem): Partial<Inventory> {
+  if (isCollectible(it.kind)) return {};
   const refund = FURNITURE[it.kind].cost;
   for (const r of RES) bag.inventory[r] += refund[r] ?? 0;
   return { ...refund };
 }
 
 /** Plan anwenden: Rohstoffe abziehen/gutschreiben, Teile einlagern. Gibt die Rückerstattung der eingelagerten Teile zurück. */
-export function applyPlan(bag: { inventory: Inventory; junk: JunkBag }, plot: Plot, plan: BuildPlan, change: (key: string) => void): Partial<Inventory> {
+export function applyPlan(bag: { inventory: Inventory }, plot: Plot, plan: BuildPlan, change: (key: string) => void): Partial<Inventory> {
   const storedRefund: Partial<Inventory> = {};
   for (const uid of new Set(plan.store)) {
     const it = plot.items.find((i) => i.uid === uid);

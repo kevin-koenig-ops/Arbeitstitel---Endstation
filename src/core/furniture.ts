@@ -2,8 +2,8 @@
 // Neue Teile kommen hier dazu; das 3D-Modell dazu steht in src/base/models.ts.
 // Wände, Böden, Dächer und das Gelände stehen in building.ts.
 
-import { JUNK, JUNK_ORDER } from './content';
-import type { Inventory, JunkId } from './types';
+import { COLLECTIBLE_ORDER, COLLECTIBLES } from './content';
+import type { CollectibleId, Inventory, Survival } from './types';
 
 /** Gebaute Möbel (mit Rohstoffen und teils Bauplan). */
 export type BuiltFurnitureId =
@@ -44,8 +44,8 @@ export type BuiltFurnitureId =
   | 'flowerBed'
   | 'appleTree';
 
-/** Alles, was man aufstellen kann: gebaute Möbel und Fundstücke von draußen. */
-export type FurnitureId = BuiltFurnitureId | JunkId;
+/** Alles, was man aufstellen kann: gebaute Möbel und Sammelstücke von draußen. */
+export type FurnitureId = BuiltFurnitureId | CollectibleId;
 
 export type FurnitureCategory = 'moebel' | 'licht' | 'deko' | 'garten' | 'fund';
 
@@ -69,10 +69,12 @@ export interface FurnitureDef {
   /** Ohne Bauplan sofort baubar? */
   starter?: boolean;
   desc: string;
-  /** Ein Fundstück: kostet nichts, verbraucht aber das Stück aus dem Rucksack. */
-  junk?: boolean;
+  /** Ein Sammelstück: kostet nichts, gibt es nur einmal und muss gefunden sein. */
+  collectible?: boolean;
   /** Nützliche Anlage: gibt es nur einmal (aufrüsten statt mehrfach bauen). */
   unique?: boolean;
+  /** Anlage, die von selbst etwas erzeugt (abholen in der Endstation). */
+  produces?: { res: Survival; everyH: number; cap: number };
 }
 
 const BUILT: Record<BuiltFurnitureId, FurnitureDef> = {
@@ -81,7 +83,7 @@ const BUILT: Record<BuiltFurnitureId, FurnitureDef> = {
   mattress: { name: 'Matratze', category: 'moebel', w: 2, d: 1, layer: 'object', comfort: 4, cost: { cloth: 3 }, starter: true, desc: 'Besser als der Boden.' },
   table: { name: 'Holztisch', category: 'moebel', w: 1, d: 1, layer: 'object', comfort: 2, cost: { wood: 3 }, starter: true, desc: 'Für Karten, Konserven und Kartenspiele.' },
   chair: { name: 'Stuhl', category: 'moebel', w: 1, d: 1, layer: 'object', comfort: 1, cost: { wood: 2 }, starter: true, desc: 'Wackelt nur ein bisschen.' },
-  workbench: { name: 'Werktisch', category: 'moebel', w: 2, d: 1, layer: 'object', comfort: 2, cost: { wood: 3, metal: 2 }, starter: true, unique: true, desc: 'Zerlegt Fundstücke in Rohstoffe, in echter Zeit. Gibt es nur einmal, lässt sich aufrüsten.' },
+  workbench: { name: 'Werktisch', category: 'moebel', w: 2, d: 1, layer: 'object', comfort: 2, cost: { wood: 3, metal: 2 }, starter: true, unique: true, desc: 'Zerlegt Kram in Rohstoffe, in echter Zeit, und baut Waffen. Gibt es nur einmal, lässt sich aufrüsten.' },
   sofa: { name: 'Sofa', category: 'moebel', w: 2, d: 1, layer: 'object', comfort: 7, cost: { wood: 2, cloth: 4, screws: 1 }, desc: 'Durchgesessen und herrlich bequem.' },
   shelf: { name: 'Bücherregal', category: 'moebel', w: 1, d: 1, layer: 'object', comfort: 4, cost: { wood: 4, screws: 1 }, desc: 'Geschichten für die Abende.' },
   busSeat: { name: 'Bus-Sitzreihe', category: 'moebel', w: 2, d: 1, layer: 'object', comfort: 4, cost: { metal: 2, cloth: 2, screws: 1 }, desc: 'Aus einem alten Gelenkbus ausgebaut.' },
@@ -112,28 +114,28 @@ const BUILT: Record<BuiltFurnitureId, FurnitureDef> = {
   solarPanel: { name: 'Solarpaneel', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 2, cost: { glass: 2, electronics: 2, metal: 1 }, unique: true, desc: 'Strom von der Sonne. Ein Stück Zukunft.' },
   // --- Garten ---
   plant: { name: 'Pflanzenkübel', category: 'garten', w: 1, d: 1, layer: 'object', comfort: 2, cost: { stone: 1, water: 1 }, starter: true, desc: 'Etwas Grünes zwischen dem Beton.' },
-  rainBarrel: { name: 'Regentonne', category: 'garten', w: 1, d: 1, layer: 'object', comfort: 2, cost: { plastic: 2, metal: 1 }, starter: true, unique: true, desc: 'Fängt auf, was vom Himmel kommt.' },
+  rainBarrel: { name: 'Regentonne', category: 'garten', w: 1, d: 1, layer: 'object', comfort: 2, cost: { plastic: 2, metal: 1 }, starter: true, unique: true, produces: { res: 'water', everyH: 3, cap: 6 }, desc: 'Fängt Regen auf: 1 Wasser alle 3 Stunden, bis zu 6.' },
   flowerBed: { name: 'Blumenbeet', category: 'garten', w: 2, d: 1, layer: 'object', comfort: 3, cost: { wood: 1, water: 1 }, starter: true, desc: 'Ringelblumen und Kapuzinerkresse.' },
-  raisedBed: { name: 'Hochbeet', category: 'garten', w: 2, d: 1, layer: 'object', comfort: 4, cost: { wood: 4, water: 2 }, desc: 'Kräuter und Tomaten.' },
+  raisedBed: { name: 'Hochbeet', category: 'garten', w: 2, d: 1, layer: 'object', comfort: 4, cost: { wood: 4, water: 2 }, starter: true, unique: true, produces: { res: 'food', everyH: 4, cap: 6 }, desc: 'Kartoffeln, Bohnen, Kräuter: 1 Nahrung alle 4 Stunden, bis zu 6.' },
   appleTree: { name: 'Apfelbäumchen', category: 'garten', w: 1, d: 1, layer: 'object', comfort: 5, cost: { water: 2, food: 1 }, desc: 'In ein paar Jahren gibt es Äpfel. Wenn alles gut geht.' },
 };
 
-/** Fundstücke als Deko: Werte kommen aus content.ts. */
+/** Sammelstücke als Deko: Werte kommen aus content.ts. */
 const FOUND = Object.fromEntries(
-  JUNK_ORDER.map((id) => {
-    const j = JUNK[id];
-    const def: FurnitureDef = { name: j.name, category: 'fund', w: j.w, d: j.d, layer: j.layer, comfort: j.comfort, cost: {}, starter: true, junk: true, desc: j.desc };
+  COLLECTIBLE_ORDER.map((id) => {
+    const c = COLLECTIBLES[id];
+    const def: FurnitureDef = { name: c.name, category: 'fund', w: c.w, d: c.d, layer: c.layer, comfort: c.comfort, cost: {}, starter: true, collectible: true, unique: true, desc: c.desc };
     return [id, def];
   }),
-) as Record<JunkId, FurnitureDef>;
+) as Record<CollectibleId, FurnitureDef>;
 
 export const FURNITURE: Record<FurnitureId, FurnitureDef> = { ...BUILT, ...FOUND };
 
 export const FURNITURE_ORDER = Object.keys(FURNITURE) as FurnitureId[];
-export const CATEGORY_NAMES: Record<FurnitureCategory, string> = { moebel: 'Möbel', licht: 'Licht', deko: 'Deko', garten: 'Garten', fund: 'Fundstücke' };
+export const CATEGORY_NAMES: Record<FurnitureCategory, string> = { moebel: 'Möbel', licht: 'Licht', deko: 'Deko', garten: 'Garten', fund: 'Sammelstücke' };
 
-export function isJunk(kind: FurnitureId): kind is JunkId {
-  return !!FURNITURE[kind]?.junk;
+export function isCollectible(kind: FurnitureId): kind is CollectibleId {
+  return !!FURNITURE[kind]?.collectible;
 }
 
 /** Grundfläche unter Berücksichtigung der Drehung. */

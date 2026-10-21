@@ -1,7 +1,8 @@
-// Kleine Bausteine für Rohstoffe und Fundstücke (Kosten-Chips, Zeilen, Vorschaubilder).
+// Kleine Bausteine für Rohstoffe, Kram und Sammelstücke (Kosten-Chips, Zeilen, Vorschaubilder).
 
-import { JUNK, RESOURCE_ORDER, RESOURCES } from '../../core/content';
-import type { Inventory, JunkId } from '../../core/types';
+import { KRAM, RESOURCE_ORDER, RESOURCES } from '../../core/content';
+import type { FurnitureId } from '../../core/furniture';
+import type { Inventory, KramId } from '../../core/types';
 import { clear, h, svgEl } from '../dom';
 import { icon, resIcon } from '../icons';
 
@@ -15,9 +16,10 @@ export function costChips(cost: Partial<Inventory>, have?: Inventory) {
   );
 }
 
-/** Vorschaubilder für Fundstücke (3D, wird nachgeladen; bis dahin ein Symbol). */
-export function junkThumb(id: JunkId, size = 48): HTMLElement {
-  const el = h('span', { class: 'junk-thumb', style: `width:${size}px;height:${size}px` }, svgEl(icon('junk', Math.round(size * 0.5))));
+/** Vorschaubild für Kram oder ein Sammelstück (3D, wird nachgeladen; bis dahin ein Symbol).
+ *  silhouette: noch nicht gefunden, nur der Umriss. */
+export function thingThumb(id: KramId | FurnitureId, size = 48, silhouette = false): HTMLElement {
+  const el = h('span', { class: 'junk-thumb' + (silhouette ? ' silhouette' : ''), style: `width:${size}px;height:${size}px` }, svgEl(icon('junk', Math.round(size * 0.5))));
   void import('../../base/thumbs')
     .then(({ thumbnails }) => {
       const src = thumbnails([id], [])[`f:${id}`];
@@ -30,9 +32,9 @@ export function junkThumb(id: JunkId, size = 48): HTMLElement {
   return el;
 }
 
-/** Was ein Fundstück beim Zerlegen bringt, als kleine Rohstoff-Chips. */
-export function partsChips(id: JunkId) {
-  return costChips(JUNK[id].parts);
+/** Was im Kram steckt (wie bei Fallout: vor dem Zerlegen sichtbar). */
+export function partsChips(id: KramId) {
+  return costChips(KRAM[id].parts);
 }
 
 export function itemsLine(items: Partial<Inventory>) {
@@ -41,3 +43,10 @@ export function itemsLine(items: Partial<Inventory>) {
     .join(', ');
 }
 
+/** "2 Kram" / "Toaster" / "Toaster, 2 × Konserven" */
+export function kramLine(bag: Partial<Record<KramId, number>>) {
+  return (Object.entries(bag) as [KramId, number][])
+    .filter(([, n]) => n > 0)
+    .map(([k, n]) => (n > 1 ? `${n} × ${KRAM[k].name}` : KRAM[k].name))
+    .join(', ');
+}

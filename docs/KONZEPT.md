@@ -10,24 +10,27 @@ Ein Endzeit-Spiel auf der echten Karte, das man nebenbei im Alltag spielt: Handy
 2. **Die echte Welt, anders erzählt.** Die Karte ist die echte Umgebung, aber im Endzeit-Look: Ruinen, verwilderte Wälder, Staub, Nebel.
 3. **Auch auf dem Dorf spielbar.** Fundstellen gibt es überall, nicht nur an Sehenswürdigkeiten. Jedes Dorf hat Bushaltestellen, Gärten, Feldwege.
 4. **Datenschutz.** Den Ort deiner Endstation legst du selbst fest, er bleibt aber nur auf deinem Gerät. Andere Spieler (und später der Server) erfahren nie, wo sie steht.
-5. **Tagsüber raus, abends einrichten.** Draußen sammelst du Rohstoffe, Fundstücke und Baupläne, zu Hause baust du in Ruhe deine Endstation aus, gern auch vom Bett aus.
+5. **Tagsüber raus, abends einrichten.** Draußen sammelst du Rohstoffe, Kram, Sammelstücke und Baupläne, zu Hause baust du in Ruhe deine Endstation aus, gern auch vom Bett aus.
 6. **Eins statt viele.** Jede nützliche Anlage (Regentonne, Werkbank, Windrad, Ofen …) gibt es nur einmal. Statt mehr davon zu bauen, wird sie in Stufen aufgerüstet und bleibt dabei stehen, wo sie steht. Niemand soll ständig umbauen müssen. Deko darf man beliebig oft aufstellen.
 
 ## Kernschleife
 
 1. **Erkunden:** Fundstellen leuchten auf der Karte. Wenn man nah genug ist (ca. 45 m), kann man sie durchsuchen.
-2. **Sammeln:** Nahrung, Wasser, Medizin zum Überleben, dazu Rohstoffe und Fundstücke. Echte Orte bringen mehr: Supermarkt → Nahrung, Apotheke → Medizin, Baumarkt → Holz, Metall, Schrauben, Kleber.
-3. **Ausbauen:** Mit Rohstoffen werden Bus und Endstation ausgebaut. Manche Ausbauten produzieren von allein (Regenfass, Dachgarten).
+2. **Sammeln:** Nahrung, Wasser, Medizin zum Überleben, dazu Rohstoffe, Kram und Sammelstücke. Alles außer den Vorräten kommt in den Rucksack und ist erst zu Hause im Lager sicher. Echte Orte bringen mehr: Supermarkt → Nahrung, Apotheke → Medizin, Baumarkt → Holz, Metall, Schrauben, Kleber.
+3. **Ausbauen:** Mit Rohstoffen aus dem Lager wird die Endstation ausgebaut. Manche Anlagen produzieren von allein (Regentonne, Hochbeet). Einen Bus zum Ausbauen gibt es nicht mehr.
 4. **Entdecken:** Selten findet man Erinnerungsstücke, kleine Notizen und Fundsachen, die nach und nach erzählen, was passiert ist.
 
-## Rohstoffe und Fundstücke
+## Rohstoffe, Kram und Sammelstücke
 
 - **Neun Rohstoffe** statt „Material“: Holz, Metall, Stein, Stoff, Kunststoff, Glas, Kleber, Schrauben, Elektronik. Grob von häufig nach selten. Jedes Bauteil kostet genau, woraus es besteht (Bretterwand = Holz, Fenster = Glas und Holz, Stehlampe braucht Elektronik).
 - **Wo es was gibt:** Autos → Metall, Kunststoff; Schuppen → Holz, Schrauben; Kleidercontainer → Stoff; Pakete → Elektronik, Kleber; Baumarkt → fast alles zum Bauen. Stein kommt vor allem aus Schutt und Felsen in der Endstation.
-- **Fundstücke** (22 Stück, z. B. Teddybär, Wanduhr, Kofferradio, Röhrenfernseher, Gitarre, Fahrrad, Quietscheente): liegen draußen, je nach Ort. Man kann sie **behalten und als Deko aufstellen** oder **am Werktisch zerlegen** (Teddy → Stoff und Kunststoff, Radio → Kunststoff, Elektronik, Schrauben).
-- **Der Werktisch** steht in der Endstation und zerlegt in echter Zeit, eins nach dem anderen (1–12 Minuten pro Stück). Er arbeitet weiter, auch wenn die App zu ist. Fertiges wartet auf dem Tisch, nichts verdirbt. Ein grünes Zeichen am Endstation-Knopf zeigt, dass etwas bereitliegt.
+- **Kram** (18 Sorten, z. B. Toaster, Autobatterie, Benzinkanister, Kabeltrommel, Konservendosen): findet man oft und mehrfach. Wie bei Fallout steht dabei, **was drinsteckt** (Toaster → 2 Metall, 1 Elektronik). Kram wird am Werktisch zerlegt.
+- **Sammelstücke** (13 Stück, z. B. Teddybär, Wanduhr, Röhrenfernseher, Gitarre, Fahrrad, Quietscheente): jedes gibt es **nur einmal**. Sie kommen ins **Fundbuch** und lassen sich zu Hause als Deko aufstellen (kostenlos, wieder ins Lager räumbar). Noch fehlende zeigt das Fundbuch als Umriss mit Hinweis, wo man suchen kann.
+- **Sets:** Sammelstücke gehören zu vier Sets (Kinderzimmer, Wohnzimmer 1985, Arbeitszimmer, Gute Stube). Ein volles Set bringt einen Bauplan und Rohstoffe ins Lager.
+- **Der Werktisch** steht in der Endstation, zerlegt Kram in echter Zeit, eins nach dem anderen (1–12 Minuten pro Stück), und baut Waffen (die Armbrust ab Stufe 2). Er arbeitet weiter, auch wenn die App zu ist. Fertiges wartet auf dem Tisch, nichts verdirbt. Ein grünes Zeichen am Endstation-Knopf zeigt, dass etwas bereitliegt.
 - **Eins statt viele:** Werktisch, Holzofen, Solarpaneel und Regentonne gibt es nur einmal. Der Werktisch lässt sich in drei Stufen aufrüsten (mehr Plätze, schneller).
-- **Rucksack:** Ein Tipp auf die Vorräte oben öffnet ihn: Vorräte, Rohstoffe (mit Fundorten) und Fundstücke.
+- **Rucksack:** Was du unterwegs findest (Rohstoffe und Kram), steckt im Rucksack. Ohne feste Grenze. Der Rucksack hat drei Reiter: Rucksack, Fundbuch (Sammelstücke, Sets, Erinnerungsstücke) und Ausrüstung (Gesundheit, Waffen).
+- **Lager:** Zu Hause packst du aus, dann liegt alles sicher im Lager. Gebaut wird nur aus dem Lager. Eine Niederlage kostet höchstens etwas aus dem Rucksack, nie aus dem Lager.
 
 ## Die Endstation (Basisbau, das Herzstück für abends)
 
@@ -77,16 +80,16 @@ Die Figur aus der Charaktererstellung ist ein Low-Poly-Modell (Frisur, Hautton, 
   - *Gesten (wie Monster Hunter):* Tippen = Schlag (drei in Folge = Kombo mit starkem Abschluss), Halten = Aufladen (ein weißer Ring füllt sich, voll = Volle Wucht, ein Treffer bricht es ab), Wischen = Ausweichrolle in diese Richtung. Gefahr zeigt ein gelber Bildschirmrand.
 - **Wumms:** Schadenszahlen, Treffer-Stopp, Rückstoß, Funken, Zeitlupe beim letzten Treffer, Vibration.
 - Ein Kampf dauert etwa 20–40 Sekunden. Waffen nutzen sich pro Kampf ab.
-- **Niederlage ist kein Drama:** Ein paar Sachen fallen aus dem Rucksack, die Gesundheit kommt von selbst zurück. **Fliehen geht immer.**
+- **Niederlage ist kein Drama:** Ein paar Sachen fallen aus dem Rucksack (nie aus dem Lager), die Gesundheit kommt von selbst zurück. **Fliehen geht immer.**
 - Die Simulation (`core/battle.ts`) ist deterministisch: Ein Server kann einen Kampf später aus den Eingaben nachrechnen.
 
 Später: Gefahrenstufe pro Expedition, Horden, die durch echte Straßen ziehen, Nester als Raids für mehrere Spieler.
 
 ## Langfristiges Ziel (geplant)
 
-- **Endziel „Die Linie 0 fährt wieder“:** Die Endstation wird Schritt für Schritt zum Depot. Am Ende bringst du den alten Bus wieder zum Laufen und fährst mit deinen Überlebenden zur Küste.
+- **Endziel „Die Linie 0 fährt wieder“:** Die Endstation wird Schritt für Schritt zum Depot. Am Ende bringst du den alten Bus wieder zum Laufen und fährst mit deinen Überlebenden zur Küste. (Noch offen: Ob das Endziel so bleibt, seit der Bus als Ausbau-Ort raus ist.)
 
-- **Überlebende** als Herzstück: Menschen mit Namen, Geschichte und Fähigkeit, die im Bus mitfahren und versorgt werden wollen. Die persönliche Geschichte des Spielers.
+- **Überlebende** als Herzstück: Menschen mit Namen, Geschichte und Fähigkeit, die in der Endstation wohnen und versorgt werden wollen. Die persönliche Geschichte des Spielers.
 - **Gemeinschaft ohne Treffen:** Spuren, die andere Spieler hinterlassen (Notizen, Vorratskisten, Warnschilder). Funktioniert auch, wenn nur alle paar Tage jemand vorbeikommt.
 - **Funknetz:** Tauschen mit Spielern überall. Pakete brauchen echte Stunden, je nach Entfernung.
 - **Stadt und Land brauchen sich:** Dörfer liefern Nahrung, Städte Medizin und Technik.

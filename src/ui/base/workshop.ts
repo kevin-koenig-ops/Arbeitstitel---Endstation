@@ -1,14 +1,14 @@
-// Der Werktisch: Fundstücke in echter Zeit zerlegen, Fertiges abholen, aufrüsten.
+// Der Werktisch: Kram in echter Zeit zerlegen, Fertiges abholen, Waffen bauen, aufrüsten.
 // Es läuft weiter, auch wenn die App zu ist. Fertiges wartet, nichts verdirbt.
 
-import { JUNK, JUNK_ORDER, WORKBENCH_LEVELS } from '../../core/content';
+import { KRAM, KRAM_ORDER, WEAPON_ORDER, WEAPONS, WORKBENCH_LEVELS } from '../../core/content';
 import { canAfford, dismantleMs, readyParts, workbenchLevel } from '../../core/rules';
-import type { Action, JunkId, PlayerState } from '../../core/types';
+import type { Action, KramId, PlayerState } from '../../core/types';
 import type { App } from '../app';
 import { clear, h, svgEl } from '../dom';
 import { icon } from '../icons';
 import { REJECT_TEXT } from '../texts';
-import { costChips, itemsLine, junkThumb } from '../game/chips';
+import { costChips, itemsLine, thingThumb } from '../game/chips';
 
 interface Opts {
   /** Steht man gerade an der Endstation? (Zerlegen nur vor Ort, wie Bauen) */
@@ -76,7 +76,7 @@ export function openWorkshop(app: App, host: HTMLElement, opts: Opts): { el: HTM
     const jobs = h('ul', { class: 'ws-jobs' });
     let prevEnd = 0;
     for (const job of ws.jobs) {
-      const total = dismantleMs(s, job.junk);
+      const total = dismantleMs(s, job.kram);
       const start = Math.max(prevEnd, job.endsAt - total);
       prevEnd = job.endsAt;
       const done = job.endsAt <= now;
@@ -86,8 +86,8 @@ export function openWorkshop(app: App, host: HTMLElement, opts: Opts): { el: HTM
         h(
           'li',
           { class: done ? 'done' : '' },
-          junkThumb(job.junk, 40),
-          h('div', { class: 'ws-job-main' }, h('b', null, JUNK[job.junk].name), h('span', { class: 'ws-progress' }, bar), label),
+          thingThumb(job.kram, 40),
+          h('div', { class: 'ws-job-main' }, h('b', null, KRAM[job.kram].name), h('span', { class: 'ws-progress' }, bar), label),
           done ? svgEl(icon('check', 18), 'ws-check') : null,
         ),
       );
@@ -115,26 +115,26 @@ export function openWorkshop(app: App, host: HTMLElement, opts: Opts): { el: HTM
           ),
       );
 
-    // --- Aus dem Rucksack ---
-    const owned = JUNK_ORDER.filter((j) => (s.junk[j] ?? 0) > 0);
+    // --- Aus dem Lager ---
+    const owned = KRAM_ORDER.filter((j) => (s.kram[j] ?? 0) > 0);
     const full = ws.jobs.length >= lvl.slots;
     body.append(h('h3', { class: 'ws-sec' }, 'Zerlegen', h('small', null, full ? 'Der Tisch ist voll' : 'Eins nach dem anderen, in echter Zeit')));
-    if (!owned.length) body.append(h('p', { class: 'ws-empty' }, 'Keine Fundstücke im Rucksack. Draußen in Autos, Containern und Paketen findest du welche.'));
+    if (!owned.length) body.append(h('p', { class: 'ws-empty' }, s.packKram && Object.keys(s.packKram).length ? 'Kein Kram im Lager. Pack erst deinen Rucksack aus.' : 'Kein Kram im Lager. Draußen in Autos, Containern und Packstationen findest du welchen.'));
     else
       body.append(
         h(
           'ul',
           { class: 'ws-junk' },
-          owned.map((j: JunkId) =>
+          owned.map((j: KramId) =>
             h(
               'li',
               null,
-              junkThumb(j, 44),
+              thingThumb(j, 44),
               h(
                 'div',
                 { class: 'ws-junk-main' },
-                h('b', null, JUNK[j].name, (s.junk[j] ?? 0) > 1 ? h('span', { class: 'junk-n' }, ` ×${s.junk[j]}`) : null),
-                h('span', { class: 'ws-junk-parts' }, costChips(JUNK[j].parts), h('small', null, svgEl(icon('clock', 13)), duration(dismantleMs(s, j)))),
+                h('b', null, KRAM[j].name, (s.kram[j] ?? 0) > 1 ? h('span', { class: 'junk-n' }, ` ×${s.kram[j]}`) : null),
+                h('span', { class: 'ws-junk-parts' }, costChips(KRAM[j].parts), h('small', null, svgEl(icon('clock', 13)), duration(dismantleMs(s, j)))),
               ),
               h(
                 'button',
@@ -143,8 +143,8 @@ export function openWorkshop(app: App, host: HTMLElement, opts: Opts): { el: HTM
                   type: 'button',
                   disabled: full,
                   onclick: async () => {
-                    const res = await dispatch({ type: 'dismantle', junk: j });
-                    if (res) app.toast(`${JUNK[j].name} liegt auf dem Werktisch.`);
+                    const res = await dispatch({ type: 'dismantle', kram: j });
+                    if (res) app.toast(`${KRAM[j].name} liegt auf dem Werktisch.`);
                     render();
                   },
                 },
@@ -154,6 +154,45 @@ export function openWorkshop(app: App, host: HTMLElement, opts: Opts): { el: HTM
           ),
         ),
       );
+
+    // --- Waffen bauen ---
+    body.append(h('h3', { class: 'ws-sec' }, 'Waffen bauen', h('small', null, 'Sofort fertig, aus dem Lager')));
+    body.append(
+      h(
+        'ul',
+        { class: 'ws-junk ws-weapons' },
+        WEAPON_ORDER.map((id) => {
+          const def = WEAPONS[id];
+          const locked = def.level > ws.level;
+          const have = s.weapons.filter((w) => w.kind === id).length;
+          return h(
+            'li',
+            null,
+            h(
+              'div',
+              { class: 'ws-junk-main' },
+              h('b', null, def.name, have ? h('span', { class: 'junk-n' }, ` (hast du ${have > 1 ? `${have}×` : ''})`) : null),
+              h('small', { class: 'ws-weapon-desc' }, `${def.desc} Schaden ${def.dmg}, hält ${def.dur} Schläge.`),
+              locked ? h('small', { class: 'ws-weapon-desc' }, svgEl(icon('lock', 12)), ` Braucht Werktisch Stufe ${def.level}`) : costChips(def.cost, s.inventory),
+            ),
+            h(
+              'button',
+              {
+                class: 'btn small ghost',
+                type: 'button',
+                disabled: locked || !canAfford(s.inventory, def.cost),
+                onclick: async () => {
+                  const res = await dispatch({ type: 'craft', weapon: id });
+                  if (res?.events[0].type === 'crafted') app.toast(`${def.name} gebaut.`, 'good');
+                  render();
+                },
+              },
+              'Bauen',
+            ),
+          );
+        }),
+      ),
+    );
 
     // --- Aufrüsten ---
     const next = WORKBENCH_LEVELS[ws.level];

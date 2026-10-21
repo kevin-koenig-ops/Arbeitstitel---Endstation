@@ -12,11 +12,13 @@ import {
   ENEMY_WEIGHTS,
   FIRST_MEMENTO,
   FIST_DAMAGE,
+  COLLECT_CHANCE,
   GUARD_CHANCE,
-  GUARD_JUNK_BONUS,
+  GUARD_COLLECT_BONUS,
+  GUARD_KRAM_BONUS,
   GUARD_LOOT_FACTOR,
   isMaterial,
-  JUNK,
+  KRAM,
   GUARD_MEMENTO_BONUS,
   HEAL_AMOUNT,
   HEAL_IN_COMBAT,
@@ -24,7 +26,6 @@ import {
   MAX_HEALTH,
   MEMENTOS,
   MIN_HEALTH_TO_FIGHT,
-  MODULES,
   EXPLORE_MAX_ACCURACY_M,
   NIGHT_GUARD_FACTOR,
   NIGHT_LOOT_FACTOR,
@@ -32,6 +33,8 @@ import {
   QUALITY_FACTOR,
   RESOURCE_ORDER,
   RETURN_BONUS_AFTER_H,
+  SET_ORDER,
+  SETS,
   SPOT_KINDS,
   START_INVENTORY,
   START_WEAPONS,
@@ -75,7 +78,7 @@ import {
   type SiteId,
   type WallId,
 } from './building';
-import { FURNITURE, isJunk, type FurnitureId } from './furniture';
+import { FURNITURE, isCollectible, type FurnitureId } from './furniture';
 import { distanceM } from './geo';
 import { dayPhase } from './sun';
 import { pickWeighted, randInt, rngFrom } from './rng';
@@ -85,10 +88,11 @@ import type {
   Character,
   EnemyId,
   GameEvent,
+  CollectibleId,
   Inventory,
-  JunkId,
+  KramBag,
+  KramId,
   Material,
-  ModuleId,
   Plot,
   PlayerState,
   RejectReason,
@@ -99,7 +103,7 @@ import type {
 } from './types';
 import { resolveGridSpot } from './world';
 
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 const HOUR = 3600_000;
 const REGEN_MS = HEALTH_REGEN_MIN * 60_000;
 const MAX_GPS_SLACK_M = 25;
@@ -112,9 +116,12 @@ export function createPlayer(playerId: string, character: Character, now: number
     lastActiveAt: now,
     character,
     inventory: { ...START_INVENTORY },
-    junk: {},
+    kram: {},
+    pack: {},
+    packKram: {},
+    collectibles: {},
+    sets: {},
     workshop: { level: 1, jobs: [] },
-    bus: { modules: {} },
     spots: {},
     collection: {},
     returnBonus: false,
@@ -152,10 +159,6 @@ export function dayNumber(state: PlayerState, now: number): number {
 
 export function canAfford(inv: Inventory, cost: Partial<Inventory>): boolean {
   return RESOURCE_ORDER.every((r) => inv[r] >= (cost[r] ?? 0));
-}
-
-export function moduleUnlocked(state: PlayerState, id: ModuleId): boolean {
-  return MODULES[id].requires.every((req) => !!state.bus.modules[req]);
 }
 
 /** Gesundheit inklusive der Erholung seit dem letzten Stand. */
@@ -247,8 +250,8 @@ export function workbenchLevel(state: PlayerState) {
 }
 
 /** Wie lange dauert das Zerlegen auf der aktuellen Stufe (Millisekunden)? */
-export function dismantleMs(state: PlayerState, junk: JunkId): number {
-  return Math.round(JUNK[junk].minutes * 60_000 * workbenchLevel(state).speed);
+export function dismantleMs(state: PlayerState, kram: KramId): number {
+  return Math.round(KRAM[kram].minutes * 60_000 * workbenchLevel(state).speed);
 }
 
 /** Fertig Zerlegtes, das auf dem Werktisch zum Abholen bereitliegt. */
@@ -258,24 +261,43 @@ export function readyParts(state: PlayerState, now: number): { items: Partial<In
   for (const job of state.workshop.jobs) {
     if (job.endsAt > now) continue;
     count++;
-    for (const [k, v] of Object.entries(JUNK[job.junk].parts) as [Material, number][]) items[k] = (items[k] ?? 0) + v;
+    for (const [k, v] of Object.entries(KRAM[job.kram].parts) as [Material, number][]) items[k] = (items[k] ?? 0) + v;
   }
   return { items, count };
 }
 
-/** Wieviel liegt im Rucksack an Fundstücken? */
-export function junkCount(state: PlayerState): number {
-  return Object.values(state.junk).reduce((a, b) => a + (b ?? 0), 0);
+// --- Rucksack, Lager, Sammelstücke --------------------------------------------------
+
+export function kramCount(bag: KramBag): number {
+  return Object.values(bag).reduce((a, b) => a + (b ?? 0), 0);
 }
 
-/** Was liegt im Bus zum Abholen bereit (Regenfass, Dachgarten)? */
+/** Wie viel steckt im Rucksack (Rohstoffe + Kram)? */
+export function packCount(state: PlayerState): number {
+  return Object.values(state.pack).reduce((a, b) => a + (b ?? 0), 0) + kramCount(state.packKram);
+}
+
+/** Steht dieses Sammelstück schon irgendwo (an irgendeinem Schauplatz)? */
+export function collectiblePlaced(state: PlayerState, id: CollectibleId): boolean {
+  return Object.values(state.base.plots).some((p) => p?.items.some((i) => i.kind === id));
+}
+
+// --- Anlagen ------------------------------------------------------------------------
+
+/** Was eine Anlage (Regentonne, Hochbeet) gerade zum Abholen hat. */
+export function itemYield(it: { kind: FurnitureId; at?: number }, now: number): number {
+  const prod = FURNITURE[it.kind]?.produces;
+  if (!prod || it.at === undefined) return 0;
+  return Math.max(0, Math.min(prod.cap, Math.floor((now - it.at) / (prod.everyH * HOUR))));
+}
+
+/** Alles, was in der aktiven Endstation zum Abholen bereitsteht. */
 export function pendingHarvest(state: PlayerState, now: number): Partial<Inventory> {
   const out: Partial<Inventory> = {};
-  for (const [id, built] of Object.entries(state.bus.modules)) {
-    const prod = MODULES[id as ModuleId].produces;
-    if (!prod || !built) continue;
-    const units = Math.min(prod.cap, Math.floor((now - built.lastHarvestAt) / (prod.every_h * HOUR)));
-    if (units > 0) out[prod.res] = (out[prod.res] ?? 0) + units;
+  for (const it of activePlot(state)?.items ?? []) {
+    const n = itemYield(it, now);
+    const prod = FURNITURE[it.kind].produces;
+    if (n > 0 && prod) out[prod.res] = (out[prod.res] ?? 0) + n;
   }
   return out;
 }
@@ -303,7 +325,7 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       if (!inRange(state, spot, action.at, action.accuracyM)) return reject('too_far');
       if (readyAt(state, spot) > ctx.now) return reject('cooldown');
       if (guardOf(ctx.worldSeed, spot, ctx.now)) return reject('guarded');
-      events.push(lootSpot(state, spot, ctx, false));
+      events.push(lootSpot(state, spot, ctx, false), ...checkSets(state, ctx.now));
       break;
     }
 
@@ -381,7 +403,7 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
         state.combat = null;
         state.stats.kills += 1;
         events.push({ type: 'combatWon', enemy: c.enemy });
-        events.push(lootSpot(state, c.spot, ctx, true));
+        events.push(lootSpot(state, c.spot, ctx, true), ...checkSets(state, ctx.now));
       } else if (state.health <= 0) {
         state.combat = null;
         state.healthAt = ctx.now;
@@ -421,9 +443,9 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
         if (kills > 1) {
           const main = SPOT_KINDS[c.spot.kind].loot.find((l) => isMaterial(l.res))?.res ?? 'metal';
           loot.items[main] = (loot.items[main] ?? 0) + (kills - 1);
-          state.inventory[main] += kills - 1;
+          gain(state, { [main]: kills - 1 });
         }
-        events.push(loot);
+        events.push(loot, ...checkSets(state, ctx.now));
       } else if (action.outcome === 'lost') {
         state.health = 0;
         state.healthAt = ctx.now;
@@ -439,7 +461,8 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
 
     case 'craft': {
       const def = WEAPONS[action.weapon];
-      if (def.requires && !state.bus.modules[def.requires]) return reject('locked');
+      if (!hasWorkbench(state)) return reject('no_workbench');
+      if (state.workshop.level < def.level) return reject('locked');
       if (!canAfford(state.inventory, def.cost)) return reject('cost');
       for (const r of RESOURCE_ORDER) state.inventory[r] -= def.cost[r] ?? 0;
       state.weapons.push({ kind: action.weapon, dur: def.dur });
@@ -473,7 +496,7 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
           if (pct < SECTOR_LEVELS[lvl].pct) break;
           state.sectors[key] = lvl + 1;
           const reward = SECTOR_LEVELS[lvl].reward;
-          for (const k of RESOURCE_ORDER) state.inventory[k] += reward[k] ?? 0;
+          gain(state, reward);
           events.push({ type: 'sector', key, level: lvl + 1, reward });
         }
       }
@@ -526,16 +549,17 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       const plot = activePlot(state);
       if (!plot) return reject('no_site');
       if (!knowsBlueprint(state, action.kind)) return reject('no_blueprint');
-      const junk = isJunk(action.kind) ? action.kind : null;
-      if (junk && !(state.junk[junk] ?? 0)) return reject('no_junk');
+      if (isCollectible(action.kind)) {
+        if (!state.collectibles[action.kind]) return reject('no_junk');
+        if (collectiblePlaced(state, action.kind)) return reject('only_one');
+      }
       if (!canAfford(state.inventory, def.cost)) return reject('cost');
       const rot = ((action.rot % 4) + 4) % 4;
       const problem = placementProblem(state, action.kind, action.x, action.y, rot);
       if (problem) return reject(problem);
       for (const k of RESOURCE_ORDER) state.inventory[k] -= def.cost[k] ?? 0;
-      if (junk) takeJunk(state, junk);
       const uid = plot.nextUid++;
-      plot.items.push({ uid, kind: action.kind, x: action.x, y: action.y, rot });
+      plot.items.push({ uid, kind: action.kind, x: action.x, y: action.y, rot, ...(def.produces ? { at: ctx.now } : {}) });
       events.push({ type: 'placed', uid, kind: action.kind });
       break;
     }
@@ -562,8 +586,15 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       if (!it) return reject('not_found');
       // Einlagern gibt alles zurück: Umräumen soll nie etwas kosten.
       const refund = storeItem(state, it);
+      // Was eine Anlage schon gesammelt hat, geht nicht verloren
+      const ready = itemYield(it, ctx.now);
+      const prod = FURNITURE[it.kind].produces;
+      if (ready && prod) {
+        state.inventory[prod.res] += ready;
+        refund[prod.res] = (refund[prod.res] ?? 0) + ready;
+      }
       plot.items = plot.items.filter((i) => i.uid !== it.uid);
-      events.push({ type: 'stored', uid: it.uid, refund, junk: isJunk(it.kind) ? it.kind : undefined });
+      events.push({ type: 'stored', uid: it.uid, refund });
       break;
     }
 
@@ -655,17 +686,17 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
     }
 
     case 'dismantle': {
-      if (!JUNK[action.junk]) return reject('not_found');
+      if (!KRAM[action.kram]) return reject('not_found');
       if (!hasWorkbench(state)) return reject('no_workbench');
-      if (!(state.junk[action.junk] ?? 0)) return reject('no_junk');
+      if (!(state.kram[action.kram] ?? 0)) return reject('no_junk');
       const ws = state.workshop;
       if (ws.jobs.length >= workbenchLevel(state).slots) return reject('queue_full');
       // Der Werktisch arbeitet eins nach dem anderen ab, in echter Zeit
       const last = ws.jobs.length ? ws.jobs[ws.jobs.length - 1].endsAt : 0;
-      const endsAt = Math.max(ctx.now, last) + dismantleMs(state, action.junk);
-      takeJunk(state, action.junk);
-      ws.jobs.push({ junk: action.junk, endsAt });
-      events.push({ type: 'dismantleQueued', junk: action.junk, endsAt });
+      const endsAt = Math.max(ctx.now, last) + dismantleMs(state, action.kram);
+      takeKram(state.kram, action.kram);
+      ws.jobs.push({ kram: action.kram, endsAt });
+      events.push({ type: 'dismantleQueued', kram: action.kram, endsAt });
       break;
     }
 
@@ -690,31 +721,30 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       break;
     }
 
-    case 'build': {
-      const def = MODULES[action.module];
-      if (state.bus.modules[action.module]) return reject('already_built');
-      if (!moduleUnlocked(state, action.module)) return reject('locked');
-      if (!canAfford(state.inventory, def.cost)) return reject('cost');
-      for (const r of RESOURCE_ORDER) state.inventory[r] -= def.cost[r] ?? 0;
-      state.bus.modules[action.module] = { builtAt: ctx.now, lastHarvestAt: ctx.now };
-      events.push({ type: 'built', module: action.module });
+    case 'harvest': {
+      const plot = activePlot(state);
+      if (!plot) return reject('no_site');
+      const it = plot.items.find((i) => i.uid === action.uid);
+      const prod = it ? FURNITURE[it.kind].produces : undefined;
+      if (!it || !prod || it.at === undefined) return reject('not_found');
+      const n = itemYield(it, ctx.now);
+      if (n <= 0) return reject('nothing');
+      // Volle Anlage: Uhr neu starten. Sonst den angefangenen Rest behalten.
+      it.at = n >= prod.cap ? ctx.now : it.at + n * prod.everyH * HOUR;
+      state.inventory[prod.res] += n;
+      events.push({ type: 'harvested', items: { [prod.res]: n } });
       break;
     }
 
-    case 'harvest': {
-      const items = pendingHarvest(state, ctx.now);
-      if (Object.keys(items).length === 0) return reject('nothing');
-      for (const [id, built] of Object.entries(state.bus.modules)) {
-        const prod = MODULES[id as ModuleId].produces;
-        if (!prod || !built) continue;
-        const period = prod.every_h * HOUR;
-        const units = Math.floor((ctx.now - built.lastHarvestAt) / period);
-        if (units <= 0) continue;
-        // Volles Lager: Uhr neu starten. Sonst den angefangenen Rest behalten.
-        built.lastHarvestAt = units >= prod.cap ? ctx.now : built.lastHarvestAt + units * period;
-      }
+    case 'unpack': {
+      if (!packCount(state)) return reject('nothing');
+      const items = { ...state.pack };
+      const kram = { ...state.packKram };
       for (const k of Object.keys(items) as Resource[]) state.inventory[k] += items[k] ?? 0;
-      events.push({ type: 'harvested', items });
+      for (const [k, n] of Object.entries(kram) as [KramId, number][]) state.kram[k] = (state.kram[k] ?? 0) + n;
+      state.pack = {};
+      state.packKram = {};
+      events.push({ type: 'unpacked', items, kram });
       break;
     }
   }
@@ -772,20 +802,27 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, guarded: boo
     items[bonusRes] = (items[bonusRes] ?? 0) + 1;
     perk = bonusRes;
   }
-  // Werkbank im Bus: +1 vom ersten gefundenen Rohstoff
-  const firstMat = (Object.keys(items) as Resource[]).find(isMaterial);
-  if (state.bus.modules.workbench && firstMat) items[firstMat] = (items[firstMat] ?? 0) + 1;
   // Rückkehr-Bonus
   const bonus = state.returnBonus;
   if (bonus) for (const k of Object.keys(items) as Resource[]) items[k] = (items[k] ?? 0) * 2;
 
-  for (const k of Object.keys(items) as Resource[]) state.inventory[k] += items[k] ?? 0;
+  gain(state, items);
 
-  // Fundstück
-  let junk: JunkId | undefined;
-  if (def.junk.length && r() < Math.min(0.9, def.junkChance + (guarded ? GUARD_JUNK_BONUS : 0))) {
-    junk = pickWeighted(r, def.junk);
-    state.junk[junk] = (state.junk[junk] ?? 0) + 1;
+  // Kram (in den Rucksack)
+  let kram: KramId | undefined;
+  if (def.kram.length && r() < Math.min(0.9, def.kramChance + (guarded ? GUARD_KRAM_BONUS : 0))) {
+    kram = pickWeighted(r, def.kram);
+    state.packKram[kram] = (state.packKram[kram] ?? 0) + 1;
+  }
+
+  // Sammelstück (jedes nur einmal im Spiel)
+  let collectible: CollectibleId | undefined;
+  const missingC = def.collectibles.filter((c) => !state.collectibles[c]);
+  const cChance = COLLECT_CHANCE[spot.source] + (guarded ? GUARD_COLLECT_BONUS : 0);
+  const rollC = r();
+  if (missingC.length && rollC < cChance) {
+    collectible = missingC[Math.floor(r() * missingC.length)];
+    state.collectibles[collectible] = ctx.now;
   }
 
   // Erinnerungsstück
@@ -818,23 +855,55 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, guarded: boo
   state.returnBonus = false;
   state.stats.searches += 1;
   pruneSpots(state, ctx.now);
-  return { type: 'loot', spotId: spot.id, items, junk, memento, bonus, perk, night, blueprint, site };
+  return { type: 'loot', spotId: spot.id, items, kram, collectible, memento, bonus, perk, night, blueprint, site };
 }
 
-function takeJunk(state: PlayerState, junk: JunkId) {
-  const n = (state.junk[junk] ?? 0) - 1;
-  if (n > 0) state.junk[junk] = n;
-  else delete state.junk[junk];
+/** Unterwegs Gefundenes: Vorräte gleich in die Taschen, Rohstoffe in den Rucksack. */
+function gain(state: PlayerState, items: Partial<Inventory>) {
+  for (const k of Object.keys(items) as Resource[]) {
+    const n = items[k] ?? 0;
+    if (!n) continue;
+    if (isMaterial(k)) state.pack[k] = (state.pack[k] ?? 0) + n;
+    else state.inventory[k] += n;
+  }
+}
+
+/** Neu vollständige Sets belohnen: Bauplan (falls unbekannt) und Rohstoffe ins Lager. */
+export function checkSets(state: PlayerState, now: number): GameEvent[] {
+  const out: GameEvent[] = [];
+  for (const id of SET_ORDER) {
+    const set = SETS[id];
+    if (state.sets[id] || !set.items.every((c) => state.collectibles[c])) continue;
+    state.sets[id] = now;
+    let blueprint: BlueprintId | undefined;
+    if (!knowsBlueprint(state, set.blueprint)) {
+      blueprint = set.blueprint;
+      state.blueprints[blueprint] = now;
+    }
+    for (const k of Object.keys(set.reward) as Resource[]) state.inventory[k] += set.reward[k] ?? 0;
+    out.push({ type: 'setCompleted', set: id, items: { ...set.reward }, blueprint });
+  }
+  return out;
+}
+
+function takeKram(bag: KramBag, kram: KramId) {
+  const n = (bag[kram] ?? 0) - 1;
+  if (n > 0) bag[kram] = n;
+  else delete bag[kram];
 }
 
 /** Bei einer Niederlage fällt etwas aus dem Rucksack. Nie viel, nie der Bus. */
 function dropSome(state: PlayerState, r: () => number): Partial<Inventory> {
+  // Nur aus dem Rucksack, nie aus dem Lager zu Hause. Ist er leer, ein wenig Proviant.
   const dropped: Partial<Inventory> = {};
-  const have = RESOURCE_ORDER.filter((k) => state.inventory[k] > 0);
+  const inPack = RESOURCE_ORDER.filter((k) => (state.pack[k] ?? 0) > 0);
+  const have = inPack.length ? inPack : (['food', 'water'] as Resource[]).filter((k) => state.inventory[k] > 0);
+  const bag = inPack.length ? state.pack : state.inventory;
   for (let i = 0; i < 2 && have.length; i++) {
     const k = have.splice(Math.floor(r() * have.length), 1)[0];
-    const n = Math.min(state.inventory[k], 1 + Math.floor(r() * 2));
-    state.inventory[k] -= n;
+    const n = Math.min(bag[k] ?? 0, 1 + Math.floor(r() * 2));
+    bag[k] = (bag[k] ?? 0) - n;
+    if (bag === state.pack && !bag[k]) delete state.pack[k];
     dropped[k] = n;
   }
   return dropped;

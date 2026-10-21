@@ -331,8 +331,8 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .loc-chip[data-q="ok"] .svg { color: var(--amber); }
 .loc-chip[data-q="bad"] .svg { color: var(--rust); }
 .loc-chip[data-q="sim"] .svg { color: var(--amber); }
-.bus-btn { grid-area: bus; position: relative; display: flex; align-items: center; gap: 10px; height: 60px; padding: 0 28px 0 22px; border-radius: 30px; border: 0; background: var(--amber); color: var(--ink); font: 700 20px/1 var(--font-ui); text-transform: uppercase; letter-spacing: 0.08em; cursor: pointer; box-shadow: 0 0 0 4px rgba(18, 17, 15, 0.85), 0 0 26px var(--amber-glow); }
-.bus-badge { position: absolute; top: -6px; right: -4px; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 12px; background: var(--moss); color: var(--ink); font: 700 14px/24px var(--font-ui); text-align: center; box-shadow: 0 0 0 3px var(--ink); }
+.pack-btn { grid-area: bus; position: relative; display: flex; align-items: center; gap: 10px; height: 60px; padding: 0 28px 0 22px; border-radius: 30px; border: 0; background: var(--amber); color: var(--ink); font: 700 20px/1 var(--font-ui); text-transform: uppercase; letter-spacing: 0.08em; cursor: pointer; box-shadow: 0 0 0 4px rgba(18, 17, 15, 0.85), 0 0 26px var(--amber-glow); }
+.pack-badge { position: absolute; top: -6px; right: -4px; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 12px; background: var(--moss); color: var(--ink); font: 700 14px/24px var(--font-ui); text-align: center; box-shadow: 0 0 0 3px var(--ink); }
 .locate { grid-area: locate; transition: color 0.2s ease; }
 .locate.lost { color: var(--amber); border-color: var(--amber); }
 
@@ -438,12 +438,6 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .pause-body { display: flex; flex-direction: column; gap: 16px; }
 .back-link { align-self: flex-start; }
 
-.bus-stage { padding: 4px 0 0; }
-.bus-stage .svg { width: 100%; }
-.bus-art { width: 100%; height: auto; max-width: 100%; }
-.bus-art .mod { transition: opacity 0.4s ease; }
-.bus-art .mod.ghost { opacity: 0.16; filter: grayscale(1); }
-.harvest-host:empty { display: none; }
 .btn.harvest { width: 100%; background: var(--moss); }
 .tabs { display: flex; border-bottom: 1px solid var(--line); }
 .tabs button { flex: 1; padding: 12px 4px; border: 0; background: none; color: var(--dust); font: 700 15px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px; }
@@ -827,13 +821,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
   .character .page { display: grid; grid-template-columns: minmax(230px, 36%) 1fr; column-gap: 22px; row-gap: 14px; align-items: start; }
   .character .page > * { grid-column: 2; }
   .character .page > .figure-stage { grid-column: 1; grid-row: 1 / span 12; position: sticky; top: calc(var(--safe-t) + 12px); height: calc(100dvh - var(--safe-t) - var(--safe-b) - 24px); margin: 0; }
-  /* Bus: Bild links, Ausbau rechts */
-  .bus-panel .overlay-inner { max-width: 1000px; display: grid; grid-template-columns: minmax(240px, 40%) 1fr; grid-template-areas: "top top" "art harvest" "art tabs" "art body"; column-gap: 20px; row-gap: 10px; align-items: start; }
-  .bus-panel .topbar { grid-area: top; }
-  .bus-panel .bus-stage { grid-area: art; position: sticky; top: 0; }
-  .bus-panel .harvest-host { grid-area: harvest; }
-  .bus-panel .tabs { grid-area: tabs; }
-  .bus-panel .bus-body { grid-area: body; }
+  .pack-panel .overlay-inner { max-width: 900px; }
   /* Schauplätze nebeneinander */
   .overlay.site-picker .overlay-inner { max-width: 1000px; }
   .site-list { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
@@ -958,7 +946,7 @@ button.res-bar:active { transform: translateY(1px); }
 .stock-empty { margin: 0; color: var(--dust); font-size: 14px; line-height: 1.4; }
 .likely-chip.junk { background: rgba(176, 140, 230, 0.16); color: #d9c8f5; }
 .receipt-blueprint.junk { background: #3a2f4a; color: #ece2fa; align-items: center; }
-.receipt-blueprint.junk span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.receipt-blueprint.junk > span { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .receipt-blueprint.junk small { font: 400 13px/1.3 var(--font-ui); color: #cbbfdc; }
 .home-badge.ready { background: #7fc35f; color: #10200a; font-size: 13px; }
 .base-res .cost-chip { padding: 2px 7px; font-size: 13px; gap: 3px; }
@@ -1006,3 +994,75 @@ button.res-bar:active { transform: translateY(1px); }
 
 /* Comic-Stil: kräftigere Farben auf der Karte */
 [data-gfx="comic"] .map canvas { filter: saturate(1.3) contrast(1.06); }
+
+/* --- Rucksack, Lager, Fundbuch (v8) --- */
+.pack-body { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; }
+.stock-lager { display: flex; align-items: flex-start; gap: 8px; margin: 14px 0 0; padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--line); font-size: 14px; line-height: 1.4; color: var(--dust); }
+.stock-lager .svg { flex: none; margin-top: 2px; color: var(--amber); }
+.receipt-blueprint.junk .junk-parts { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px; font: 400 13px var(--font-ui); color: #cbbfdc; }
+.receipt-blueprint.junk .cost-chip { padding: 2px 6px; font-size: 12px; background: rgba(0, 0, 0, 0.25); }
+
+/* Noch nicht gefunden: nur der Umriss */
+.junk-thumb.silhouette img { filter: brightness(0); opacity: 0.45; }
+.junk-thumb.silhouette { background: radial-gradient(circle at 50% 40%, #2a2620, #15130f); }
+
+/* Neues Sammelstück auf dem Fundbeleg */
+.receipt-find { display: flex; align-items: center; gap: 12px; margin: 4px 0 10px; padding: 10px; border-radius: 8px; background: #2c2440; color: #f1e8ff; box-shadow: 0 0 0 2px #b08ce6 inset; animation: line-in 0.4s ease-out both; animation-delay: 0.15s; }
+.receipt-find > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.receipt-find b { font: 700 18px/1.15 var(--font-ui); }
+.receipt-find small { font-size: 13px; line-height: 1.3; color: #cbbfdc; }
+.receipt-find-kicker { display: flex; align-items: center; gap: 5px; font: 700 11px/1 var(--font-ui); letter-spacing: 0.12em; text-transform: uppercase; color: #d9c8f5; }
+.receipt-set { margin-top: 3px; font: 600 13px/1.3 var(--font-ui); color: #e6d9ff; }
+.receipt-set.done { color: #ffe2a8; }
+
+/* Fundbuch: Sets */
+.book { display: flex; flex-direction: column; gap: 12px; }
+.set-card { padding: 12px; border-radius: 12px; background: var(--steel); border: 1px solid var(--line); }
+.set-card.done { border-color: #b08ce6; }
+.set-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.set-head b { font: 700 17px var(--font-ui); }
+.set-count { display: inline-flex; align-items: center; gap: 4px; font: 700 15px var(--font-ui); color: var(--dust); font-variant-numeric: tabular-nums; }
+.set-card.done .set-count { color: #d9c8f5; }
+.set-items { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.set-items li { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.set-name { font: 700 13px/1.2 var(--font-ui); }
+.set-items li:not(.got) .set-name { color: var(--dust); }
+.set-items small { font-size: 11px; line-height: 1.25; color: var(--dust); }
+.set-reward { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; font-size: 13px; color: var(--dust); }
+.set-reward .cost-chip { padding: 2px 6px; font-size: 12px; }
+
+/* Endstation: Lager-Knopf in der Kopfzeile, Auspacken */
+button.base-res { align-items: center; padding: 3px 6px 3px 4px; border: 1px solid var(--line); border-radius: 14px; background: rgba(18, 17, 15, 0.6); color: inherit; cursor: pointer; }
+.base-res-label { display: inline-flex; align-items: center; gap: 3px; padding: 0 4px; font: 700 12px var(--font-ui); text-transform: uppercase; letter-spacing: 0.06em; color: var(--amber); }
+.pack-card { display: flex; align-items: center; gap: 10px; align-self: flex-start; padding: 8px 14px 8px 10px; border-radius: 12px; border: 0; background: var(--amber); color: var(--ink); cursor: pointer; text-align: left; box-shadow: 0 0 18px var(--amber-glow); animation: glow-amber 1.6s ease-in-out infinite alternate; }
+.pack-card span { display: flex; flex-direction: column; gap: 1px; }
+.pack-card b { font: 700 15px var(--font-ui); text-transform: uppercase; letter-spacing: 0.05em; }
+.pack-card small { font-size: 12px; opacity: 0.8; }
+@keyframes glow-amber { from { box-shadow: 0 0 8px var(--amber-glow); } to { box-shadow: 0 0 22px var(--amber-glow); } }
+
+/* Lager-Seitenleiste */
+.lager-mats { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.lager-mats li { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 8px; background: var(--steel); border: 1px solid var(--line); font-size: 13px; }
+.lager-mats li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.lager-mats li b { font: 700 16px var(--font-ui); font-variant-numeric: tabular-nums; }
+.lager-mats li.empty { opacity: 0.5; }
+.lager-kram { grid-template-columns: 1fr; }
+.lager-kram li .btn { flex: none; margin-left: auto; }
+.lager-kram .junk-main { flex: 1; }
+.lager-finds { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.lager-finds button { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 4px; border-radius: 10px; border: 1px solid rgba(176, 140, 230, 0.35); background: var(--steel); color: var(--bone); cursor: pointer; font: 700 13px/1.2 var(--font-ui); }
+.lager-finds small { font: 600 11px var(--font-ui); color: #d9c8f5; }
+.lager-pack { border-color: var(--amber); }
+.ws-weapon-desc { display: flex; align-items: center; gap: 4px; font-size: 12px; line-height: 1.3; color: var(--dust); }
+.pack-body .stock-list.survival { grid-template-columns: repeat(3, 1fr); }
+.pack-body .stock-list.survival li { padding: 10px 12px; }
+@media (max-width: 520px) { .pack-body .stock-list.survival .stock-name { display: none; } .pack-body .stock-list.survival li { justify-content: space-between; } }
+
+/* Hochkant: Werktisch und Lager als Blatt von unten */
+@media (max-aspect-ratio: 1/1) {
+  .workshop { top: auto; left: 0; width: auto; height: 60dvh; padding: 12px var(--gutter-r) calc(var(--safe-b) + 10px) var(--gutter-l); border-left: 0; border-top: 1px solid var(--line); border-radius: 16px 16px 0 0; box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.35); animation: ws-up 0.22s ease-out; }
+  .base-view[data-workshop="on"] .base-head { right: 52px; }
+  .base-view[data-workshop="on"] .base-cam { right: 10px; }
+  .base-view[data-workshop="on"] .pack-card { display: none; }
+}
+@keyframes ws-up { from { transform: translateY(40px); opacity: 0; } }

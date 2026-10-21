@@ -4,6 +4,7 @@
 
 import * as THREE from 'three';
 import type { FurnitureId } from '../core/furniture';
+import type { KramId } from '../core/types';
 
 const mats = new Map<string, THREE.Material>();
 
@@ -503,23 +504,6 @@ const BUILDERS: Record<FurnitureId, (g: THREE.Group) => LightSpec | void> = {
     box(g, 0.08, 0.3, 0.03, mat(WOOD_DARK), 0, 1.15, -0.44);
     cyl(g, 0.04, 0.04, 0.012, mat('#c9a23a'), 0, 1.2, -0.42, 10).rotation.x = Math.PI / 2;
   },
-  radio(g) {
-    box(g, 0.5, 0.4, 0.4, mat('#9b7b4f'), 0, 0, 0);
-    box(g, 0.52, 0.04, 0.42, mat(WOOD_DARK), 0, 0.18, 0);
-    box(g, 0.42, 0.24, 0.14, mat('#3a4a3f'), 0, 0.4, 0);
-    const sp = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.02, 14), mat('#1d1d1b')), -0.09, 0.52, 0.07);
-    sp.rotation.x = Math.PI / 2;
-    box(g, 0.14, 0.05, 0.02, mat('#d8c99a'), 0.1, 0.55, 0.065);
-    box(g, 0.3, 0.025, 0.03, mat('#1d1d1b'), 0, 0.66, 0);
-    box(g, 0.012, 0.36, 0.012, mat('#a8a59c'), 0.17, 0.64, -0.03).rotation.z = -0.35;
-  },
-  toaster(g) {
-    box(g, 0.5, 0.4, 0.4, mat('#9b7b4f'), 0, 0, 0);
-    box(g, 0.52, 0.04, 0.42, mat(WOOD_DARK), 0, 0.18, 0);
-    box(g, 0.3, 0.18, 0.17, mat('#b8b4aa'), 0, 0.4, 0);
-    for (const x of [-0.05, 0.05]) box(g, 0.2, 0.012, 0.03, mat('#1d1d1b'), 0, 0.58, x);
-    box(g, 0.03, 0.05, 0.02, mat('#1d1d1b'), 0.16, 0.48, 0);
-  },
   tv(g) {
     for (const x of [-0.25, 0.25]) for (const z of [-0.18, 0.18]) box(g, 0.04, 0.32, 0.04, mat(WOOD_DARK), x, 0, z);
     box(g, 0.6, 0.04, 0.44, mat(WOOD), 0, 0.32, 0);
@@ -591,14 +575,6 @@ const BUILDERS: Record<FurnitureId, (g: THREE.Group) => LightSpec | void> = {
     box(g, 0.006, 0.4, 0.004, mat('#eef4f6'), 0.06, 1.25, -0.407).rotation.z = 0.6;
     box(g, 0.006, 0.22, 0.004, mat('#eef4f6'), -0.02, 1.15, -0.407).rotation.z = -0.4;
   },
-  toolbox(g) {
-    const red = mat('#b0472f');
-    box(g, 0.5, 0.22, 0.24, red, 0, 0, 0);
-    box(g, 0.52, 0.03, 0.26, mat('#8a3424'), 0, 0.22, 0);
-    for (const x of [-0.12, 0.12]) box(g, 0.03, 0.08, 0.03, mat('#3b3f3a'), x, 0.25, 0);
-    box(g, 0.28, 0.025, 0.03, mat('#3b3f3a'), 0, 0.32, 0);
-    box(g, 0.3, 0.02, 0.04, mat('#a8a59c'), 0.1, 0, 0.26, 0.5);
-  },
   bike(g) {
     const frame = mat('#3f5a7a');
     for (const x of [-0.55, 0.55]) {
@@ -647,6 +623,32 @@ const BUILDERS: Record<FurnitureId, (g: THREE.Group) => LightSpec | void> = {
     box(g, 0.05, 0.12, 0.06, iron, -0.13, 0.86, 0);
     box(g, 0.2, 0.012, 0.012, mat('#c9a23a'), 0.02, 1.0, 0.051);
     cyl(g, 0.05, 0.05, 0.03, mat('#a8a59c'), 0.2, 0.92, 0, 10).rotation.x = Math.PI / 2;
+  },
+};
+
+/** Kram: nur für Vorschaubilder (Rucksack, Lager, Werktisch). Er wird nicht aufgestellt. */
+const KRAM_BUILDERS: Record<KramId, (g: THREE.Group) => void> = {
+  radio(g) {
+    box(g, 0.42, 0.24, 0.14, mat('#3a4a3f'), 0, 0, 0);
+    const sp = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.02, 14), mat('#1d1d1b')), -0.09, 0.12, 0.07);
+    sp.rotation.x = Math.PI / 2;
+    box(g, 0.14, 0.05, 0.02, mat('#d8c99a'), 0.1, 0.15, 0.065);
+    box(g, 0.3, 0.025, 0.03, mat('#1d1d1b'), 0, 0.26, 0);
+    box(g, 0.012, 0.36, 0.012, mat('#a8a59c'), 0.17, 0.24, -0.03).rotation.z = -0.35;
+  },
+  toaster(g) {
+    box(g, 0.3, 0.18, 0.17, mat('#b8b4aa'), 0, 0, 0);
+    for (const z of [-0.04, 0.04]) box(g, 0.2, 0.012, 0.03, mat('#1d1d1b'), 0, 0.18, z);
+    box(g, 0.03, 0.05, 0.02, mat('#1d1d1b'), 0.16, 0.08, 0);
+    box(g, 0.08, 0.04, 0.2, mat('#d8c99a'), -0.02, 0.19, 0.0).rotation.z = 0.15;
+  },
+  toolbox(g) {
+    const red = mat('#b0472f');
+    box(g, 0.5, 0.22, 0.24, red, 0, 0, 0);
+    box(g, 0.52, 0.03, 0.26, mat('#8a3424'), 0, 0.22, 0);
+    for (const x of [-0.12, 0.12]) box(g, 0.03, 0.08, 0.03, mat('#3b3f3a'), x, 0.25, 0);
+    box(g, 0.28, 0.025, 0.03, mat('#3b3f3a'), 0, 0.32, 0);
+    box(g, 0.3, 0.02, 0.04, mat('#a8a59c'), 0.1, 0, 0.26, 0.5);
   },
   trafficCone(g) {
     box(g, 0.4, 0.04, 0.4, mat('#1d1d1b'), 0, 0, 0);
@@ -707,11 +709,101 @@ const BUILDERS: Record<FurnitureId, (g: THREE.Group) => LightSpec | void> = {
     shoe(-0.08, 0, 0.15);
     shoe(0.09, 0.03, 0.15); // ja, zwei linke
   },
+  tinCans(g) {
+    const tin = mat('#a8a59c');
+    const labels = ['#b0472f', '#3f6a8a', '#c9a23a'];
+    const can = (x: number, y: number, z: number, i: number) => {
+      cyl(g, 0.06, 0.06, 0.13, tin, x, y, z, 10);
+      cyl(g, 0.061, 0.061, 0.07, mat(labels[i % 3]), x, y + 0.03, z, 10);
+    };
+    can(-0.07, 0, 0, 0);
+    can(0.07, 0, 0, 1);
+    can(0, 0, 0.12, 2);
+    can(0, 0.13, 0.04, 1);
+  },
+  blanket(g) {
+    const a = mat('#7a4a3a');
+    const b = mat('#c9b48a');
+    for (let i = 0; i < 4; i++) box(g, 0.46, 0.05, 0.32, i % 2 ? b : a, 0, i * 0.05, 0, i * 0.04);
+    for (const x of [-0.12, 0.12]) box(g, 0.04, 0.204, 0.322, b, x, 0, 0);
+    box(g, 0.47, 0.04, 0.33, a, 0, 0.2, 0, 0.16);
+  },
+  flashlight(g) {
+    const body = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.24, 12), mat('#2f3a35')), -0.02, 0.04, 0);
+    body.rotation.z = Math.PI / 2;
+    const head = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.04, 0.08, 12), mat('#2f3a35')), 0.14, 0.06, 0);
+    head.rotation.z = Math.PI / 2;
+    const lens = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.052, 0.01, 12), glow('#fff2c0')), 0.185, 0.06, 0);
+    lens.rotation.z = Math.PI / 2;
+    box(g, 0.04, 0.02, 0.03, mat('#b0472f'), 0.02, 0.07, 0);
+  },
+  cableReel(g) {
+    const frame = mat('#3b3f3a');
+    for (const z of [-0.12, 0.12]) {
+      const d = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.03, 18), frame), 0, 0.2, z);
+      d.rotation.x = Math.PI / 2;
+    }
+    const core = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.21, 18), mat('#e8792a')), 0, 0.2, 0);
+    core.rotation.x = Math.PI / 2;
+    box(g, 0.1, 0.08, 0.06, mat('#1d1d1b'), 0, 0.38, 0);
+    box(g, 0.04, 0.3, 0.04, frame, 0, 0, 0.17);
+  },
+  screwBox(g) {
+    box(g, 0.34, 0.1, 0.22, mat('#3f6a8a'), 0, 0, 0);
+    box(g, 0.32, 0.005, 0.2, mat('#2f4f6a'), 0, 0.1, 0);
+    for (const x of [-0.056, 0.056]) box(g, 0.01, 0.1, 0.2, mat('#2f4f6a'), x, 0, 0);
+    box(g, 0.32, 0.1, 0.01, mat('#2f4f6a'), 0, 0, 0);
+    const steel = mat('#c9c6bc');
+    for (let i = 0; i < 9; i++) cyl(g, 0.012, 0.012, 0.03, steel, -0.12 + (i % 3) * 0.11 + ((i * 7) % 3) * 0.01, 0.1, i < 5 ? -0.05 : 0.05, 6);
+    box(g, 0.34, 0.012, 0.22, mat('#7aa0b8', { transparent: true, opacity: 0.5 }), 0, 0.2, -0.12).rotation.x = -1.1;
+  },
+  fruitCrate(g) {
+    const w = mat('#b0894f');
+    for (const y of [0, 0.1, 0.2]) {
+      for (const z of [-0.15, 0.15]) box(g, 0.46, 0.06, 0.02, w, 0, y, z);
+      for (const x of [-0.22, 0.22]) box(g, 0.02, 0.06, 0.3, w, x, y, 0);
+    }
+    box(g, 0.44, 0.02, 0.28, w, 0, 0, 0);
+    for (const x of [-0.22, 0.22]) for (const z of [-0.15, 0.15]) box(g, 0.04, 0.28, 0.04, mat('#8a6a45'), x, 0, z);
+    blob(g, 0.05, mat('#6b5034'), -0.1, 0.06, 0);
+    blob(g, 0.05, mat('#8a6a45'), 0.08, 0.06, 0.05);
+  },
+  pan(g) {
+    const iron = mat('#2a2826');
+    cyl(g, 0.16, 0.14, 0.05, iron, 0, 0, 0, 16);
+    cyl(g, 0.14, 0.14, 0.006, mat('#4a4844'), 0, 0.046, 0, 16);
+    box(g, 0.24, 0.025, 0.04, iron, 0.26, 0.03, 0).rotation.z = 0.12;
+    box(g, 0.12, 0.03, 0.045, mat(WOOD_DARK), 0.34, 0.04, 0).rotation.z = 0.12;
+  },
+  brokenPhone(g) {
+    const p = new THREE.Group();
+    p.rotation.x = -1.0;
+    g.add(p);
+    box(p, 0.09, 0.17, 0.012, mat('#1d1d1b'), 0, 0, 0);
+    box(p, 0.08, 0.15, 0.002, mat('#24302f'), 0, 0.01, 0.006);
+    const crack = mat('#a8b8c0');
+    box(p, 0.002, 0.1, 0.002, crack, 0.01, 0.04, 0.008).rotation.z = 0.5;
+    box(p, 0.002, 0.07, 0.002, crack, -0.01, 0.07, 0.008).rotation.z = -0.7;
+    box(p, 0.002, 0.06, 0.002, crack, 0.02, 0.02, 0.008).rotation.z = 1.3;
+    box(g, 0.14, 0.02, 0.1, mat('#5a5246'), 0, 0, 0.04);
+  },
+  superglue(g) {
+    box(g, 0.14, 0.2, 0.01, mat('#e6c13a'), 0, 0, -0.03);
+    box(g, 0.1, 0.05, 0.005, mat('#b0472f'), 0, 0.13, -0.022);
+    const tube = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.03, 0.12, 10), mat('#c9c6bc')), 0, 0.09, 0);
+    tube.rotation.z = 0.2;
+    cone(g, 0.016, 0.05, mat('#b0472f'), -0.014, 0.145, 0, 8).rotation.z = 0.2;
+    box(g, 0.06, 0.01, 0.03, mat('#c9c6bc'), 0.014, 0.022, 0);
+  },
 };
 
-export function buildFurniture(kind: FurnitureId): Model {
+export function buildFurniture(kind: FurnitureId | KramId): Model {
   const group = new THREE.Group();
-  const light = BUILDERS[kind](group) ?? undefined;
+  if (kind in KRAM_BUILDERS) {
+    KRAM_BUILDERS[kind as KramId](group);
+    return { group };
+  }
+  const light = BUILDERS[kind as FurnitureId](group) ?? undefined;
   return { group, light };
 }
 

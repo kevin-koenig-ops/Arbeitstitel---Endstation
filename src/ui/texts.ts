@@ -1,6 +1,6 @@
 // Texte für abgelehnte Aktionen, an einer Stelle gesammelt.
 
-import type { RejectReason } from '../core/types';
+import type { RejectReason, SpotKind } from '../core/types';
 
 export const REJECT_TEXT: Record<RejectReason, string> = {
   too_far: 'Zu weit weg. Geh näher ran.',
@@ -24,7 +24,24 @@ export const REJECT_TEXT: Record<RejectReason, string> = {
   not_adjacent: 'Nur Abschnitte direkt neben deinem Gelände.',
   no_workbench: 'Dafür brauchst du einen Werktisch in deiner Endstation.',
   queue_full: 'Der Werktisch ist voll. Hol erst etwas ab oder rüste ihn auf.',
-  no_junk: 'Davon hast du keins mehr im Rucksack.',
+  no_junk: 'Davon ist nichts im Lager.',
   only_one: 'Davon gibt es nur einen. Aufrüsten statt neu bauen.',
   max_level: 'Schon voll ausgebaut.',
+};
+
+/** Fundstellen in der Mehrzahl, für Hinweise wie "Zu finden in: Autos, Packstationen". */
+export const SPOT_PLURAL: Partial<Record<SpotKind, string>> = {
+  car: 'Autos',
+  backpack: 'Rucksäcken',
+  shed: 'Gartenlauben',
+  container: 'Containern',
+  hide: 'Hochsitzen',
+  barrel: 'Fässern',
+  parcel: 'Packstationen',
+  market: 'Supermärkten',
+  pharmacy: 'Apotheken',
+  hardware: 'Baumärkten',
+  fuel: 'Tankstellen',
+  well: 'Brunnen',
+  stop: 'Bushaltestellen',
 };

@@ -12,7 +12,8 @@ Ein Endzeit-Erkundungsspiel auf der echten Karte. Tagsüber gehst du draußen he
 - GPS-Standort oder Simulation (Tippen auf die Karte = hinlaufen)
 - Fundstellen überall (Autos, Rucksäcke, Gartenlauben …) und an echten Orten (Supermarkt, Apotheke, Baumarkt, Tankstelle, Brunnen, Bushaltestelle)
 - Durchsuchen, wenn man nah genug dran ist; Abklingzeit pro Fundstelle
-- Bus-Ausbau (Regenfass, Werkbank, Dachgarten, Sanitätsecke, Funkgerät) mit passiver Produktion
+- Rucksack unterwegs, Lager zu Hause; Kram zum Zerlegen (Inhalt sichtbar), Sammelstücke fürs Fundbuch mit vier Sets
+- Werktisch mit echten Wartezeiten, Anlagen mit eigener Produktion (Regentonne, Hochbeet)
 - Kartennebel zum Freilaufen, Sektoren, echte Tageszeit und echtes Wetter
 - Bewachte Fundstellen, Rundenkampf mit Timing, Waffen
 - **Endstation:** eigener Ort (bleibt auf dem Gerät), fünf Schauplätze mit eigener Umgebung, großes Gelände zum Zurückerobern, frei bauen (Wände, Türen, Fenster, Böden, Dächer), 36 Möbel, Räume, Gemütlichkeit, echtes Wetter

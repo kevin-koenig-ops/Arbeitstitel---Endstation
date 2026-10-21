@@ -17,12 +17,12 @@ const P: Record<string, string> = {
   glue: '<path d="M8 9h8v11a1.5 1.5 0 0 1-1.5 1.5h-5A1.5 1.5 0 0 1 8 20z"/><path d="M10 9V6.5h4V9M11 6.5L12 2.5l1 4M8 13.5h8"/>',
   screws: '<path d="M8 3.5h8l-1 3H9z"/><path d="M12 6.5v14M9.5 9l5 1.5M9.5 12l5 1.5M9.5 15l5 1.5M10.5 18l3 1"/>',
   electronics: '<rect x="6" y="6" width="12" height="12" rx="1.5"/><rect x="9.5" y="9.5" width="5" height="5"/><path d="M9 6V3M15 6V3M9 21v-3M15 21v-3M6 9H3M6 15H3M21 9h-3M21 15h-3"/>',
-  // Rucksack / Fundstücke / Werktisch
+  // Rucksack / Kram / Werktisch
   junk: '<path d="M4 9.5h16v10.5H4z"/><path d="M3 6.5h18v3H3zM10 13h4"/>',
   upgrade: '<path d="M12 20.5V5M6 11l6-6 6 6M5 20.5h14"/>',
   // Fundstellen
   car: '<path d="M3 16.5v-4.2L5.2 7h13.6l2.2 5.3v4.2z"/><circle cx="7.5" cy="16.8" r="1.9"/><circle cx="16.5" cy="16.8" r="1.9"/><path d="M3.2 12.3h17.6"/>',
-  backpack: '<path d="M7 9a5 5 0 0 1 10 0v11.5H7z"/><path d="M9.5 5.2V3h5v2.2M7 13.5h10M10 16.5h4"/>',
+  backpack: '<path d="M5.5 10a6.5 6.5 0 0 1 13 0v10a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 20z"/><path d="M9.5 4.2V2.5h5v1.7M5.5 11.5h13"/><rect x="8.5" y="14.5" width="7" height="4.5" rx="1"/>',
   shed: '<path d="M3 11.5l9-7.5 9 7.5"/><path d="M5 10v10.5h14V10"/><path d="M10 20.5V15h4v5.5"/>',
   container: '<path d="M4 8.5h16l-1.6 12H5.6z"/><path d="M3 8.5l2-3.5h14l2 3.5M9.5 11.5v6M14.5 11.5v6"/>',
   hide: '<path d="M7 3.5h10v6.5H7z"/><path d="M5 3.5L12 2l7 1.5"/><path d="M8 10l-3 12M16 10l3 12M6.6 16h10.8"/>',
