@@ -77,7 +77,7 @@ describe('Rucksack und Lager', () => {
     const spot = gridSpotsAround('test-seed', { lat: 51.3127, lon: 9.4797 }, 1500)[0];
     const s = createPlayer('p', hero, T0);
     s.pack = { metal: 5, cloth: 3 };
-    s.combat = { spot, enemy: 'walker', enemyHp: 4, round: 0, opening: false, window: 1 };
+    s.combat = { spot, enemy: 'walker', group: ['walker'], window: 1 };
     const l = act(s, { type: 'battleResult', outcome: 'lost', health: 0, kills: 0, usedMedicine: 0 });
     expect(l.events[0].type).toBe('combatLost');
     expect((l.state.pack.metal ?? 0) + (l.state.pack.cloth ?? 0)).toBeLessThan(8);
@@ -182,7 +182,7 @@ describe('Umzug auf Version 8', () => {
       },
     };
     const s = migrate(JSON.parse(JSON.stringify({ ...old, lastActiveAt: T0 })))!;
-    expect(s.schema).toBe(8);
+    expect(s.schema).toBe(9);
     expect('bus' in s).toBe(false);
     // Regenfass: Kosten zurück (3 Metall, 2 Kunststoff) und 3 Wasser Ertrag
     expect(s.inventory.water).toBe(3);

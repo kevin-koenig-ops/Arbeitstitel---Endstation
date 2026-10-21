@@ -102,9 +102,10 @@ export type BackgroundId = 'rescue' | 'workshop' | 'farm' | 'courier';
 // --- Kampf ---------------------------------------------------------------------
 export type EnemyId = 'walker' | 'crawler' | 'brute';
 export type WeaponId = 'crowbar' | 'bat' | 'crossbow';
-/** Wie gut der Timing-Moment getroffen wurde. Kommt vom Client, wirkt nur begrenzt. */
+/** Wie gut ein Geschicklichkeits-Moment lief (Mini-Spiel beim Durchsuchen). Kommt vom Client, wirkt nur begrenzt. */
 export type Quality = 'miss' | 'good' | 'perfect';
-export type CombatMove = 'strike' | 'dodge' | 'distract' | 'heal' | 'flee';
+/** Gegner im Kampf (der Heuler kommt nur im Kampf vor, nie als Wache). */
+export type FoeKind = EnemyId | 'screamer';
 
 export interface Weapon {
   kind: WeaponId;
@@ -114,12 +115,25 @@ export interface Weapon {
 
 export interface Combat {
   spot: Spot;
+  /** Der Hauptgegner (Wache der Fundstelle). */
   enemy: EnemyId;
-  enemyHp: number;
-  round: number;
-  /** Nach gutem Ausweichen: der nächste Schlag sitzt besser. */
-  opening: boolean;
+  /** Alle Gegner zu Beginn (Taktik-Kampf, siehe core/tactics.ts). */
+  group: FoeKind[];
   /** Zeitfenster der Bewachung (für Beute und Zufall). */
+  window: number;
+  /** Beim Wühlen überrascht (dann gibt es keine Extra-Beute). */
+  ambush?: boolean;
+}
+
+/** Weiter wühlen nach dem Durchsuchen: mehr Beute, aber jedes Mal lauter. */
+export interface DigState {
+  spot: Spot;
+  /** So oft schon gewühlt. */
+  round: number;
+  /** Lärm bisher. Wird er zu groß, kommt etwas. */
+  noise: number;
+  /** Bis wann man weiter wühlen darf. */
+  until: number;
   window: number;
 }
 
@@ -214,22 +228,95 @@ export interface PlayerState {
   base: BaseState;
   /** Gefundene Baupläne: id -> Fundzeitpunkt. */
   blueprints: Partial<Record<BlueprintId, number>>;
-  stats: { searches: number; kills: number };
+  stats: Stats;
+  /** Abgeholte Ziele der Zielleiste: id -> Zeitpunkt. */
+  goals: Partial<Record<GoalId, number>>;
+  /** Weiter wühlen an der zuletzt durchsuchten Fundstelle, oder null. */
+  dig: DigState | null;
+  /** Schon einmal durchsuchte Fundstellen (Kurz-Kennungen), für den Erstfund-Bonus. */
+  seen: number[];
+  /** Offene Hinweise auf Verstecke (Zettel, Kreidezeichen, Funksprüche). */
+  caches: Cache[];
+  /** Wann zuletzt das Funkgerät etwas Neues gebracht hat. */
+  radioAt: number;
+  /** Bis wann du satt bist (Eintopf vom Holzofen): mehr Beute. */
+  fedUntil: number;
 }
+
+/** Ein Versteck, auf das ein Hinweis zeigt. Es läuft nie ab. */
+export interface Cache {
+  id: string;
+  /** Wo es wirklich liegt (eine Fundstelle der Welt). */
+  spot: Spot;
+  /** Mitte des Suchkreises auf der Karte (absichtlich ungenau). */
+  center: LatLon;
+  /** Wo der Hinweis gefunden wurde. */
+  fromName: string;
+  fromPos: LatLon;
+  at: number;
+  via: 'note' | 'radio';
+}
+
+export interface Stats {
+  searches: number;
+  kills: number;
+  /** Wie oft der Rucksack zu Hause ausgepackt wurde. */
+  unpacks: number;
+  /** Zerlegter Kram (abgeholt). */
+  dismantled: number;
+  /** Am Werktisch gebaute Waffen. */
+  crafted: number;
+  /** Ausgegrabene Verstecke. */
+  caches: number;
+  /** Gekochte Eintöpfe. */
+  cooked: number;
+}
+
+/** Die Ziele der Zielleiste (Reihenfolge und Inhalt in core/progress.ts). */
+export type GoalId =
+  | 'search3'
+  | 'site'
+  | 'unpack'
+  | 'clear3'
+  | 'workbench'
+  | 'dismantle'
+  | 'room'
+  | 'tier1'
+  | 'collectible'
+  | 'win'
+  | 'sector'
+  | 'barrel'
+  | 'tier2'
+  | 'weapon'
+  | 'set'
+  | 'tier3'
+  | 'upgrade'
+  | 'secure'
+  | 'tier4'
+  | 'collect6'
+  | 'crossbow'
+  | 'tier5'
+  | 'allSets'
+  | 'tier6'
+  | 'cook'
+  | 'cache';
 
 // --- Aktionen: das Einzige, was der Client an die Spiellogik schickt ---------
 
 export type Action =
   | { type: 'session' }
-  | { type: 'search'; spot: Spot; at: LatLon; accuracyM: number }
+  | { type: 'search'; spot: Spot; at: LatLon; accuracyM: number; quality?: Quality }
+  /** Nach dem Durchsuchen weiter wühlen (riskant). */
+  | { type: 'dig'; at: LatLon; accuracyM: number }
+  /** Aufhören zu wühlen. */
+  | { type: 'stopDig' }
   /** Ertrag einer Anlage (Regentonne, Hochbeet) abholen. */
   | { type: 'harvest'; uid: number }
   /** Zu Hause: alles aus dem Rucksack ins Lager. */
   | { type: 'unpack' }
   | { type: 'engage'; spot: Spot; at: LatLon; accuracyM: number }
-  | { type: 'fight'; move: CombatMove; quality: Quality }
   /** Ergebnis eines Echtzeitkampfs (Kampf 2.0). Später prüft der Server es anhand der Eingaben nach. */
-  | { type: 'battleResult'; outcome: 'won' | 'lost' | 'fled'; health: number; kills: number; usedMedicine: number }
+  | { type: 'battleResult'; outcome: 'won' | 'lost' | 'fled'; health: number; kills: number; usedMedicine: number; wear?: Partial<Record<WeaponId, number>> }
   | { type: 'craft'; weapon: WeaponId }
   | { type: 'heal' }
   | { type: 'explore'; at: LatLon; accuracyM: number }
@@ -253,7 +340,12 @@ export type Action =
   /** Fertig Zerlegtes vom Werktisch nehmen. */
   | { type: 'collect' }
   /** Werktisch eine Stufe aufrüsten. */
-  | { type: 'upgradeWorkbench' };
+  | { type: 'upgradeWorkbench' }
+  /** Belohnung für ein erreichtes Ziel abholen. */
+  | { type: 'claimGoal'; goal: GoalId }
+  | { type: 'openCache'; id: string; at: LatLon; accuracyM: number }
+  | { type: 'listenRadio'; at: LatLon }
+  | { type: 'cook' };
 
 export type RejectReason =
   | 'too_far'
@@ -279,10 +371,14 @@ export type RejectReason =
   | 'queue_full'
   | 'no_junk'
   | 'only_one'
-  | 'max_level';
+  | 'max_level'
+  | 'not_done'
+  | 'no_radio'
+  | 'radio_quiet'
+  | 'no_stove';
 
 export type GameEvent =
-  | { type: 'loot'; spotId: string; items: Partial<Inventory>; kram?: KramId; collectible?: CollectibleId; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: BlueprintId; site?: SiteId }
+  | { type: 'loot'; spotId: string; items: Partial<Inventory>; kram?: KramId; collectible?: CollectibleId; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: BlueprintId; site?: SiteId; quality?: Quality; first?: boolean; canDig?: boolean; cart?: boolean; fed?: boolean; clue?: string }
   | { type: 'siteChosen'; site: SiteId; first: boolean }
   | { type: 'reclaimed'; section: string; cost: Partial<Inventory> }
   | { type: 'obstacleCleared'; id: string; kind: ObstacleKind; reward: Partial<Inventory> }
@@ -296,17 +392,8 @@ export type GameEvent =
   | { type: 'harvested'; items: Partial<Inventory> }
   | { type: 'returnBonus' }
   | { type: 'combatStarted'; enemy: EnemyId }
-  | {
-      type: 'round';
-      move: CombatMove;
-      quality: Quality;
-      dealt: number;
-      taken: number;
-      dodged: boolean;
-      stunned: boolean;
-      healed: number;
-      weaponBroke?: WeaponId;
-    }
+  | { type: 'dug'; items: Partial<Inventory>; kram?: KramId; collectible?: CollectibleId; round: number; noise: number; left: number }
+  | { type: 'ambush'; group: FoeKind[] }
   | { type: 'combatWon'; enemy: EnemyId; kills?: number; weaponBroke?: WeaponId }
   | { type: 'combatLost'; enemy: EnemyId; dropped: Partial<Inventory>; weaponBroke?: WeaponId }
   | { type: 'fled'; weaponBroke?: WeaponId }
@@ -317,11 +404,17 @@ export type GameEvent =
   | { type: 'setCompleted'; set: SetId; items: Partial<Inventory>; blueprint?: BlueprintId }
   | { type: 'collected'; items: Partial<Inventory>; count: number }
   | { type: 'workbenchUpgraded'; level: number }
+  | { type: 'goalClaimed'; goal: GoalId; items: Partial<Inventory>; blueprint?: BlueprintId }
+  | { type: 'cacheOpened'; id: string; items: Partial<Inventory>; kram?: KramId; collectible?: CollectibleId; blueprint?: BlueprintId }
+  | { type: 'radio'; line: number; cache?: string }
+  | { type: 'cooked'; until: number; healed: number }
   | { type: 'rejected'; reason: RejectReason };
 
 export interface RuleContext {
   now: number;
   worldSeed: string;
+  /** Orte, an denen nichts liegen darf (Friedhöfe, Schulen, Gebäude …). Kommt aus den Kartendaten. */
+  blocked?: (p: LatLon) => boolean;
 }
 
 export interface ActionResult {

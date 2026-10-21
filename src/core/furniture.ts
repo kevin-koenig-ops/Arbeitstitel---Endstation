@@ -27,6 +27,7 @@ export type BuiltFurnitureId =
   | 'fairyLights'
   | 'busSeat'
   | 'medCabinet'
+  | 'radioSet'
   | 'bed'
   | 'workbench'
   | 'hammock'
@@ -97,7 +98,7 @@ const BUILT: Record<BuiltFurnitureId, FurnitureDef> = {
   lamp: { name: 'Stehlampe', category: 'licht', w: 1, d: 1, layer: 'object', comfort: 4, cost: { metal: 1, glass: 1, electronics: 1, cloth: 1 }, desc: 'Läuft mit einer Autobatterie.' },
   vending: { name: 'Getränkeautomat', category: 'licht', w: 1, d: 1, layer: 'object', comfort: 5, cost: { metal: 3, glass: 2, electronics: 2, plastic: 1 }, desc: 'Leuchtet noch. Leer ist er trotzdem.' },
   fairyLights: { name: 'Lichterkette', category: 'licht', w: 2, d: 1, layer: 'object', comfort: 6, cost: { electronics: 1, plastic: 1, glass: 1 }, desc: 'Macht aus einer Ruine ein Zuhause.' },
-  stove: { name: 'Holzofen', category: 'licht', w: 1, d: 1, layer: 'object', comfort: 6, cost: { metal: 4, stone: 1, screws: 1 }, unique: true, desc: 'Gusseisen, mit Ofenrohr. Knistert so schön.' },
+  stove: { name: 'Holzofen', category: 'licht', w: 1, d: 1, layer: 'object', comfort: 6, cost: { metal: 4, stone: 1, screws: 1 }, unique: true, desc: 'Gusseisen, mit Ofenrohr. Kocht Eintopf: heilt dich ganz und macht 3 Stunden satt (mehr Beute).' },
   streetLamp: { name: 'Straßenlaterne', category: 'licht', w: 1, d: 1, layer: 'object', comfort: 3, cost: { metal: 3, glass: 1, electronics: 1 }, desc: 'Von der Hauptstraße abgeschraubt. Leuchtet wieder.' },
   // --- Deko ---
   crates: { name: 'Kistenstapel', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 1, cost: { wood: 2 }, starter: true, desc: 'Stauraum. Und Deko, irgendwie.' },
@@ -107,7 +108,8 @@ const BUILT: Record<BuiltFurnitureId, FurnitureDef> = {
   toolwall: { name: 'Werkzeugwand', category: 'deko', w: 2, d: 1, layer: 'object', comfort: 3, cost: { wood: 2, metal: 2, screws: 2 }, desc: 'Jedes Werkzeug an seinem Platz.' },
   clock: { name: 'Bahnhofsuhr', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 5, cost: { metal: 2, glass: 1, electronics: 1 }, desc: 'Steht auf fünf vor zwölf. Für immer.' },
   timetable: { name: 'Fahrplantafel', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 3, cost: { metal: 1, glass: 1 }, desc: 'Linie 0: alle 10 Minuten. Früher.' },
-  medCabinet: { name: 'Sanitätsschrank', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 3, cost: { metal: 2, glass: 1, medicine: 1 }, desc: 'Verbandszeug immer griffbereit.' },
+  medCabinet: { name: 'Sanitätsschrank', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 3, cost: { metal: 2, glass: 1, medicine: 1 }, unique: true, produces: { res: 'medicine', everyH: 8, cap: 2 }, desc: 'Verbandszeug immer griffbereit: 1 Medizin alle 8 Stunden, bis zu 2.' },
+  radioSet: { name: 'Funkgerät', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 2, cost: { electronics: 3, metal: 2, screws: 2 }, unique: true, desc: 'Kurzwelle, Kanal 4. Alle 20 Stunden ein Funkspruch, manchmal mit einem Hinweis auf ein Versteck.' },
   picture: { name: 'Familienfoto', category: 'deko', w: 1, d: 1, layer: 'wall', comfort: 4, cost: { wood: 1, glass: 1 }, desc: 'Fremde Leute, die lachen. Trotzdem schön. Hängt an einer Wand.' },
   dartboard: { name: 'Dartscheibe', category: 'deko', w: 1, d: 1, layer: 'wall', comfort: 3, cost: { wood: 1, metal: 1 }, desc: 'Drei Pfeile fehlen. Einer steckt noch. Hängt an einer Wand.' },
   gnome: { name: 'Gartenzwerg', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 2, cost: { stone: 2 }, desc: 'Hat alles überlebt. Lächelt immer noch.' },

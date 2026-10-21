@@ -1,7 +1,7 @@
 // Spielinhalte als reine Daten. Neue Fundorte, Gegenstände oder Ausbauten
 // kommen hier dazu, ohne dass sich die Logik ändern muss.
 
-import type { BackgroundId, CollectibleId, EnemyId, Inventory, KramId, Material, Quality, Resource, SetId, SpotKind, Survival, Weapon, WeaponId } from './types';
+import type { BackgroundId, CollectibleId, EnemyId, FoeKind, Inventory, KramId, Material, Quality, Resource, SetId, SpotKind, Survival, Weapon, WeaponId } from './types';
 
 export const SURVIVAL_ORDER: Survival[] = ['food', 'water', 'medicine'];
 /** Rohstoffe, grob von häufig nach selten. */
@@ -66,12 +66,12 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     hint: 'Metall, Kunststoff, Werkzeug im Kofferraum',
     cooldownMin: 60,
     loot: [
-      { res: 'metal', min: 1, max: 2, chance: 1 },
+      { res: 'metal', min: 1, max: 2, chance: 0.8 },
       { res: 'plastic', min: 1, max: 1, chance: 0.5 },
       { res: 'glass', min: 1, max: 1, chance: 0.3 },
       { res: 'screws', min: 1, max: 1, chance: 0.25 },
-      { res: 'water', min: 1, max: 1, chance: 0.4 },
-      { res: 'food', min: 1, max: 1, chance: 0.25 },
+      { res: 'water', min: 1, max: 1, chance: 0.25 },
+      { res: 'food', min: 1, max: 1, chance: 0.15 },
     ],
     kramChance: 0.4,
     kram: [['carBattery', 3], ['gasCan', 3], ['trafficCone', 2], ['toolbox', 2], ['radio', 2], ['cableReel', 1], ['tape', 1], ['brokenPhone', 1]],
@@ -83,10 +83,10 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     hint: 'Proviant, Wasser, Stoff, manchmal Verbandszeug',
     cooldownMin: 60,
     loot: [
-      { res: 'food', min: 1, max: 2, chance: 0.7 },
-      { res: 'water', min: 1, max: 2, chance: 0.6 },
+      { res: 'food', min: 1, max: 2, chance: 0.55 },
+      { res: 'water', min: 1, max: 1, chance: 0.5 },
       { res: 'cloth', min: 1, max: 1, chance: 0.5 },
-      { res: 'medicine', min: 1, max: 1, chance: 0.3 },
+      { res: 'medicine', min: 1, max: 1, chance: 0.2 },
       { res: 'plastic', min: 1, max: 1, chance: 0.3 },
     ],
     kramChance: 0.4,
@@ -99,8 +99,8 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     hint: 'Eingemachtes, Holz, Werkzeug, Schrauben',
     cooldownMin: 60,
     loot: [
-      { res: 'wood', min: 1, max: 2, chance: 0.85 },
-      { res: 'food', min: 1, max: 2, chance: 0.6 },
+      { res: 'wood', min: 2, max: 3, chance: 1 },
+      { res: 'food', min: 1, max: 1, chance: 0.35 },
       { res: 'metal', min: 1, max: 1, chance: 0.4 },
       { res: 'screws', min: 1, max: 1, chance: 0.3 },
       { res: 'glue', min: 1, max: 1, chance: 0.2 },
@@ -119,7 +119,8 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
       { res: 'plastic', min: 1, max: 1, chance: 0.6 },
       { res: 'metal', min: 1, max: 1, chance: 0.4 },
       { res: 'stone', min: 1, max: 2, chance: 0.3 },
-      { res: 'medicine', min: 1, max: 1, chance: 0.3 },
+      { res: 'wood', min: 1, max: 1, chance: 0.3 },
+      { res: 'medicine', min: 1, max: 1, chance: 0.15 },
     ],
     kramChance: 0.45,
     kram: [['sneakers', 2], ['blanket', 3], ['toaster', 2], ['bottles', 2], ['pan', 2], ['brokenPhone', 1], ['cableReel', 1]],
@@ -131,13 +132,13 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     hint: 'Dosen, Wasserflaschen, Bretter',
     cooldownMin: 60,
     loot: [
-      { res: 'food', min: 1, max: 2, chance: 0.6 },
+      { res: 'food', min: 1, max: 1, chance: 0.45 },
       { res: 'water', min: 1, max: 1, chance: 0.5 },
-      { res: 'wood', min: 1, max: 2, chance: 0.6 },
+      { res: 'wood', min: 1, max: 3, chance: 0.85 },
       { res: 'cloth', min: 1, max: 1, chance: 0.3 },
     ],
     kramChance: 0.3,
-    kram: [['tinCans', 3], ['bottles', 2], ['flashlight', 2], ['blanket', 1], ['radio', 1]],
+    kram: [['tinCans', 2], ['fruitCrate', 2], ['bottles', 2], ['flashlight', 2], ['blanket', 1], ['radio', 1]],
     collectibles: ['guitar'],
     mementoChance: 0.08,
   },
@@ -146,11 +147,12 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     hint: 'Wasser, abgekocht trinkbar',
     cooldownMin: 60,
     loot: [
-      { res: 'water', min: 2, max: 3, chance: 1 },
+      { res: 'water', min: 1, max: 2, chance: 1 },
       { res: 'metal', min: 1, max: 1, chance: 0.3 },
+      { res: 'wood', min: 1, max: 2, chance: 0.4 },
     ],
     kramChance: 0.1,
-    kram: [['bottles', 1], ['tinCans', 1]],
+    kram: [['bottles', 1], ['fruitCrate', 1], ['tinCans', 1]],
     collectibles: [],
     mementoChance: 0.02,
   },
@@ -159,9 +161,9 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     hint: 'Alles Mögliche. Selten, aber ergiebig.',
     cooldownMin: 90,
     loot: [
-      { res: 'food', min: 1, max: 3, chance: 0.6 },
+      { res: 'food', min: 1, max: 2, chance: 0.5 },
       { res: 'plastic', min: 1, max: 2, chance: 0.6 },
-      { res: 'medicine', min: 1, max: 2, chance: 0.45 },
+      { res: 'medicine', min: 1, max: 1, chance: 0.35 },
       { res: 'electronics', min: 1, max: 1, chance: 0.35 },
       { res: 'glue', min: 1, max: 1, chance: 0.35 },
       { res: 'cloth', min: 1, max: 1, chance: 0.3 },
@@ -177,14 +179,14 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     hint: 'Viel Nahrung und Wasser, dazu Kunststoff und Glas',
     cooldownMin: 180,
     loot: [
-      { res: 'food', min: 3, max: 5, chance: 1 },
-      { res: 'water', min: 2, max: 4, chance: 0.9 },
+      { res: 'food', min: 2, max: 4, chance: 1 },
+      { res: 'water', min: 1, max: 3, chance: 0.9 },
       { res: 'plastic', min: 1, max: 2, chance: 0.5 },
       { res: 'glass', min: 1, max: 1, chance: 0.4 },
       { res: 'medicine', min: 1, max: 1, chance: 0.2 },
     ],
     kramChance: 0.3,
-    kram: [['bottles', 3], ['tinCans', 3], ['pan', 1], ['toaster', 1]],
+    kram: [['bottles', 3], ['fruitCrate', 3], ['tinCans', 2], ['pan', 1], ['toaster', 1]],
     collectibles: ['vase', 'rubberDuck'],
     mementoChance: 0.12,
   },
@@ -193,7 +195,7 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     hint: 'Medikamente und Verbandszeug',
     cooldownMin: 180,
     loot: [
-      { res: 'medicine', min: 2, max: 4, chance: 1 },
+      { res: 'medicine', min: 1, max: 3, chance: 1 },
       { res: 'water', min: 1, max: 1, chance: 0.5 },
       { res: 'plastic', min: 1, max: 1, chance: 0.5 },
       { res: 'glass', min: 1, max: 1, chance: 0.4 },
@@ -260,6 +262,7 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
       { res: 'metal', min: 1, max: 1, chance: 0.5 },
       { res: 'plastic', min: 1, max: 1, chance: 0.4 },
       { res: 'glass', min: 1, max: 1, chance: 0.3 },
+      { res: 'stone', min: 1, max: 2, chance: 0.4 },
     ],
     kramChance: 0.3,
     kram: [['trafficCone', 2], ['brokenPhone', 2], ['sneakers', 1], ['flashlight', 1]],
@@ -384,7 +387,8 @@ export const GRID_KIND_WEIGHTS: readonly (readonly [SpotKind, number])[] = [
 /** OSM-Werte (class/subclass), die zu echten Fundorten werden. */
 export const POI_KINDS: readonly (readonly [SpotKind, readonly string[]])[] = [
   ['market', ['supermarket', 'convenience', 'grocery', 'bakery', 'butcher', 'kiosk', 'greengrocer', 'deli', 'beverages', 'farm']],
-  ['pharmacy', ['pharmacy', 'chemist', 'hospital', 'doctors', 'dentist', 'clinic']],
+  // Keine Krankenhäuser und Kliniken: echte sensible Orte bleiben außen vor
+  ['pharmacy', ['pharmacy', 'chemist', 'doctors', 'dentist']],
   ['hardware', ['hardware', 'doityourself', 'car_repair', 'car_parts', 'garden_centre', 'trade']],
   ['fuel', ['fuel']],
   ['well', ['drinking_water', 'water_point', 'water_well', 'fountain']],
@@ -501,6 +505,49 @@ export const FIRST_MEMENTO = 'polaroid';
 export const MAX_HEALTH = 10;
 /** Alle so viele Minuten kommt 1 Lebenspunkt von selbst zurück. */
 export const HEALTH_REGEN_MIN = 20;
+
+// --- Fortschritt: was die Stufen der Endstation bringen ---------------------------
+
+/** Wirkung je Stufe (Index wie COMFORT_TIERS: Ruine, Notlager, …, Oase). Wirkungen zählen ab ihrer Stufe dauerhaft. */
+export interface TierPerk {
+  desc: string;
+  /** Minuten pro Gesundheitspunkt (ersetzt den bisherigen Wert). */
+  regenMin?: number;
+  /** Zusätzliche Plätze am Werktisch. */
+  slots?: number;
+  /** Zusätzlicher Suchradius in Metern. */
+  rangeM?: number;
+  /** Mehr Glück: höhere Chance auf Kram und Sammelstücke. */
+  luck?: number;
+  /** Mehr Beute (Faktor). */
+  lootFactor?: number;
+}
+
+export const TIER_PERKS: TierPerk[] = [
+  { desc: 'Noch nichts. Mach es dir gemütlich!' },
+  { desc: 'Du erholst dich schneller: alle 15 statt 20 Minuten ein Gesundheitspunkt.', regenMin: 15 },
+  { desc: '+1 Platz am Werktisch.', slots: 1 },
+  { desc: 'Du siehst mehr: Suchradius +10 m.', rangeM: 10 },
+  { desc: 'Mehr Glück: öfter Kram und Sammelstücke.', luck: 1 },
+  { desc: 'Du erholst dich noch schneller: alle 10 Minuten ein Punkt.', regenMin: 10 },
+  { desc: 'Oase: 25 % mehr Beute beim Durchsuchen.', lootFactor: 1.25 },
+];
+/** So viel mehr Chance pro Glücksstufe. */
+export const LUCK_KRAM = 0.08;
+export const LUCK_COLLECT = 0.04;
+
+// --- Streifer-Ruf: ein Rang für alles, was du draußen schaffst ---------------------
+
+export const RANKS: { min: number; name: string }[] = [
+  { min: 0, name: 'Neuling' },
+  { min: 25, name: 'Sammler' },
+  { min: 75, name: 'Späher' },
+  { min: 175, name: 'Streifer' },
+  { min: 350, name: 'Alter Streifer' },
+  { min: 700, name: 'Legende' },
+];
+/** Ruf-Punkte pro Tat. */
+export const RANK_POINTS = { search: 1, kill: 3, sector: 5, secured: 10, collectible: 8, set: 25, memento: 4, cache: 6 };
 /** Mit weniger Gesundheit fängt man keinen Kampf an. */
 export const MIN_HEALTH_TO_FIGHT = 2;
 /** Medizin heilt so viel, im Kampf etwas weniger (Verbinden unter Druck). */
@@ -519,9 +566,9 @@ export interface EnemyDef {
 }
 
 export const ENEMIES: Record<EnemyId, EnemyDef> = {
-  walker: { name: 'Streuner', hp: 4, dmg: [1, 2], armor: 0, speed: 1, desc: 'Schlurft langsam, beißt aber zu.' },
-  crawler: { name: 'Kriecher', hp: 3, dmg: [1, 2], armor: 0, speed: 1.45, desc: 'Flink und tief am Boden. Schwer zu erwischen.' },
-  brute: { name: 'Brocken', hp: 6, dmg: [1, 3], armor: 1, speed: 0.85, desc: 'Groß, zäh und in Warnweste.' },
+  walker: { name: 'Wandler', hp: 4, dmg: [1, 2], armor: 0, speed: 1, desc: 'Ein Toter, durch den Ranken wachsen. Langsam, aber unermüdlich.' },
+  crawler: { name: 'Kriecher', hp: 3, dmg: [1, 2], armor: 0, speed: 1.45, desc: 'Knochen wie Glas, flach am Boden. Flink und schwer zu erwischen.' },
+  brute: { name: 'Borkenmann', hp: 6, dmg: [1, 3], armor: 1, speed: 0.85, desc: 'Verholzte Ranken wie eine Rüstung, oft noch in Warnweste.' },
 };
 
 /** Welcher Gegner wie häufig eine Fundstelle bewacht. */
@@ -536,8 +583,6 @@ export const GUARD_CHANCE = { grid: 0.25, poi: 0.4 };
 /** Bewachte Fundstellen lohnen sich: mehr Beute, öfter Erinnerungsstücke. */
 export const GUARD_LOOT_FACTOR = 1.5;
 export const GUARD_MEMENTO_BONUS = 0.12;
-
-export const QUALITY_FACTOR: Record<Quality, number> = { miss: 0.5, good: 1, perfect: 1.5 };
 
 export interface WeaponDef {
   name: string;
@@ -555,88 +600,220 @@ export const FIST_DAMAGE = 1;
 export const WEAPON_ORDER: WeaponId[] = ['crowbar', 'bat', 'crossbow'];
 
 export const WEAPONS: Record<WeaponId, WeaponDef> = {
-  crowbar: { name: 'Brechstange', dmg: 2, dur: 14, cost: { metal: 3 }, level: 1, desc: 'Öffnet Türen und Schädel.' },
-  bat: { name: 'Nagelschläger', dmg: 3, dur: 16, cost: { wood: 3, metal: 2 }, level: 1, desc: 'Ein Baseballschläger mit ein paar Nägeln.' },
-  crossbow: { name: 'Armbrust', dmg: 4, dur: 12, cost: { wood: 3, metal: 4, screws: 2, glue: 1 }, level: 2, desc: 'Leise und kräftig. Die Bolzen nutzen sich ab.' },
+  crowbar: { name: 'Brechstange', dmg: 2, dur: 28, cost: { metal: 3 }, level: 1, desc: 'Öffnet Türen und Schädel.' },
+  bat: { name: 'Nagelschläger', dmg: 3, dur: 32, cost: { wood: 3, metal: 2 }, level: 1, desc: 'Ein Baseballschläger mit ein paar Nägeln.' },
+  crossbow: { name: 'Armbrust', dmg: 4, dur: 24, cost: { wood: 3, metal: 4, screws: 2, glue: 1 }, level: 2, desc: 'Leise und kräftig. Die Bolzen nutzen sich ab.' },
 };
 
 export const START_WEAPONS: Weapon[] = [{ kind: 'crowbar', dur: WEAPONS.crowbar.dur }];
 
-// --- Kampf 2.0: Echtzeit mit Zielwahl (Werte in Kampf-Punkten, 10 pro Gesundheit) --------
+// --- Kampf: kurze Taktik mit Karten (Runde für Runde) ------------------------------
 
-export type FoeKind = EnemyId | 'screamer';
+export type { FoeKind };
+export type CardId = 'punch' | 'throw' | 'dodge' | 'kick' | 'pry' | 'swing' | 'homerun' | 'bolt' | 'aim' | 'bandage';
 
-export interface FoeDef {
+export interface CardDef {
   name: string;
-  hp: number;
-  dmg: [number, number];
-  armor: number;
-  /** Meter pro Sekunde */
-  speed: number;
-  /** Angriffsreichweite in Metern */
-  reach: number;
-  /** Ausholen in Sekunden (so lange kann man ausweichen) */
-  windup: number;
-  /** Pause zwischen zwei Angriffen */
-  interval: number;
-  /** Hält Abstand (der Kreischer bleibt hinten) */
-  keepDistance?: number;
+  /** Kostet so viel Kraft (pro Runde gibt es TACTICS.energy). */
+  cost: number;
+  /** near: ein Gegner vorne; any: auch hinten; self: du selbst. */
+  target: 'near' | 'any' | 'self';
+  dmg?: number;
+  /** Fängt so viel Schaden ab (bis zu deiner nächsten Runde). */
+  block?: number;
+  heal?: number;
+  /** Stößt den Gegner nach hinten und unterbricht sein Ausholen. */
+  push?: boolean;
+  /** Der Gegner setzt eine Runde aus. */
+  stun?: boolean;
+  /** Der nächste Wurf oder Bolzen macht so viel mehr Schaden. */
+  focus?: number;
+  /** Nutzt diese Waffe ab (1 pro Karte). */
+  weapon?: WeaponId;
+  /** Verbraucht 1 Medizin. */
+  medicine?: boolean;
   desc: string;
 }
 
-export const FOES: Record<FoeKind, FoeDef> = {
-  walker: { name: 'Streuner', hp: 130, dmg: [7, 11], armor: 0, speed: 1.15, reach: 1.3, windup: 1.1, interval: 2.4, desc: 'Schlurft langsam, beißt aber zu.' },
-  crawler: { name: 'Kriecher', hp: 90, dmg: [5, 8], armor: 0, speed: 2.3, reach: 1.1, windup: 0.75, interval: 1.8, desc: 'Flink und tief am Boden. Holt schnell aus.' },
-  brute: { name: 'Brocken', hp: 240, dmg: [14, 20], armor: 5, speed: 0.85, reach: 1.7, windup: 1.6, interval: 3.0, desc: 'Groß, zäh und in Warnweste. Schlägt hart, aber langsam.' },
-  screamer: { name: 'Kreischer', hp: 70, dmg: [5, 8], armor: 0, speed: 1.4, reach: 1.2, windup: 1.4, interval: 6.5, keepDistance: 6.5, desc: 'Bleibt hinten und ruft Verstärkung. Zuerst ausschalten!' },
+export const CARDS: Record<CardId, CardDef> = {
+  punch: { name: 'Faustschlag', cost: 1, target: 'near', dmg: 2, desc: '2 Schaden an einem Gegner vorne.' },
+  throw: { name: 'Steinwurf', cost: 1, target: 'any', dmg: 1, desc: '1 Schaden, trifft auch Gegner hinten.' },
+  dodge: { name: 'Ausweichen', cost: 1, target: 'self', block: 3, desc: 'Fängt 3 Schaden ab, bis zu deiner nächsten Runde.' },
+  kick: { name: 'Tritt', cost: 1, target: 'near', dmg: 1, push: true, desc: '1 Schaden. Stößt den Gegner nach hinten und unterbricht sein Ausholen.' },
+  pry: { name: 'Hebelhieb', cost: 1, target: 'near', dmg: 3, weapon: 'crowbar', desc: '3 Schaden mit der Brechstange.' },
+  swing: { name: 'Schwinger', cost: 1, target: 'near', dmg: 4, weapon: 'bat', desc: '4 Schaden mit dem Nagelschläger.' },
+  homerun: { name: 'Volltreffer', cost: 2, target: 'near', dmg: 6, stun: true, weapon: 'bat', desc: '6 Schaden, der Gegner setzt eine Runde aus.' },
+  bolt: { name: 'Bolzen', cost: 1, target: 'any', dmg: 4, weapon: 'crossbow', desc: '4 Schaden, trifft auch Gegner hinten.' },
+  aim: { name: 'Zielen', cost: 0, target: 'self', focus: 3, desc: 'Der nächste Bolzen oder Wurf macht 3 mehr Schaden.' },
+  bandage: { name: 'Verbinden', cost: 1, target: 'self', heal: 3, medicine: true, desc: 'Heilt 3 Gesundheit, kostet 1 Medizin.' },
 };
 
-/** Waffen im Echtzeitkampf. */
-export const BATTLE_WEAPONS: Record<WeaponId | 'fists', { dmg: [number, number]; interval: number; reach: number; ranged?: boolean }> = {
-  fists: { dmg: [7, 11], interval: 0.95, reach: 1.4 },
-  crowbar: { dmg: [16, 22], interval: 1.05, reach: 1.6 },
-  bat: { dmg: [24, 32], interval: 1.25, reach: 1.8 },
-  crossbow: { dmg: [30, 38], interval: 1.6, reach: 11, ranged: true },
+/** Grund-Karten, die man immer hat. */
+export const BASE_DECK: CardId[] = ['punch', 'punch', 'punch', 'dodge', 'dodge', 'kick', 'throw', 'throw'];
+/** Zusätzliche Karten pro heiler Waffe. */
+export const WEAPON_CARDS: Record<WeaponId, CardId[]> = { crowbar: ['pry', 'pry', 'pry'], bat: ['swing', 'swing', 'homerun'], crossbow: ['bolt', 'bolt', 'aim'] };
+
+export const TACTICS = {
+  /** Kraft pro Runde */
+  energy: 3,
+  /** Karten auf der Hand */
+  hand: 4,
+  /** Höchstens so viele Verbinden-Karten (und nur, wenn genug Medizin da ist) */
+  maxBandages: 2,
+  /** Mehr Gegner gleichzeitig ruft der Heuler nicht herbei */
+  maxFoes: 3,
+  /** So oft heult ein Heuler höchstens */
+  maxHowls: 2,
 };
 
-export type Ability = 'power' | 'dodge' | 'shove' | 'bandage';
+export type IntentKind = 'attack' | 'windup' | 'smash' | 'grab' | 'advance' | 'howl' | 'lurk' | 'stunned';
 
-export const ABILITIES: Record<Ability, { name: string; cd: number; desc: string; cost?: Partial<Inventory> }> = {
-  power: { name: 'Wuchtschlag', cd: 7, desc: 'Doppelter Schaden, der Gegner taumelt und hört auf auszuholen.' },
-  dodge: { name: 'Ausweichen', cd: 2.2, desc: 'Kurz unverwundbar. Kurz vor dem Treffer gibt es einen Konter!' },
-  shove: { name: 'Stoß', cd: 10, desc: 'Stößt alle nahen Gegner zurück und unterbricht ihr Ausholen.' },
-  bandage: { name: 'Verbinden', cd: 12, cost: { medicine: 1 }, desc: 'Heilt dich in zwei Sekunden um 35 (kostet 1 Medizin).' },
+export interface FoeTactic {
+  name: string;
+  hp: number;
+  /** Zieht von jedem Treffer ab. */
+  armor: number;
+  /** Bleibt hinten (heult nur). */
+  stayBack?: boolean;
+  /** Was er der Reihe nach vorhat (beginnt an zufälliger Stelle). */
+  pattern: { kind: IntentKind; dmg?: number }[];
+  desc: string;
+}
+
+export const FOE_TACTICS: Record<FoeKind, FoeTactic> = {
+  walker: {
+    name: 'Wandler',
+    hp: 8,
+    armor: 0,
+    pattern: [{ kind: 'attack', dmg: 2 }, { kind: 'attack', dmg: 3 }, { kind: 'grab', dmg: 1 }],
+    desc: 'Ein Toter, durch den Ranken wachsen. Langsam und unermüdlich. Packt er dich, hast du nächste Runde weniger Kraft.',
+  },
+  crawler: {
+    name: 'Kriecher',
+    hp: 5,
+    armor: 0,
+    pattern: [{ kind: 'attack', dmg: 3 }, { kind: 'lurk' }, { kind: 'attack', dmg: 3 }],
+    desc: 'Knochen wie Glas, flach am Boden. Beißt schnell zu und duckt sich dann weg.',
+  },
+  brute: {
+    name: 'Borkenmann',
+    hp: 14,
+    armor: 1,
+    pattern: [{ kind: 'attack', dmg: 2 }, { kind: 'windup' }, { kind: 'smash', dmg: 6 }],
+    desc: 'Verholzte Ranken wie eine Rüstung. Holt er aus, kommt ein schwerer Schlag: ausweichen oder wegtreten!',
+  },
+  screamer: {
+    name: 'Heuler',
+    hp: 3,
+    armor: 0,
+    stayBack: true,
+    pattern: [{ kind: 'howl' }, { kind: 'attack', dmg: 1 }, { kind: 'attack', dmg: 1 }],
+    desc: 'Bleibt hinten und heult. Das lockt weitere Wandler an. Zuerst ausschalten, mit Wurf oder Bolzen!',
+  },
 };
-export const ABILITY_ORDER: Ability[] = ['power', 'dodge', 'shove', 'bandage'];
 
-export const BATTLE = {
-  /** Kampf-Punkte pro Gesundheitspunkt */
-  hpPerHealth: 10,
-  crit: 0.12,
-  critMult: 1.6,
-  counterMult: 2.2,
-  powerMult: 2.1,
-  /** So kurz vor dem Treffer gilt Ausweichen als perfekt */
-  perfectWindow: 0.4,
-  dodgeTime: 0.55,
-  counterTime: 3,
-  healAmount: 35,
-  healTime: 2,
-  maxSummons: 2,
-  playerSpeed: 3.2,
-  // Gesten-Steuerung
-  /** Weite der Ausweichrolle in Metern */
-  rollDistance: 1.6,
-  /** Sekunden bis voll aufgeladen */
-  chargeTime: 1.1,
-  /** Voll aufgeladen: Schaden × (1 + chargeBonus) */
-  chargeBonus: 1.6,
-  /** Zeitfenster für die nächste Kombo-Stufe */
-  comboWindow: 1.0,
-  /** Der dritte Kombo-Schlag */
-  comboFinisher: 1.6,
-  /** Selbst getippte Schläge kommen schneller als automatische */
-  manualSpeed: 0.75,
+// --- Durchsuchen: Geschick, Erstfund, Weiter wühlen --------------------------------
+
+/** Wie gut das Mini-Spiel lief: so viel Beute und Glück. */
+export const LOOT_QUALITY: Record<Quality, { factor: number; luck: number }> = {
+  miss: { factor: 0.7, luck: 0 },
+  good: { factor: 1, luck: 0 },
+  perfect: { factor: 1.35, luck: 1 },
+};
+/** Eine Fundstelle zum allerersten Mal: doppelte Beute. */
+export const FIRST_FIND_FACTOR = 2;
+
+export const DIG = {
+  /** So oft darf man nach dem Durchsuchen weiter wühlen. */
+  max: 3,
+  /** So lange nach dem Durchsuchen (Minuten). */
+  minutes: 5,
+  /** Ab so viel Lärm kommt etwas (zufällig dazwischen, man kennt es nicht genau). */
+  limit: [2, 4] as [number, number],
+  /** Chance, dass ein Wühlen doppelt so laut ist. */
+  loud: 0.35,
+  kramChance: 0.28,
+  collectChance: 0.03,
+};
+
+// --- Draußen: Händlerkisten und Verstecke -------------------------------------------
+
+/** Liegengebliebene Händlerkarren: tauchen für ein Zeitfenster an einer Fundstelle auf (für alle gleich). */
+export const CART = {
+  /** Länge eines Zeitfensters (Stunden) */
+  windowH: 2,
+  /** Chance pro Fundstelle und Fenster (bei ~27 Fundstellen pro km² etwa eine pro 500 m Umkreis) */
+  chance: 0.04,
+  lootFactor: 2.5,
+  kramBonus: 0.45,
+  collectBonus: 0.12,
+};
+
+/** Verstecke: Ein Hinweis (Zettel, Kreidezeichen, Funkspruch) zeigt grob, wo etwas liegt. */
+export const CACHE = {
+  /** Chance auf einen Hinweis beim Durchsuchen (beim ersten Besuch etwas mehr) */
+  clueChance: 0.06,
+  firstBonus: 0.06,
+  /** So viele offene Hinweise höchstens */
+  max: 3,
+  /** Entfernung vom Fundort des Hinweises (Meter) */
+  minM: 180,
+  maxM: 450,
+  /** Radius des Suchkreises auf der Karte; das Versteck liegt irgendwo darin */
+  areaM: 75,
+  /** So nah muss man ran zum Ausgraben */
+  digM: 18,
+  rolls: 4,
+  factor: 2,
+  collectChance: 0.5,
+  blueprintChance: 0.35,
+};
+
+/** Funkgerät in der Endstation: alle paar Stunden ein Funkspruch, manchmal mit Hinweis. */
+export const RADIO = {
+  everyH: 20,
+  /** Hinweise per Funk liegen etwas weiter weg */
+  minM: 250,
+  maxM: 600,
+};
+
+/** Was auf Kanal 4 so läuft. Nummer = Index (wird im Spielstand nicht gespeichert, nur im Ereignis). */
+export const RADIO_LINES: string[] = [
+  '„… Kanal 4, hier ist Haltestelle Nord. Wasser abkochen, auch wenn es klar aussieht …“',
+  '„… wer einen aus dem Bautrupp sieht, mit Warnweste: Abstand halten. Das sind keine Leute mehr …“',
+  '„… Nebel bis morgen früh. Bleibt drin, bei Nebel sind die Wandler wach …“',
+  '„… an alle Landstreifer: Bei der alten Mühle wächst ein Nest. Wer helfen kann, kommt bei Tageslicht …“',
+  '„… Tauschmarkt am Samstag. Bringt Schrauben und Batterien, Medizin gegen Saatgut …“',
+  '„… hier ist die Küste. Wiederhole: hier ist die Küste. Fisch für alle, die es bis …“ Dann nur noch Rauschen.',
+  '„… Keller sind tabu. Ich sag es nochmal: Keller sind tabu …“',
+  '„… Linie 0, Linie 0, bitte melden …“ Niemand antwortet. Wie jeden Abend.',
+  '„… hab was versteckt, für die, die nach uns kommen. Folgt den Kreidezeichen …“',
+  '„… Heuler in der Tiefgarage am Markt. Leise sein, Licht aus, weitergehen …“',
+  '„… wer im Hellen geht, kommt heim. Gute Nacht, Kanal 4 …“',
+];
+
+/** Holzofen: Eintopf kochen. Heilt ganz und macht ein paar Stunden satt (mehr Beute). */
+export const COOK = {
+  cost: { food: 2, water: 1, wood: 1 } as Partial<Inventory>,
+  fedH: 3,
+  lootBonus: 0.2,
+};
+
+/** Seltenheit für Farben und Glanz beim Fund. */
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic';
+export const RARITY: Record<Resource, Rarity> = {
+  food: 'common',
+  water: 'common',
+  wood: 'common',
+  metal: 'common',
+  stone: 'common',
+  cloth: 'uncommon',
+  plastic: 'uncommon',
+  screws: 'uncommon',
+  glass: 'uncommon',
+  medicine: 'rare',
+  glue: 'rare',
+  electronics: 'rare',
 };
 
 // --- Tageszeit ---------------------------------------------------------------------

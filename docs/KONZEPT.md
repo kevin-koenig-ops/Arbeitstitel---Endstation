@@ -17,10 +17,23 @@ Wie es zum Weltuntergang kam (Phosphat-Krieg, das Weinen, Elysis, der Flux), ste
 
 ## Kernschleife
 
-1. **Erkunden:** Fundstellen leuchten auf der Karte. Wenn man nah genug ist (ca. 45 m), kann man sie durchsuchen.
-2. **Sammeln:** Nahrung, Wasser, Medizin zum Überleben, dazu Rohstoffe, Kram und Sammelstücke. Alles außer den Vorräten kommt in den Rucksack und ist erst zu Hause im Lager sicher. Echte Orte bringen mehr: Supermarkt → Nahrung, Apotheke → Medizin, Baumarkt → Holz, Metall, Schrauben, Kleber.
-3. **Ausbauen:** Mit Rohstoffen aus dem Lager wird die Endstation ausgebaut. Manche Anlagen produzieren von allein (Regentonne, Hochbeet). Einen Bus zum Ausbauen gibt es nicht mehr.
-4. **Entdecken:** Selten findet man Erinnerungsstücke, kleine Notizen und Fundsachen, die nach und nach erzählen, was passiert ist.
+1. **Erkunden:** Fundstellen leuchten auf der Karte. Wenn man nah genug ist (ca. 45 m), kann man sie durchsuchen. Noch nie besuchte haben einen grünen Punkt: Der erste Besuch bringt doppelt so viel.
+2. **Durchsuchen:** ein kurzes Geschicklichkeitsspiel je nach Fundort: Schloss knacken (Auto, Packstation, Tankstelle, Haltestelle), Aufhebeln (Schuppen, Hochsitz, Apotheke, Baumarkt, Brunnen) oder Durchwühlen (Container, Rucksack, Supermarkt, Fass). Daneben gibt 30 % weniger, perfekt 35 % mehr und etwas Glück. In den Einstellungen abschaltbar (dann immer „gut“). Danach darf man bis zu dreimal **weiter wühlen**: kleine Extrafunde, aber jedes Mal lauter. Wird es zu laut, kommt etwas (Überfall-Kampf).
+3. **Sammeln:** Nahrung, Wasser, Medizin zum Überleben, dazu Rohstoffe, Kram und Sammelstücke. Alles außer den Vorräten kommt in den Rucksack und ist erst zu Hause im Lager sicher. Echte Orte bringen mehr: Supermarkt → Nahrung, Apotheke → Medizin, Baumarkt → Holz, Metall, Schrauben, Kleber.
+4. **Ausbauen:** Mit Rohstoffen aus dem Lager wird die Endstation ausgebaut. Manche Anlagen produzieren von allein (Regentonne, Hochbeet). Einen Bus zum Ausbauen gibt es nicht mehr.
+5. **Entdecken:** Selten findet man Erinnerungsstücke, kleine Notizen und Fundsachen, die nach und nach erzählen, was passiert ist.
+
+## Fortschritt
+
+- **Zielleiste:** Auf der Karte steht immer das nächste Ziel (z. B. „Durchsuche 3 Fundstellen“). Geschaffte Ziele leuchten gelb und haben eine kleine Belohnung (Rohstoffe, manchmal ein Bauplan). Die ersten Ziele führen durch den Einstieg. Antippen öffnet das Fortschritts-Fenster.
+- **Stufen der Endstation bringen etwas:** Notlager (schneller erholen), Unterschlupf (+1 Werktisch-Platz), Zuhause (+10 m Suchradius), Gemütliches Zuhause (mehr Glück: öfter Kram und Sammelstücke), Schmuckstück (noch schneller erholen), Oase (+25 % Beute). Eine neue Stufe wird in der Endstation gefeiert.
+- **Streifer-Ruf:** Ein Rang aus allem, was man draußen schafft: Neuling, Sammler, Späher, Streifer, Alter Streifer, Legende. Steht oben neben dem Namen.
+
+## Draußen: Händlerkisten und Verstecke
+
+- **Händlerkisten:** Ab und zu ist an einer Fundstelle ein Händlerkarren liegen geblieben (für alle Spieler gleich, je zwei Stunden). Gold leuchtend auf der Karte, ein Funkspruch meldet sie. Viel mehr Beute (×2,5), oft Kram und Sammelstücke, nie bewacht. Wer sie verpasst, verpasst nichts Wichtiges: Es kommen neue.
+- **Verstecke:** Beim Durchsuchen findet man manchmal ein Kreidezeichen, zu Hause empfängt das Funkgerät Hinweise. Auf der Karte erscheint ein Suchkreis. Darin zeigt eine Anzeige „kalt, lauwarm, warm, heiß“. Bei „heiß“ wird ausgegraben: viele Rohstoffe, Kram, oft ein Sammelstück oder ein Bauplan. Verstecke laufen nie ab, höchstens drei gleichzeitig.
+- **Echte Orte respektieren:** Keine Fundstellen und Verstecke auf Friedhöfen, an Krankenhäusern, Schulen, Kitas, Kirchen und Gedenkstätten; erfundene Fundstellen liegen nie in Gebäuden.
 
 ## Rohstoffe, Kram und Sammelstücke
 
@@ -30,7 +43,9 @@ Wie es zum Weltuntergang kam (Phosphat-Krieg, das Weinen, Elysis, der Flux), ste
 - **Sammelstücke** (13 Stück, z. B. Teddybär, Wanduhr, Röhrenfernseher, Gitarre, Fahrrad, Quietscheente): jedes gibt es **nur einmal**. Sie kommen ins **Fundbuch** und lassen sich zu Hause als Deko aufstellen (kostenlos, wieder ins Lager räumbar). Noch fehlende zeigt das Fundbuch als Umriss mit Hinweis, wo man suchen kann.
 - **Sets:** Sammelstücke gehören zu vier Sets (Kinderzimmer, Wohnzimmer 1985, Arbeitszimmer, Gute Stube). Ein volles Set bringt einen Bauplan und Rohstoffe ins Lager.
 - **Der Werktisch** steht in der Endstation, zerlegt Kram in echter Zeit, eins nach dem anderen (1–12 Minuten pro Stück), und baut Waffen (die Armbrust ab Stufe 2). Er arbeitet weiter, auch wenn die App zu ist. Fertiges wartet auf dem Tisch, nichts verdirbt. Ein grünes Zeichen am Endstation-Knopf zeigt, dass etwas bereitliegt.
-- **Eins statt viele:** Werktisch, Holzofen, Solarpaneel und Regentonne gibt es nur einmal. Der Werktisch lässt sich in drei Stufen aufrüsten (mehr Plätze, schneller).
+- **Eins statt viele:** Werktisch, Holzofen, Solarpaneel, Regentonne, Hochbeet, Sanitätsschrank und Funkgerät gibt es nur einmal. Der Werktisch lässt sich in drei Stufen aufrüsten (mehr Plätze, schneller).
+- **Anlagen mit Nutzen:** Regentonne (Wasser) und Hochbeet (Nahrung) füllen sich von selbst, der Sanitätsschrank macht alle 8 Stunden Medizin. Der Holzofen kocht Eintopf (2 Nahrung, 1 Wasser, 1 Holz): heilt ganz und macht 3 Stunden satt, das bringt 20 % mehr Beute. Das Funkgerät empfängt alle 20 Stunden einen Funkspruch auf Kanal 4, oft mit einem Hinweis auf ein Versteck.
+- **Was fehlt und wo:** Fehlen Rohstoffe für ein Teil, sagt die Endstation, welche und wo man sie oft findet.
 - **Rucksack:** Was du unterwegs findest (Rohstoffe und Kram), steckt im Rucksack. Ohne feste Grenze. Der Rucksack hat drei Reiter: Rucksack, Fundbuch (Sammelstücke, Sets, Erinnerungsstücke) und Ausrüstung (Gesundheit, Waffen).
 - **Lager:** Zu Hause packst du aus, dann liegt alles sicher im Lager. Gebaut wird nur aus dem Lager. Eine Niederlage kostet höchstens etwas aus dem Rucksack, nie aus dem Lager.
 
@@ -67,25 +82,24 @@ Die Figur aus der Charaktererstellung ist ein Low-Poly-Modell (Frisur, Hautton, 
 - **Nebel:** Unbekanntes Gebiet liegt unter Nebel. Was du gerade siehst (~140 m), ist frei. Wo du gegangen bist (~55 m Umkreis), bleibt dauerhaft aufgedeckt.
 - **Sektoren** (~750 m × 750 m): Bei 25 % aufgedeckt gilt ein Sektor als *erkundet*, bei 50 % als *gesichert*. Beides gibt einmalig eine Belohnung.
 - **Echte Tageszeit** aus dem Sonnenstand: Tag, Dämmerung, Nacht. Nachts mehr Wächter, dafür 30 % mehr Beute, dazu Taschenlampe und glühende Funken.
-- **Echtes Wetter** (Open-Meteo, Position auf ~10 km gerundet): Regen und Schnee machen Zombies träge (langsamer, Ausweichen leichter), bei Nebel sieht man Wächter erst aus der Nähe, Gewitter mit Blitzen.
+- **Echtes Wetter** (Open-Meteo, Position auf ~10 km gerundet): bei Nebel, Regen und nachts sind Wandler zäher (+2 Gesundheit), in praller Sonne träge (−2), bei Nebel sieht man Wächter erst aus der Nähe, Gewitter mit Blitzen.
 - In den Einstellungen kann man Tageszeit und Wetter zum Ausprobieren erzwingen (nur Optik).
 
 ## Bedrohung und Kampf
 
-- **Streuner bewachen Fundstellen** (etwa jede vierte, an echten Orten öfter, nachts mehr). Wer sie erledigt, bekommt mehr Beute. Man kann sie auch einfach links liegen lassen.
-- **Kampf 2.0 (Echtzeit mit Zielwahl):** eine kleine 3D-Straßenecke, deine Figur gegen 2–4 Zombies. Zombie antippen = Ziel, die Figur läuft hin und schlägt automatisch zu.
-- **Fähigkeiten mit Abklingzeit:** Wuchtschlag (doppelter Schaden, Gegner taumelt), Ausweichen (kurz unverwundbar), Stoß (alle zurück, Ausholen unterbrochen), Verbinden (kostet 1 Medizin).
-- **Angekündigte Angriffe:** Ein roter Kreis füllt sich unter dem Zombie. Leuchtet er hell auf und man weicht genau dann aus, gibt es einen Konter mit Zeitlupe.
-- **Gegner mit Rollen:** Streuner (normal), Kriecher (flink, holt schnell aus), Brocken (zäh, schlägt hart), Kreischer (bleibt hinten und ruft Verstärkung, zuerst ausschalten).
-- **Zwei Steuerungen zum Vergleichen** (Einstellungen → Kampfsteuerung):
-  - *Tasten:* wie oben, die Figur schlägt automatisch zu.
-  - *Gesten (wie Monster Hunter):* Tippen = Schlag (drei in Folge = Kombo mit starkem Abschluss), Halten = Aufladen (ein weißer Ring füllt sich, voll = Volle Wucht, ein Treffer bricht es ab), Wischen = Ausweichrolle in diese Richtung. Gefahr zeigt ein gelber Bildschirmrand.
-- **Wumms:** Schadenszahlen, Treffer-Stopp, Rückstoß, Funken, Zeitlupe beim letzten Treffer, Vibration.
-- Ein Kampf dauert etwa 20–40 Sekunden. Waffen nutzen sich pro Kampf ab.
-- **Niederlage ist kein Drama:** Ein paar Sachen fallen aus dem Rucksack (nie aus dem Lager), die Gesundheit kommt von selbst zurück. **Fliehen geht immer.**
-- Die Simulation (`core/battle.ts`) ist deterministisch: Ein Server kann einen Kampf später aus den Eingaben nachrechnen.
+- **Wachen:** Gegner bewachen Fundstellen (etwa jede vierte, an echten Orten öfter, nachts mehr). Wer gewinnt, bekommt mehr Beute und darf danach weiter wühlen. Man kann bewachte Orte auch liegen lassen.
+- **Gegner aus der Lore:** Wandler (Tote, durch die Ranken wachsen; packen zu), Kriecher (flink, ducken sich weg), Borkenmann (verholzte Rinde als Rüstung, holt aus und schlägt schwer zu), Heuler (bleibt hinten und ruft Wandler herbei, zuerst ausschalten). Meist kommen sie zu zweit oder dritt, nachts öfter.
+- **Kampf als kurze Taktik mit Karten** (Seitenansicht: du links, die Gegner rechts):
+  - Über jedem Gegner steht, was er als Nächstes tut (Angriff mit Schaden, Packen, Ausholen, Wuchtschlag, Näherkommen, Heulen). Danach plant man.
+  - Pro Runde 3 Kraft und 4 Karten. Grundkarten: Faustschlag, Steinwurf, Ausweichen (blockt 3), Tritt (stößt nach hinten und unterbricht Ausholen). Jede Waffe bringt eigene Karten mit: Brechstange (Hebelhieb), Nagelschläger (Schwinger, Volltreffer mit Betäuben), Armbrust (Bolzen, Zielen). Verbinden kostet 1 Medizin.
+  - Vorne und hinten: Schläge treffen nur Gegner vorne, Würfe und Bolzen auch hinten.
+  - „Runde beenden“: Die Gegner handeln nacheinander, dann gibt es neue Karten. Kein Zeitdruck.
+  - Waffen nutzen sich pro gespielter Waffenkarte ab.
+- **Überfall:** Wer beim Wühlen zu laut ist, wird angegriffen. Danach gibt es nur, was die Gegner dabeihatten.
+- **Niederlage ist kein Drama:** Ein paar Sachen fallen aus dem Rucksack (nie aus dem Lager), die Gesundheit kommt von selbst zurück. **Fliehen geht immer** und kostet nichts.
+- Die Kampfregeln stehen in `core/tactics.ts` und sind deterministisch: Ein Server kann einen Kampf später nachrechnen.
 
-Später: Gefahrenstufe pro Expedition, Horden, die durch echte Straßen ziehen, Nester als Raids für mehrere Spieler.
+Später: mehr Karten und Gegner, Gefahrenstufe pro Ausflug, Horden, die durch echte Straßen ziehen, Nester als Raids für mehrere Spieler.
 
 ## Langfristiges Ziel (geplant)
 

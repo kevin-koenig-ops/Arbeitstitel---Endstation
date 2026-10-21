@@ -33,10 +33,11 @@ import {
   PLOT,
   SECTION,
 } from '../../core/building';
-import { MATERIAL_ORDER, RESOURCE_ORDER, RESOURCES } from '../../core/content';
+import { COOK, MATERIAL_ORDER, RADIO_LINES, RESOURCE_ORDER, RESOURCES, TIER_PERKS } from '../../core/content';
 import { CATEGORY_NAMES, footprint, FURNITURE, FURNITURE_ORDER, isCollectible, type FurnitureCategory, type FurnitureId } from '../../core/furniture';
 import { distanceM, formatDistance } from '../../core/geo';
-import { activePlot, canAfford, collectiblePlaced, comfortTier, itemYield, knowsBlueprint, packCount, pendingHarvest, placementProblem, plotIndexOf, readyParts } from '../../core/rules';
+import { activePlot, baseTier, canAfford, collectiblePlaced, comfortTier, isFed, itemYield, knowsBlueprint, packCount, pendingHarvest, placementProblem, plotIndexOf, radioReadyIn, readyParts } from '../../core/rules';
+import { formatWait } from '../game/spotSheet';
 import type { DayPhase } from '../../core/sun';
 import type { WeatherKind } from '../../services/weather';
 import type { Action, Inventory, PlayerState, SpotKind } from '../../core/types';
@@ -47,7 +48,7 @@ import { atBase, getBasePlace, setBasePlace } from '../../services/basePlace';
 import type { Fix } from '../../services/location';
 import type { App } from '../app';
 import { append, clear, h, svgEl } from '../dom';
-import { costChips, itemsLine } from '../game/chips';
+import { costChips, itemsLine, missingText } from '../game/chips';
 import { icon, resIcon } from '../icons';
 import { REJECT_TEXT } from '../texts';
 import { Joystick, useButton } from '../joystick';
@@ -140,7 +141,17 @@ function ctxClose(label: string, onClick: () => void): HTMLElement {
 export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLElement {
   const stage = h('div', { class: 'base-stage' });
   const titleEl = h('div', { class: 'base-title' });
-  const comfortEl = h('div', { class: 'comfort' });
+  // Antippen: was die Stufe bringt und was die nächste bringen würde
+  const comfortEl = h('button', {
+    class: 'comfort',
+    type: 'button',
+    onclick: () => {
+      const t = baseTier(st());
+      const have = TIER_PERKS.slice(1, t + 1).map((p) => p.desc);
+      const next = TIER_PERKS[t + 1];
+      app.toast(`${have.length ? `Deine Vorteile: ${have.join(' ')}` : 'Noch keine Vorteile.'}${next ? ` Nächste Stufe: ${next.desc}` : ''}`);
+    },
+  });
   const resEl = h('button', { class: 'base-res', type: 'button', 'aria-label': 'Lager öffnen', title: 'Lager öffnen', onclick: () => openStore() });
   const workChip = h('button', { class: 'work-chip', type: 'button', hidden: true, onclick: () => openWork() });
   const harvestChip = h('button', { class: 'work-chip ready', type: 'button', hidden: true, onclick: () => void harvestAll() });
@@ -559,7 +570,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     const def = FURNITURE[k];
     if (!knowsBlueprint(s, k)) return app.toast(`${def.name}: ${whereToFind(k)}.`);
     if (isCollectible(k) && (!s.collectibles[k] || collectiblePlaced(s, k))) return app.toast(`${def.name} steht schon.`, 'warn');
-    if (!canAfford(s.inventory, def.cost)) return app.toast(`Für ${def.name} fehlen dir Rohstoffe.`, 'warn');
+    if (!canAfford(s.inventory, def.cost)) return app.toast(`${def.name}: ${missingText(def.cost, s.inventory)}`, 'warn');
     if (!needHere()) return;
     const c = scene.characterCell();
     let best: Pt | null = null;
@@ -648,14 +659,64 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   };
 
   const dispatch = async (a: Action) => {
+    const before = baseTier(st());
     const res = await app.backend.dispatch(a);
     const rej = res.events.find((e) => e.type === 'rejected');
     if (rej && rej.type === 'rejected') {
-      app.toast(REJECT_TEXT[rej.reason], 'warn');
+      app.toast(rej.reason === 'cost' && 'kind' in a && a.kind && a.kind in FURNITURE ? missingText(FURNITURE[a.kind as FurnitureId].cost, st().inventory) : REJECT_TEXT[rej.reason], 'warn');
       return null;
+    }
+    const after = baseTier(res.state);
+    if (after > before) {
+      app.toast(`Neue Stufe: ${comfortTier(plotComfort(plot()).value).name}! ${TIER_PERKS[after]?.desc ?? ''}`, 'good');
+      scene.wave();
+      try {
+        if (app.settings.get().vibration) navigator.vibrate?.([40, 50, 40, 50, 140]);
+      } catch {
+        /* egal */
+      }
     }
     opts.onChanged();
     return res;
+  };
+
+  // --- Anlagen: Holzofen und Funkgerät -------------------------------------------------------
+  const cook = async () => {
+    if (!needHere()) return;
+    const res = await dispatch({ type: 'cook' });
+    const ev = res?.events[0];
+    if (ev?.type === 'cooked') {
+      app.toast(`Eintopf! ${ev.healed > 0 ? `+${ev.healed} Gesundheit, ` : ''}3 Stunden satt: ${Math.round(COOK.lootBonus * 100)} % mehr Beute.`, 'good');
+      scene.wave();
+    }
+    render();
+  };
+
+  const listen = async () => {
+    if (!needHere()) return;
+    const f = opts.getFix();
+    if (!f) return app.toast('Ohne Standort empfängt das Funkgerät nichts.', 'warn');
+    const res = await dispatch({ type: 'listenRadio', at: f.pos });
+    const ev = res?.events[0];
+    if (ev?.type !== 'radio') return render();
+    const c = ev.cache ? st().caches.find((x) => x.id === ev.cache) : undefined;
+    const card = h(
+      'div',
+      { class: 'radio-card', role: 'dialog', 'aria-label': 'Funkspruch' },
+      h('div', { class: 'memento-kicker' }, svgEl(icon('radioSet', 16)), 'Kanal 4'),
+      h('p', { class: 'radio-line' }, RADIO_LINES[ev.line] ?? ''),
+      c
+        ? h(
+            'p',
+            { class: 'radio-clue' },
+            svgEl(icon('chalk', 18)),
+            `Dazwischen ein Hinweis: Vorräte, etwa ${Math.round(distanceM(c.fromPos, c.spot.pos) / 50) * 50} m von hier, bei: ${c.spot.name}. Der Suchkreis ist auf der Karte markiert.`,
+          )
+        : h('p', { class: 'radio-clue none' }, 'Diesmal kein Hinweis auf ein Versteck.'),
+      h('button', { class: 'btn wide', type: 'button', onclick: () => card.remove() }, 'Gehört'),
+    );
+    el.append(card);
+    render();
   };
 
   const confirmPlace = async () => {
@@ -679,9 +740,18 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     const def = FURNITURE[it.kind];
     const prod = def.produces;
     const ready = itemYield(it, app.backend.now());
+    const now = app.backend.now();
     const sub =
       it.kind === 'workbench'
         ? 'Zerlegt Kram in Rohstoffe'
+        : it.kind === 'stove'
+          ? isFed(st(), now)
+            ? `Du bist satt: noch ${formatWait(st().fedUntil - now)} mehr Beute`
+            : 'Eintopf: heilt ganz, 3 Stunden mehr Beute'
+          : it.kind === 'radioSet'
+            ? radioReadyIn(st(), now) > 0
+              ? `Nächster Funkspruch in ${formatWait(radioReadyIn(st(), now))}`
+              : 'Ein neuer Funkspruch wartet'
         : prod
           ? ready
             ? `${ready} ${RESOURCES[prod.res].name} bereit`
@@ -699,6 +769,18 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
           'div',
           { class: 'ctx-actions' },
           it.kind === 'workbench' ? h('button', { class: 'btn small', type: 'button', onclick: () => openWork() }, svgEl(icon('wrench', 16)), 'Werktisch') : null,
+          it.kind === 'stove'
+            ? h(
+                'button',
+                { class: 'btn small', type: 'button', disabled: !canAfford(st().inventory, COOK.cost), onclick: () => void cook() },
+                svgEl(icon('stew', 16)),
+                'Eintopf kochen',
+                costChips(COOK.cost, st().inventory),
+              )
+            : null,
+          it.kind === 'radioSet'
+            ? h('button', { class: 'btn small', type: 'button', disabled: radioReadyIn(st(), now) > 0, onclick: () => void listen() }, svgEl(icon('radioSet', 16)), 'Funk abhören')
+            : null,
           prod && ready
             ? h(
                 'button',
@@ -1202,6 +1284,10 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
         plot,
         problem: (k: FurnitureId, x: number, y: number, r: number) => placementProblem(st(), k, x, y, r),
         mode: () => mode,
+        select: (uid: number) => {
+          mode = { kind: 'selected', uid };
+          render();
+        },
       };
   } catch {
     // egal

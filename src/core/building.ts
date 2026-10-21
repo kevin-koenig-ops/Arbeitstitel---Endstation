@@ -205,13 +205,13 @@ export type BlueprintId = FurnitureId | PieceId;
 /** Wo man welchen Bauplan findet. */
 export const BLUEPRINT_SOURCES: Partial<Record<SpotKind, BlueprintId[]>> = {
   stop: ['clock', 'timetable', 'busSeat', 'streetLamp'],
-  hardware: ['toolwall', 'lamp', 'raisedBed', 'stove', 'solarPanel', 'brickWall', 'tileFloor', 'tileRoof'],
+  hardware: ['toolwall', 'lamp', 'raisedBed', 'stove', 'solarPanel', 'radioSet', 'brickWall', 'tileFloor', 'tileRoof'],
   market: ['fridge', 'sofa', 'kitchen', 'carpetFloor'],
   pharmacy: ['medCabinet'],
   fuel: ['vending', 'streetLamp'],
   shed: ['fairyLights', 'shelf', 'gnome', 'appleTree', 'picketFence'],
   container: ['sofa', 'shelf', 'dartboard', 'bed'],
-  parcel: ['fairyLights', 'lamp', 'picture', 'bed', 'carpetFloor'],
+  parcel: ['fairyLights', 'lamp', 'picture', 'bed', 'radioSet', 'carpetFloor'],
   hide: ['hammock'],
   backpack: ['picture'],
 };

@@ -1,20 +1,23 @@
-// Kampf 2.0: Echtzeit mit Zielwahl (Tab-Targeting) in 3D.
+// Kampf als kurze Taktik mit Karten (Runde für Runde).
 //
-// Bedienung: Zombie antippen = Ziel. Deine Figur schlägt automatisch zu.
-// Ausweichen, wenn der rote Kreis hell aufleuchtet: Konter! Dazu Wuchtschlag, Stoß
-// und Verbinden. Am Rechner: Tab = nächstes Ziel, Leertaste = Ausweichen, 1–3 = Fähigkeiten.
+// Oben die 3D-Straßenecke mit deiner Figur und den Gegnern. Über jedem Gegner steht,
+// was er als Nächstes vorhat. Unten deine Hand: Karte antippen (bei mehreren möglichen
+// Zielen danach den Gegner). Jede Karte kostet Kraft, pro Runde gibt es 3.
+// „Runde beenden“: Die Gegner handeln, dann ziehst du neue Karten.
+// Die Regeln stehen in core/tactics.ts; hier wird nur angezeigt und abgespielt.
 
 import { WORLD_SEED } from '../../config';
-import { alive, createBattle, foeById, healthAfter, nextTarget, stepBattle, windupLeft, type BattleEvent, type BattleInput, type BattleState } from '../../core/battle';
-import { ABILITIES, ABILITY_ORDER, FOES, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, WEAPONS, type Ability } from '../../core/content';
-import { bestWeapon } from '../../core/rules';
+import { CARDS, FOE_TACTICS, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, TACTICS, WEAPONS, type CardId } from '../../core/content';
+import { aliveFoes, createTactics, endTurn, flee, foeById, playCard, targetsFor, type Intent, type TacticsState, type TEvent } from '../../core/tactics';
+import { bestWeapon, currentHealth } from '../../core/rules';
 import type { DayPhase } from '../../core/sun';
 import type { EnemyId, GameEvent, Inventory, Spot } from '../../core/types';
 import type { App } from '../app';
-import { clear, h, svgEl } from '../dom';
+import { append, clear, h, reducedMotion, sleep, svgEl } from '../dom';
 import { icon, resIcon } from '../icons';
 import { faceEl } from '../portrait';
-import { timingFactor } from './ambience';
+import { walkerMood } from './ambience';
+import type { ShownFoe, TacticsScene } from '../../base/CombatScene';
 
 export interface CombatEnd {
   outcome: 'won' | 'lost' | 'fled';
@@ -23,142 +26,148 @@ export interface CombatEnd {
   loot?: Extract<GameEvent, { type: 'loot' }>;
   dropped?: Partial<Inventory>;
   kills?: number;
+  ambush?: boolean;
 }
 
-const ICONS: Record<Ability, string> = { power: 'hammer', dodge: 'dodge', shove: 'shove', bandage: 'medicine' };
-const KEYS: Record<Ability, string> = { power: '1', dodge: '␣', shove: '2', bandage: '3' };
+const CARD_ICON: Record<CardId, string> = {
+  punch: 'fist',
+  throw: 'throwStone',
+  dodge: 'shield',
+  kick: 'shove',
+  pry: 'crowbar',
+  swing: 'bat',
+  homerun: 'smash',
+  bolt: 'bolt',
+  aim: 'aim',
+  bandage: 'medicine',
+};
+
+const INTENT: Record<Intent['kind'], { icon: string; label: string; tone: string }> = {
+  attack: { icon: 'sword', label: 'Angriff', tone: 'bad' },
+  grab: { icon: 'grab', label: 'Packt zu', tone: 'grab' },
+  windup: { icon: 'windup', label: 'Holt aus', tone: 'warn' },
+  smash: { icon: 'smash', label: 'Wuchtschlag', tone: 'worst' },
+  advance: { icon: 'advance', label: 'Kommt näher', tone: 'calm' },
+  howl: { icon: 'howl', label: 'Ruft Hilfe', tone: 'warn' },
+  lurk: { icon: 'shield', label: 'Duckt sich', tone: 'calm' },
+  stunned: { icon: 'stun', label: 'Betäubt', tone: 'calm' },
+};
+
+/** Was eine Karte tut, kurz für die Karte selbst. */
+function cardEffect(id: CardId): { main: string; tag: string } {
+  const c = CARDS[id];
+  const main = c.dmg ? `${c.dmg} Schaden` : c.block ? `Blockt ${c.block}` : c.heal ? `Heilt ${c.heal}` : c.focus ? `+${c.focus} Schaden` : '';
+  const tags: string[] = [];
+  if (c.target === 'near') tags.push('vorne');
+  if (c.target === 'any') tags.push('auch hinten');
+  if (c.push) tags.push('stößt weg');
+  if (c.stun) tags.push('betäubt');
+  if (c.focus) tags.push('nächster Wurf');
+  if (c.medicine) tags.push('1 Medizin');
+  return { main, tag: tags.join(' · ') };
+}
+
+/** Der Teil des Zustands, den man sieht (hinkt beim Abspielen der Gegnerzüge kurz hinterher). */
+interface Shown {
+  hp: number;
+  block: number;
+  foes: Map<number, ShownFoe & { hp: number; maxHp: number; block: number; intent: Intent; acted: boolean }>;
+}
 
 export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: (end: CombatEnd) => void): HTMLElement {
   const s0 = app.backend.current()!;
   const combat = s0.combat!;
   const spot = combat.spot;
+  const now0 = app.backend.now();
   const weapon = bestWeapon(s0)?.kind ?? null;
-  const gestures = app.settings.get().combatControl === 'gestures';
-  const battle: BattleState = createBattle({
-    seed: `${WORLD_SEED}|${s0.playerId}|${spot.id}|${combat.window}`,
-    guard: combat.enemy,
-    weapon,
-    health: s0.health,
-    maxHealth: MAX_HEALTH,
+  const mood = walkerMood();
+  const st: TacticsState = createTactics({
+    seed: `${WORLD_SEED}|${s0.playerId}|${spot.id}|${combat.window}|${combat.ambush ? 'u' : 'w'}`,
+    group: combat.group?.length ? combat.group : [combat.enemy],
+    weapons: s0.weapons,
     medicine: s0.inventory.medicine,
-    foeSpeed: timingFactor(),
-    manual: gestures,
+    health: currentHealth(s0, now0),
+    maxHealth: MAX_HEALTH,
+    mood,
   });
+  const firstFight = s0.stats.kills === 0;
+  const fast = reducedMotion();
+  const wait = (ms: number) => sleep(fast ? Math.min(ms, 80) : ms);
 
-  // --- Oberfläche --------------------------------------------------------------------------
+  // --- Anzeige-Zustand ----------------------------------------------------------------------
+  const shown: Shown = { hp: st.hp, block: 0, foes: new Map() };
+  const syncShown = () => {
+    shown.hp = st.hp;
+    shown.block = st.block;
+    for (const f of st.foes) {
+      shown.foes.set(f.id, { id: f.id, kind: f.kind, row: f.row, alive: f.hp > 0, stunned: f.stunned, raised: f.intent.kind === 'smash', hp: f.hp, maxHp: f.maxHp, block: f.block, intent: f.intent, acted: false });
+    }
+  };
+  syncShown();
+  const shownList = () => [...shown.foes.values()];
+
+  // --- Oberfläche ---------------------------------------------------------------------------
   const stage = h('div', { class: 'battle-stage' });
   const meHp = h('span', { class: 'bar-fill' });
   const meHpText = h('span', { class: 'bar-text' });
-  const counterBadge = h('span', { class: 'counter-badge', hidden: true }, 'Konter bereit');
+  const meBlock = h('span', { class: 't-block', hidden: true });
+  const meFocus = h('span', { class: 't-focus', hidden: true });
+  const weaponLine = h('small', { class: 't-weapon' });
   const meFrame = h(
     'div',
     { class: 'battle-me' },
     faceEl(s0.character.look, 44, 'battle-face'),
-    h(
-      'div',
-      { class: 'battle-me-main' },
-      h('b', null, s0.character.name),
-      h('div', { class: 'bar me' }, meHp, meHpText),
-      h('small', null, weapon ? WEAPONS[weapon].name : 'Fäuste', counterBadge),
-    ),
+    h('div', { class: 'battle-me-main' }, h('b', null, s0.character.name, meBlock, meFocus), h('div', { class: 'bar me' }, meHp, meHpText), weaponLine),
   );
-  const tName = h('b');
-  const tHp = h('span', { class: 'bar-fill' });
-  const tDesc = h('small');
-  const targetFrame = h('div', { class: 'battle-target' }, h('div', { class: 'battle-target-head' }, svgEl(icon('locate', 16)), tName), h('div', { class: 'bar foe' }, tHp), tDesc);
-  const fleeBtn = h('button', { class: 'btn ghost small battle-flee', type: 'button', onclick: () => queue({ type: 'flee' }) }, 'Fliehen');
-  const callout = h('div', { class: 'battle-callout', 'aria-live': 'polite' });
+  const fleeBtn = h('button', { class: 'btn ghost small battle-flee', type: 'button' }, svgEl(icon('flee', 16)), 'Fliehen');
+  const helpBtn = h('button', { class: 'iconbtn small t-help-btn', type: 'button', 'aria-label': 'So geht der Kampf' }, '?');
   const floats = h('div', { class: 'battle-floats', 'aria-hidden': 'true' });
-  const abilityBtns = {} as Record<Ability, { el: HTMLButtonElement; cd: HTMLElement; extra?: HTMLElement }>;
-  // Mit Gesten gibt es nur Stoß und Verbinden als Tasten (Schlag, Aufladen, Ausweichen sind Gesten)
-  const shown = gestures ? ABILITY_ORDER.filter((a) => a === 'shove' || a === 'bandage') : ABILITY_ORDER;
-  const abilities = h(
-    'div',
-    { class: 'battle-abilities' + (gestures ? ' gestures' : '') },
-    shown.map((a) => {
-      const cd = h('span', { class: 'cd' });
-      const extra = a === 'bandage' ? h('span', { class: 'ab-count' }) : undefined;
-      const el = h(
-        'button',
-        { class: `ab ab-${a}`, type: 'button', 'aria-label': `${ABILITIES[a].name}: ${ABILITIES[a].desc}`, onclick: () => queue({ type: 'ability', ability: a }) },
-        svgEl(icon(ICONS[a], a === 'dodge' ? 30 : 24)),
-        h('span', { class: 'ab-name' }, ABILITIES[a].name),
-        h('kbd', null, KEYS[a]),
-        cd,
-        extra,
-      );
-      abilityBtns[a] = { el, cd, extra };
-      return el;
-    }),
-  );
-  const switchBtn = h('button', { class: 'btn ghost small battle-switch', type: 'button', onclick: () => cycleTarget() }, svgEl(icon('locate', 16)), 'Ziel wechseln');
-  const hint = gestures
-    ? h('div', { class: 'battle-hint' }, h('b', null, 'Tippen'), ' = Schlag · ', h('b', null, 'Halten'), ' = Aufladen · ', h('b', null, 'Wischen'), ' = Ausweichen. Leuchtet der Kreis hell: jetzt wischen!')
-    : h('div', { class: 'battle-hint' }, 'Tippe einen Zombie an. Deine Figur greift an. ', h('b', null, 'Leuchtet der Kreis hell: Ausweichen!'));
-  const comboEl = h('div', { class: 'battle-combo', 'aria-hidden': 'true' });
+  const foeLayer = h('div', { class: 't-foes' });
+  const callout = h('div', { class: 'battle-callout', 'aria-live': 'polite' });
+  const energyEl = h('div', { class: 't-energy', 'aria-label': 'Kraft' });
+  const info = h('div', { class: 't-info', 'aria-live': 'polite' });
+  const endBtn = h('button', { class: 'btn t-end', type: 'button' }, 'Runde beenden');
+  const pileEl = h('span', { class: 't-pile' });
+  const handEl = h('div', { class: 't-hand' });
   const loading = h('div', { class: 'battle-loading' }, 'Achtung …');
   const el = h(
     'div',
-    { class: 'overlay battle', role: 'dialog', 'aria-label': `Kampf an: ${spot.name}` },
+    { class: 'overlay battle tactics', role: 'dialog', 'aria-label': `Kampf an: ${spot.name}` },
     stage,
+    foeLayer,
     floats,
-    h('div', { class: 'battle-top' }, meFrame, targetFrame, fleeBtn),
+    h('div', { class: 'battle-top' }, meFrame, h('div', { class: 't-top-right' }, helpBtn, fleeBtn)),
     callout,
-    hint,
-    comboEl,
-    gestures ? null : switchBtn,
-    abilities,
+    h('div', { class: 't-bottom' }, h('div', { class: 't-bar' }, energyEl, info, pileEl, endBtn), handEl),
     loading,
   );
   host.append(el);
 
-  // --- Eingaben ----------------------------------------------------------------------------
-  const inputs: BattleInput[] = [];
-  const queue = (i: BattleInput) => {
-    if (!battle.over) inputs.push(i);
-  };
   // Nur zum Testen: Kampfzustand von außen ansehen
   try {
-    if (localStorage.getItem('endstation.debug')) (window as unknown as { __battle?: () => BattleState }).__battle = () => battle;
+    if (localStorage.getItem('endstation.debug')) (window as unknown as { __battle?: () => TacticsState }).__battle = () => st;
   } catch {
     /* egal */
   }
-  const cycleTarget = () => {
-    const id = nextTarget(battle, true);
-    if (id !== null) queue({ type: 'target', id });
-  };
-  const onKey = (e: KeyboardEvent) => {
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      cycleTarget();
-    } else if (e.key === ' ') {
-      e.preventDefault();
-      queue({ type: 'ability', ability: 'dodge' });
-    } else if (e.key === '1') queue({ type: 'ability', ability: 'power' });
-    else if (e.key === '2') queue({ type: 'ability', ability: 'shove' });
-    else if (e.key === '3') queue({ type: 'ability', ability: 'bandage' });
-    else if (e.key === 'Escape') queue({ type: 'flee' });
-  };
-  window.addEventListener('keydown', onKey);
 
-  // --- Rückmeldungen -----------------------------------------------------------------------
+  // --- Rückmeldungen ------------------------------------------------------------------------
   let calloutTimer = 0;
-  const say = (text: string, tone: 'good' | 'bad' | 'gold' = 'good') => {
+  const say = (text: string, tone: 'good' | 'bad' | 'gold' = 'good', ms = 1400) => {
     callout.textContent = text;
     callout.dataset.tone = tone;
     callout.classList.remove('pop');
     void callout.offsetWidth;
     callout.classList.add('pop');
     clearTimeout(calloutTimer);
-    calloutTimer = window.setTimeout(() => (callout.textContent = ''), 1300);
+    calloutTimer = window.setTimeout(() => (callout.textContent = ''), ms);
   };
-  const floatAt = (x: number, y: number, z: number, text: string, cls: string) => {
+  const floatAt = (id: number, text: string, cls: string) => {
     if (!scene) return;
-    const p = scene.project(x, y, z);
+    const p = scene.anchor(id, id < 0 ? 0.1 : 0.1);
     if (!p.visible) return;
-    const f = h('span', { class: `float ${cls}`, style: `left:${p.x + (Math.random() - 0.5) * 30}px;top:${p.y}px` }, text);
+    const f = h('span', { class: `float ${cls}`, style: `left:${p.x + (Math.random() - 0.5) * 24}px;top:${p.y}px` }, text);
     floats.append(f);
-    setTimeout(() => f.remove(), 950);
+    setTimeout(() => f.remove(), 1000);
   };
   const vibrate = (ms: number | number[]) => {
     try {
@@ -167,222 +176,493 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
       /* nicht unterstützt */
     }
   };
+  const shake = (node: Element) => {
+    node.classList.remove('shake');
+    void (node as HTMLElement).offsetWidth;
+    node.classList.add('shake');
+  };
 
-  // Zeitlupe und Treffer-Stopp machen Treffer spürbar
-  let slow = 0;
-  let stop = 0;
-  const react = (events: BattleEvent[]) => {
+  // --- Eingaben -----------------------------------------------------------------------------
+  let busy = false;
+  let selected: number | null = null; // Index der Karte auf der Hand, die auf ein Ziel wartet
+  let ended = false;
+  let fleeArmed = false;
+
+  const defaultInfo = () => {
+    const foes = aliveFoes(st);
+    if (firstFight && st.turn === 1) return 'Tippe eine Karte an. Jede kostet Kraft (⚡), pro Runde hast du 3.';
+    if (foes.some((f) => f.row === 'near' && f.intent.kind === 'smash')) return 'Achtung, Wuchtschlag! Ausweichen oder ihn wegtreten.';
+    if (st.turn === 1 && mood && foes.some((f) => f.kind === 'walker')) return mood === 'strong' ? 'Nacht, Nebel oder Regen: Die Wandler sind zäher als sonst.' : 'Pralle Sonne: Die Wandler sind träge.';
+    if (foes.some((f) => f.kind === 'screamer')) return 'Der Heuler ruft Verstärkung. Erst ihn ausschalten, mit Wurf oder Bolzen.';
+    if (st.energy === 0) return 'Keine Kraft mehr: Runde beenden.';
+    return `Runde ${st.turn}`;
+  };
+  const setInfo = (text?: string) => (info.textContent = text ?? defaultInfo());
+
+  const cancelSelect = () => {
+    selected = null;
+    scene?.setTargets(null);
+    renderHand();
+    setInfo();
+  };
+
+  const tryCard = (i: number) => {
+    if (busy || st.over) return;
+    const card = st.hand[i];
+    if (!card) return;
+    if (selected === i) return cancelSelect();
+    const def = CARDS[card];
+    const btn = handEl.children[i];
+    if (def.cost > st.energy) {
+      if (btn) shake(btn);
+      return setInfo('Nicht genug Kraft. Runde beenden für neue.');
+    }
+    if (def.medicine && st.medicine < 1) {
+      if (btn) shake(btn);
+      return setInfo('Keine Medizin mehr dabei.');
+    }
+    if (def.heal && st.hp >= st.maxHp) {
+      if (btn) shake(btn);
+      return setInfo('Du bist unverletzt. Heb dir das Verbandszeug auf.');
+    }
+    if (def.target === 'self') return void doPlay(i);
+    const options = targetsFor(st, card);
+    if (!options.length) {
+      if (btn) shake(btn);
+      return setInfo(def.target === 'near' ? 'Vorne steht niemand. Diese Karte trifft nur Gegner vorne.' : 'Kein Ziel.');
+    }
+    if (options.length === 1) return void doPlay(i, options[0].id);
+    selected = i;
+    scene?.setTargets(options.map((f) => f.id));
+    renderHand();
+    setInfo(`${def.name}: Wähle ein Ziel.`);
+  };
+
+  const tapFoe = (id: number) => {
+    if (busy || st.over) return;
+    if (selected !== null) {
+      const card = st.hand[selected];
+      if (card && targetsFor(st, card).some((f) => f.id === id)) return void doPlay(selected, id);
+      return setInfo(card && CARDS[card].target === 'near' ? 'Der steht hinten. Diese Karte trifft nur vorne.' : 'Kein gültiges Ziel.');
+    }
+    const f = foeById(st, id);
+    if (!f) return;
+    const def = FOE_TACTICS[f.kind];
+    setInfo(`${def.name} (${f.hp}/${f.maxHp}${def.armor ? `, Rüstung ${def.armor}` : ''}): ${def.desc}`);
+  };
+
+  // --- Abspielen ------------------------------------------------------------------------------
+  const sfoe = (id: number) => shown.foes.get(id);
+
+  const animate = async (events: TEvent[], enemyPhase: boolean) => {
     for (const e of events) {
-      if (e.type === 'hit') {
-        const f = foeById(battle, e.id);
-        if (!f) continue;
-        floatAt(f.x, (scene?.foeHeight(f.id) ?? 2) + 0.2, f.z, e.counter ? `${e.dmg}!` : String(e.dmg), e.counter ? 'counter' : e.crit ? 'crit' : e.power ? 'power' : 'dmg');
-        if (e.combo) {
-          comboEl.textContent = e.combo >= 3 ? 'Kombo!' : `${e.combo}`;
-          comboEl.dataset.n = String(e.combo);
-          comboEl.classList.remove('pop');
-          void comboEl.offsetWidth;
-          comboEl.classList.add('pop');
-          if (e.combo >= 3) stop = Math.max(stop, 0.07);
+      switch (e.type) {
+        case 'play': {
+          const id = e.target;
+          if (e.card === 'throw' || e.card === 'bolt') {
+            if (id !== undefined) scene?.shoot(id, e.card === 'bolt' ? 'bolt' : 'stone');
+            await wait(e.card === 'bolt' ? 160 : 300);
+          } else if (e.card === 'dodge') scene?.shieldUp();
+          else if (e.card === 'bandage') scene?.heal();
+          else if (e.card === 'aim') scene?.focus();
+          else {
+            scene?.act(e.card === 'homerun' ? 'power' : e.card === 'kick' ? 'shove' : 'swing', id);
+            await wait(e.card === 'homerun' ? 260 : 150);
+          }
+          break;
         }
-        if (e.charged !== undefined && e.charged >= 0.95) {
-          say('Volle Wucht!', 'gold');
-          stop = Math.max(stop, 0.1);
-          vibrate(50);
+        case 'hit': {
+          const f = sfoe(e.id);
+          if (f) {
+            f.hp = Math.max(0, f.hp - e.dmg);
+            f.block = Math.max(0, f.block - e.absorbed);
+            if (e.kill) f.alive = false;
+          }
+          scene?.hitFoe(e.id, e.dmg, e.kill, e.dmg >= 5);
+          if (e.dmg > 0) floatAt(e.id, String(e.dmg), e.dmg >= 5 ? 'crit' : e.dmg >= 3 ? 'power' : 'dmg');
+          if (e.absorbed > 0) floatAt(e.id, `${e.absorbed} abgewehrt`, 'miss');
+          if (e.dmg === 0 && e.absorbed === 0) floatAt(e.id, 'Rüstung', 'miss');
+          if (e.kill) {
+            vibrate(40);
+            scene?.setFoes(shownList());
+            await wait(320);
+          } else await wait(120);
+          break;
         }
-        if (e.counter) {
-          say('KONTER!', 'gold');
-          stop = 0.09;
-        } else if (e.crit) stop = Math.max(stop, 0.05);
-        if (e.kill) {
-          stop = Math.max(stop, 0.07);
-          vibrate(40);
-          if (!alive(battle).length) slow = 1.1;
+        case 'push': {
+          const f = sfoe(e.id);
+          if (f) {
+            f.row = 'far';
+            f.raised = false;
+            f.intent = foeById(st, e.id)?.intent ?? f.intent;
+          }
+          scene?.setFoes(shownList());
+          scene?.pushed(e.id);
+          floatAt(e.id, 'Weggetreten!', 'power');
+          await wait(250);
+          break;
         }
-      } else if (e.type === 'hurt') {
-        floatAt(battle.x, 2.1, battle.z, `-${e.dmg}`, 'hurt');
-        el.classList.remove('hurt');
-        void el.offsetWidth;
-        el.classList.add('hurt');
-        vibrate(60);
-      } else if (e.type === 'dodged' && e.perfect) {
-        say('Perfekt ausgewichen!', 'gold');
-        slow = Math.max(slow, 0.5);
-        vibrate([20, 30, 20]);
-      } else if (e.type === 'dodged') floatAt(battle.x, 2, battle.z, 'Verfehlt', 'miss');
-      else if (e.type === 'summon') say('Der Kreischer ruft Verstärkung!', 'bad');
-      else if (e.type === 'heal') floatAt(battle.x, 2.1, battle.z, `+${e.amount}`, 'heal');
-      else if (e.type === 'bandage') say('Verbinden …', 'good');
-      else if (e.type === 'chargeLost') say('Unterbrochen!', 'bad');
-      else if (e.type === 'denied') {
-        const b = abilityBtns[e.ability].el;
-        b.classList.remove('shake');
-        void b.offsetWidth;
-        b.classList.add('shake');
-        if (e.reason === 'no_target') say('Kein Ziel in Reichweite', 'bad');
-        if (e.reason === 'no_medicine') say('Keine Medizin dabei', 'bad');
-        if (e.reason === 'full') say('Du bist unverletzt', 'bad');
+        case 'stun': {
+          const f = sfoe(e.id);
+          if (f) {
+            f.stunned = true;
+            f.intent = { kind: 'stunned' };
+          }
+          scene?.setFoes(shownList());
+          floatAt(e.id, 'Betäubt!', 'crit');
+          break;
+        }
+        case 'block':
+          shown.block += e.amount;
+          floatAt(-1, `+${e.amount} Schutz`, 'heal');
+          break;
+        case 'heal':
+          shown.hp = Math.min(st.maxHp, shown.hp + e.amount);
+          floatAt(-1, `+${e.amount}`, 'heal');
+          break;
+        case 'focus':
+          floatAt(-1, `Zielen +${e.amount}`, 'power');
+          break;
+        case 'weaponBroke':
+          say(`${WEAPONS[e.weapon].name} zerbrochen!`, 'bad');
+          vibrate([30, 40, 30]);
+          break;
+        case 'advance': {
+          const f = sfoe(e.id);
+          if (f) {
+            f.row = 'near';
+            f.acted = true;
+          }
+          scene?.setFoes(shownList());
+          await wait(520);
+          break;
+        }
+        case 'hurt': {
+          const f = sfoe(e.by);
+          if (f) {
+            f.acted = true;
+            f.raised = false;
+          }
+          scene?.setFoes(shownList());
+          shown.block = Math.max(0, shown.block - e.absorbed);
+          shown.hp = Math.max(0, shown.hp - e.dmg);
+          if (e.dmg > 0) {
+            scene?.hurt(e.by, e.dmg);
+            floatAt(-1, `-${e.dmg}`, 'hurt');
+            el.classList.remove('hurt');
+            void el.offsetWidth;
+            el.classList.add('hurt');
+            vibrate(e.dmg >= 5 ? [60, 40, 80] : 50);
+          } else scene?.blocked(e.by);
+          if (e.absorbed > 0) floatAt(-1, `${e.absorbed} geblockt`, 'miss');
+          renderHud();
+          await wait(560);
+          break;
+        }
+        case 'grabbed':
+          floatAt(-1, 'Gepackt! −1 Kraft', 'hurt');
+          await wait(260);
+          break;
+        case 'windup': {
+          const f = sfoe(e.id);
+          if (f) {
+            f.acted = true;
+            f.raised = true;
+          }
+          scene?.setFoes(shownList());
+          floatAt(e.id, 'Holt aus!', 'crit');
+          await wait(480);
+          break;
+        }
+        case 'lurk': {
+          const f = sfoe(e.id);
+          if (f) {
+            f.acted = true;
+            f.block = e.block;
+          }
+          floatAt(e.id, 'Duckt sich', 'miss');
+          await wait(360);
+          break;
+        }
+        case 'summon': {
+          const by = sfoe(e.by);
+          if (by) by.acted = true;
+          const nf = foeById(st, e.id);
+          if (nf) shown.foes.set(nf.id, { id: nf.id, kind: nf.kind, row: 'far', alive: nf.hp > 0, stunned: false, raised: false, hp: nf.hp, maxHp: nf.maxHp, block: 0, intent: nf.intent, acted: true });
+          scene?.howl(e.by);
+          scene?.setFoes(shownList(), [e.id]);
+          say('Der Heuler ruft einen Wandler!', 'bad');
+          vibrate([20, 30, 20, 30, 20]);
+          await wait(800);
+          break;
+        }
+        case 'turn':
+          syncShown();
+          scene?.setFoes(shownList());
+          break;
+        default:
+          break;
       }
+      renderHud();
+      if (enemyPhase && st.over === 'lost' && shown.hp <= 0) break;
     }
-    if (events.some((e) => e.type === 'dodge')) hint.hidden = true;
   };
 
-  // --- Anzeige -----------------------------------------------------------------------------
-  const foeBars = new Map<number, HTMLElement>();
+  const doPlay = async (i: number, target?: number) => {
+    if (busy) return;
+    busy = true;
+    selected = null;
+    scene?.setTargets(null);
+    const events = playCard(st, i, target);
+    if (events[0]?.type === 'denied') {
+      busy = false;
+      renderHand();
+      return;
+    }
+    renderHand();
+    await animate(events, false);
+    syncShown();
+    scene?.setFoes(shownList());
+    busy = false;
+    renderAll();
+    if (st.over) void finish();
+  };
+
+  const doEndTurn = async () => {
+    if (busy || st.over) return;
+    busy = true;
+    selected = null;
+    scene?.setTargets(null);
+    handEl.classList.add('away');
+    renderBar();
+    await wait(220);
+    const events = endTurn(st);
+    await animate(events, true);
+    handEl.classList.remove('away');
+    busy = false;
+    renderAll(true);
+    if (st.over) void finish();
+    else if (st.grabbed === 0 && st.energy < TACTICS.energy) setInfo('Gepackt: diese Runde 1 Kraft weniger.');
+  };
+
+  endBtn.addEventListener('click', () => void doEndTurn());
+  fleeBtn.addEventListener('click', () => {
+    if (busy || st.over) return;
+    if (!fleeArmed) {
+      fleeArmed = true;
+      fleeBtn.lastChild!.textContent = 'Wirklich?';
+      setTimeout(() => {
+        fleeArmed = false;
+        if (fleeBtn.lastChild) fleeBtn.lastChild.textContent = 'Fliehen';
+      }, 2500);
+      return;
+    }
+    flee(st);
+    void finish();
+  });
+  helpBtn.addEventListener('click', () => showHelp());
+
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key >= '1' && e.key <= '9') tryCard(Number(e.key) - 1);
+    else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      void doEndTurn();
+    } else if (e.key === 'Escape') {
+      if (selected !== null) cancelSelect();
+    }
+  };
+  window.addEventListener('keydown', onKey);
+
+  stage.addEventListener('pointerdown', (e) => {
+    if (!scene || busy) return;
+    const id = scene.pickFoe(e.clientX, e.clientY);
+    if (id !== null) tapFoe(id);
+    else if (selected !== null) cancelSelect();
+  });
+
+  // --- Anzeige ------------------------------------------------------------------------------
   const renderHud = () => {
-    const pct = (battle.hp / battle.maxHp) * 100;
-    meHp.style.width = `${pct}%`;
+    const pct = (shown.hp / st.maxHp) * 100;
+    meHp.style.width = `${Math.max(0, pct)}%`;
     meHp.dataset.low = String(pct < 35);
-    meHpText.textContent = `${Math.ceil(battle.hp)} / ${battle.maxHp}`;
-    counterBadge.hidden = battle.counter <= 0;
-    const t = foeById(battle, battle.target);
-    targetFrame.hidden = !t || t.mode === 'dead';
-    if (t) {
-      tName.textContent = FOES[t.kind].name;
-      tHp.style.width = `${(t.hp / t.maxHp) * 100}%`;
-      tDesc.textContent = FOES[t.kind].desc;
-    }
-    for (const a of shown) {
-      const b = abilityBtns[a];
-      const left = battle.cds[a];
-      b.cd.style.setProperty('--p', String(left > 0 ? left / ABILITIES[a].cd : 0));
-      b.cd.textContent = left > 0.05 && a !== 'dodge' ? String(Math.ceil(left)) : '';
-      b.el.classList.toggle('cooling', left > 0);
-      if (b.extra) b.extra.textContent = `×${battle.medicine}`;
-      if (a === 'bandage') b.el.classList.toggle('empty', battle.medicine < 1);
-    }
-    // Die Ausweichen-Taste leuchtet, wenn gleich ein Treffer kommt
-    const danger = alive(battle).some((f) => windupLeft(f, battle) <= 0.4);
-    abilityBtns.dodge?.el.classList.toggle('now', danger);
-    el.classList.toggle('danger', gestures && danger);
-    // Kleine Lebensbalken über den Zombies
-    if (!scene) return;
-    for (const f of battle.foes) {
-      let bar = foeBars.get(f.id);
-      if (!bar) {
-        bar = h('span', { class: 'foe-bar' }, h('span'));
-        floats.append(bar);
-        foeBars.set(f.id, bar);
+    meHpText.textContent = `${Math.max(0, Math.ceil(shown.hp))} / ${st.maxHp}`;
+    meBlock.hidden = shown.block <= 0;
+    clear(meBlock);
+    meBlock.append(svgEl(icon('shield', 13)), String(shown.block));
+    meFocus.hidden = st.focus <= 0;
+    clear(meFocus);
+    meFocus.append(svgEl(icon('aim', 13)), `+${st.focus}`);
+    const kinds = (Object.keys(st.weaponDur) as (keyof typeof WEAPONS)[]).filter((k) => (st.weaponDur[k] ?? 0) > 0);
+    weaponLine.textContent = kinds.length ? kinds.map((k) => `${WEAPONS[k].name} ${st.weaponDur[k]}`).join(' · ') : 'Keine Waffe: Fäuste und Steine';
+  };
+
+  const foeEls = new Map<number, { el: HTMLElement; intent: HTMLElement; hp: HTMLElement; hpText: HTMLElement; block: HTMLElement; row: HTMLElement; key: string }>();
+  const renderFoeOverlays = () => {
+    for (const f of shown.foes.values()) {
+      let v = foeEls.get(f.id);
+      if (!v) {
+        const intentEl = h('span', { class: 't-intent' });
+        const hp = h('span', { class: 'bar-fill' });
+        const hpText = h('span', { class: 't-hp-text' });
+        const block = h('span', { class: 't-fblock', hidden: true });
+        const rowTag = h('small', { class: 't-row' });
+        const node = h(
+          'button',
+          { class: 't-foe', type: 'button', 'data-kind': f.kind, onclick: () => tapFoe(f.id) },
+          intentEl,
+          h('span', { class: 't-foe-name' }, FOE_TACTICS[f.kind].name, rowTag, block),
+          h('span', { class: 'bar foe' }, hp, hpText),
+        );
+        foeLayer.append(node);
+        v = { el: node, intent: intentEl, hp, hpText, block, row: rowTag, key: '' };
+        foeEls.set(f.id, v);
       }
-      const p = scene.project(f.x, scene.foeHeight(f.id) + 0.05, f.z);
-      bar.hidden = f.mode === 'dead' || !p.visible;
-      bar.style.transform = `translate(${p.x - 22}px, ${p.y}px)`;
-      (bar.firstChild as HTMLElement).style.width = `${(f.hp / f.maxHp) * 100}%`;
-      bar.classList.toggle('is-target', f.id === battle.target);
+      v.el.hidden = !f.alive;
+      v.el.dataset.row = f.row;
+      v.row.textContent = f.row === 'far' ? 'hinten' : '';
+      v.hp.style.width = `${(f.hp / f.maxHp) * 100}%`;
+      v.hpText.textContent = `${f.hp}/${f.maxHp}`;
+      v.block.hidden = f.block <= 0;
+      v.block.textContent = `🛡${f.block}`;
+      const it = INTENT[f.intent.kind];
+      const key = `${f.intent.kind}|${f.intent.dmg ?? ''}|${f.acted}`;
+      if (key !== v.key) {
+        v.key = key;
+        clear(v.intent);
+        v.intent.dataset.tone = it.tone;
+        v.intent.classList.toggle('done', f.acted);
+        // Bei einem normalen Angriff reicht die Zahl, alles andere bekommt ein Wort dazu
+        append(v.intent, [svgEl(icon(it.icon, 16)), f.intent.dmg ? h('b', null, String(f.intent.dmg)) : null, f.intent.kind === 'attack' ? null : h('small', null, it.label)]);
+        v.intent.title = it.label;
+        v.intent.classList.remove('pop');
+        void v.intent.offsetWidth;
+        v.intent.classList.add('pop');
+      }
+      const targetable = selected !== null && st.hand[selected] ? targetsFor(st, st.hand[selected]).some((x) => x.id === f.id) : false;
+      v.el.classList.toggle('targetable', targetable);
+    }
+  };
+  const placeFoeOverlays = () => {
+    if (!scene) return;
+    for (const [id, v] of foeEls) {
+      if (v.el.hidden) continue;
+      // Hintere Gegner etwas höher beschriften, damit sich die Schilder nicht überdecken
+      const p = scene.anchor(id, v.el.dataset.row === 'far' ? 0.55 : 0.15);
+      v.el.style.transform = `translate(${Math.round(p.x)}px, ${Math.round(p.y)}px) translate(-50%, -100%)`;
+      v.el.style.visibility = p.visible ? '' : 'hidden';
     }
   };
 
-  // --- Schleife ----------------------------------------------------------------------------
-  let scene: import('../../base/CombatScene').CombatScene | null = null;
+  const renderBar = () => {
+    clear(energyEl);
+    for (let i = 0; i < Math.max(TACTICS.energy, st.energy); i++) energyEl.append(h('span', { class: 'orb' + (i < st.energy ? ' on' : '') }, svgEl(icon('energy', 14))));
+    energyEl.setAttribute('aria-label', `Kraft ${st.energy} von ${TACTICS.energy}`);
+    endBtn.disabled = busy || !!st.over;
+    endBtn.classList.toggle('glow', !busy && !st.over && st.hand.every((c) => CARDS[c].cost > st.energy || (CARDS[c].heal && st.hp >= st.maxHp) || (CARDS[c].target !== 'self' && !targetsFor(st, c).length)));
+    pileEl.textContent = `Stapel ${st.draw.length}`;
+    pileEl.title = `Noch ${st.draw.length} Karten im Stapel, ${st.discard.length} abgelegt`;
+  };
+
+  const renderHand = (deal = false) => {
+    clear(handEl);
+    st.hand.forEach((card, i) => {
+      const def = CARDS[card];
+      const eff = cardEffect(card);
+      const playable = def.cost <= st.energy && (!def.medicine || st.medicine > 0) && (!def.heal || st.hp < st.maxHp) && (def.target === 'self' || targetsFor(st, card).length > 0);
+      let pressTimer = 0;
+      let longPressed = false;
+      const btn = h(
+        'button',
+        {
+          class: `t-card${def.weapon ? ' weapon' : ''}${def.target === 'self' ? ' self' : ''}${playable ? '' : ' off'}${selected === i ? ' picked' : ''}${deal ? ' deal' : ''}`,
+          type: 'button',
+          style: `--i:${i}`,
+          'aria-label': `${def.name}, kostet ${def.cost} Kraft: ${def.desc}`,
+          onpointerdown: () => {
+            longPressed = false;
+            pressTimer = window.setTimeout(() => {
+              longPressed = true;
+              setInfo(`${def.name}: ${def.desc}`);
+            }, 450);
+          },
+          onpointerup: () => clearTimeout(pressTimer),
+          onpointerleave: () => clearTimeout(pressTimer),
+          onclick: () => {
+            if (longPressed) return;
+            tryCard(i);
+          },
+        },
+        h('span', { class: 't-cost' }, String(def.cost)),
+        svgEl(icon(CARD_ICON[card], 26), 't-card-icon'),
+        h('b', { class: 't-card-name' }, def.name),
+        h('span', { class: 't-card-eff' }, eff.main),
+        eff.tag ? h('small', { class: 't-card-tag' }, eff.tag) : null,
+        h('kbd', null, String(i + 1)),
+      );
+      handEl.append(btn);
+    });
+  };
+
+  const renderAll = (deal = false) => {
+    renderHud();
+    renderBar();
+    renderHand(deal);
+    renderFoeOverlays();
+    setInfo();
+  };
+
+  // --- Hilfe ---------------------------------------------------------------------------------
+  const showHelp = () => {
+    const box = h(
+      'div',
+      { class: 't-help', role: 'dialog', 'aria-label': 'So geht der Kampf' },
+      h('h2', null, 'So geht der Kampf'),
+      h(
+        'ul',
+        null,
+        h('li', null, h('b', null, 'Karten spielen: '), 'Antippen. Jede Karte kostet Kraft (⚡), pro Runde hast du 3.'),
+        h('li', null, h('b', null, 'Über jedem Gegner '), 'steht, was er als Nächstes tut. Plane danach.'),
+        h('li', null, h('b', null, 'Vorne und hinten: '), 'Schläge treffen nur Gegner vorne. Würfe und Bolzen auch hinten.'),
+        h('li', null, h('b', null, 'Holt einer aus, '), 'kommt ein Wuchtschlag: ausweichen oder wegtreten.'),
+        h('li', null, h('b', null, 'Runde beenden: '), 'Die Gegner handeln, dann ziehst du 4 neue Karten.'),
+        h('li', null, h('b', null, 'Fliehen '), 'geht immer und kostet nichts.'),
+      ),
+      h('button', { class: 'btn wide', type: 'button', onclick: () => box.remove() }, 'Los geht’s'),
+    );
+    el.append(box);
+  };
+
+  // --- Schleife ------------------------------------------------------------------------------
+  let scene: TacticsScene | null = null;
   let raf = 0;
   let last = 0;
-  let acc = 0;
-  let ended = false;
-  const STEP = 1 / 60;
   const loop = (now: number) => {
     raf = requestAnimationFrame(loop);
-    const real = Math.min(0.1, (now - last) / 1000);
+    // Der erste Bild-Zeitstempel kann vor „last“ liegen: nie rückwärts rechnen
+    const dt = Math.max(0, Math.min(0.1, (now - last) / 1000));
     last = now;
     if (!scene) return;
-    let scale = 1;
-    if (stop > 0) {
-      stop -= real;
-      scale = 0;
-    } else if (slow > 0) {
-      slow -= real;
-      scale = 0.3;
-    }
-    const dt = real * scale;
-    acc += dt;
-    let events: BattleEvent[] = [];
-    let first = true;
-    while (acc >= STEP) {
-      acc -= STEP;
-      const ev = stepBattle(battle, STEP, first ? inputs.splice(0) : []);
-      first = false;
-      events = events.concat(ev);
-      if (battle.over) break;
-    }
-    if (first && inputs.length && !battle.over) events = stepBattle(battle, 0, inputs.splice(0));
-    if (events.length) {
-      scene.handle(battle, events);
-      react(events);
-    }
-    scene.sync(battle, now / 1000, real * (scale || 0.0001));
+    scene.update(now / 1000, dt);
     scene.render();
-    renderHud();
-    if (battle.over && !ended) {
-      ended = true;
-      void finish();
-    }
+    renderFoeOverlays();
+    placeFoeOverlays();
   };
 
-  const pointer = (e: PointerEvent) => {
-    if (!scene || battle.over) return;
-    const id = scene.pickFoe(battle, e.clientX, e.clientY);
-    if (id !== null) {
-      queue({ type: 'target', id });
-      hint.hidden = true;
-    }
-  };
-  if (!gestures) stage.addEventListener('pointerdown', pointer);
-  else {
-    // Tippen = Schlag, Halten = Aufladen, Wischen = Ausweichen in diese Richtung
-    let g: { id: number; x: number; y: number; t: number; charging: boolean; done: boolean; timer: number } | null = null;
-    stage.addEventListener('pointerdown', (e) => {
-      if (!scene || battle.over || g) return;
-      stage.setPointerCapture(e.pointerId);
-      const gg = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), charging: false, done: false, timer: 0 };
-      gg.timer = window.setTimeout(() => {
-        if (g === gg && !gg.done) {
-          gg.charging = true;
-          // Zielen auf den Zombie unter dem Finger
-          const id = scene?.pickFoe(battle, gg.x, gg.y);
-          if (id !== null && id !== undefined) queue({ type: 'target', id });
-          queue({ type: 'chargeStart' });
-        }
-      }, 200);
-      g = gg;
-    });
-    stage.addEventListener('pointermove', (e) => {
-      if (!g || e.pointerId !== g.id || g.done || g.charging) return;
-      const dx = e.clientX - g.x;
-      const dy = e.clientY - g.y;
-      if (Math.hypot(dx, dy) > 34 && performance.now() - g.t < 400) {
-        g.done = true;
-        clearTimeout(g.timer);
-        // Bildschirm -> Boden: rechts = +x, unten = +z (die Kamera schaut nach -z)
-        queue({ type: 'ability', ability: 'dodge', dx, dz: dy });
-        hint.hidden = true;
-      }
-    });
-    const up = (e: PointerEvent) => {
-      if (!g || e.pointerId !== g.id) return;
-      clearTimeout(g.timer);
-      if (g.charging) queue({ type: 'chargeRelease' });
-      else if (!g.done && e.type === 'pointerup') {
-        const id = scene?.pickFoe(battle, e.clientX, e.clientY);
-        if (id !== null && id !== undefined) queue({ type: 'target', id });
-        queue({ type: 'attack' });
-        hint.hidden = true;
-      }
-      g = null;
-    };
-    stage.addEventListener('pointerup', up);
-    stage.addEventListener('pointercancel', up);
-  }
-
-  const used = () => battle.usedMedicine;
+  // --- Ende ----------------------------------------------------------------------------------
   const finish = async () => {
-    const outcome = battle.over!;
+    if (ended) return;
+    ended = true;
+    busy = true;
+    renderBar();
+    const outcome = st.over ?? 'fled';
     const banner = h('div', { class: `battle-banner ${outcome}` }, outcome === 'won' ? 'Sieg!' : outcome === 'lost' ? 'Niedergeschlagen' : 'Rückzug');
     el.append(banner);
     if (outcome === 'won') vibrate([30, 40, 60]);
-    const res = await app.backend.dispatch({ type: 'battleResult', outcome, health: healthAfter(battle), kills: battle.kills, usedMedicine: used() });
+    const res = await app.backend.dispatch({ type: 'battleResult', outcome, health: st.hp, kills: st.kills, usedMedicine: st.usedMedicine, wear: st.wear });
     const loot = res.events.find((e) => e.type === 'loot');
     const lost = res.events.find((e) => e.type === 'combatLost');
     const broke = res.events.map((e) => ('weaponBroke' in e ? e.weaponBroke : undefined)).find(Boolean);
-    if (broke) app.toast(`${WEAPONS[broke].name} zerbrochen!`, 'warn');
+    if (broke) app.toast(`${WEAPONS[broke].name} ist zerbrochen. Am Werktisch baust du eine neue.`, 'warn');
     if (outcome === 'lost' && lost?.type === 'combatLost') {
       setTimeout(() => showLost(lost.dropped), 900);
       return;
@@ -390,9 +670,9 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     setTimeout(
       () => {
         close();
-        onEnd({ outcome, spot, enemy: combat.enemy, loot: loot?.type === 'loot' ? loot : undefined, kills: battle.kills });
+        onEnd({ outcome, spot, enemy: combat.enemy, loot: loot?.type === 'loot' ? loot : undefined, kills: st.kills, ambush: combat.ambush });
       },
-      outcome === 'won' ? 1500 : 700,
+      outcome === 'won' ? 1300 : 600,
     );
   };
 
@@ -405,7 +685,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
         h('h2', null, 'Das war knapp.'),
         h('p', null, list.length ? 'Auf der Flucht fallen dir ein paar Sachen aus dem Rucksack:' : 'Du hast nichts verloren.'),
         list.length ? h('ul', { class: 'dropped' }, list.map((k) => h('li', null, svgEl(resIcon(k, 16)), `${dropped[k]} ${RESOURCES[k].name}`))) : null,
-        h('p', { class: 'note' }, 'Deine Gesundheit kommt von selbst zurück, schneller geht es mit Medizin. Tipp: Weich aus, wenn der Kreis hell aufleuchtet.'),
+        h('p', { class: 'note' }, 'Deine Gesundheit kommt von selbst zurück, schneller mit Medizin oder einem Eintopf. Tipp: Schau, was die Gegner vorhaben, und weich dem Wuchtschlag aus.'),
         h(
           'button',
           {
@@ -432,22 +712,33 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
   };
 
   // 3D nachladen und los
+  renderAll(true);
   void import('../../base/CombatScene')
     .then((mod) => {
       if (!el.isConnected) return;
-      scene = new mod.CombatScene(stage, s0.character.look, weapon, phase);
+      scene = new mod.TacticsScene(stage, s0.character.look, weapon, phase);
+      scene.setFoes(shownList(), shownList().map((f) => f.id));
+      try {
+        if (localStorage.getItem('endstation.debug')) {
+          const w = window as unknown as { __cam?: unknown; __scene?: unknown };
+          w.__cam = (p: Record<string, number>) => scene?.tuneCamera(p);
+          w.__scene = () => scene;
+        }
+      } catch {
+        /* egal */
+      }
       loading.remove();
       last = performance.now();
       raf = requestAnimationFrame(loop);
-      const first = battle.foes[0];
-      if (first) say(`${alive(battle).length} Zombies!`, 'bad');
-      setTimeout(() => (hint.hidden = true), 7000);
+      const n = aliveFoes(st).length;
+      say(combat.ambush ? 'Überfall! Zu viel Lärm gemacht.' : n > 1 ? `${n} Gegner!` : `Ein ${FOE_TACTICS[aliveFoes(st)[0].kind].name}!`, 'bad');
+      if (firstFight) showHelp();
     })
     .catch(() => {
       clear(loading);
-      loading.append('Der Kampf konnte nicht geladen werden.', h('button', { class: 'btn small', type: 'button', onclick: () => queue({ type: 'flee' }) }, 'Zurück'));
-      // ohne 3D: sofort zurückziehen
-      battle.over = 'fled';
+      loading.append('Der Kampf konnte nicht geladen werden.');
+      // ohne 3D: zurückziehen
+      flee(st);
       void finish();
     });
 

@@ -293,6 +293,19 @@ const BUILDERS: Record<FurnitureId, (g: THREE.Group) => LightSpec | void> = {
     for (const x of [-0.8, 0.8]) box(g, 0.05, 0.42, 0.4, mat(METAL), x, 0, 0.04);
     box(g, 1.7, 0.05, 0.05, mat(METAL), 0, 0.12, 0.04);
   },
+  radioSet(g) {
+    // Funkgerät auf einem kleinen Tisch, mit Antenne und Kopfhörern
+    for (const x of [-0.26, 0.26]) for (const z of [-0.18, 0.18]) box(g, 0.05, 0.62, 0.05, mat(WOOD_DARK), x, 0, z);
+    box(g, 0.66, 0.05, 0.48, mat(WOOD), 0, 0.62, 0);
+    box(g, 0.48, 0.26, 0.28, mat('#3d4438'), 0, 0.67, -0.04);
+    box(g, 0.44, 0.2, 0.01, mat('#2a2f28'), 0, 0.7, 0.105);
+    for (const x of [-0.13, 0.0]) cyl(g, 0.035, 0.035, 0.03, mat('#c9c3b5'), x, 0.79, 0.11, 10).rotation.x = Math.PI / 2;
+    box(g, 0.12, 0.05, 0.01, glow('#ffb43a'), 0.14, 0.82, 0.112).castShadow = false;
+    cyl(g, 0.008, 0.008, 0.9, mat('#8a8a84'), 0.2, 0.93, -0.12, 5).rotation.z = -0.25;
+    box(g, 0.14, 0.04, 0.1, mat('#1f1f1d'), -0.2, 0.67, 0.18);
+    cyl(g, 0.05, 0.05, 0.03, mat('#2a2826'), 0, 0.68, 0.16, 10);
+    return { color: '#ffb43a', intensity: 1.2, distance: 2.5, y: 0.85 };
+  },
   medCabinet(g) {
     for (const x of [-0.3, 0.3]) box(g, 0.05, 0.5, 0.05, mat(METAL), x, 0, 0);
     box(g, 0.7, 1.1, 0.38, mat('#e8e4dc'), 0, 0.5, 0);

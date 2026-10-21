@@ -122,7 +122,7 @@ export class SimulatedLocation implements LocationProvider {
 
   private step = (t: number) => {
     if (!this.target) return;
-    const dt = Math.min(0.1, (t - this.last) / 1000);
+    const dt = Math.max(0, Math.min(0.1, (t - this.last) / 1000));
     this.last = t;
     const d = distanceM(this.pos, this.target);
     const stepM = this.speed * dt;

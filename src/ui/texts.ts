@@ -27,6 +27,10 @@ export const REJECT_TEXT: Record<RejectReason, string> = {
   no_junk: 'Davon ist nichts im Lager.',
   only_one: 'Davon gibt es nur einen. Aufrüsten statt neu bauen.',
   max_level: 'Schon voll ausgebaut.',
+  not_done: 'Das Ziel ist noch nicht erreicht.',
+  no_radio: 'Dafür brauchst du ein Funkgerät in deiner Endstation.',
+  radio_quiet: 'Auf Kanal 4 rauscht es nur. Später nochmal reinhören.',
+  no_stove: 'Dafür brauchst du einen Holzofen in deiner Endstation.',
 };
 
 /** Fundstellen in der Mehrzahl, für Hinweise wie "Zu finden in: Autos, Packstationen". */

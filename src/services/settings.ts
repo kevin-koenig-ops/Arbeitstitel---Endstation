@@ -17,8 +17,8 @@ export interface Settings {
   testWeather: 'auto' | WeatherKind;
   /** Wie die Figur läuft: Antippen (wie bei Die Sims) oder Joystick mit Benutzen-Taste. */
   control: 'tap' | 'joystick';
-  /** Kampf: Tasten (Figur schlägt selbst zu) oder Gesten (tippen, halten, wischen wie bei Monster Hunter) */
-  combatControl: 'buttons' | 'gestures';
+  /** Beim Durchsuchen ein kurzes Geschicklichkeitsspiel (aus = immer „gut“). */
+  lootGames: 'on' | 'off';
   /** Am Handy ins Vollbild wechseln und das Querformat festhalten (wo möglich). */
   fullscreen: boolean;
   /** Grafikstil: kantige Polygone oder Comic (Cel-Shading mit Umrissen). */
@@ -29,7 +29,7 @@ export interface Settings {
 
 const KEY = 'endstation.settings';
 
-const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', control: 'tap', combatControl: 'buttons', fullscreen: true, graphics: 'poly' } as const;
+const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', control: 'tap', lootGames: 'on', fullscreen: true, graphics: 'poly' } as const;
 const DEFAULTS: Settings = IS_PREVIEW ? { ...COMMON, map: 'demo', location: 'sim' } : { ...COMMON, map: 'real', location: 'gps' };
 
 export class SettingsStore {

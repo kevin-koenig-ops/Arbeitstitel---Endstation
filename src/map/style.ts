@@ -123,6 +123,10 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
     { id: 'range-fill', type: 'fill', source: 'range', paint: { 'fill-color': '#ffb22e', 'fill-opacity': 0.08 } },
     { id: 'range-line', type: 'line', source: 'range', paint: { 'line-color': '#ffb22e', 'line-width': 2, 'line-opacity': 0.8, 'line-dasharray': [2, 2] } },
 
+    // Suchkreise von Verstecken: wie mit Kreide auf den Boden gemalt
+    { id: 'cache-fill', type: 'fill', source: 'caches', paint: { 'fill-color': '#e8dec8', 'fill-opacity': 0.07 } },
+    { id: 'cache-line', type: 'line', source: 'caches', paint: { 'line-color': '#e8dec8', 'line-width': 2.5, 'line-opacity': 0.75, 'line-dasharray': [1, 2.2] } },
+
     // Warmes Leuchten am Boden unter Fundstellen
     {
       id: 'spot-glow',
@@ -133,8 +137,8 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
         'circle-pitch-scale': 'map',
         'circle-blur': 1,
         'circle-radius': ['interpolate', ['exponential', 2], ['zoom'], 15, 7, 17, 26, 19, 100],
-        'circle-color': ['case', ['==', ['get', 'g'], 1], '#d9482b', ['==', ['get', 's'], 'inrange'], '#ffd27a', ['==', ['get', 'src'], 'poi'], '#f1e2bd', '#ffb22e'],
-        'circle-opacity': ['match', ['get', 's'], 'cooldown', 0, 'inrange', 0.75, 0.5],
+        'circle-color': ['case', ['==', ['get', 'c'], 1], '#ffe070', ['==', ['get', 'g'], 1], '#d9482b', ['==', ['get', 's'], 'inrange'], '#ffd27a', ['==', ['get', 'src'], 'poi'], '#f1e2bd', '#ffb22e'],
+        'circle-opacity': ['case', ['==', ['get', 's'], 'cooldown'], 0, ['==', ['get', 'c'], 1], 0.9, ['==', ['get', 's'], 'inrange'], 0.75, 0.5],
       },
     },
 
@@ -216,7 +220,7 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
   }
 
   const empty: SourceSpecification = { type: 'geojson', data: { type: 'FeatureCollection', features: [] } };
-  const sources: Record<string, SourceSpecification> = { range: empty, decor: { ...empty }, glow: { ...empty } };
+  const sources: Record<string, SourceSpecification> = { range: empty, decor: { ...empty }, glow: { ...empty }, caches: { ...empty } };
   if (mode === 'real' && real) sources.omt = real.source;
 
   const style: StyleSpecification = {

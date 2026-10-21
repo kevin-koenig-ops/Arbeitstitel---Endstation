@@ -2,9 +2,9 @@
 // und deine Ausrüstung (Gesundheit, Waffen).
 
 import {
+  CARDS,
   COLLECTIBLE_ORDER,
   COLLECTIBLES,
-  FIST_DAMAGE,
   HEAL_AMOUNT,
   KRAM,
   KRAM_ORDER,
@@ -16,9 +16,12 @@ import {
   SETS,
   SPOT_KINDS,
   SURVIVAL_ORDER,
+  WEAPON_CARDS,
   WEAPON_ORDER,
   WEAPONS,
+  type CardId,
 } from '../../core/content';
+import { deckFor } from '../../core/tactics';
 import { blueprintName } from '../../core/building';
 import { bestWeapon, collectiblePlaced, currentHealth, dayNumber, kramCount, nextHealthIn, packCount } from '../../core/rules';
 import type { CollectibleId, KramId, SpotKind } from '../../core/types';
@@ -234,13 +237,16 @@ export function openPackPanel(app: App, host: HTMLElement, onClose: () => void, 
                 'li',
                 { class: 'weapon' + (w === best ? ' active' : '') },
                 h('span', { class: 'mod-name' }, WEAPONS[w.kind].name),
-                h('span', { class: 'weapon-dmg' }, `Schaden ${WEAPONS[w.kind].dmg}`),
-                h('span', { class: 'dur' }, h('span', { style: `width:${(w.dur / WEAPONS[w.kind].dur) * 100}%` })),
-                h('span', { class: 'weapon-left' }, w === best ? `in der Hand · ${w.dur} Schläge` : `${w.dur} Schläge`),
+                h('span', { class: 'weapon-dmg' }, cardLine(WEAPON_CARDS[w.kind])),
+                h('span', { class: 'dur' }, h('span', { style: `width:${Math.min(100, (w.dur / WEAPONS[w.kind].dur) * 100)}%` })),
+                h('span', { class: 'weapon-left' }, w === best ? `in der Hand · hält noch ${w.dur} Einsätze` : `hält noch ${w.dur} Einsätze`),
               ),
             ),
           )
-        : h('p', { class: 'mod-desc' }, `Keine Waffe. Du kämpfst mit den Fäusten (Schaden ${FIST_DAMAGE}).`),
+        : h('p', { class: 'mod-desc' }, 'Keine Waffe. Du kämpfst mit Fäusten, Tritten und Steinen.'),
+      h('h3', { class: 'gear-head' }, 'Deine Karten im Kampf'),
+      h('p', { class: 'mod-desc' }, cardLine(deckFor(s.weapons, s.inventory.medicine))),
+      h('p', { class: 'mod-desc small' }, 'Jede Waffe bringt eigene Karten mit, jede gespielte Waffenkarte nutzt die Waffe ein bisschen ab. Verbinden-Karten gibt es, solange du Medizin dabeihast.'),
       h(
         'p',
         { class: 'stock-lager' },
@@ -274,3 +280,10 @@ export function openPackPanel(app: App, host: HTMLElement, onClose: () => void, 
 }
 
 export { itemsLine };
+
+/** „3× Hebelhieb, 2× Ausweichen …“ */
+function cardLine(cards: CardId[]): string {
+  const n = new Map<CardId, number>();
+  for (const c of cards) n.set(c, (n.get(c) ?? 0) + 1);
+  return [...n].map(([c, k]) => `${k}× ${CARDS[c].name}`).join(', ');
+}

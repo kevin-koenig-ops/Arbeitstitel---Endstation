@@ -181,7 +181,7 @@ export class FigureView {
     const loop = (now: number) => {
       if (!this.running) return;
       this.raf = requestAnimationFrame(loop);
-      const dt = Math.min(0.1, (now - this.last) / 1000);
+      const dt = Math.max(0, Math.min(0.1, (now - this.last) / 1000));
       this.last = now;
       // Auf der Karte reichen wenige Bilder pro Sekunde, das schont den Akku
       const fps = this.opts.mode === 'marker' ? (this.moving > 0 ? 24 : 12) : 40;

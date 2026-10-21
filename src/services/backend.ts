@@ -9,7 +9,7 @@
 //                            Datenbank hält. Die Oberfläche bleibt unverändert.
 
 import { distanceM } from '../core/geo';
-import { applyAction, createPlayer, guardOf } from '../core/rules';
+import { applyAction, cartOf, createPlayer, guardOf } from '../core/rules';
 import { migrate } from '../core/save';
 import type { Action, ActionResult, Character, EnemyId, LatLon, PlayerState, Spot } from '../core/types';
 import { gridSpotsAround, poiSpots, type PoiCandidate } from '../core/world';
@@ -28,12 +28,17 @@ export interface GameBackend {
   spotsNear(center: LatLon, radiusM: number, pois: PoiCandidate[]): Promise<Spot[]>;
   /** Wer bewacht diese Fundstelle gerade? Im Mehrspieler weiß das der Server. */
   guardFor(spot: Spot): EnemyId | null;
+  /** Steht hier gerade eine Händlerkiste (und bis wann)? */
+  cartFor(spot: Spot): { until: number } | null;
+  /** Wo nichts liegen darf (aus den Kartendaten); gilt für neue Verstecke. */
+  setPlaceFilter(fn: ((p: LatLon) => boolean) | null): void;
   now(): number;
 }
 
 export class LocalBackend implements GameBackend {
   readonly kind = 'local' as const;
   private state: PlayerState | null = null;
+  private placeFilter: ((p: LatLon) => boolean) | null = null;
 
   constructor(
     private auth: AuthProvider,
@@ -64,7 +69,7 @@ export class LocalBackend implements GameBackend {
 
   async dispatch(action: Action): Promise<ActionResult> {
     if (!this.state) throw new Error('Kein Spielstand geladen');
-    const result = applyAction(this.state, action, { now: this.clock(), worldSeed: this.worldSeed });
+    const result = applyAction(this.state, action, { now: this.clock(), worldSeed: this.worldSeed, blocked: this.placeFilter ?? undefined });
     if (result.state !== this.state) {
       this.state = result.state;
       writeJson(await this.key(), this.state);
@@ -83,6 +88,14 @@ export class LocalBackend implements GameBackend {
 
   guardFor(spot: Spot) {
     return guardOf(this.worldSeed, spot, this.clock());
+  }
+
+  setPlaceFilter(fn: ((p: LatLon) => boolean) | null) {
+    this.placeFilter = fn;
+  }
+
+  cartFor(spot: Spot) {
+    return cartOf(this.worldSeed, spot, this.clock());
   }
 
   async spotsNear(center: LatLon, radiusM: number, pois: PoiCandidate[]) {

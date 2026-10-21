@@ -20,8 +20,16 @@ let current: Ambience = { phase: 'day', weather: 'clear', tempC: null, forced: f
 /** Für Kampf und Karte: aktuelle Stimmung lesen. */
 export const currentAmbience = () => current;
 
-/** Zombies sind bei Regen und Schnee träge: sie laufen langsamer und holen länger aus. */
-export const timingFactor = () => (['rain', 'storm', 'snow'].includes(current.weather) ? 0.85 : 1);
+/**
+ * Wie stark sind die Wandler gerade? (Lore: stärker bei Nebel, Regen und nachts, träge in praller Sonne.)
+ * Wirkt im Kampf auf ihre Gesundheit. Im Testmodus (nur Optik) ohne Wirkung.
+ */
+export const walkerMood = (): 'strong' | 'weak' | null => {
+  if (current.forced) return null;
+  if (current.phase === 'night' || ['fog', 'rain', 'storm'].includes(current.weather)) return 'strong';
+  if (current.phase === 'day' && current.weather === 'clear') return 'weak';
+  return null;
+};
 /** Bei Nebel sieht man Wächter erst aus der Nähe. */
 export const guardSightM = () => (current.weather === 'fog' ? 150 : Infinity);
 
@@ -39,11 +47,13 @@ export function ambienceEffects(a: Ambience): string {
   const parts: string[] = [];
   if (a.phase === 'night') parts.push('Nacht: mehr Wächter, dafür 30 % mehr Beute.');
   if (a.phase === 'dusk') parts.push('Dämmerung: Bald wird es Nacht, dann gibt es mehr Beute und mehr Gefahr.');
-  if (a.weather === 'rain') parts.push('Regen: Zombies sind träge, Ausweichen ist leichter.');
-  if (a.weather === 'storm') parts.push('Gewitter: Zombies sind träge. Und such dir in echt einen Unterschlupf.');
-  if (a.weather === 'snow') parts.push('Schnee: Alles ist still, Zombies sind langsamer.');
+  if (a.phase === 'night' || ['fog', 'rain', 'storm'].includes(a.weather)) parts.push('Wandler sind jetzt zäher.');
+  if (a.weather === 'rain') parts.push('Regen: Wandler mögen das.');
+  if (a.weather === 'storm') parts.push('Gewitter: Such dir in echt einen Unterschlupf.');
+  if (a.weather === 'snow') parts.push('Schnee: Alles ist still.');
   if (a.weather === 'fog') parts.push('Nebel: Wächter siehst du erst aus der Nähe.');
-  if (!parts.length) parts.push('Klare Sicht. Ein guter Tag zum Plündern.');
+  if (a.phase === 'day' && a.weather === 'clear') parts.push('Pralle Sonne: Wandler sind träge. Ein guter Tag zum Plündern.');
+  if (!parts.length) parts.push('Klare Sicht.');
   if (a.forced) parts.push('(Testmodus: nur Optik)');
   return parts.join(' ');
 }

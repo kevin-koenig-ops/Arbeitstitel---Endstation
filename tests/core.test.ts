@@ -3,7 +3,7 @@ import { emptyInventory } from '../src/core/content';
 import { distanceM, offsetM } from '../src/core/geo';
 import { activePlot, applyAction, createPlayer, currentHealth, guardOf, pendingHarvest, placementProblem, readyAt, searchRangeM } from '../src/core/rules';
 import { migrate } from '../src/core/save';
-import type { Character, PlayerState, Spot } from '../src/core/types';
+import type { Character, PlayerState, Spot, WeaponId } from '../src/core/types';
 import { classifyPoi, gridSpotsAround, poiSpots, resolveGridSpot } from '../src/core/world';
 
 const SEED = 'test-seed';
@@ -162,13 +162,16 @@ describe('Spielstand', () => {
     void health, healthAt, weapons, combat;
     const old = { ...v1, schema: 1, stats: { searches: 7 } };
     const m = migrate(JSON.parse(JSON.stringify(old)))!;
-    expect(m.schema).toBe(8);
+    expect(m.schema).toBe(9);
     expect(m.base).toEqual({ active: null, plots: {}, found: {} });
     expect(m.explored).toEqual({});
     expect(m.health).toBe(10);
     expect(m.weapons[0].kind).toBe('crowbar');
     expect(m.combat).toBeNull();
-    expect(m.stats).toEqual({ searches: 7, kills: 0 });
+    expect(m.stats).toEqual({ searches: 7, kills: 0, unpacks: 0, dismantled: 0, crafted: 0, caches: 0, cooked: 0 });
+    expect(m.caches).toEqual([]);
+    expect(m.dig).toBeNull();
+    expect(m.seen).toEqual([]);
   });
 });
 
@@ -179,8 +182,8 @@ describe('Kampf', () => {
       return g && (!enemy || g === enemy);
     })!;
   const engage = (state: PlayerState, s: Spot, now = T0) => applyAction(state, { type: 'engage', spot: s, at: s.pos, accuracyM: 5 }, ctx(now));
-  const hit = (state: PlayerState, quality: 'miss' | 'good' | 'perfect' = 'good', move: 'strike' | 'dodge' | 'distract' | 'heal' | 'flee' = 'strike') =>
-    applyAction(state, { type: 'fight', move, quality }, ctx());
+  const result = (state: PlayerState, outcome: 'won' | 'lost' | 'fled', o: { health?: number; kills?: number; wear?: Partial<Record<WeaponId, number>> } = {}) =>
+    applyAction(state, { type: 'battleResult', outcome, health: o.health ?? state.health, kills: o.kills ?? 1, usedMedicine: 0, wear: o.wear }, ctx());
 
   it('bewachte Fundstellen kann man nicht einfach durchsuchen', () => {
     const s = guarded();
@@ -189,51 +192,46 @@ describe('Kampf', () => {
     expect(engage(fresh(), free).events[0]).toEqual({ type: 'rejected', reason: 'not_guarded' });
   });
 
-  it('gewinnt einen Kampf und bekommt mehr Beute', () => {
-    const s = guarded('walker');
-    let st = engage(fresh(), s).state;
-    expect(st.combat?.enemyHp).toBe(4);
-    let events: ReturnType<typeof hit>['events'] = [];
-    for (let i = 0; i < 6 && st.combat; i++) ({ state: st, events } = hit(st, 'perfect'));
-    expect(st.combat).toBeNull();
-    expect(events.map((e) => e.type)).toEqual(['round', 'combatWon', 'loot']);
-    expect(st.stats.kills).toBe(1);
-    expect(readyAt(st, s)).toBeGreaterThan(T0);
-    expect(st.weapons[0].dur).toBeLessThan(14);
+  it('eine Wache bringt immer dieselbe Gruppe mit', () => {
+    const s = guarded();
+    const a = engage(fresh(), s).state.combat!;
+    const b = engage(fresh(), s).state.combat!;
+    expect(a.group).toEqual(b.group);
+    expect(a.group[0]).toBe(a.enemy);
+    expect(a.group.length).toBeLessThanOrEqual(3);
   });
 
-  it('Ausweichen schützt, Ablenken kostet Metall und betäubt', () => {
-    const s = guarded();
+  it('gewinnt einen Kampf, bekommt mehr Beute und darf danach wühlen', () => {
+    const s = guarded('walker');
     const st = engage(fresh(), s).state;
-    const d = hit(st, 'perfect', 'dodge');
-    const dr = d.events[0];
-    expect(dr.type === 'round' && dr.taken).toBe(0);
-    expect(d.state.combat?.opening).toBe(true);
-    const x = hit(st, 'good', 'distract');
-    const xr = x.events[0];
-    expect(xr.type === 'round' && xr.stunned && xr.taken === 0).toBe(true);
-    expect(x.state.inventory.metal).toBe(st.inventory.metal - 1);
+    const w = st.weapons[0];
+    const r = result(st, 'won', { kills: 2, wear: { [w.kind]: 3 } });
+    expect(r.state.combat).toBeNull();
+    expect(r.events.map((e) => e.type).slice(0, 2)).toEqual(['combatWon', 'loot']);
+    expect(r.state.stats.kills).toBe(2);
+    expect(readyAt(r.state, s)).toBeGreaterThan(T0);
+    expect(r.state.weapons[0].dur).toBe(w.dur - 3);
+    expect(r.state.dig?.spot.id).toBe(s.id);
   });
 
   it('verliert man, fällt nur etwas aus dem Rucksack, und die Gesundheit kommt zurück', () => {
     const s = guarded('brute');
-    let st: PlayerState = { ...fresh(), health: 2, weapons: [] };
+    let st: PlayerState = { ...fresh(), health: 2, pack: { metal: 4, cloth: 4 } };
     st = engage(st, s).state;
-    let events: ReturnType<typeof hit>['events'] = [];
-    for (let i = 0; i < 10 && st.combat; i++) ({ state: st, events } = hit(st, 'miss'));
-    const lost = events.find((e) => e.type === 'combatLost');
-    expect(lost).toBeDefined();
-    expect(st.health).toBe(0);
-    expect(engage(st, s).events[0]).toEqual({ type: 'rejected', reason: 'exhausted' });
-    expect(currentHealth(st, T0 + 3 * HOUR)).toBe(9);
+    const r = result(st, 'lost', { health: 0 });
+    expect(r.events[0].type).toBe('combatLost');
+    expect(r.state.health).toBe(0);
+    expect(engage(r.state, s).events[0]).toEqual({ type: 'rejected', reason: 'exhausted' });
+    expect(currentHealth(r.state, T0 + 3 * HOUR)).toBe(9);
   });
 
   it('Fliehen geht immer und kostet nichts', () => {
     const s = guarded();
     const st = engage(fresh(), s).state;
-    const f = hit(st, 'miss', 'flee');
-    expect(f.events).toEqual([{ type: 'fled' }]);
+    const f = result(st, 'fled');
+    expect(f.events).toEqual([{ type: 'fled', weaponBroke: undefined }]);
     expect(f.state.inventory).toEqual(fresh().inventory);
+    expect(f.state.weapons).toEqual(fresh().weapons);
     expect(f.state.combat).toBeNull();
   });
 

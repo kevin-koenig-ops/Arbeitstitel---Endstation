@@ -1,6 +1,8 @@
 // Kleine Bausteine für Rohstoffe, Kram und Sammelstücke (Kosten-Chips, Zeilen, Vorschaubilder).
 
-import { KRAM, RESOURCE_ORDER, RESOURCES } from '../../core/content';
+import { isMaterial, KRAM, RESOURCE_ORDER, RESOURCES } from '../../core/content';
+import { whereToFind } from '../../core/rules';
+import { SPOT_PLURAL } from '../texts';
 import type { FurnitureId } from '../../core/furniture';
 import type { Inventory, KramId } from '../../core/types';
 import { clear, h, svgEl } from '../dom';
@@ -35,6 +37,19 @@ export function thingThumb(id: KramId | FurnitureId, size = 48, silhouette = fal
 /** Was im Kram steckt (wie bei Fallout: vor dem Zerlegen sichtbar). */
 export function partsChips(id: KramId) {
   return costChips(KRAM[id].parts);
+}
+
+/** „Dir fehlen 2 Glas. Glas gibt es oft in Autos und Packstationen.“ */
+export function missingText(cost: Partial<Inventory>, have: Inventory): string {
+  const miss = RESOURCE_ORDER.filter((r) => (cost[r] ?? 0) > have[r]);
+  if (!miss.length) return '';
+  const list = miss.map((r) => `${(cost[r] ?? 0) - have[r]} ${RESOURCES[r].name}`).join(', ');
+  const r = miss.find((x) => isMaterial(x)) ?? miss[0];
+  const places = whereToFind(r)
+    .map((k) => SPOT_PLURAL[k])
+    .filter(Boolean)
+    .slice(0, 2);
+  return `Dir fehlen ${list}.${places.length ? ` ${RESOURCES[r].name} gibt es oft in ${places.join(' und ')}.` : ''}`;
 }
 
 export function itemsLine(items: Partial<Inventory>) {

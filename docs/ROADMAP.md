@@ -4,17 +4,12 @@ Alle geplanten Features an einer Stelle: erst was für Version 1.0 noch fehlt, d
 
 ## Version 1.0: was noch fehlt
 
-Version 1.0 ist fertig, wenn der ganze Kreislauf ohne Lücken läuft: rausgehen, finden, heimkommen, auspacken, bauen. **Schwerpunkt seit 21.10.: erst ein rundes Kern-Gameplay, danach neue Features.** Pakete 1–3 (Bus raus, Rucksack und Lager, Fundbuch) sind erledigt.
+Version 1.0 ist fertig, wenn der ganze Kreislauf ohne Lücken läuft: rausgehen, finden, heimkommen, auspacken, bauen. **Schwerpunkt seit 21.10.: erst ein rundes Kern-Gameplay, danach neue Features.** Pakete 1–9 (Bus raus bis Balancing) sind erledigt, siehe unten.
 
-4. **Progress-Gerüst:** Die Stufen der Endstation schalten wirklich etwas frei. Eine Zielleiste zeigt immer 2–3 nächste Ziele mit kleiner Belohnung. Der Streifer-Ruf wird zum Rang.
-5. **Looten neu:** kurze Mini-Spiele je nach Fundort (Schloss knacken, wühlen, hebeln), „Weiter wühlen?“ mit Lärm und Risiko, Seltenheitsfarben und Beute, die sichtbar in den Rucksack fliegt.
-6. **Kampf neu als kurze Taktik:** Gegner zeigen an, was sie vorhaben, du spielst pro Runde Aktionen aus deiner Ausrüstung (Karten). Gebaute Waffen werden neue Karten. Gegner wie in der Lore: Wandler, Kriecher, Borkenmann, Heuler.
-7. **Draußen beleben:** Erstfund-Bonus, Versorgungsabwürfe für ein paar Stunden, Verstecke über Hinweise (heiß und kalt). Die Endstation sagt, was fehlt und wo es das gibt.
-8. **Basenbau-Feinschliff und Anlagen mit Nutzen:** Holzofen (Eintopf: Nahrung und Gesundheit), Sanitätsschrank (Medizin), Funkgerät (Hinweise auf Verstecke). Regentonne und Hochbeet laufen schon.
-9. **Balancing:** den Fluss der Rohstoffe im Code durchrechnen (wie lange bis zum ersten Haus, zur Stufe „Zuhause“, zur Armbrust) und die Zahlen abstimmen.
 10. **Einstieg:** die ersten 10 Minuten geführt, über die Zielleiste.
 11. **Klang:** Geräusche für Fund, Bauen, Kampf und Heimkehr.
 12. **Draußen-Test und Fehlerrunde:** eine Woche echt spielen, dann alles Hakelige reparieren. Dazu der Taschenmodus: Bildschirm schwarz, GPS läuft weiter, Vibration bei Fundstellen.
+13. **Feinschliff nach dem Test:** Zahlen für Beute, Kämpfe und Stufen anhand echter Spielrunden nachstellen (das Rechenmodell dafür gibt es schon).
 
 **Entschieden:** Kampf als kurze Taktik mit Karten statt Echtzeit. **Noch offen:** Grafikstil (Polygon, Comic, Gemalt oder 2D mit gemalten Bildern), Endziel (Vorschlag aus der Lore: „Die Linie 0 fährt wieder“, mit deinen Leuten zur Küste).
 
@@ -22,14 +17,13 @@ Version 1.0 ist fertig, wenn der ganze Kreislauf ohne Lücken läuft: rausgehen,
 
 - **Überlebende ziehen ein:** Menschen mit Name, Geschichte und Fähigkeit wohnen sichtbar in der Endstation, wünschen sich Möbel und geben kleine Aufträge. Gut versorgt helfen sie mehr; niemand stirbt, wenn du mal nicht spielst.
 - **Quests mit Witcher-Anspruch:** wenige, aber gute Aufträge, die in Stadt und Dorf funktionieren, gern mit echten Straßennamen („Bring Medizin aus der Apotheke in der Bahnhofstraße zum Stadtpark“).
-- **Funk:** Aufträge zu echten Orten in der Nähe, dazu Nachrichten, die das Funkgerät erst nach gelaufenen Kilometern entschlüsselt.
+- **Funk ausbauen:** Aufträge zu echten Orten in der Nähe, dazu Nachrichten, die das Funkgerät erst nach gelaufenen Kilometern entschlüsselt (das Funkgerät mit Funksprüchen und Versteck-Hinweisen gibt es schon).
 - **Geschichte in Häppchen:** Erinnerungsstücke werden zu zusammenhängenden Kapiteln, dazu Laborzettel, Archivnotizen und Funksprüche aus der Lore. Die Biologie wird nie erklärt.
 - **Hund als Begleiter:** erschnüffelt draußen Verstecke, schläft zu Hause am Lagerfeuer.
-- **Vom Neuling zum Streifer:** Wer oft genug lebend heimkommt, wird Streifer (ein Ruf statt Level).
 
 ## Version 1.2: Kampf und Gefahr
 
-- **Kampf gründlich überarbeiten:** Steuerung, Gefühl, Treffer-Feedback; kurze Kämpfe, nur im Stehen.
+- **Mehr Karten und Gegner:** neue Waffenkarten (z. B. Feuer gegen Borkenmänner), seltene Karten als Fund, Gegner-Varianten.
 - **Mehr Kreaturen aus der Lore:** Varianten von Wandlern und Heulern, Wurzelnester, die man ausbrennt.
 - **Rote Zonen:** erfundene Orte (Bunker, Tunnel, verschlossene Hallen), nur mit Atemschutz und nur kurz, dafür seltene Beute.
 - **Schusswaffen:** Pistole, Schrotflinte, Gewehr als seltene Funde. Munition ist knapp, Schüsse sind laut und locken Gegner an.
@@ -61,8 +55,8 @@ Version 1.0 ist fertig, wenn der ganze Kreislauf ohne Lücken läuft: rausgehen,
 
 ## Vor einem öffentlichen Start (Pflicht)
 
-- **Sensible Orte ausschließen:** keine Fundstellen und keine Roten Zonen auf Friedhöfen, Gedenkstätten, Krankenhäusern, Schulen, Kitas und Privatgrundstücken (OSM-Flächen prüfen, Abstand halten).
-- **Kämpfe nur im Stehen:** Wer läuft, dessen Kampf pausiert (GPS-Geschwindigkeit). Niemand soll sich beim Spielen verletzen.
+- **Sensible Orte ausschließen:** erste Fassung steht (keine Fundstellen und Verstecke auf Friedhöfen, Krankenhäusern, Schulen, Kitas, Kirchen und Gedenkstätten, erfundene Fundstellen nicht in Gebäuden). Noch offen: dasselbe auf dem Server prüfen, Gärten und Höfe besser erkennen, Rote Zonen.
+- **Kämpfe nur im Stehen:** Durch die Runden ohne Zeitdruck schon entschärft. Noch offen: Wer läuft, dessen Kampf pausiert (GPS-Geschwindigkeit). Niemand soll sich beim Spielen verletzen.
 
 ## Technik nebenher
 
@@ -185,3 +179,15 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - Dritter Grafikstil zum Vergleichen: weiche, abgerundete Formen, Oberflächen mit Pinselstruktur (Holz, Stein, Rost, Gras, Laub), feine braune Linien, weiche Schatten in Ecken, Leuchten um Feuer und Lampen, warmes Licht
 - Gilt für Endstation, Kampf, Figur und Vorschaubilder; die Karte bekommt nur einen wärmeren Farbton
 - **Testen:** Polygon, Comic oder Gemalt? Läuft „Gemalt“ am Handy flüssig? Wenn ja: als Nächstes detailliertere Modelle (Ruinen ringsum, Efeu, Fensterrahmen, rundere Figur)
+
+### ✅ Version 1.0, Paket 4–9: rundes Kern-Gameplay
+
+- **Fortschritt:** Zielleiste auf der Karte mit Belohnungen zum Abholen (26 Ziele, führen durch den Einstieg), Fortschritts-Fenster (Ziele, Stufe der Endstation, Ruf). Jede Gemütlichkeits-Stufe bringt einen Vorteil (schnellere Erholung, Werktisch-Platz, Suchradius, Glück, mehr Beute). Streifer-Rang von Neuling bis Legende.
+- **Looten:** drei kurze Geschicklichkeitsspiele je nach Fundort (Schloss knacken, Aufhebeln, Durchwühlen), Ergebnis daneben/gut/perfekt verändert die Beute; in den Einstellungen abschaltbar. Erstfund ×2 (grüner Punkt auf der Karte). „Weiter wühlen“ bis zu dreimal, mit Lärm-Anzeige und Überfall-Risiko. Seltenheitsfarben, Marken auf dem Fundbeleg, Funde fliegen in den Rucksack.
+- **Kampf als Karten-Taktik:** Seitenansicht, Gegner zeigen ihre Absicht, 3 Kraft pro Runde, 4 Karten auf der Hand, vorne und hinten, Wegtreten unterbricht Ausholen, Waffen bringen eigene Karten und nutzen sich pro Einsatz ab. Gegner aus der Lore: Wandler, Kriecher, Borkenmann (mit Rinde), Heuler (ruft Wandler). Gruppen je nach Ort und Tageszeit.
+- **Draußen:** Händlerkisten für zwei Stunden (×2,5 Beute), Verstecke über Kreidezeichen und Funksprüche mit Suchkreis und „kalt, warm, heiß“. Keine Fundstellen an sensiblen Orten.
+- **Anlagen:** Holzofen (Eintopf: heilt ganz, 3 Stunden mehr Beute), Sanitätsschrank (Medizin), Funkgerät (Funksprüche aus der Lore, Hinweise auf Verstecke). Die Endstation sagt, was fehlt und wo es das gibt.
+- **Balancing:** Rechenmodell über 14 Tage; Holz häufiger, Metall und Vorräte etwas knapper; Kampf-Zahlen mit simulierten Kämpfen abgestimmt.
+- Spielstand Version 9
+
+**Testen:** Machen die Minispiele Spaß oder nerven sie? Ist der Kampf verständlich? Lohnt sich das Weiterwühlen? Findet man Verstecke mit „warm und kalt“?

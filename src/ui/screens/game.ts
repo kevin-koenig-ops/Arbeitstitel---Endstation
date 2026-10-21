@@ -1,11 +1,12 @@
 // Der Spielbildschirm: Karte, Standort, Fundstellen, HUD und Overlays.
 
 import { FALLBACK_START, IS_PREVIEW, VIEW_RADIUS_M } from '../../config';
-import { ENEMIES, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, SURVIVAL_ORDER } from '../../core/content';
+import { CACHE, ENEMIES, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, SURVIVAL_ORDER } from '../../core/content';
 import { ExploredView, SECTOR_LEVELS, sectorOf } from '../../core/explore';
-import { bearingDeg, distanceM } from '../../core/geo';
-import { currentHealth, dayNumber, packCount, pendingHarvest, readyAt, readyParts, searchRangeM } from '../../core/rules';
-import type { LatLon, Resource, Spot } from '../../core/types';
+import { bearingDeg, distanceM, formatDistance } from '../../core/geo';
+import { rankOf } from '../../core/progress';
+import { currentHealth, dayNumber, packCount, pendingHarvest, readyAt, readyParts, searchRangeM, spotKey } from '../../core/rules';
+import type { Cache, LatLon, Resource, Spot } from '../../core/types';
 import { DEMO, GameMap, type SpotView } from '../../map/GameMap';
 import {
   AnchoredLocation,
@@ -26,6 +27,7 @@ import { openBattle } from '../game/battle';
 import { AmbienceController, ambienceEffects, currentAmbience, guardSightM, PHASE_NAMES, WEATHER_NAMES, type Ambience } from '../game/ambience';
 import { Particles } from '../game/dust';
 import { SpotSheet } from '../game/spotSheet';
+import { goalChip, openProgressPanel } from '../game/progressPanel';
 import { icon } from '../icons';
 import { settingsPanel } from '../settingsPanel';
 import { REJECT_TEXT } from '../texts';
@@ -108,6 +110,9 @@ export function gameScreen(app: App): Screen {
   let ambience: AmbienceController | null = null;
   const sectorChip = h('button', { class: 'env-chip sector-chip', type: 'button', onclick: () => explainSector() });
   const envChip = h('button', { class: 'env-chip', type: 'button', onclick: () => app.toast(ambienceEffects(currentAmbience())) });
+  const goals = goalChip(app, () => openProgress());
+  // Versteck in der Nähe: kalt, warm, heiß (und dann ausgraben)
+  const cacheChip = h('button', { class: 'env-chip cache-chip', type: 'button', hidden: true });
   const overlayHost = h('div', { class: 'overlay-host' });
   const sheetHost = h('div', { class: 'sheet-host' });
 
@@ -148,7 +153,7 @@ export function gameScreen(app: App): Screen {
       ),
       resBar,
       h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Pause', onclick: () => openPause() }, svgEl(icon('menu'))),
-      h('div', { class: 'hud-chips' }, sectorChip, envChip),
+      h('div', { class: 'hud-chips' }, goals.el, sectorChip, envChip, cacheChip),
     ),
     banners,
     h(
@@ -171,6 +176,14 @@ export function gameScreen(app: App): Screen {
   let lastSheetRefresh = 0;
   let lastNotify = 0;
   const notified = new Set<string>();
+  const notifiedCarts = new Set<string>();
+  const cartNews: Spot[] = [];
+  // Erstfund: Die Kurz-Kennungen der schon besuchten Fundstellen (wie im Regelwerk)
+  let seenCache: { list: number[]; set: Set<number> } | null = null;
+  const seenSet = (st: { seen: number[] }) => {
+    if (!seenCache || seenCache.list !== st.seen) seenCache = { list: st.seen, set: new Set(st.seen) };
+    return seenCache.set;
+  };
   let ticker = 0;
   let overlay: HTMLElement | null = null;
   let destroyed = false;
@@ -184,6 +197,8 @@ export function gameScreen(app: App): Screen {
     isSim: () => provider?.kind === 'sim',
     walkTo: (p) => walkTo(p),
     onFight: (spot) => startFight(spot),
+    onAmbush: () => openFight(),
+    flyTarget: () => chips.pack.el,
     onChanged: () => {
       renderHud();
       updateSpots();
@@ -201,7 +216,8 @@ export function gameScreen(app: App): Screen {
   const renderHud = () => {
     const s = app.backend.current();
     if (!s) return;
-    dayEl.textContent = `Tag ${dayNumber(s, app.backend.now())}`;
+    dayEl.textContent = `${rankOf(s).name} · Tag ${dayNumber(s, app.backend.now())}`;
+    goals.render();
     const hp = currentHealth(s, app.backend.now());
     if (hpEl.childElementCount !== MAX_HEALTH) {
       clear(hpEl);
@@ -348,8 +364,11 @@ export function gameScreen(app: App): Screen {
     if (!force && lastRefreshPos && distanceM(lastRefreshPos, fix.pos) < 60) return;
     lastRefreshPos = fix.pos;
     const list = await app.backend.spotsNear(fix.pos, VIEW_RADIUS_M, gm.poiCandidates());
-    if (destroyed) return;
-    spots = new Map(list.map((s) => [s.id, s]));
+    if (destroyed || !gm) return;
+    // Keine Fundstellen auf Friedhöfen, an Schulen, Krankenhäusern, Gedenkstätten oder in Gebäuden
+    const sensitive = gm.sensitiveCheck();
+    app.backend.setPlaceFilter((p) => sensitive(p, true));
+    spots = new Map(list.filter((s) => !sensitive(s.pos, s.source === 'grid')).map((s) => [s.id, s]));
     updateSpots();
   };
 
@@ -365,15 +384,25 @@ export function gameScreen(app: App): Screen {
       const st = wait > 0 ? 'cooldown' : d <= range ? 'inrange' : 'ready';
       // Bei Nebel sieht man Wächter erst aus der Nähe
       const guard = wait > 0 || d > guardSightM() ? null : app.backend.guardFor(spot);
+      const cart = wait > 0 ? null : app.backend.cartFor(spot);
+      if (cart && !notifiedCarts.has(spot.id) && d < 600) {
+        notifiedCarts.add(spot.id);
+        cartNews.push(spot);
+      }
       if (st === 'inrange') {
         if (!notified.has(spot.id)) {
           notified.add(spot.id);
           notifyNear(spot);
         }
       } else if (d > range + 15) notified.delete(spot.id);
-      views.push({ spot, state: st, guard });
+      views.push({ spot, state: st, guard, cart: !!cart, fresh: !seenSet(s).has(spotKey(spot.id)) });
     }
     gm.setSpots(views);
+    if (cartNews.length) {
+      const sp = cartNews.splice(0)[0];
+      app.toast(`Funkspruch: Bei „${sp.name}“ ist ein Händlerkarren liegen geblieben. ${fix ? formatDistance(distanceM(fix.pos, sp.pos)) + ' entfernt.' : ''}`, 'good');
+    }
+    updateCaches();
     const t = performance.now();
     if (t - lastSheetRefresh > 400) {
       lastSheetRefresh = t;
@@ -452,7 +481,7 @@ export function gameScreen(app: App): Screen {
     let last = performance.now();
     const loop = (t: number) => {
       joyRaf = requestAnimationFrame(loop);
-      const dt = Math.min(0.1, (t - last) / 1000);
+      const dt = Math.max(0, Math.min(0.1, (t - last) / 1000));
       last = t;
       if (!j.active || !(provider instanceof SimulatedLocation) || !gm) return;
       const v = j.value;
@@ -554,7 +583,7 @@ export function gameScreen(app: App): Screen {
       overlay = null;
       renderHud();
       updateSpots();
-      if (end.outcome === 'won' && end.loot) sheet.showLoot(end.spot, end.loot, end.kills && end.kills > 1 ? `${end.kills} Zombies erledigt` : `${ENEMIES[end.enemy].name} erledigt`);
+      if (end.outcome === 'won' && end.loot) sheet.showLoot(end.spot, end.loot, end.ambush ? 'Überfall abgewehrt. Mehr war hier nicht mehr zu holen.' : end.kills && end.kills > 1 ? `${end.kills} Gegner erledigt` : `${ENEMIES[end.enemy].name} erledigt`);
       else if (end.outcome === 'fled') app.toast('Du hast dich zurückgezogen.');
     });
   };
@@ -634,6 +663,74 @@ export function gameScreen(app: App): Screen {
         refreshBaseMarker();
       },
     });
+  };
+
+  const openProgress = () => {
+    sheet.close();
+    closeOverlay();
+    overlay = openProgressPanel(app, overlayHost, closeOverlay, () => renderHud());
+  };
+
+  // --- Verstecke -------------------------------------------------------------------
+  let lastHeat = '';
+  const updateCaches = () => {
+    const s = app.backend.current();
+    if (!gm || !s) return;
+    gm.setCaches(s.caches.map((c) => ({ id: c.id, center: c.center, radiusM: CACHE.areaM })));
+    // Das nächste Versteck, in dessen Suchkreis (mit etwas Rand) du stehst
+    let best: { c: Cache; d: number } | null = null;
+    if (fix) {
+      for (const c of s.caches) {
+        if (distanceM(fix.pos, c.center) > CACHE.areaM + 30) continue;
+        const d = distanceM(fix.pos, c.spot.pos);
+        if (!best || d < best.d) best = { c, d };
+      }
+    }
+    if (!best || !fix) {
+      cacheChip.hidden = true;
+      lastHeat = '';
+      return;
+    }
+    const target = best.c;
+    const hot = best.d <= CACHE.digM + Math.min(fix.accuracyM, 20);
+    const heat = hot ? 'hot' : best.d <= 35 ? 'warm' : best.d <= 60 ? 'lukewarm' : 'cold';
+    const label = { hot: 'Heiß! Hier graben', warm: 'Warm', lukewarm: 'Lauwarm', cold: 'Kalt' }[heat];
+    cacheChip.hidden = false;
+    cacheChip.dataset.heat = heat;
+    clear(cacheChip);
+    cacheChip.append(svgEl(icon('chalk', 15)), `Versteck: ${label}`);
+    cacheChip.onclick = () => (hot ? void digCache(target) : app.toast('Lauf im Kreis herum. Je wärmer, desto näher.'));
+    if (heat !== lastHeat) {
+      if (heat === 'hot' && app.settings.get().vibration) {
+        try {
+          navigator.vibrate?.([40, 60, 40, 60, 120]);
+        } catch {
+          /* egal */
+        }
+      }
+      lastHeat = heat;
+    }
+  };
+
+  const digCache = async (c: Cache) => {
+    if (!fix) return;
+    const res = await app.backend.dispatch({ type: 'openCache', id: c.id, at: fix.pos, accuracyM: fix.accuracyM });
+    const ev = res.events[0];
+    if (ev.type === 'rejected') {
+      app.toast(REJECT_TEXT[ev.reason], 'warn');
+      return;
+    }
+    if (ev.type === 'cacheOpened') {
+      sheet.showCacheFind(c, ev);
+      renderHud();
+      updateSpots();
+    }
+  };
+
+  const showCacheHint = (id: string) => {
+    const c = app.backend.current()?.caches.find((x) => x.id === id);
+    if (!c) return;
+    sheet.showCache(c);
   };
 
   const openPack = (tab: PackTab = 'pack') => {
@@ -722,6 +819,7 @@ export function gameScreen(app: App): Screen {
         },
         onSpotTap: (id) => sheet.open(id),
         onBaseTap: () => void openBase(),
+        onCacheTap: (id) => showCacheHint(id),
         onFollowChange: (f) => locateBtn.classList.toggle('lost', !f),
         onCameraMove: updateFog,
         onDataChanged: () => {
@@ -783,6 +881,7 @@ export function gameScreen(app: App): Screen {
       clearInterval(ticker);
       document.removeEventListener('visibilitychange', onVisible);
       provider?.stop();
+      app.backend.setPlaceFilter(null);
       gm?.destroy();
     },
   };

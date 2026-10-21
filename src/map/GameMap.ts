@@ -23,6 +23,17 @@ export interface SpotView {
   state: SpotState;
   /** Gegner, der die Fundstelle bewacht, oder null. */
   guard: EnemyId | null;
+  /** Liegengebliebene Händlerkiste? */
+  cart?: boolean;
+  /** Noch nie durchsucht (Erstfund-Bonus). */
+  fresh?: boolean;
+}
+
+/** Ein Versteck-Suchkreis auf der Karte. */
+export interface CacheView {
+  id: string;
+  center: LatLon;
+  radiusM: number;
 }
 
 export const DEMO = demoWorld as unknown as {
@@ -43,6 +54,7 @@ interface Options {
   onDataChanged: () => void;
   onError: (msg: string) => void;
   onBaseTap?: () => void;
+  onCacheTap?: (id: string) => void;
 }
 
 const ll = (p: LatLon): [number, number] => [p.lon, p.lat];
@@ -59,6 +71,8 @@ export class GameMap {
   follow = true;
   fog: FogOfWar | null = null;
   private markers = new Map<string, { marker: Marker; el: HTMLElement; state: string }>();
+  private cacheMarkers = new Map<string, Marker>();
+  private pendingCaches: CacheView[] | null = null;
   private player: Marker | null = null;
   private playerEl: HTMLElement | null = null;
   private figure: { el: HTMLElement; anchorY: number; h: number; px: number } | null = null;
@@ -145,6 +159,36 @@ export class GameMap {
     this.setComic(this.comic);
     this.fog = new FogOfWar(this.map);
     if (this.pendingRange) this.setRange(this.pendingRange.c, this.pendingRange.r);
+    if (this.pendingCaches) this.setCaches(this.pendingCaches);
+  }
+
+  /** Suchkreise für Verstecke, mit einem Kreidezeichen in der Mitte. */
+  setCaches(list: CacheView[]) {
+    if (!this.loaded) {
+      this.pendingCaches = list;
+      return;
+    }
+    (this.map.getSource('caches') as GeoJSONSource | undefined)?.setData({
+      type: 'FeatureCollection',
+      features: list.map((c) => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [circleRing(c.center, c.radiusM)] } })),
+    });
+    const ids = new Set(list.map((c) => c.id));
+    for (const [id, m] of this.cacheMarkers) {
+      if (!ids.has(id)) {
+        m.remove();
+        this.cacheMarkers.delete(id);
+      }
+    }
+    for (const c of list) {
+      if (this.cacheMarkers.has(c.id)) continue;
+      const el = h('button', { class: 'cache-marker', type: 'button', 'aria-label': 'Versteck: Hinweis ansehen' }, svgEl(icon('chalk', 20)), h('span', null, '?'));
+      el.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        this.lastMarkerTap = Date.now();
+        this.opts.onCacheTap?.(c.id);
+      });
+      this.cacheMarkers.set(c.id, new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(ll(c.center)).addTo(this.map));
+    }
   }
 
   private comic = false;
@@ -281,14 +325,14 @@ export class GameMap {
 
   setSpots(views: SpotView[]) {
     // Bodenleuchten nur neu setzen, wenn sich Fundstellen oder ihr Zustand ändern
-    const sig = views.map((v) => v.spot.id + v.state + (v.guard ?? '')).join('|');
+    const sig = views.map((v) => v.spot.id + v.state + (v.guard ?? '') + (v.cart ? 'c' : '')).join('|');
     if (sig !== this.glowSig && this.loaded) {
       this.glowSig = sig;
       (this.map.getSource('glow') as GeoJSONSource | undefined)?.setData({
         type: 'FeatureCollection',
         features: views.map((v) => ({
           type: 'Feature',
-          properties: { s: v.state, src: v.spot.source, g: v.guard ? 1 : 0 },
+          properties: { s: v.state, src: v.spot.source, g: v.guard ? 1 : 0, c: v.cart ? 1 : 0 },
           geometry: { type: 'Point', coordinates: ll(v.spot.pos) },
         })),
       });
@@ -314,11 +358,13 @@ export class GameMap {
         m = { marker, el, state: '' };
         this.markers.set(v.spot.id, m);
       }
-      const st = v.state + (v.guard ? ':g' : '');
+      const st = v.state + (v.guard ? ':g' : '') + (v.cart ? ':c' : '') + (v.fresh ? ':f' : '');
       if (m.state !== st) {
         m.el.dataset.state = v.state;
         m.el.dataset.guard = v.guard ? '1' : '0';
-        m.el.setAttribute('aria-label', v.guard ? `${v.spot.name} (bewacht)` : v.spot.name);
+        m.el.dataset.cart = v.cart ? '1' : '0';
+        m.el.dataset.fresh = v.fresh ? '1' : '0';
+        m.el.setAttribute('aria-label', v.cart ? `${v.spot.name} (Händlerkiste)` : v.guard ? `${v.spot.name} (bewacht)` : v.spot.name);
         m.state = st;
       }
     }
@@ -448,6 +494,70 @@ export class GameMap {
     } catch {
       return [];
     }
+  }
+
+  /**
+   * Orte, an denen keine Fundstellen liegen dürfen: Friedhöfe, Krankenhäuser, Schulen,
+   * Kitas, Gedenkstätten, Kirchen, dazu das Innere von Gebäuden (Privatgrund).
+   * Gibt eine Prüf-Funktion zurück. Später muss ein Server dasselbe prüfen.
+   */
+  sensitiveCheck(): (p: LatLon, grid?: boolean) => boolean {
+    const AREA = ['cemetery', 'hospital', 'school', 'kindergarten', 'college', 'university', 'religious'];
+    const POINT = ['cemetery', 'grave_yard', 'hospital', 'school', 'kindergarten', 'college', 'university', 'place_of_worship', 'memorial', 'monument'];
+    const rings: [number, number][][] = [];
+    const points: LatLon[] = [];
+    const buildings: [number, number][][] = [];
+    try {
+      const real = this.opts.mode === 'real';
+      const features = (layer: string): { geometry: GeoJSON.Geometry; properties: Record<string, unknown> | null }[] =>
+        real
+          ? this.loaded && this.map.getSource('omt')
+            ? this.map.querySourceFeatures('omt', { sourceLayer: layer })
+            : []
+          : (DEMO.geojson.features.filter((f) => f.properties?._layer === layer) as unknown as { geometry: GeoJSON.Geometry; properties: Record<string, unknown> | null }[]);
+      const addPolys = (g: GeoJSON.Geometry, to: [number, number][][]) => {
+        const list = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+        for (const r of list) if (r[0]?.length >= 4) to.push(r[0] as [number, number][]);
+      };
+      for (const f of features('landuse')) if (AREA.includes(String(f.properties?.class ?? ''))) addPolys(f.geometry, rings);
+      for (const f of features('building')) addPolys(f.geometry, buildings);
+      for (const f of features('poi')) {
+        const c = String(f.properties?.class ?? '');
+        const sc = String(f.properties?.subclass ?? '');
+        if (!POINT.includes(c) && !POINT.includes(sc)) continue;
+        if (f.geometry.type === 'Point') points.push({ lon: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] });
+        else addPolys(f.geometry, rings);
+      }
+    } catch {
+      /* ohne Kartendaten: nichts ausschließen */
+    }
+    const inside = (p: LatLon, ring: [number, number][]) => {
+      let c = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [xi, yi] = ring[i];
+        const [xj, yj] = ring[j];
+        if (yi > p.lat !== yj > p.lat && p.lon < ((xj - xi) * (p.lat - yi)) / (yj - yi) + xi) c = !c;
+      }
+      return c;
+    };
+    // Abstand zum Rand (in Metern, grob) – Fundstellen halten etwas Abstand zu sensiblen Flächen
+    const nearEdge = (p: LatLon, ring: [number, number][], m: number) => {
+      const kx = 111320 * Math.cos((p.lat * Math.PI) / 180);
+      for (let i = 1; i < ring.length; i++) {
+        const ax = (ring[i - 1][0] - p.lon) * kx;
+        const ay = (ring[i - 1][1] - p.lat) * 111320;
+        const bx = (ring[i][0] - p.lon) * kx;
+        const by = (ring[i][1] - p.lat) * 111320;
+        const dx = bx - ax;
+        const dy = by - ay;
+        const t = Math.max(0, Math.min(1, -(ax * dx + ay * dy) / (dx * dx + dy * dy || 1)));
+        if (Math.hypot(ax + t * dx, ay + t * dy) < m) return true;
+      }
+      return false;
+    };
+    // Echte Läden liegen natürlich in Gebäuden; nur erfundene Fundstellen dürfen nicht in Häusern liegen
+    return (p: LatLon, grid = true) =>
+      rings.some((r) => inside(p, r) || nearEdge(p, r, 20)) || points.some((q) => distanceM(p, q) < 40) || (grid && buildings.some((r) => inside(p, r)));
   }
 
   destroy() {

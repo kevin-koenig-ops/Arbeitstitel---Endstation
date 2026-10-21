@@ -2,7 +2,7 @@
 // Rohstoffe und Kram ansehen, Kram zum Werktisch geben, Sammelstücke aufstellen.
 
 import { COLLECTIBLE_ORDER, COLLECTIBLES, KRAM, KRAM_ORDER, MATERIAL_ORDER, RESOURCES } from '../../core/content';
-import { collectiblePlaced, hasWorkbench, kramCount, packCount, workbenchLevel } from '../../core/rules';
+import { collectiblePlaced, hasWorkbench, kramCount, packCount, workbenchSlots } from '../../core/rules';
 import type { Action, CollectibleId, PlayerState } from '../../core/types';
 import type { App } from '../app';
 import { clear, h, svgEl } from '../dom';
@@ -102,7 +102,7 @@ export function openLager(app: App, host: HTMLElement, opts: Opts): { el: HTMLEl
     // --- Kram ---
     const owned = KRAM_ORDER.filter((k) => (s.kram[k] ?? 0) > 0);
     const bench = hasWorkbench(s);
-    const full = s.workshop.jobs.length >= workbenchLevel(s).slots;
+    const full = s.workshop.jobs.length >= workbenchSlots(s);
     body.append(h('h3', { class: 'ws-sec' }, 'Kram', h('small', null, `${kramCount(s.kram)} Stück`)));
     if (!owned.length) body.append(h('p', { class: 'ws-empty' }, 'Kein Kram im Lager. Draußen findest du Toaster, Kanister, Radios und mehr.'));
     else

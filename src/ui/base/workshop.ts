@@ -2,7 +2,7 @@
 // Es läuft weiter, auch wenn die App zu ist. Fertiges wartet, nichts verdirbt.
 
 import { KRAM, KRAM_ORDER, WEAPON_ORDER, WEAPONS, WORKBENCH_LEVELS } from '../../core/content';
-import { canAfford, dismantleMs, readyParts, workbenchLevel } from '../../core/rules';
+import { canAfford, dismantleMs, readyParts, workbenchLevel, workbenchSlots } from '../../core/rules';
 import type { Action, KramId, PlayerState } from '../../core/types';
 import type { App } from '../app';
 import { clear, h, svgEl } from '../dom';
@@ -64,9 +64,12 @@ export function openWorkshop(app: App, host: HTMLElement, opts: Opts): { el: HTM
     const s = st();
     const now = app.backend.now();
     const lvl = workbenchLevel(s);
+    // Plätze: Ausbaustufe plus Bonus durch die Gemütlichkeit
+    const slots = workbenchSlots(s);
+    const bonus = slots - lvl.slots;
     const ws = s.workshop;
     clear(title);
-    title.append(svgEl(icon('wrench', 20)), h('b', null, lvl.name), h('small', null, `Stufe ${ws.level} · ${ws.jobs.length} von ${lvl.slots} Plätzen`));
+    title.append(svgEl(icon('wrench', 20)), h('b', null, lvl.name), h('small', null, `Stufe ${ws.level} · ${ws.jobs.length} von ${slots} Plätzen${bonus > 0 ? ` (+${bonus} durch Gemütlichkeit)` : ''}`));
     clear(body);
     live = [];
 
@@ -94,7 +97,7 @@ export function openWorkshop(app: App, host: HTMLElement, opts: Opts): { el: HTM
       bar.style.width = `${Math.round(Math.min(1, Math.max(0, (now - start) / Math.max(1, job.endsAt - start))) * 100)}%`;
       if (!done) live.push({ endsAt: job.endsAt, start, bar, label });
     }
-    for (let i = ws.jobs.length; i < lvl.slots; i++) jobs.append(h('li', { class: 'free' }, h('span', { class: 'ws-free' }, 'Freier Platz')));
+    for (let i = ws.jobs.length; i < slots; i++) jobs.append(h('li', { class: 'free' }, h('span', { class: 'ws-free' }, 'Freier Platz')));
     body.append(h('h3', { class: 'ws-sec' }, 'Auf dem Tisch'), jobs);
     if (ready.count)
       body.append(
@@ -117,7 +120,7 @@ export function openWorkshop(app: App, host: HTMLElement, opts: Opts): { el: HTM
 
     // --- Aus dem Lager ---
     const owned = KRAM_ORDER.filter((j) => (s.kram[j] ?? 0) > 0);
-    const full = ws.jobs.length >= lvl.slots;
+    const full = ws.jobs.length >= slots;
     body.append(h('h3', { class: 'ws-sec' }, 'Zerlegen', h('small', null, full ? 'Der Tisch ist voll' : 'Eins nach dem anderen, in echter Zeit')));
     if (!owned.length) body.append(h('p', { class: 'ws-empty' }, s.packKram && Object.keys(s.packKram).length ? 'Kein Kram im Lager. Pack erst deinen Rucksack aus.' : 'Kein Kram im Lager. Draußen in Autos, Containern und Packstationen findest du welchen.'));
     else

@@ -1,9 +1,9 @@
 // Untere Karte für eine Fundstelle: Infos, Durchsuchen, Fundbeleg.
 
-import { BACKGROUNDS, COLLECTIBLES, ENEMIES, HEALTH_REGEN_MIN, isMaterial, KRAM, MEMENTOS, MIN_HEALTH_TO_FIGHT, RESOURCE_ORDER, RESOURCES, SETS, SET_ORDER, SPOT_KINDS } from '../../core/content';
-import { distanceM, formatDistance } from '../../core/geo';
-import { currentHealth, nextHealthIn, readyAt, searchRangeM } from '../../core/rules';
-import type { CollectibleId, GameEvent, LatLon, Spot } from '../../core/types';
+import { BACKGROUNDS, CACHE, CART, COLLECTIBLES, COOK, DIG, ENEMIES, FIRST_FIND_FACTOR, isMaterial, KRAM, LOOT_QUALITY, MEMENTOS, MIN_HEALTH_TO_FIGHT, RARITY, RESOURCE_ORDER, RESOURCES, SETS, SET_ORDER, SPOT_KINDS } from '../../core/content';
+import { bearingDeg, distanceM, formatDistance } from '../../core/geo';
+import { currentHealth, nextHealthIn, readyAt, regenMs, searchRangeM } from '../../core/rules';
+import type { Cache, CollectibleId, GameEvent, Inventory, LatLon, Quality, Spot } from '../../core/types';
 import type { Fix } from '../../services/location';
 import type { App } from '../app';
 import { append, clear, h, reducedMotion, sleep, svgEl } from '../dom';
@@ -12,6 +12,13 @@ import { partsChips, thingThumb } from './chips';
 import { REJECT_TEXT } from '../texts';
 import { blueprintName, SITES } from '../../core/building';
 import { enemySvg } from '../zombies';
+import { GAME_FOR, playLootGame } from './lootGame';
+
+/** Himmelsrichtung in Worten (für Hinweise auf Verstecke). */
+export function compassWord(deg: number): string {
+  const names = ['Norden', 'Nordosten', 'Osten', 'Südosten', 'Süden', 'Südwesten', 'Westen', 'Nordwesten'];
+  return names[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+}
 
 
 export function formatWait(ms: number): string {
@@ -32,6 +39,10 @@ interface Ctx {
   onChanged: () => void;
   /** Kampf an einer bewachten Fundstelle beginnen. */
   onFight: (spot: Spot) => void;
+  /** Beim Wühlen zu laut gewesen: Der Kampf läuft schon (im Spielstand), nur noch anzeigen. */
+  onAmbush: () => void;
+  /** Wohin die Funde beim Einpacken fliegen (Rucksack-Knopf). */
+  flyTarget?: () => Element | null;
 }
 
 export class SpotSheet {
@@ -80,6 +91,7 @@ export class SpotSheet {
     const wait = readyAt(state, spot) - now;
     const guard = wait > 0 ? null : app.backend.guardFor(spot);
     const health = currentHealth(state, now);
+    const cart = wait > 0 ? null : app.backend.cartFor(spot);
 
     let status: string;
     let button: HTMLElement;
@@ -88,7 +100,7 @@ export class SpotSheet {
       button = h('button', { class: 'btn wide', type: 'button', disabled: true }, svgEl(icon('clock', 18)), `Wieder voll in ${formatWait(wait)}`);
     } else if (inRange && guard && health < MIN_HEALTH_TO_FIGHT) {
       status = 'In Reichweite';
-      button = h('button', { class: 'btn wide', type: 'button', disabled: true }, `Zu angeschlagen · fit in ${formatWait(nextHealthIn(state, now) + (MIN_HEALTH_TO_FIGHT - health - 1) * HEALTH_REGEN_MIN * 60_000)}`);
+      button = h('button', { class: 'btn wide', type: 'button', disabled: true }, `Zu angeschlagen · fit in ${formatWait(nextHealthIn(state, now) + (MIN_HEALTH_TO_FIGHT - health - 1) * regenMs(state))}`);
     } else if (inRange && guard) {
       status = 'In Reichweite';
       button = h('button', { class: 'btn wide danger', type: 'button', onclick: () => this.ctx.onFight(spot) }, 'Kämpfen');
@@ -111,11 +123,11 @@ export class SpotSheet {
       h(
         'div',
         { class: 'sheet-head' },
-        h('span', { class: 'sheet-badge', 'data-source': spot.source, 'data-guard': guard ? '1' : '0' }, svgEl(spotIcon(spot.kind, 26))),
+        h('span', { class: 'sheet-badge', 'data-source': spot.source, 'data-guard': guard ? '1' : '0', 'data-cart': cart ? '1' : '0' }, svgEl(cart ? icon('crate', 26) : spotIcon(spot.kind, 26))),
         h(
           'div',
           null,
-          h('div', { class: 'sheet-kicker' }, spot.source === 'poi' ? 'Ort aus der Karte' : 'Fundstelle'),
+          h('div', { class: 'sheet-kicker' }, cart ? `Händlerkiste · noch ${formatWait(cart.until - now)}` : spot.source === 'poi' ? 'Ort aus der Karte' : 'Fundstelle'),
           h('h2', { class: 'sheet-title' }, spot.name),
         ),
       ),
@@ -127,11 +139,13 @@ export class SpotSheet {
             h(
               'div',
               null,
-              h('div', { class: 'guard-title' }, `Bewacht von einem ${ENEMIES[guard].name}`),
-              h('p', null, `${ENEMIES[guard].desc} Wer ihn erledigt, findet hier mehr.`),
+              h('div', { class: 'guard-title' }, `Bewacht: ${ENEMIES[guard].name}, oft nicht allein`),
+              h('p', null, `${ENEMIES[guard].desc} Wer gewinnt, findet hier mehr.`),
             ),
           )
-        : h('p', { class: 'sheet-hint' }, def.hint),
+        : cart
+          ? h('p', { class: 'sheet-hint cart' }, `Ein Händlerkarren ist hier liegen geblieben. Viel mehr Beute als sonst (×${CART.lootFactor}), oft Kram und Sammelstücke. Nur für eine Weile.`)
+          : h('p', { class: 'sheet-hint' }, def.hint, state.spots[spot.id] ? null : h('span', { class: 'first-tag' }, ` Noch nie durchsucht: doppelte Beute.`)),
       h(
         'div',
         { class: 'sheet-meta' },
@@ -149,24 +163,37 @@ export class SpotSheet {
 
   private async search(spot: Spot) {
     const { app } = this.ctx;
-    const fix = this.ctx.getFix();
-    if (!fix || !this.el) return;
+    if (!this.ctx.getFix() || !this.el) return;
     this.busy = true;
     clear(this.el);
-    const bar = h('div', { class: 'progress-fill' });
-    this.el.append(
-      h(
-        'div',
-        { class: 'searching' },
-        h('span', { class: 'sheet-badge', 'data-source': spot.source }, svgEl(spotIcon(spot.kind, 26))),
-        h('div', { class: 'searching-text' }, `Durchsuche ${spot.name} …`),
-        h('div', { class: 'progress' }, bar),
-      ),
-    );
-    const ms = reducedMotion() ? 250 : 1300;
-    bar.style.transitionDuration = `${ms}ms`;
-    requestAnimationFrame(() => requestAnimationFrame(() => bar.classList.add('full')));
-    const [res] = await Promise.all([app.backend.dispatch({ type: 'search', spot, at: fix.pos, accuracyM: fix.accuracyM }), sleep(ms)]);
+    let quality: Quality = 'good';
+    if (app.settings.get().lootGames !== 'off') {
+      const box = h('div', { class: 'searching game' });
+      this.el.append(box);
+      quality = await playLootGame(box, GAME_FOR[spot.kind]);
+    } else {
+      const bar = h('div', { class: 'progress-fill' });
+      this.el.append(
+        h(
+          'div',
+          { class: 'searching' },
+          h('span', { class: 'sheet-badge', 'data-source': spot.source }, svgEl(spotIcon(spot.kind, 26))),
+          h('div', { class: 'searching-text' }, `Durchsuche ${spot.name} …`),
+          h('div', { class: 'progress' }, bar),
+        ),
+      );
+      const ms = reducedMotion() ? 250 : 1100;
+      bar.style.transitionDuration = `${ms}ms`;
+      requestAnimationFrame(() => requestAnimationFrame(() => bar.classList.add('full')));
+      await sleep(ms);
+    }
+    // Erst jetzt zählt der Standort (man kann sich beim Spielen ja bewegt haben)
+    const fix = this.ctx.getFix();
+    if (!fix || !this.el) {
+      this.busy = false;
+      return;
+    }
+    const res = await app.backend.dispatch({ type: 'search', spot, at: fix.pos, accuracyM: fix.accuracyM, quality });
     this.busy = false;
     const ev = res.events[0];
     if (ev.type === 'loot') {
@@ -218,30 +245,42 @@ export class SpotSheet {
 
   private showReceipt(spot: Spot, ev: Extract<GameEvent, { type: 'loot' }>, note?: string) {
     this.mode = 'receipt';
-    const state = this.ctx.app.backend.current()!;
+    const { app } = this.ctx;
+    const state = app.backend.current()!;
     if (!this.el) return;
     const memento = ev.memento ? MEMENTOS.find((m) => m.id === ev.memento) : undefined;
-    const time = new Date(this.ctx.app.backend.now()).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-    const perkBg = BACKGROUNDS[state.character.background];
+    const time = new Date(app.backend.now()).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    const perkBg = BACKGROUND_NAME(state.character.background);
+    const q = ev.quality;
+    // Was diesmal mehr (oder weniger) gebracht hat, als kleine Marken
+    const tags: [string, string][] = [];
+    if (q === 'perfect') tags.push(['gold', `Perfekt +${Math.round((LOOT_QUALITY.perfect.factor - 1) * 100)} %`]);
+    if (q === 'miss') tags.push(['dim', `Daneben −${Math.round((1 - LOOT_QUALITY.miss.factor) * 100)} %`]);
+    if (ev.first) tags.push(['good', `Erstfund ×${FIRST_FIND_FACTOR}`]);
+    if (ev.cart) tags.push(['gold', `Händlerkiste ×${CART.lootFactor}`]);
+    if (ev.fed) tags.push(['good', `Satt +${Math.round(COOK.lootBonus * 100)} %`]);
+    if (ev.night) tags.push(['night', 'Nacht +30 %']);
+    if (ev.bonus) tags.push(['good', 'Rückkehr ×2']);
+    const items = h(
+      'ul',
+      { class: 'receipt-items' },
+      RESOURCE_ORDER.filter((r) => ev.items[r]).map((r, i) =>
+        h('li', { style: `--i:${i}`, 'data-rarity': RARITY[r], 'data-res': r }, svgEl(resIcon(r, 20), 'ri-icon'), h('span', { class: 'ri-name' }, RESOURCES[r].name), h('b', null, `+${ev.items[r]}`)),
+      ),
+    );
+    const digBox = h('div', { class: 'dig-box' });
     clear(this.el);
     append(this.el, [
       h(
         'div',
-        { class: 'receipt' },
+        { class: 'receipt' + (ev.collectible ? ' epic' : '') },
         h('div', { class: 'receipt-head' }, h('span', null, 'Fundbeleg'), h('span', null, `Nr. ${String(state.stats.searches).padStart(4, '0')} · ${time}`)),
         h('div', { class: 'receipt-place' }, spot.name),
+        tags.length ? h('div', { class: 'receipt-tags' }, tags.map(([tone, t]) => h('span', { class: 'rtag', 'data-tone': tone }, t))) : null,
         ev.collectible ? this.collectibleNote(ev.collectible) : null,
-        h(
-          'ul',
-          { class: 'receipt-items' },
-          RESOURCE_ORDER.filter((r) => ev.items[r]).map((r, i) =>
-            h('li', { style: `--i:${i}` }, svgEl(resIcon(r, 20)), h('span', { class: 'ri-name' }, RESOURCES[r].name), h('b', null, `+${ev.items[r]}`)),
-          ),
-        ),
-        ev.perk ? h('p', { class: 'receipt-note' }, `${perkBg.name}: +1 ${RESOURCES[ev.perk].name} extra`) : null,
+        items,
+        ev.perk ? h('p', { class: 'receipt-note' }, `${perkBg}: +1 ${RESOURCES[ev.perk].name} extra`) : null,
         note ? h('p', { class: 'receipt-note' }, note) : null,
-        ev.bonus ? h('p', { class: 'receipt-note' }, 'Rückkehr-Bonus: alles doppelt') : null,
-        ev.night ? h('p', { class: 'receipt-note' }, 'Nachtbonus: 30 % mehr') : null,
         ev.kram
           ? h(
               'p',
@@ -255,6 +294,8 @@ export class SpotSheet {
           : null,
         ev.blueprint ? h('p', { class: 'receipt-blueprint' }, svgEl(icon('blueprint', 18)), `Bauplan gefunden: ${blueprintName(ev.blueprint)}`) : null,
         ev.site ? h('p', { class: 'receipt-blueprint site' }, svgEl(icon('map', 18)), `Lageplan gefunden: ${SITES[ev.site].name}! Ein neuer Ort für deine Endstation.`) : null,
+        ev.clue ? this.clueNote(ev.clue) : null,
+        digBox,
       ),
       memento
         ? h(
@@ -265,7 +306,192 @@ export class SpotSheet {
             h('p', { class: 'memento-text' }, memento.text),
           )
         : null,
-      h('button', { class: 'btn wide', type: 'button', onclick: () => this.close() }, 'Einpacken'),
+      h('button', { class: 'btn wide', type: 'button', onclick: () => this.pack(items) }, 'Einpacken'),
     ]);
+    if (ev.canDig) this.renderDig(digBox, items);
+  }
+
+  /** Hinweis auf ein Versteck ansehen (vom Kreidezeichen auf der Karte). */
+  showCache(c: Cache) {
+    if (this.busy) return;
+    this.openId = null;
+    this.mode = 'receipt';
+    if (!this.el) {
+      this.el = h('div', { class: 'sheet', role: 'dialog', 'aria-label': 'Versteck' });
+      this.ctx.host.append(this.el);
+    }
+    const fix = this.ctx.getFix();
+    const toCircle = fix ? Math.max(0, distanceM(fix.pos, c.center) - CACHE.areaM) : null;
+    const d = distanceM(c.fromPos, c.spot.pos);
+    const dir = compassWord(bearingDeg(c.fromPos, c.spot.pos));
+    clear(this.el);
+    append(this.el, [
+      h('button', { class: 'sheet-close iconbtn small', type: 'button', 'aria-label': 'Schließen', onclick: () => this.close() }, svgEl(icon('close', 18))),
+      h(
+        'div',
+        { class: 'sheet-head' },
+        h('span', { class: 'sheet-badge', 'data-cache': '1' }, svgEl(icon(c.via === 'radio' ? 'radioSet' : 'chalk', 26))),
+        h('div', null, h('div', { class: 'sheet-kicker' }, 'Versteck'), h('h2', { class: 'sheet-title' }, c.via === 'radio' ? 'Hinweis per Funk' : 'Hinweis: ein Kreidezeichen')),
+      ),
+      h('p', { class: 'sheet-hint' }, `${c.via === 'radio' ? 'Auf Kanal 4' : `Bei „${c.fromName}“`}: etwa ${Math.round(d / 50) * 50} m Richtung ${dir}, bei: ${c.spot.name}.`),
+      h(
+        'p',
+        { class: 'sheet-hint' },
+        toCircle === null ? 'Warte auf GPS …' : toCircle > 0 ? `Der Suchkreis ist ${formatDistance(toCircle)} entfernt. Darin zeigt dir „kalt, warm, heiß“ den Weg.` : 'Du bist im Suchkreis. Oben siehst du, ob es warm oder kalt ist. Bei „heiß“ antippen und ausgraben.',
+      ),
+      h('p', { class: 'sheet-hint small' }, 'Verstecke laufen nicht weg. Lass dir Zeit.'),
+      this.ctx.isSim() && toCircle !== null && toCircle > 0
+        ? h('button', { class: 'btn wide', type: 'button', onclick: () => (this.ctx.walkTo(c.center), this.close()) }, 'Hinlaufen')
+        : h('button', { class: 'btn wide', type: 'button', onclick: () => this.close() }, 'OK'),
+    ]);
+  }
+
+  /** Ausgegraben: was im Versteck lag. */
+  showCacheFind(c: Cache, ev: Extract<GameEvent, { type: 'cacheOpened' }>) {
+    this.openId = null;
+    this.mode = 'receipt';
+    if (!this.el) {
+      this.el = h('div', { class: 'sheet', role: 'dialog', 'aria-label': 'Versteck' });
+      this.ctx.host.append(this.el);
+    }
+    const items = h(
+      'ul',
+      { class: 'receipt-items' },
+      RESOURCE_ORDER.filter((r) => ev.items[r]).map((r, i) =>
+        h('li', { style: `--i:${i}`, 'data-rarity': RARITY[r], 'data-res': r }, svgEl(resIcon(r, 20), 'ri-icon'), h('span', { class: 'ri-name' }, RESOURCES[r].name), h('b', null, `+${ev.items[r]}`)),
+      ),
+    );
+    clear(this.el);
+    append(this.el, [
+      h(
+        'div',
+        { class: 'receipt cache' + (ev.collectible ? ' epic' : '') },
+        h('div', { class: 'receipt-head' }, h('span', null, 'Versteck ausgegraben'), h('span', null, c.via === 'radio' ? 'Funk' : 'Kreide')),
+        h('div', { class: 'receipt-place' }, c.spot.name),
+        ev.collectible ? this.collectibleNote(ev.collectible) : null,
+        items,
+        ev.kram
+          ? h('p', { class: 'receipt-blueprint junk' }, thingThumb(ev.kram, 40), h('span', null, h('b', null, `Kram: ${KRAM[ev.kram].name}`), h('span', { class: 'junk-parts' }, 'Enthält ', partsChips(ev.kram))))
+          : null,
+        ev.blueprint ? h('p', { class: 'receipt-blueprint' }, svgEl(icon('blueprint', 18)), `Bauplan gefunden: ${blueprintName(ev.blueprint)}`) : null,
+      ),
+      h('button', { class: 'btn wide', type: 'button', onclick: () => this.pack(items) }, 'Einpacken'),
+    ]);
+  }
+
+  /** Hinweis auf ein Versteck: grob die Richtung und wo. */
+  private clueNote(id: string) {
+    const c = this.ctx.app.backend.current()!.caches.find((x) => x.id === id);
+    if (!c) return null;
+    const d = distanceM(c.fromPos, c.spot.pos);
+    const dir = compassWord(bearingDeg(c.fromPos, c.spot.pos));
+    return h(
+      'div',
+      { class: 'receipt-clue' },
+      svgEl(icon('chalk', 22)),
+      h(
+        'span',
+        null,
+        h('b', null, 'Hinweis auf ein Versteck!'),
+        h('small', null, `Ein Kreidezeichen: etwa ${Math.round(d / 50) * 50} m Richtung ${dir}, bei: ${c.spot.name}. Der Suchkreis ist auf der Karte markiert.`),
+      ),
+    );
+  }
+
+  /** „Weiter wühlen“: kleine Extrafunde, aber jedes Mal lauter. */
+  private renderDig(box: HTMLElement, items: HTMLElement) {
+    const { app } = this.ctx;
+    const s = app.backend.current()!;
+    const d = s.dig;
+    clear(box);
+    if (!d || d.round >= DIG.max || d.until < app.backend.now()) return;
+    const left = DIG.max - d.round;
+    const meter = h('span', { class: 'noise' }, Array.from({ length: 5 }, (_, i) => h('i', { class: i < d.noise ? 'on' : '' })));
+    const mood = d.noise === 0 ? 'Alles ruhig.' : d.noise === 1 ? 'Ein bisschen laut.' : d.noise === 2 ? 'Da hinten bewegt sich was …' : 'Gleich kommt was!';
+    const btn = h('button', { class: 'btn small dig-btn', type: 'button' }, svgEl(icon('junk', 16)), `Weiter wühlen (${left})`);
+    btn.addEventListener('click', async () => {
+      const fix = this.ctx.getFix();
+      if (!fix || this.busy) return;
+      this.busy = true;
+      btn.disabled = true;
+      box.classList.add('digging');
+      await sleep(reducedMotion() ? 100 : 550);
+      const res = await app.backend.dispatch({ type: 'dig', at: fix.pos, accuracyM: fix.accuracyM });
+      this.busy = false;
+      box.classList.remove('digging');
+      const ev = res.events[0];
+      if (ev.type === 'ambush') {
+        try {
+          if (app.settings.get().vibration) navigator.vibrate?.([80, 40, 80]);
+        } catch {
+          /* egal */
+        }
+        app.toast('Zu laut! Da kommt was …', 'warn');
+        this.ctx.onChanged();
+        this.close();
+        this.ctx.onAmbush();
+        return;
+      }
+      if (ev.type === 'rejected') {
+        app.toast(REJECT_TEXT[ev.reason], 'warn');
+        clear(box);
+        return;
+      }
+      if (ev.type === 'dug') {
+        this.ctx.onChanged();
+        addItems(items, ev.items);
+        if (ev.kram) items.append(h('li', { class: 'new', 'data-rarity': 'uncommon' }, svgEl(icon('junk', 20), 'ri-icon'), h('span', { class: 'ri-name' }, `Kram: ${KRAM[ev.kram].name}`), h('b', null, '+1')));
+        if (ev.collectible) items.append(h('li', { class: 'new', 'data-rarity': 'epic' }, svgEl(icon('memento', 20), 'ri-icon'), h('span', { class: 'ri-name' }, `Sammelstück: ${COLLECTIBLES[ev.collectible].name}`), h('b', null, '!')));
+      }
+      this.renderDig(box, items);
+    });
+    append(box, [h('div', { class: 'dig-row' }, btn, h('span', { class: 'dig-mood' }, meter, mood)), h('small', { class: 'dig-note' }, 'Findet noch Kleinkram. Macht aber Lärm, und Lärm lockt etwas an.')]);
+  }
+
+  /** Einpacken: die Funde fliegen in den Rucksack. */
+  private pack(items: HTMLElement) {
+    const target = this.ctx.flyTarget?.();
+    if (target && !reducedMotion()) {
+      const to = target.getBoundingClientRect();
+      const icons = [...items.querySelectorAll('.ri-icon')].slice(0, 8) as HTMLElement[];
+      icons.forEach((ic, i) => {
+        const from = ic.getBoundingClientRect();
+        const fly = ic.cloneNode(true) as HTMLElement;
+        fly.className = 'fly-item';
+        fly.style.left = `${from.left}px`;
+        fly.style.top = `${from.top}px`;
+        fly.style.setProperty('--dx', `${to.left + to.width / 2 - from.left - from.width / 2}px`);
+        fly.style.setProperty('--dy', `${to.top + to.height / 2 - from.top - from.height / 2}px`);
+        fly.style.animationDelay = `${i * 60}ms`;
+        document.body.append(fly);
+        setTimeout(() => fly.remove(), 900 + i * 60);
+      });
+      setTimeout(() => {
+        target.classList.remove('bump');
+        void (target as HTMLElement).offsetWidth;
+        target.classList.add('bump');
+      }, 650);
+    }
+    this.close();
+  }
+}
+
+function BACKGROUND_NAME(id: keyof typeof BACKGROUNDS) {
+  return BACKGROUNDS[id].name;
+}
+
+/** Neue Funde in die Liste schreiben (bestehende Zeilen hochzählen). */
+function addItems(list: HTMLElement, add: Partial<Inventory>) {
+  for (const r of RESOURCE_ORDER) {
+    const n = add[r];
+    if (!n) continue;
+    const li = [...list.children].find((x) => (x as HTMLElement).dataset.res === r) as HTMLElement | undefined;
+    if (li) {
+      const b = li.querySelector('b')!;
+      b.textContent = `+${Number(b.textContent?.replace('+', '') ?? 0) + n}`;
+      li.classList.remove('new');
+      void li.offsetWidth;
+      li.classList.add('new');
+    } else list.append(h('li', { class: 'new', 'data-rarity': RARITY[r], 'data-res': r }, svgEl(resIcon(r, 20), 'ri-icon'), h('span', { class: 'ri-name' }, RESOURCES[r].name), h('b', null, `+${n}`)));
   }
 }

@@ -235,7 +235,7 @@ export class BaseScene {
     this.setPhase('day');
     let last = performance.now();
     this.renderer.setAnimationLoop((t) => {
-      const dt = Math.min(0.1, (t - last) / 1000);
+      const dt = Math.max(0, Math.min(0.1, (t - last) / 1000));
       last = t;
       this.frame(t / 1000, dt);
     });

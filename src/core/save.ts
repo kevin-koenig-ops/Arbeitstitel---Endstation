@@ -53,6 +53,24 @@ const MIGRATIONS: Record<number, (s: Raw) => void> = {
     s.junk = {};
     s.workshop = { level: 1, jobs: [] };
   },
+  // Version 8 -> 9: Fortschritt (Zielleiste, mehr Zähler), Wühlen, Erstfunde, Verstecke.
+  8: (s) => {
+    const st = (s.stats ?? {}) as Record<string, number>;
+    s.stats = { searches: st.searches ?? 0, kills: st.kills ?? 0, unpacks: st.unpacks ?? 0, dismantled: st.dismantled ?? 0, crafted: st.crafted ?? 0, caches: 0, cooked: 0 };
+    s.goals = {};
+    // Kampf jetzt mit Gruppe (rundenbasiert); laufendes Wühlen gibt es noch nicht
+    const c = s.combat as { spot?: unknown; enemy?: string; window?: number } | null | undefined;
+    s.combat = c && c.spot && c.enemy ? { spot: c.spot, enemy: c.enemy, group: [c.enemy], window: c.window ?? 0 } : null;
+    s.dig = null;
+    s.seen = [];
+    s.caches = [];
+    s.radioAt = 0;
+    s.fedUntil = 0;
+    // Der Sanitätsschrank erzeugt jetzt Medizin: ab jetzt zählen
+    const now9 = Number(s.lastActiveAt) || 0;
+    const plots9 = (s.base as { plots?: Record<string, { items: { kind: string; at?: number }[] }> } | undefined)?.plots ?? {};
+    for (const plot of Object.values(plots9)) for (const it of plot.items) if (it.kind === 'medCabinet' && it.at === undefined) it.at = now9;
+  },
   // Version 7 -> 8: Der Bus fällt weg (Ausbauten kommen als Rohstoffe zurück), Rucksack und Lager
   // werden getrennt, Fundstücke werden zu Kram (zerlegen) und Sammelstücken (einmalig, fürs Fundbuch).
   7: (s) => {
