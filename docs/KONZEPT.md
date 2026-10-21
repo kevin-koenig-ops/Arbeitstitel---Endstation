@@ -206,6 +206,54 @@ Drei Dinge wecken ihn: Man sieht etwas, weiß aber nicht, was es ist. Etwas füh
 - **Fundbuch der Orte:** Jeder Ortstyp zählt beim ersten Fund (mit kleinem Bonus). Fehlende stehen als Fragezeichen mit Hinweis drin („Am Waldrand, mit Blick aufs Feld“).
 - **Orte erzählen:** Jede Fundstelle hat einen Satz zur Stimmung; an manchen steht bei Tag: „Komm nachts wieder“.
 - **Kompass:** Nadel oben rechts. Antippen: Norden oben; nochmal: Die Karte dreht sich mit der Blickrichtung des Handys.
+- **Pilzstellen:** nur im Wald, wandern wie die anderen kleinen Fundstellen etwa einmal am Tag weiter. Im Herbst gibt es viele, im Winter kaum welche. Sie geben Nahrung, selten Medizin, und sind nie bewacht.
+
+### Naturkunde: Pilze, Kräuter und Beeren bestimmen (Idee, 22.10.2026)
+
+Beim ersten Fund einer Art wird sie bestimmt, wie in einem Bestimmungsbuch. Alles stimmt mit der Wirklichkeit überein: echte Arten aus Mitteleuropa, nur dort, wo sie wirklich wachsen, und nur in ihrer echten Saison.
+
+- **Erstfund:** Es öffnet sich eine Karte mit deutschem und lateinischem Namen, einer Zeichnung, wo und wann die Art wächst, woran man sie erkennt, ob sie essbar oder giftig ist und mit welchem Doppelgänger man sie verwechseln kann. Danach steht sie im Fundbuch unter „Natur“, mit kleinem Erstfund-Bonus wie bei neuen Ortstypen.
+- **Echt verteilt:** Das Gelände aus der Karte (Wald, Waldrand, Wiese, Acker, Ufer, Sumpf, Wegrand) und der echte Monat entscheiden, was an einer Stelle liegen kann. Bärlauch gibt es also nur im Frühjahr im feuchten Laubwald, Pfifferlinge von Juni bis Oktober.
+- **Giftiges gehört dazu:** Fliegenpilz, Knollenblätterpilz oder Tollkirsche kann man finden und bestimmen. In Rezepte kommt nur, was als essbar bestimmt ist. Wer Unbestimmtes isst, wird im Spiel kurz krank, mehr nicht.
+- **Nutzen:** Pilze und Beeren geben Nahrung. Kräuter werden zu Heiltee, Salbe oder Verband (Medizin). Brennnessel gibt zusätzlich Fasern (Stoff).
+- **Sammlung übers Jahr:** Jede Jahreszeit bringt neue Arten. Wer das Jahr über draußen ist, füllt das Buch nach und nach. Seltene Arten wie die Krause Glucke sind kleine Höhepunkte. Verpasst man eine Saison, kommt sie nächstes Jahr wieder (kein Zwang).
+
+**Kräutersammler: Beruf mit eigener Ansicht.** Damit die Karte nicht überladen wird, gibt es eine Sammler-Ansicht zum Einschalten. Sie blendet alle anderen Fundstellen aus und zeigt nur Kräuter, Beeren und Pilze, dafür mehr davon. Der Beruf Kräutersammler macht die Ansicht besser: mehr Arten sichtbar, schneller bestimmt, mehr pro Stelle, eigene Rezepte (Salbe gegen Gift, Tee gegen Fieber). Offen: Ist der Beruf ein weiterer Hintergrund bei der Figur, oder lernt man ihn später? Später ginge dasselbe für Jäger oder Angler.
+
+**Sicherheit, ganz wichtig:** Das Spiel ist kein Pilzbuch. Die Fundstellen gibt es nur im Spiel; draußen pflückt und isst man nichts. Das sagt die Naturkunde beim ersten Öffnen und bei jedem giftigen Doppelgänger klar: „Im echten Leben nie nach dem Spiel sammeln. Pilze nur mit einem Pilzberater.“ Gerade Bärlauch und Maiglöckchen oder Wiesen-Champignon und Knollenblätterpilz werden jedes Jahr tödlich verwechselt. In Naturschutzgebieten liegen Fundstellen nur direkt an Wegen.
+
+**Was die Karte weiß:** Wald, Wiese, Acker, Sumpf, Ufer, Park und Wegrand ja. Ob Laub- oder Nadelwald, steht in den Kartendaten meist nicht. Das müsste man schätzen, zum Beispiel fest pro Waldstück.
+
+**Startliste** (vor dem Einbau mit einer Fachquelle prüfen, etwa der Deutschen Gesellschaft für Mykologie):
+
+| Art | Wo | Wann | Im Spiel |
+| --- | --- | --- | --- |
+| Steinpilz (*Boletus edulis*) | Nadel- und Laubwald | Juni bis November | essbar |
+| Pfifferling (*Cantharellus cibarius*) | moosiger Nadel- und Laubwald | Juni bis Oktober | essbar |
+| Maronenröhrling (*Imleria badia*) | Nadelwald | Juli bis November | essbar |
+| Birkenpilz (*Leccinum scabrum*) | unter Birken | Juni bis Oktober | essbar |
+| Parasol (*Macrolepiota procera*) | Waldrand, Lichtung, Wiese | Juli bis Oktober | essbar |
+| Wiesen-Champignon (*Agaricus campestris*) | Wiesen und Weiden | Juli bis Oktober | essbar, Doppelgänger Knollenblätterpilz |
+| Schopftintling (*Coprinus comatus*) | Wiesen, Wegränder | Mai bis November | essbar, nur jung |
+| Krause Glucke (*Sparassis crispa*) | am Fuß von Kiefern | August bis November | essbar, selten |
+| Schwefelporling (*Laetiporus sulphureus*) | an Laubbäumen | Mai bis September | essbar, nur jung und gegart, selten |
+| Fliegenpilz (*Amanita muscaria*) | unter Birken und Fichten | August bis November | giftig |
+| Grüner Knollenblätterpilz (*Amanita phalloides*) | Laubwald, bei Eichen und Buchen | Juli bis Oktober | tödlich giftig |
+| Kartoffelbovist (*Scleroderma citrinum*) | saure Waldböden | Juli bis November | giftig |
+| Bärlauch (*Allium ursinum*) | feuchter Laubwald, Auen | März bis Mai | essbar, Doppelgänger Maiglöckchen |
+| Brennnessel (*Urtica dioica*) | Wegränder, Ufer | April bis September | Tee, Fasern |
+| Schafgarbe (*Achillea millefolium*) | Wiesen, Wegränder | Juni bis Oktober | Tee |
+| Echte Kamille (*Matricaria chamomilla*) | Äcker, Wegränder | Mai bis September | Tee |
+| Spitzwegerich (*Plantago lanceolata*) | Wiesen, Wege | Mai bis September | Salbe |
+| Johanniskraut (*Hypericum perforatum*) | trockene Wiesen, Wegränder | Juni bis August | Salbe |
+| Mädesüß (*Filipendula ulmaria*) | feuchte Wiesen, Ufer | Juni bis August | Tee |
+| Löwenzahn (*Taraxacum officinale*) | Wiesen, Rasen | April bis Oktober | essbar |
+| Holunder (*Sambucus nigra*) | Hecken, Waldrand, Dorf | Blüte Mai bis Juni, Beeren August bis September | Beeren nur gekocht |
+| Brombeere (*Rubus fruticosus*) | Hecken, Waldrand | August bis September | essbar |
+| Heidelbeere (*Vaccinium myrtillus*) | saurer Nadelwald | Juli bis August | essbar |
+| Walderdbeere (*Fragaria vesca*) | Waldrand, Lichtung | Juni bis August | essbar |
+| Hagebutte (*Rosa canina*) | Hecken, Waldrand | September bis November | Tee |
+| Tollkirsche (*Atropa belladonna*) | Lichtungen, Kahlschläge | Beeren August bis September | sehr giftig |
 
 ## Karte freilaufen, Tageszeit, Wetter
 

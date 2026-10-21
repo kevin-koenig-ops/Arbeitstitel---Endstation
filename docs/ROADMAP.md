@@ -94,6 +94,7 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 
 ## Ideen für irgendwann
 
+- **Naturkunde und Kräutersammler:** Beim ersten Fund einer Pilz-, Kraut- oder Beerenart wird sie bestimmt (echter Name, wo und wann sie wirklich wächst, giftig oder essbar, Doppelgänger), dazu eine Sammlung übers Jahr. Der Beruf Kräutersammler bringt eine eigene Kartenansicht, die nur Kräuter, Beeren und Pilze zeigt. Mit klarem Hinweis: im echten Leben nie nach dem Spiel sammeln (Details und Startliste im [Konzept](KONZEPT.md)).
 - **Legenden einmal im Jahr:** seltene Wesen wie Waldriese, Hungermann, Wolpertinger oder der weiße Hirsch, mit Gerüchten vorab, Spuren und einer Trophäe. Verpassen kostet nichts (Details im [Konzept](KONZEPT.md)).
 - **Gelände aus echten Daten:** Höhe für das Spiel nutzen (Aussicht von Hügeln, bergauf langsamer; sichtbar ist sie schon), Bodenfeuchte und Frost aus dem Wetterdienst, Untergrund aus der Karte (Wald, Acker, Sand, Moor, Schotterweg). Siehe Antwort vom 22.10.
 - **Zuhause im echten Gebäude:** Beim Einrichten nimmt das Zuhause den echten Grundriss, die Stockwerke und das Grundstück des Gebäudes an dieser Stelle aus den Kartendaten (Low-Poly, nur auf dem Gerät). So kann man sich überall einrichten: in der Scheune am Dorfrand oder im leeren Laden um die Ecke. (Street View und Googles 3D-Städte gehen nicht: nur zum Anschauen erlaubt, kein Nachbauen, kostet pro Abruf.)
