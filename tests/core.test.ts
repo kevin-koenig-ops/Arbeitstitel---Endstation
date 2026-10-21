@@ -110,7 +110,7 @@ describe('Durchsuchen', () => {
   });
 });
 
-describe('Anlagen in der Endstation', () => {
+describe('Anlagen zu Hause', () => {
   /** Im Depot wohnen, genug im Lager, eine Anlage aufstellen. */
   const withItem = (kind: 'rainBarrel' | 'workbench'): PlayerState => {
     let s: PlayerState = { ...fresh(), inventory: { ...emptyInventory(), wood: 40, metal: 40, plastic: 10, screws: 10, water: 2, medicine: 2 } };

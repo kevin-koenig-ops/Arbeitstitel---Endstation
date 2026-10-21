@@ -293,7 +293,7 @@ export class SpotSheet {
           ? h('p', { class: 'receipt-note' }, 'Rohstoffe und Kram kommen in den Rucksack. Zu Hause packst du aus.')
           : null,
         ev.blueprint ? h('p', { class: 'receipt-blueprint' }, svgEl(icon('blueprint', 18)), `Bauplan gefunden: ${blueprintName(ev.blueprint)}`) : null,
-        ev.site ? h('p', { class: 'receipt-blueprint site' }, svgEl(icon('map', 18)), `Lageplan gefunden: ${SITES[ev.site].name}! Ein neuer Ort für deine Endstation.`) : null,
+        ev.site ? h('p', { class: 'receipt-blueprint site' }, svgEl(icon('map', 18)), `Lageplan gefunden: ${SITES[ev.site].name}! Ein neuer Ort für dein Zuhause.`) : null,
         ev.clue ? this.clueNote(ev.clue) : null,
         digBox,
       ),

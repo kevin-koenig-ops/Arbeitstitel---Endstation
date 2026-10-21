@@ -1,4 +1,4 @@
-// Wegfindung für die Figur in der Endstation (A* auf dem Raster).
+// Wegfindung für die Figur im Zuhause (A* auf dem Raster).
 // Wände sperren, Türen, Durchgänge und Tore lassen durch.
 
 import { cellIndex, hEdge, inPlot, PLOT, vEdge, type PlotIndex } from '../core/building';

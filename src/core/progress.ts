@@ -23,7 +23,7 @@ const items = (s: PlayerState) => activePlot(s)?.items ?? [];
 const tierGoal = (id: GoalId, tier: number, reward: Partial<Inventory>, blueprint?: BlueprintId): GoalDef => ({
   id,
   title: `Erreiche die Stufe „${COMFORT_TIERS[tier][1]}“`,
-  hint: 'Möbel, Sammelstücke und Räume mit Dach machen die Endstation gemütlicher.',
+  hint: 'Möbel, Sammelstücke und Räume mit Dach machen dein Zuhause gemütlicher.',
   progress: (s) => ({ have: Math.min(comfort(s), COMFORT_TIERS[tier][0]), need: COMFORT_TIERS[tier][0] }),
   reward,
   blueprint,
@@ -32,8 +32,8 @@ const tierGoal = (id: GoalId, tier: number, reward: Partial<Inventory>, blueprin
 /** In dieser Reihenfolge erscheinen die Ziele. Die ersten führen durch den Einstieg. */
 export const GOALS: GoalDef[] = [
   { id: 'search3', title: 'Durchsuche 3 Fundstellen', hint: 'Geh zu einem leuchtenden Punkt auf der Karte und tippe ihn an.', progress: (s) => ({ have: Math.min(3, s.stats.searches), need: 3 }), reward: { food: 1, water: 1 } },
-  { id: 'site', title: 'Errichte deine Endstation', hint: 'Tippe unten links auf das Haus. Sie entsteht dort, wo du gerade bist.', progress: (s) => ({ have: s.base.active ? 1 : 0, need: 1 }), reward: { wood: 3, metal: 2 } },
-  { id: 'unpack', title: 'Pack zu Hause deinen Rucksack aus', hint: 'In der Endstation leuchtet „Rucksack auspacken“. Dann liegt alles sicher im Lager.', progress: (s) => ({ have: Math.min(1, s.stats.unpacks), need: 1 }), reward: { screws: 2 } },
+  { id: 'site', title: 'Richte dein Zuhause ein', hint: 'Tippe unten links auf das Haus. Es entsteht dort, wo du gerade bist.', progress: (s) => ({ have: s.base.active ? 1 : 0, need: 1 }), reward: { wood: 3, metal: 2 } },
+  { id: 'unpack', title: 'Pack zu Hause deinen Rucksack aus', hint: 'Zu Hause leuchtet „Rucksack auspacken“. Dann liegt alles sicher im Lager.', progress: (s) => ({ have: Math.min(1, s.stats.unpacks), need: 1 }), reward: { screws: 2 } },
   { id: 'clear3', title: 'Räume 3 Hindernisse weg', hint: 'Schutt, Wracks und Gestrüpp auf deinem Gelände antippen. Darin steckt Material.', progress: (s) => ({ have: Math.min(3, activePlot(s)?.cleared.length ?? 0), need: 3 }), reward: { stone: 2, wood: 2 } },
   { id: 'workbench', title: 'Stell einen Werktisch auf', hint: 'Bauen, Einrichten, Werktisch.', progress: (s) => ({ have: hasWorkbench(s) ? 1 : 0, need: 1 }), reward: { metal: 2, screws: 2 } },
   { id: 'dismantle', title: 'Zerlege Kram am Werktisch', hint: 'Kram aus dem Lager auf den Werktisch legen und Fertiges abholen.', progress: (s) => ({ have: Math.min(1, s.stats.dismantled), need: 1 }), reward: { electronics: 1, glue: 1 } },
@@ -45,7 +45,7 @@ export const GOALS: GoalDef[] = [
   { id: 'barrel', title: 'Stell eine Regentonne auf', hint: 'Sie sammelt von selbst Wasser, du holst es ab.', progress: (s) => ({ have: items(s).some((i) => i.kind === 'rainBarrel') ? 1 : 0, need: 1 }), reward: { plastic: 2, metal: 1 } },
   tierGoal('tier2', 2, { glass: 2, screws: 2 }, 'stove'),
   { id: 'weapon', title: 'Bau eine Waffe am Werktisch', hint: 'Werktisch öffnen, „Waffen bauen“.', progress: (s) => ({ have: Math.min(1, s.stats.crafted), need: 1 }), reward: { metal: 3 } },
-  { id: 'cook', title: 'Koch einen Eintopf', hint: 'Holzofen in der Endstation antippen. Macht satt: 3 Stunden mehr Beute.', progress: (s) => ({ have: Math.min(1, s.stats.cooked), need: 1 }), reward: { food: 2, water: 2 } },
+  { id: 'cook', title: 'Koch einen Eintopf', hint: 'Holzofen zu Hause antippen. Macht satt: 3 Stunden mehr Beute.', progress: (s) => ({ have: Math.min(1, s.stats.cooked), need: 1 }), reward: { food: 2, water: 2 } },
   { id: 'set', title: 'Vervollständige ein Set im Fundbuch', hint: 'Das Fundbuch im Rucksack zeigt, was noch fehlt und wo es liegen könnte.', progress: (s) => ({ have: Math.min(1, count(s.sets)), need: 1 }), reward: { electronics: 2 } },
   { id: 'cache', title: 'Grab ein Versteck aus', hint: 'Hinweise findest du beim Durchsuchen oder per Funkgerät. Dann im Suchkreis nach „warm“ und „heiß“ gehen.', progress: (s) => ({ have: Math.min(1, s.stats.caches), need: 1 }), reward: { electronics: 1, screws: 2 } },
   tierGoal('tier3', 3, { glue: 2, glass: 2 }, 'brickWall'),

@@ -1,4 +1,4 @@
-// Die Endstation: Gelände ansehen, einrichten, frei bauen und zurückerobern.
+// Dein Zuhause: Gelände ansehen, einrichten, frei bauen und zurückerobern.
 //
 // Bedienung: ein Finger schiebt die Ansicht, zwei Finger zoomen. Mit einem Bau-Werkzeug
 // zieht ein Finger Wände, Böden oder Dächer auf (dann schieben zwei Finger die Ansicht).
@@ -187,7 +187,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     wallBtn,
     h('button', { class: 'iconbtn small', type: 'button', 'aria-label': 'Ganzes Gelände zeigen', onclick: () => scene.fitPlot() }, svgEl(icon('fit', 18))),
   );
-  const el = h('div', { class: 'overlay base-view', role: 'dialog', 'aria-label': 'Die Endstation' }, stage, head, cam, controls, buildToggle, ctx, panel);
+  const el = h('div', { class: 'overlay base-view', role: 'dialog', 'aria-label': 'Dein Zuhause' }, stage, head, cam, controls, buildToggle, ctx, panel);
   host.append(el);
 
   let top: Top = 'furnish';
@@ -219,7 +219,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   };
   const needHere = () => {
     if (here()) return true;
-    app.toast('Bauen geht nur an deiner Endstation. Ansehen geht überall.', 'warn');
+    app.toast('Bauen geht nur bei dir zu Hause. Ansehen geht überall.', 'warn');
     return false;
   };
 
@@ -252,7 +252,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     const s = st();
     const site = s.base.active ? SITES[s.base.active] : null;
     clear(titleEl);
-    titleEl.append(h('h1', { class: 'sign-title' }, 'Endstation'), site ? h('span', { class: 'base-site' }, `${site.name} · ${site.where}`) : '');
+    titleEl.append(h('h1', { class: 'sign-title' }, 'Zuhause'), site ? h('span', { class: 'base-site' }, `${site.name} · ${site.where}`) : '');
     const c = plotComfort(plot());
     const tier = comfortTier(c.value);
     clear(comfortEl);
@@ -294,7 +294,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
       if (!f) return;
       if (moveBtn.dataset.armed) {
         setBasePlace(f.pos);
-        app.toast('Die Endstation ist umgezogen. Alles kommt mit.', 'good');
+        app.toast('Dein Zuhause ist umgezogen. Alles kommt mit.', 'good');
         render();
         return;
       }
@@ -1236,7 +1236,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     render();
   };
 
-  // Tageszeit und Wetter laufen mit, solange die Endstation offen ist
+  // Tageszeit und Wetter laufen mit, solange das Zuhause offen ist
   const tick = window.setInterval(() => {
     renderHead();
     if (el.dataset.phase !== opts.phase()) {
@@ -1295,17 +1295,17 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   return el;
 }
 
-/** Erklär-Dialog: Endstation an diesem Ort errichten. */
+/** Erklär-Dialog: Zuhause an diesem Ort einrichten. */
 export function openSetBase(_app: App, host: HTMLElement, getFix: () => Fix | null, onDone: (set: boolean) => void): HTMLElement {
   const f = getFix();
   const ok = !!f && f.accuracyM <= 80;
   const el = h(
     'div',
-    { class: 'overlay set-base', role: 'dialog', 'aria-label': 'Endstation festlegen' },
+    { class: 'overlay set-base', role: 'dialog', 'aria-label': 'Zuhause festlegen' },
     h(
       'div',
       { class: 'overlay-inner narrow-box' },
-      h('div', { class: 'sign' }, h('span', null, 'Endstation')),
+      h('div', { class: 'sign' }, h('span', null, 'Zuhause')),
       h('p', { class: 'set-base-lead' }, 'Wähle einen Ort für deine Basis, zum Beispiel dein Zuhause. Dort baust du dir dein eigenes Gelände auf.'),
       h(
         'ul',

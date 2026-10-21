@@ -69,7 +69,7 @@ describe('Zielleiste und Ruf', () => {
     expect(rankOf(t).next?.name).toBe('Späher');
   });
 
-  it('Stufen der Endstation bringen Vorteile', () => {
+  it('Stufen des Zuhauses bringen Vorteile', () => {
     const s = settled();
     expect(basePerks(s)).toMatchObject({ slots: 0, rangeM: 0, luck: 0, lootFactor: 1 });
     expect(TIER_PERKS.length).toBeGreaterThanOrEqual(6);

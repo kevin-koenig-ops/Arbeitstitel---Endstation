@@ -18,7 +18,7 @@ export const RESOURCES: Record<Resource, { name: string; where?: string }> = {
   medicine: { name: 'Medizin' },
   wood: { name: 'Holz', where: 'Schuppen, Bäume, Baumarkt' },
   metal: { name: 'Metall', where: 'Autos, Schrott, Werkzeug' },
-  stone: { name: 'Stein', where: 'Schutt und Felsen in der Endstation' },
+  stone: { name: 'Stein', where: 'Schutt und Felsen zu Hause' },
   cloth: { name: 'Stoff', where: 'Rucksäcke, Kleidercontainer, Teddys' },
   plastic: { name: 'Kunststoff', where: 'Fast überall, besonders Pakete' },
   glass: { name: 'Glas', where: 'Flaschen, Spiegel, Fernseher' },
@@ -506,7 +506,7 @@ export const MAX_HEALTH = 10;
 /** Alle so viele Minuten kommt 1 Lebenspunkt von selbst zurück. */
 export const HEALTH_REGEN_MIN = 20;
 
-// --- Fortschritt: was die Stufen der Endstation bringen ---------------------------
+// --- Fortschritt: was die Stufen des Zuhauses bringen ---------------------------
 
 /** Wirkung je Stufe (Index wie COMFORT_TIERS: Ruine, Notlager, …, Oase). Wirkungen zählen ab ihrer Stufe dauerhaft. */
 export interface TierPerk {
@@ -769,7 +769,7 @@ export const CACHE = {
   blueprintChance: 0.35,
 };
 
-/** Funkgerät in der Endstation: alle paar Stunden ein Funkspruch, manchmal mit Hinweis. */
+/** Funkgerät zu Hause: alle paar Stunden ein Funkspruch, manchmal mit Hinweis. */
 export const RADIO = {
   everyH: 20,
   /** Hinweise per Funk liegen etwas weiter weg */
@@ -786,7 +786,7 @@ export const RADIO_LINES: string[] = [
   '„… Tauschmarkt am Samstag. Bringt Schrauben und Batterien, Medizin gegen Saatgut …“',
   '„… hier ist die Küste. Wiederhole: hier ist die Küste. Fisch für alle, die es bis …“ Dann nur noch Rauschen.',
   '„… Keller sind tabu. Ich sag es nochmal: Keller sind tabu …“',
-  '„… Linie 0, Linie 0, bitte melden …“ Niemand antwortet. Wie jeden Abend.',
+  '„… Kanal 4, Kanal 4, bitte melden …“ Niemand antwortet. Wie jeden Abend.',
   '„… hab was versteckt, für die, die nach uns kommen. Folgt den Kreidezeichen …“',
   '„… Heuler in der Tiefgarage am Markt. Leise sein, Licht aus, weitergehen …“',
   '„… wer im Hellen geht, kommt heim. Gute Nacht, Kanal 4 …“',

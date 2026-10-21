@@ -11,10 +11,10 @@ Wie es zum Weltuntergang kam (Phosphat-Krieg, das Weinen, Elysis, der Flux), ste
 1. **Kein Zwang.** Wegbleiben kostet nichts. Nichts verfällt, nichts wird zerstört. Rausgehen bringt Fortschritt, Zuhausebleiben bestraft nicht. Nach einer Pause gibt es sogar einen Bonus.
 2. **Die echte Welt, anders erzählt.** Die Karte ist die echte Umgebung, aber im Endzeit-Look: Ruinen, verwilderte Wälder, Staub, Nebel.
 3. **Auch auf dem Dorf spielbar.** Fundstellen gibt es überall, nicht nur an Sehenswürdigkeiten. Jedes Dorf hat Bushaltestellen, Gärten, Feldwege.
-4. **Datenschutz.** Den Ort deiner Endstation legst du selbst fest, er bleibt aber nur auf deinem Gerät. Andere Spieler (und später der Server) erfahren nie, wo sie steht.
-5. **Tagsüber raus, abends einrichten.** Draußen sammelst du Rohstoffe, Kram, Sammelstücke und Baupläne, zu Hause baust du in Ruhe deine Endstation aus, gern auch vom Bett aus.
+4. **Datenschutz.** Den Ort deines Zuhauses legst du selbst fest, er bleibt aber nur auf deinem Gerät. Andere Spieler (und später der Server) erfahren nie, wo es steht.
+5. **Tagsüber raus, abends einrichten.** Draußen sammelst du Rohstoffe, Kram, Sammelstücke und Baupläne, zu Hause baust du in Ruhe dein Zuhause aus, gern auch vom Bett aus.
 6. **Eins statt viele.** Jede nützliche Anlage (Regentonne, Werkbank, Windrad, Ofen …) gibt es nur einmal. Statt mehr davon zu bauen, wird sie in Stufen aufgerüstet und bleibt dabei stehen, wo sie steht. Niemand soll ständig umbauen müssen. Deko darf man beliebig oft aufstellen.
-7. **Draußen gefährlich, zu Hause gemütlich.** Die Welt draußen bleibt rau (Lore: eher The Division als grüne Idylle). Die Endstation dagegen ist warm, sicher und voller kleiner Rituale, wie bei Animal Crossing. Und man braucht nur ein Handy, keine Konsole.
+7. **Draußen gefährlich, zu Hause gemütlich.** Die Welt draußen bleibt rau (Lore: eher The Division als grüne Idylle). Das Zuhause dagegen ist warm, sicher und voller kleiner Rituale, wie bei Animal Crossing. Und man braucht nur ein Handy, keine Konsole.
 8. **Langsam aufbauen.** Niemand wird beim Einstieg überschwemmt. Man lernt Stück für Stück alles kennen, ohne Hast. Neue Spielteile schalten sich nach und nach frei (siehe „Langsamer Aufbau“), jedes mit einem kleinen Moment, der es erklärt.
 
 ## Kernschleife
@@ -22,7 +22,7 @@ Wie es zum Weltuntergang kam (Phosphat-Krieg, das Weinen, Elysis, der Flux), ste
 1. **Erkunden:** Fundstellen leuchten auf der Karte. Wenn man nah genug ist (ca. 45 m), kann man sie durchsuchen. Noch nie besuchte haben einen grünen Punkt: Der erste Besuch bringt doppelt so viel.
 2. **Durchsuchen:** ein kurzes Geschicklichkeitsspiel je nach Fundort: Schloss knacken (Auto, Packstation, Tankstelle, Haltestelle), Aufhebeln (Schuppen, Hochsitz, Apotheke, Baumarkt, Brunnen) oder Durchwühlen (Container, Rucksack, Supermarkt, Fass). Daneben gibt 30 % weniger, perfekt 35 % mehr und etwas Glück. In den Einstellungen abschaltbar (dann immer „gut“). Danach darf man bis zu dreimal **weiter wühlen**: kleine Extrafunde, aber jedes Mal lauter. Wird es zu laut, kommt etwas (Überfall-Kampf).
 3. **Sammeln:** Nahrung, Wasser, Medizin zum Überleben, dazu Rohstoffe, Kram und Sammelstücke. Alles außer den Vorräten kommt in den Rucksack und ist erst zu Hause im Lager sicher. Echte Orte bringen mehr: Supermarkt → Nahrung, Apotheke → Medizin, Baumarkt → Holz, Metall, Schrauben, Kleber.
-4. **Ausbauen:** Mit Rohstoffen aus dem Lager wird die Endstation ausgebaut. Manche Anlagen produzieren von allein (Regentonne, Hochbeet). Einen Bus zum Ausbauen gibt es nicht mehr.
+4. **Ausbauen:** Mit Rohstoffen aus dem Lager wird das Zuhause ausgebaut. Manche Anlagen produzieren von allein (Regentonne, Hochbeet).
 5. **Entdecken:** Selten findet man Erinnerungsstücke, kleine Notizen und Fundsachen, die nach und nach erzählen, was passiert ist.
 
 ## Drinnen und draußen im Gleichgewicht (geplant)
@@ -34,7 +34,7 @@ Grundregel: **Draußen findest du, zu Hause machst du etwas daraus.** Beides sol
 - **Zu Hause läuft nie leer:**
   - Am Anfang genug Startmaterial und viel Schutt auf dem Gelände (Wegräumen bringt Rohstoffe), damit man am ersten Abend gleich etwas bauen kann.
   - Anlagen, die über Nacht etwas erzeugen (Regentonne, Hochbeet, Sanitätsschrank, später mehr).
-  - „Ums Haus streifen“: ein paarmal am Tag etwas Kleinkram direkt an der Endstation. Genug, um weiterzubauen, aber nie so viel wie draußen.
+  - „Ums Haus streifen“: ein paarmal am Tag etwas Kleinkram direkt am Zuhause. Genug, um weiterzubauen, aber nie so viel wie draußen.
   - Ziele, die zu Hause erfüllbar sind (Raum bauen, Eintopf kochen, Deck bauen, Raid-Beitrag).
 - **Draußen ist nie Pflicht:** Wer ein paar Tage nicht rausgeht, kann trotzdem einrichten, Raids kämpfen und Geschichten lesen. Er kommt nur langsamer voran. Wegbleiben wird nie bestraft.
 - **Zahlen im Blick behalten:** Das Rechenmodell für das Gleichgewicht (14 Spieltage, verschiedene Spielertypen) bekommt einen „Stubenhocker“ und einen „Läufer“ dazu. Beide sollen Spaß haben: der Läufer schneller vorankommen, der Stubenhocker nie feststecken.
@@ -43,10 +43,10 @@ Grundregel: **Draußen findest du, zu Hause machst du etwas daraus.** Beides sol
 
 **Richtung (entschieden am 21.10.2026):** Kein Umbau zum reinen Wohlfühlspiel, sondern beides: drinnen gemütlich, draußen gefährlich. Im Hinterkopf bleibt ein zweites, ganz gemütliches Spiel auf demselben Motor (z. B. Spaziergänge mit Pflanzen statt Wandlern). Das ginge, weil Spielregeln, Inhalte (`content.ts`), Modelle (eine Liste) und Oberfläche sauber getrennt sind.
 
-Vorbild ist Animal Crossing: Die Welt läuft in echter Zeit mit, jeden Tag gibt es ein paar Kleinigkeiten, man kann nicht verlieren, und es gibt feste Höhepunkte, auf die man sich freut. Das übernehmen wir für die Endstation:
+Vorbild ist Animal Crossing: Die Welt läuft in echter Zeit mit, jeden Tag gibt es ein paar Kleinigkeiten, man kann nicht verlieren, und es gibt feste Höhepunkte, auf die man sich freut. Das übernehmen wir für das Zuhause:
 
 - **Samstagabend am Lagerfeuer:** Jeden Samstagabend (echte Zeit, etwa 18 bis 24 Uhr) brennt das Lagerfeuer, jemand spielt Gitarre, später singen die Bewohner mit. Es gibt ein Lagerfeuerlied, das man danach behält und auf dem Funkgerät hören kann, dazu eine kleine Belohnung. Mit der Zeit wächst die Liedersammlung. Verpassen ist nicht schlimm: Lieder kommen wieder, nichts Spielwichtiges hängt daran.
-- **Heute zu Hause:** Jeden Tag 2 bis 3 kleine Überraschungen an der Endstation, z. B. ein Händler am Tor mit einem Tagesangebot, ein Zettel am Zaun, ein Funkspruch, ein Tier, das vorbeischaut. Eine kleine Leiste zeigt, was heute da ist.
+- **Heute zu Hause:** Jeden Tag 2 bis 3 kleine Überraschungen am Zuhause, z. B. ein Händler am Tor mit einem Tagesangebot, ein Zettel am Zaun, ein Funkspruch, ein Tier, das vorbeischaut. Eine kleine Leiste zeigt, was heute da ist.
 - **Willkommen zurück:** Nach einer Pause eine freundliche Zusammenfassung, was passiert ist (Ernte, Funksprüche, Besuch). Kein Unkraut, kein Vorwurf.
 - **Der Archivar:** Im Museum der alten Welt erzählt ein Bewohner zu jedem Sammel- und Erinnerungsstück ein Stück Lore, so wie die Eule im Museum bei Animal Crossing.
 - **Bewohner mit Charakter** (Version 1.2): Sie schreiben Briefe, haben Wünsche und Geburtstage, schenken dir etwas und erinnern sich an das, was du für sie getan hast.
@@ -58,19 +58,19 @@ Vorbild ist Animal Crossing: Die Welt läuft in echter Zeit mit, jeden Tag gibt 
 
 Am Handy braucht es einen Sog: etwas, das man erleben will, ein Rätsel, das man lösen will, und ein Ziel, auf das man hinarbeitet. Der Sog kommt aus Neugier und Vorfreude, nie aus Angst, etwas zu verpassen.
 
-- **Das große Ziel ab Minute eins:** Das Hauptmenü ist ein Linienplan. Jede Haltestelle ist ein Kapitel, die letzte ist von Anfang an zu sehen, aber grau. Vorschlag fürs Endziel: **Die Linie 0 fährt wieder** (den Bus zum Laufen bringen und mit deinen Leuten zur Küste fahren). Noch nicht entschieden. Jede Station schaltet etwas Großes frei (Gegner, Rote Zonen, Raids, Bewohner).
+- **Das große Ziel ab Minute eins:** Die Kapitel der Geschichte sind von Anfang an als Reise zu sehen, das letzte grau. Das Endziel ist noch offen (Idee aus der Lore: mit deinen Leuten zur Küste aufbrechen). Jedes Kapitel schaltet etwas Großes frei (Gegner, Rote Zonen, Raids, Bewohner).
 - **Das Rätsel:** Am ersten Abend knackt das Funkgerät, eine Stimme auf Kanal 4 spricht von der Küste und bricht ab. Jeden Samstag kommt eine neue Folge mit Cliffhanger, wie bei einer Serie. Wer sendet das? Stimmt das mit der Küste? Erinnerungsstücke, Laborzettel und der Archivar füllen die Lücken. Verpasste Folgen kann man nachhören.
-- **Das Endgame:** wöchentliche Raids mit drei Schwierigkeiten (nur dort Raid-Material für legendäre Waffen, höchste Ausbaustufen, Trophäen), Rote Zonen mit Tiefenstufen und Bestmarke, Saisons von etwa 8 bis 10 Wochen mit neuem Kapitel, neuer Kreatur und neuem Raid-Boss. Alte Saisons bleiben spielbar. Nach dem Endziel öffnet sich „Linie 1“ als nächste Strecke. Ruf-Stufen nach „Legende“ mit Abzeichen und Kleidung.
+- **Das Endgame:** wöchentliche Raids mit drei Schwierigkeiten (nur dort Raid-Material für legendäre Waffen, höchste Ausbaustufen, Trophäen), Rote Zonen mit Tiefenstufen und Bestmarke, Saisons von etwa 8 bis 10 Wochen mit neuem Kapitel, neuer Kreatur und neuem Raid-Boss. Alte Saisons bleiben spielbar. Nach dem Endziel öffnet sich ein neuer Abschnitt der Reise. Ruf-Stufen nach „Legende“ mit Abzeichen und Kleidung.
 - **Der Rhythmus:** jeden Tag Zielleiste und „Heute zu Hause“, montags ein neues Raid-Nest, samstags Lagerfeuer und Funk-Folge, alle zwei bis drei Monate eine Saison. Raids bleiben zwei Wochen offen.
-- **Die ersten 10 Minuten** zeigen den Haken schon: erster Fund, erster Wandler, abends der abgebrochene Funkspruch, und auf dem Linienplan leuchtet in der Ferne die graue Endstation.
+- **Die ersten 10 Minuten** zeigen den Haken schon: erster Fund, erster Wandler, abends der abgebrochene Funkspruch, und in der Kapitel-Übersicht leuchtet in der Ferne das graue Endziel.
 
 ## Langsamer Aufbau (geplant)
 
-Das Spiel öffnet sich wie eine Geschichte: erst wenig, dann immer mehr. Jedes neue Spielteil kommt mit einem kleinen Moment (ein Funkspruch, ein Fund, ein Besucher), nie als Wand aus Erklärungen. Was noch nicht freigeschaltet ist, taucht nicht in Menüs auf, höchstens als graue Haltestelle auf dem Linienplan.
+Das Spiel öffnet sich wie eine Geschichte: erst wenig, dann immer mehr. Jedes neue Spielteil kommt mit einem kleinen Moment (ein Funkspruch, ein Fund, ein Besucher), nie als Wand aus Erklärungen. Was noch nicht freigeschaltet ist, taucht nicht in Menüs auf, höchstens als graues Kapitel in der Übersicht.
 
 Grobe Reihenfolge (Zahlen werden beim Testen angepasst):
 
-1. **Erster Tag:** Karte, Fundstellen durchsuchen, Rucksack, die Endstation mit ein paar Möbeln.
+1. **Erster Tag:** Karte, Fundstellen durchsuchen, Rucksack, das Zuhause mit ein paar Möbeln.
 2. **Erste Tage:** Werktisch (Kram zerlegen), erste Wache und damit der erste Kampf, Händlerkisten.
 3. **Erste Woche:** Funkgerät und die erste Folge auf Kanal 4, Kreidezeichen und Verstecke, Holzofen.
 4. **Erster Samstag:** das erste Lagerfeuer am Abend.
@@ -121,7 +121,7 @@ Knobeln passt perfekt zu „draußen kurz, zu Hause die Tiefe“: Hinweise finde
 ## Fortschritt
 
 - **Zielleiste:** Auf der Karte steht immer das nächste Ziel (z. B. „Durchsuche 3 Fundstellen“). Geschaffte Ziele leuchten gelb und haben eine kleine Belohnung (Rohstoffe, manchmal ein Bauplan). Die ersten Ziele führen durch den Einstieg. Antippen öffnet das Fortschritts-Fenster.
-- **Stufen der Endstation bringen etwas:** Notlager (schneller erholen), Unterschlupf (+1 Werktisch-Platz), Zuhause (+10 m Suchradius), Gemütliches Zuhause (mehr Glück: öfter Kram und Sammelstücke), Schmuckstück (noch schneller erholen), Oase (+25 % Beute). Eine neue Stufe wird in der Endstation gefeiert.
+- **Stufen des Zuhauses bringen etwas:** Notlager (schneller erholen), Unterschlupf (+1 Werktisch-Platz), Zuhause (+10 m Suchradius), Gemütliches Zuhause (mehr Glück: öfter Kram und Sammelstücke), Schmuckstück (noch schneller erholen), Oase (+25 % Beute). Eine neue Stufe wird zu Hause gefeiert.
 - **Streifer-Ruf:** Ein Rang aus allem, was man draußen schafft: Neuling, Sammler, Späher, Streifer, Alter Streifer, Legende. Steht oben neben dem Namen.
 
 ## Draußen: Händlerkisten und Verstecke
@@ -133,20 +133,20 @@ Knobeln passt perfekt zu „draußen kurz, zu Hause die Tiefe“: Hinweise finde
 ## Rohstoffe, Kram und Sammelstücke
 
 - **Neun Rohstoffe** statt „Material“: Holz, Metall, Stein, Stoff, Kunststoff, Glas, Kleber, Schrauben, Elektronik. Grob von häufig nach selten. Jedes Bauteil kostet genau, woraus es besteht (Bretterwand = Holz, Fenster = Glas und Holz, Stehlampe braucht Elektronik).
-- **Wo es was gibt:** Autos → Metall, Kunststoff; Schuppen → Holz, Schrauben; Kleidercontainer → Stoff; Pakete → Elektronik, Kleber; Baumarkt → fast alles zum Bauen. Stein kommt vor allem aus Schutt und Felsen in der Endstation.
+- **Wo es was gibt:** Autos → Metall, Kunststoff; Schuppen → Holz, Schrauben; Kleidercontainer → Stoff; Pakete → Elektronik, Kleber; Baumarkt → fast alles zum Bauen. Stein kommt vor allem aus Schutt und Felsen zu Hause.
 - **Kram** (18 Sorten, z. B. Toaster, Autobatterie, Benzinkanister, Kabeltrommel, Konservendosen): findet man oft und mehrfach. Wie bei Fallout steht dabei, **was drinsteckt** (Toaster → 2 Metall, 1 Elektronik). Kram wird am Werktisch zerlegt.
 - **Sammelstücke** (13 Stück, z. B. Teddybär, Wanduhr, Röhrenfernseher, Gitarre, Fahrrad, Quietscheente): jedes gibt es **nur einmal**. Sie kommen ins **Fundbuch** und lassen sich zu Hause als Deko aufstellen (kostenlos, wieder ins Lager räumbar). Noch fehlende zeigt das Fundbuch als Umriss mit Hinweis, wo man suchen kann.
 - **Sets:** Sammelstücke gehören zu vier Sets (Kinderzimmer, Wohnzimmer 1985, Arbeitszimmer, Gute Stube). Ein volles Set bringt einen Bauplan und Rohstoffe ins Lager.
-- **Der Werktisch** steht in der Endstation, zerlegt Kram in echter Zeit, eins nach dem anderen (1–12 Minuten pro Stück), und baut Waffen (die Armbrust ab Stufe 2). Er arbeitet weiter, auch wenn die App zu ist. Fertiges wartet auf dem Tisch, nichts verdirbt. Ein grünes Zeichen am Endstation-Knopf zeigt, dass etwas bereitliegt.
+- **Der Werktisch** steht zu Hause, zerlegt Kram in echter Zeit, eins nach dem anderen (1–12 Minuten pro Stück), und baut Waffen (die Armbrust ab Stufe 2). Er arbeitet weiter, auch wenn die App zu ist. Fertiges wartet auf dem Tisch, nichts verdirbt. Ein grünes Zeichen am Haus-Knopf zeigt, dass etwas bereitliegt.
 - **Eins statt viele:** Werktisch, Holzofen, Solarpaneel, Regentonne, Hochbeet, Sanitätsschrank und Funkgerät gibt es nur einmal. Der Werktisch lässt sich in drei Stufen aufrüsten (mehr Plätze, schneller).
 - **Anlagen mit Nutzen:** Regentonne (Wasser) und Hochbeet (Nahrung) füllen sich von selbst, der Sanitätsschrank macht alle 8 Stunden Medizin. Der Holzofen kocht Eintopf (2 Nahrung, 1 Wasser, 1 Holz): heilt ganz und macht 3 Stunden satt, das bringt 20 % mehr Beute. Das Funkgerät empfängt alle 20 Stunden einen Funkspruch auf Kanal 4, oft mit einem Hinweis auf ein Versteck.
-- **Was fehlt und wo:** Fehlen Rohstoffe für ein Teil, sagt die Endstation, welche und wo man sie oft findet.
+- **Was fehlt und wo:** Fehlen Rohstoffe für ein Teil, sagt das Zuhause, welche und wo man sie oft findet.
 - **Rucksack:** Was du unterwegs findest (Rohstoffe und Kram), steckt im Rucksack. Ohne feste Grenze. Der Rucksack hat drei Reiter: Rucksack, Fundbuch (Sammelstücke, Sets, Erinnerungsstücke) und Ausrüstung (Gesundheit, Waffen).
 - **Lager:** Zu Hause packst du aus, dann liegt alles sicher im Lager. Gebaut wird nur aus dem Lager. Eine Niederlage kostet höchstens etwas aus dem Rucksack, nie aus dem Lager.
 
-## Die Endstation (Basisbau, das Herzstück für abends)
+## Das Zuhause (Basisbau, das Herzstück für abends)
 
-- **Ort festlegen:** Beim ersten Tippen auf das Haus-Symbol errichtest du deine Endstation dort, wo du gerade bist. Bauen kannst du nur in ihrer Nähe (~150 m, drinnen ist GPS ungenau). Umziehen geht jederzeit, alles kommt mit.
+- **Ort festlegen:** Beim ersten Tippen auf das Haus-Symbol richtest du dein Zuhause dort ein, wo du gerade bist. Bauen kannst du nur in seiner Nähe (~150 m, drinnen ist GPS ungenau). Umziehen geht jederzeit, alles kommt mit.
 - **Nur auf dem Gerät:** Der Ort steht nicht im Spielstand. Bau-Aktionen schicken keine Position mit.
 - **Schauplatz:** Zum Start wählst du Busdepot, Bauernhof oder Seeufer. Tankstelle, Schrebergarten und die beiden nicht gewählten findest du draußen als Lageplan. Jeder Schauplatz ist ein eigenes Gelände mit eigener Umgebung (Depothalle und Buswracks, Felder und Silo, See mit Steg und Wald …). Was du baust, bleibt stehen, auch wenn du wechselst.
 - **Gelände zurückerobern:** 72 × 72 m in 6 × 6 Abschnitten zu je 12 × 12 m. Am Anfang sind die mittleren 24 × 24 m frei, drumherum Gestrüpp und Schrott. Jeder angrenzende Abschnitt kostet etwas mehr Holz, Metall und Nahrung. Darin liegen Hindernisse (Schutt, Wracks, Bäume …), die beim Wegräumen etwas bringen. Bäume darf man auch stehen lassen.
@@ -172,12 +172,12 @@ Mehrere Stockwerke wie bei Die Sims, zuerst zwei bis drei Ebenen: Erdgeschoss, e
 ## Bedienung
 
 - **Immer im Querformat.** Hochkant zeigt das Handy nur einen Hinweis zum Drehen. Als installierte App bleibt es fest quer, im Browser geht es auf Wunsch ins Vollbild.
-- **Steuerung wählbar** (Einstellungen): *Antippen* (die Figur läuft hin, wie bei Die Sims) oder *Joystick* mit *Benutzen*-Taste. Gilt in der Endstation und im Simulationsmodus der Karte; mit echtem GPS läufst du selbst. Umstellen wirkt sofort. Der Joystick springt unter den Daumen, wenn man daneben drückt; die Benutzen-Taste reagiert schon beim Drücken.
-- **Baumodus an/aus** in der Endstation: Aus ist freie Sicht zum Herumlaufen und Benutzen (Schutt wegräumen, Bäume fällen), an öffnet die Bauleiste an der Seite. Sobald ein Teil ausgewählt ist, fährt die Leiste weg und unten bleibt nur eine flache Zeile (Drehen, Hinstellen, Bauen), damit der ganze Bildschirm zum Bauen frei ist.
+- **Steuerung wählbar** (Einstellungen): *Antippen* (die Figur läuft hin, wie bei Die Sims) oder *Joystick* mit *Benutzen*-Taste. Gilt zu Hause und im Simulationsmodus der Karte; mit echtem GPS läufst du selbst. Umstellen wirkt sofort. Der Joystick springt unter den Daumen, wenn man daneben drückt; die Benutzen-Taste reagiert schon beim Drücken.
+- **Baumodus an/aus** zu Hause: Aus ist freie Sicht zum Herumlaufen und Benutzen (Schutt wegräumen, Bäume fällen), an öffnet die Bauleiste an der Seite. Sobald ein Teil ausgewählt ist, fährt die Leiste weg und unten bleibt nur eine flache Zeile (Drehen, Hinstellen, Bauen), damit der ganze Bildschirm zum Bauen frei ist.
 
 ## Spielfigur
 
-Die Figur aus der Charaktererstellung ist ein Low-Poly-Modell (Frisur, Hautton, Jacke, Rucksack). Sie steht bei der Erstellung zum Drehen auf einem Sockel, läuft auf der Karte in Laufrichtung und wohnt in der Endstation.
+Die Figur aus der Charaktererstellung ist ein Low-Poly-Modell (Frisur, Hautton, Jacke, Rucksack). Sie steht bei der Erstellung zum Drehen auf einem Sockel, läuft auf der Karte in Laufrichtung und wohnt in deinem Zuhause.
 
 - **Echte Größe:** etwa 1,80 m, überall im selben Maßstab wie Häuser, Straßen, Wände (2,40 m) und Möbel. Auf der Karte wächst und schrumpft sie beim Zoomen mit; ganz weit draußen bleibt sie mindestens so groß, dass man sich noch findet.
 - **Gangart passt zum Tempo:** gehen, joggen, rennen. In der Simulation rennt sie mit 6 m/s.
@@ -219,9 +219,9 @@ Später: mehr Karten und Gegner, Gefahrenstufe pro Ausflug, Horden, die durch ec
 
 Welche Features wann kommen, steht gesammelt im [Fahrplan](ROADMAP.md).
 
-- **Endziel „Die Linie 0 fährt wieder“:** Die Endstation wird Schritt für Schritt zum Depot. Am Ende bringst du den alten Bus wieder zum Laufen und fährst mit deinen Überlebenden zur Küste. (Noch offen: Ob das Endziel so bleibt, seit der Bus als Ausbau-Ort raus ist.)
+- **Endziel:** noch offen. Idee aus der Lore: mit deinen Überlebenden zur Küste aufbrechen.
 
-- **Überlebende** als Herzstück: Menschen mit Namen, Geschichte und Fähigkeit, die in der Endstation wohnen und versorgt werden wollen. Die persönliche Geschichte des Spielers.
+- **Überlebende** als Herzstück: Menschen mit Namen, Geschichte und Fähigkeit, die bei dir wohnen und versorgt werden wollen. Die persönliche Geschichte des Spielers.
 - **Gemeinschaft ohne Treffen:** Spuren, die andere Spieler hinterlassen (Notizen, Vorratskisten, Warnschilder). Funktioniert auch, wenn nur alle paar Tage jemand vorbeikommt.
 - **Funknetz:** Tauschen mit Spielern überall. Pakete brauchen echte Stunden, je nach Entfernung.
 - **Stadt und Land brauchen sich:** Dörfer liefern Nahrung, Städte Medizin und Technik.
@@ -239,7 +239,7 @@ Name, Aussehen (Frisur, Hautton, Jacke) und eine Vorgeschichte mit kleinem Vorte
 
 ## Gestaltung
 
-Bus-Zielanzeige trifft Endzeit: LED-Punktschrift in Bernstein, dunkle Paneele, das Hauptmenü als Linienplan mit Haltestellen. Fundbelege sehen aus wie Kassenzettel, Erinnerungsstücke sind handschriftliche Zettel.
+Endzeit, aber zu Hause warm: dunkle Flächen mit warmem Bernstein als Akzent, klare Schrift (Barlow), Hauptmenü als schlichte Liste vor einem gemalten Bild. Fundbelege sehen aus wie Kassenzettel, Erinnerungsstücke sind handschriftliche Zettel. Titel „Nachhall“ ist nur ein Platzhalter; der alte Bus-Look (LED-Schrift, Linienplan) ist seit 21.10. raus.
 
 **Gemalte Hintergrundbilder** für Start, Hauptmenü, Charaktererstellung, Einstieg, Kampf und Schauplätze.
 

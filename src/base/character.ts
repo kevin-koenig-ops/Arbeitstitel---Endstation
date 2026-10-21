@@ -1,5 +1,5 @@
 // Die Spielfigur als Low-Poly-Modell: Frisur, Hautton und Jacke aus der Charaktererstellung.
-// Wird überall gleich benutzt: Charaktererstellung, Karte und Endstation.
+// Wird überall gleich benutzt: Charaktererstellung, Karte und Zuhause.
 // Die Figur schaut nach +z, die Füße stehen auf y = 0. Maße in Metern (~1,75 m groß).
 
 import * as THREE from 'three';

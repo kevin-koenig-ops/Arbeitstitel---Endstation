@@ -122,7 +122,7 @@ import { GOALS } from './progress';
 
 export const SCHEMA_VERSION = 9;
 const HOUR = 3600_000;
-/** Millisekunden pro Gesundheitspunkt (die Stufe der Endstation macht es schneller). */
+/** Millisekunden pro Gesundheitspunkt (die Stufe des Zuhauses macht es schneller). */
 export function regenMs(state: PlayerState): number {
   return basePerks(state).regenMin * 60_000;
 }
@@ -277,7 +277,7 @@ export function plotIndexOf(state: PlayerState): PlotIndex | null {
 }
 
 /** Gemütlichkeit am aktiven Schauplatz. */
-/** Stufe der Endstation (0 = Ruine … 6 = Oase), aus der Gemütlichkeit. */
+/** Stufe des Zuhauses (0 = Ruine … 6 = Oase), aus der Gemütlichkeit. */
 export function baseTier(state: PlayerState): number {
   const c = comfort(state);
   let t = 0;
@@ -303,7 +303,7 @@ export function basePerks(state: PlayerState) {
   return out;
 }
 
-/** Plätze am Werktisch (Ausbaustufe plus Stufe der Endstation). */
+/** Plätze am Werktisch (Ausbaustufe plus Stufe des Zuhauses). */
 export function workbenchSlots(state: PlayerState): number {
   return workbenchLevel(state).slots + basePerks(state).slots;
 }
@@ -382,7 +382,7 @@ export function itemYield(it: { kind: FurnitureId; at?: number }, now: number): 
   return Math.max(0, Math.min(prod.cap, Math.floor((now - it.at) / (prod.everyH * HOUR))));
 }
 
-/** Alles, was in der aktiven Endstation zum Abholen bereitsteht. */
+/** Alles, was im aktiven Zuhause zum Abholen bereitsteht. */
 export function pendingHarvest(state: PlayerState, now: number): Partial<Inventory> {
   const out: Partial<Inventory> = {};
   for (const it of activePlot(state)?.items ?? []) {
@@ -1004,7 +1004,7 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, o: { guarded
   const night = dayPhase(spot.pos, ctx.now) === 'night';
   const cart = !guarded && !!cartOf(ctx.worldSeed, spot, ctx.now);
   const fed = isFed(state, ctx.now);
-  // Alles, was die Menge verändert: Wache, Nacht, Geschick, Stufe der Endstation, Erstfund, Händlerkiste, satt
+  // Alles, was die Menge verändert: Wache, Nacht, Geschick, Stufe des Zuhauses, Erstfund, Händlerkiste, satt
   const factor =
     (guarded ? GUARD_LOOT_FACTOR : 1) *
     (night ? NIGHT_LOOT_FACTOR : 1) *

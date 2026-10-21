@@ -1,6 +1,6 @@
 # Hinweise für Claude
 
-Endzeit-Erkundungsspiel auf der echten Karte (Arbeitstitel „Endstation“). Web-App mit Vite + TypeScript + MapLibre, ohne UI-Framework. Konzept: `docs/KONZEPT.md`, Architektur: `docs/ARCHITEKTUR.md`, nächste Schritte: `docs/ROADMAP.md`. Hintergrundgeschichte (Lore): `docs/LORE.md`.
+Endzeit-Erkundungsspiel auf der echten Karte (Platzhalter-Titel „Nachhall“, früher „Endstation“; die Basis heißt „Zuhause“). Web-App mit Vite + TypeScript + MapLibre, ohne UI-Framework. Konzept: `docs/KONZEPT.md`, Architektur: `docs/ARCHITEKTUR.md`, nächste Schritte: `docs/ROADMAP.md`. Hintergrundgeschichte (Lore): `docs/LORE.md`.
 
 ## Regeln
 
@@ -19,4 +19,5 @@ Endzeit-Erkundungsspiel auf der echten Karte (Arbeitstitel „Endstation“). We
 - `npm test`: Tests der Spiellogik (müssen grün sein)
 - `npm run build`: Typprüfung + Build nach `dist/`
 - `npm run build:preview`: Einzeldatei-Vorschau nach `dist-preview/endstation-vorschau.html`
-- `npm run gen:world` / `npm run gen:logo`: Demo-Dorf bzw. Platzhalter-Logo neu erzeugen
+- `npm run gen:world`: Demo-Dorf neu erzeugen
+- Android-APK: baut GitHub bei jedem Push (`.github/workflows/apk.yml`), Download unter Releases

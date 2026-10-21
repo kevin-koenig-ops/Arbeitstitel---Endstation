@@ -12,11 +12,11 @@ Version 1.0 ist fertig, wenn der ganze Kreislauf ohne Lücken läuft: rausgehen,
 13. **Feinschliff nach dem Test:** Zahlen für Beute, Kämpfe und Stufen anhand echter Spielrunden nachstellen (das Rechenmodell dafür gibt es schon).
 14. **Drinnen und draußen im Gleichgewicht:** Zu Hause muss es immer etwas zu tun geben, draußen das Besondere. Mehr Startmaterial, „Ums Haus streifen“ ein paarmal am Tag, Ziele auch für zu Hause, das Rechenmodell mit „Stubenhocker“ und „Läufer“. Details im [Konzept](KONZEPT.md).
 15. **Grafikstil finden:** Kevin sucht eine Referenz für den gewünschten Comic-Look, danach bauen wir genau den. Ausprobiert und wieder entfernt: Comic- und Gemalt-Stil, Quaternius-Modellpakete, 3D-Karte mit Fassaden (liegt in Git, Commit 4cc884c). Gemalte Hintergrundbilder sind drin.
-15b. **Handy-Oberfläche überarbeiten:** Die Bedienung auf dem Handy ist noch nicht gut. Gemeinsam überlegen, was wohin gehört (Karte, Endstation, Kampf, Menüs), dann umbauen.
+15b. **Handy-Oberfläche überarbeiten:** Die Karte ist umgebaut (21.10., nach dem Vorbild von Pokémon Go und Monster Hunter Now). Noch offen: Zuhause, Kampf und die Fenster (Rucksack, Fortschritt) genauso schlank machen.
 16. **Wahrzeichen auf der Karte:** echte Apotheken, Supermärkte, Baumärkte, Tankstellen und Haltestellen als 3D-Gebäude aus dem echten Grundriss plus Modell-Teilen (Schild, vernagelte Fenster, Einkaufswagen). Nur in der Nähe geladen, nie an sensiblen Orten. Kommt nach der Entscheidung zur Stilprobe, damit es gleich im richtigen Stil ist. Details im [Konzept](KONZEPT.md).
 17. **Gemütliche Rituale, erste Fassung:** Samstagabend am Lagerfeuer mit einem Lagerfeuerlied pro Woche, die Leiste „Heute zu Hause“ mit 2 bis 3 Überraschungen am Tag und „Willkommen zurück“ nach einer Pause. Braucht Klang (Punkt 11). Details im [Konzept](KONZEPT.md).
 
-**Entschieden:** Kampf als kurze Taktik mit Karten statt Echtzeit. **Noch offen:** Grafikstil (Comic-Look nach Referenz), Endziel (Vorschlag aus der Lore: „Die Linie 0 fährt wieder“, mit deinen Leuten zur Küste).
+**Entschieden:** Kampf als kurze Taktik mit Karten statt Echtzeit. **Noch offen:** Grafikstil (Comic-Look nach Referenz), Endziel (Idee aus der Lore: mit deinen Leuten zur Küste aufbrechen), echter Spieltitel („Nachhall“ ist nur ein Platzhalter).
 
 ## Version 1.1: Karten, Klassen, Dungeons
 
@@ -29,11 +29,11 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 
 ## Version 1.2: Geschichte und Bewohner
 
-- **Überlebende ziehen ein:** Menschen mit Name, Geschichte und Fähigkeit wohnen sichtbar in der Endstation, wünschen sich Möbel und geben kleine Aufträge. Gut versorgt helfen sie mehr; niemand stirbt, wenn du mal nicht spielst. Sie schreiben Briefe, haben Geburtstag und singen samstags am Lagerfeuer mit.
+- **Überlebende ziehen ein:** Menschen mit Name, Geschichte und Fähigkeit wohnen sichtbar bei dir zu Hause, wünschen sich Möbel und geben kleine Aufträge. Gut versorgt helfen sie mehr; niemand stirbt, wenn du mal nicht spielst. Sie schreiben Briefe, haben Geburtstag und singen samstags am Lagerfeuer mit.
 - **Tauschhändler mit Wochenkurs:** montags einkaufen, unter der Woche zu wechselnden Kursen tauschen (wie der Rübenmarkt bei Animal Crossing), nur mit Spiel-Rohstoffen.
 - **Quests mit Witcher-Anspruch:** wenige, aber gute Aufträge, die in Stadt und Dorf funktionieren, gern mit echten Straßennamen („Bring Medizin aus der Apotheke in der Bahnhofstraße zum Stadtpark“).
 - **Funk ausbauen:** Aufträge zu echten Orten in der Nähe, dazu Nachrichten, die das Funkgerät erst nach gelaufenen Kilometern entschlüsselt (das Funkgerät mit Funksprüchen und Versteck-Hinweisen gibt es schon).
-- **Der rote Faden:** Linienplan im Hauptmenü als Kapitel-Reise mit sichtbarem Endziel, jeden Samstag eine neue Funk-Folge auf Kanal 4 (zum Nachhören). Details im [Konzept](KONZEPT.md).
+- **Der rote Faden:** Kapitel-Reise mit sichtbarem Endziel, jeden Samstag eine neue Funk-Folge auf Kanal 4 (zum Nachhören). Details im [Konzept](KONZEPT.md).
 - **Fälle und Rätsel:** Krimi-Fälle mit 3 bis 5 Hinweisen auf der Karte und einer Ermittlungstafel zu Hause (Logikrätsel: wer, wo, womit), dazu Geheimschrift, Funk-Codes und Zahlenschlösser. Falsch raten kostet nichts.
 - **Geschichte in Häppchen:** Erinnerungsstücke werden zu zusammenhängenden Kapiteln, dazu Laborzettel, Archivnotizen und Funksprüche aus der Lore. Die Biologie wird nie erklärt.
 - **Hund als Begleiter:** erschnüffelt draußen Verstecke, schläft zu Hause am Lagerfeuer. (Mitkämpfen erst als späteres Update, siehe „Ideen für irgendwann“.)
@@ -211,3 +211,9 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - Spielstand Version 9
 
 **Testen:** Machen die Minispiele Spaß oder nerven sie? Ist der Kampf verständlich? Lohnt sich das Weiterwühlen? Findet man Verstecke mit „warm und kalt“?
+
+### ✅ 21.10. abends: Android-App, schlanke Karte, Abschied von der Endstation
+
+- **Android-App:** GitHub baut bei jedem Push eine APK (Releases, „endstation.apk“), Vollbild, Querformat, Standort-Rechte
+- **Karten-HUD schlank:** oben links Figur mit Gesundheitsring und nächstes Ziel, oben rechts Sektor, Wetter, Menü; unten Zuhause, runder Rucksack-Knopf, Zentrieren mit GPS-Punkt. Vorräte, Name und Tag erst beim Antippen
+- **Endstation-Geschichte raus:** keine Linie 0, kein eigener Bus, die Basis heißt jetzt „Zuhause“. Bus-Look raus (LED-Schrift, Linienplan-Menü, LED-Icon). Platzhalter-Titel „Nachhall“ mit neuem Icon

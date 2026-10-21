@@ -3,7 +3,7 @@
 
 import battle from '../assets/art/heuler-tunnel.webp';
 import character from '../assets/art/charakter-ausruestung.webp';
-import home from '../assets/art/endstation-halle.webp';
+import home from '../assets/art/halle.webp';
 import intro from '../assets/art/kleinstadt.webp';
 import menu from '../assets/art/menu-lagerfeuer.webp';
 

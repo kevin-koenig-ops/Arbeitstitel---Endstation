@@ -30,6 +30,7 @@ import { SpotSheet } from '../game/spotSheet';
 import { goalChip, openProgressPanel } from '../game/progressPanel';
 import { icon } from '../icons';
 import { settingsPanel } from '../settingsPanel';
+import { menuItem } from './menu';
 import { REJECT_TEXT } from '../texts';
 
 export function gameScreen(app: App): Screen {
@@ -146,7 +147,7 @@ export function gameScreen(app: App): Screen {
   let locHintUntil = 0;
   const locateBtn = h('button', { class: 'iconbtn locate', type: 'button', 'aria-label': 'Auf mich zentrieren', onclick: () => recenter() }, svgEl(icon('locate')));
   const homeBadge = h('span', { class: 'home-badge', hidden: true }, '+');
-  const homeBtn = h('button', { class: 'iconbtn home', type: 'button', 'aria-label': 'Deine Endstation', onclick: () => void openBase() }, svgEl(icon('home')), homeBadge);
+  const homeBtn = h('button', { class: 'iconbtn home', type: 'button', 'aria-label': 'Dein Zuhause', onclick: () => void openBase() }, svgEl(icon('home')), homeBadge);
   const hud = h(
     'div',
     { class: 'hud' },
@@ -234,14 +235,14 @@ export function gameScreen(app: App): Screen {
     packBadge.hidden = carried === 0;
     packBadge.textContent = String(carried);
     packBtn.setAttribute('aria-label', carried ? `Rucksack, ${carried} Sachen zum Heimbringen` : 'Rucksack');
-    // Zu Hause wartet etwas (Werktisch fertig, Regentonne voll): kleines Zeichen am Endstation-Knopf
+    // Zu Hause wartet etwas (Werktisch fertig, Regentonne voll): kleines Zeichen am Haus-Knopf
     if (getBasePlace()) {
       const now = app.backend.now();
       const ready = readyParts(s, now).count + Object.values(pendingHarvest(s, now)).reduce((a, b) => a + (b ?? 0), 0);
       homeBadge.hidden = ready === 0;
       homeBadge.textContent = String(ready);
       homeBadge.classList.add('ready');
-      homeBtn.setAttribute('aria-label', ready ? `Deine Endstation: ${ready} Sachen zum Abholen` : 'Deine Endstation');
+      homeBtn.setAttribute('aria-label', ready ? `Dein Zuhause: ${ready} Sachen zum Abholen` : 'Dein Zuhause');
     }
   };
 
@@ -612,7 +613,7 @@ export function gameScreen(app: App): Screen {
     openFight();
   };
 
-  // --- Endstation -------------------------------------------------------------------
+  // --- Zuhause -------------------------------------------------------------------
   const refreshBaseMarker = () => {
     const place = getBasePlace();
     gm?.setBase(place?.pos ?? null);
@@ -633,7 +634,7 @@ export function gameScreen(app: App): Screen {
     try {
       mod = await import('../base/baseView');
     } catch {
-      app.toast('Die Endstation konnte nicht geladen werden. Prüfe die Verbindung.', 'warn');
+      app.toast('Dein Zuhause konnte nicht geladen werden. Prüfe die Verbindung.', 'warn');
       return;
     } finally {
       baseLoading = false;
@@ -656,7 +657,7 @@ export function gameScreen(app: App): Screen {
         onChosen: async (site) => {
           overlay = null;
           await app.backend.dispatch({ type: 'chooseSite', site });
-          app.toast('Deine Endstation steht. Räum erst mal auf, darin steckt Material!', 'good');
+          app.toast('Dein Zuhause steht. Räum erst mal auf, darin steckt Material!', 'good');
           void openBase();
         },
       });
@@ -775,10 +776,10 @@ export function gameScreen(app: App): Screen {
       body.append(
         h(
           'ol',
-          { class: 'route compact' },
-          h('li', { class: 'primary' }, h('button', { type: 'button', onclick: close }, h('span', { class: 'stop-dot' }), h('span', { class: 'stop-text' }, 'Weiterspielen'))),
-          h('li', null, h('button', { type: 'button', onclick: showSettings }, h('span', { class: 'stop-dot' }), h('span', { class: 'stop-text' }, 'Einstellungen'))),
-          h('li', null, h('button', { type: 'button', onclick: () => app.go('menu') }, h('span', { class: 'stop-dot' }), h('span', { class: 'stop-text' }, 'Hauptmenü', h('small', null, 'Dein Spielstand ist gespeichert')))),
+          { class: 'menu-list compact' },
+          menuItem('Weiterspielen', null, close, true),
+          menuItem('Einstellungen', null, showSettings),
+          menuItem('Hauptmenü', 'Dein Spielstand ist gespeichert', () => app.go('menu')),
         ),
       );
     };

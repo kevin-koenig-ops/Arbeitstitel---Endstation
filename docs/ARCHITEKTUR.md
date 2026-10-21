@@ -58,7 +58,7 @@ Ohne Framework, kleine Hilfsfunktion `h()` in `ui/dom.ts`. Jeder Bildschirm ist 
 
 **Erkundung ist serverfähig.** Aufgedeckte Zellen (Zoom 19, ~50 m) liegen als Bitfelder pro Block (Zoom 13, 64×64 Zellen) im Spielstand (`core/explore.ts`), wenige Kilobyte auch nach viel Herumlaufen. Die Tageszeit rechnet `core/sun.ts` aus dem Sonnenstand, ohne Netzwerk, also kann der Server sie genauso bestimmen. Das Wetter ist nur Optik und Timing auf dem Gerät.
 
-**Die Endstation verrät keinen Ort.** Wo sie steht, liegt nur im Gerätespeicher (`services/basePlace.ts`, eigener Schlüssel, nicht im Spielstand). Die Bau-Aktionen (`chooseSite`, `reclaim`, `clearObstacle`, `buildWalls`, `setOpening`, `paint`, `demolish`, `place`, `move`, `store`) enthalten keine Position, nur Rasterkoordinaten auf dem eigenen Gelände. Ob du gerade „zu Hause“ bist, prüft allein das Gerät. Später sieht der Server also nur die Einrichtung, nie die Adresse.
+**Das Zuhause verrät keinen Ort.** Wo es steht, liegt nur im Gerätespeicher (`services/basePlace.ts`, eigener Schlüssel, nicht im Spielstand). Die Bau-Aktionen (`chooseSite`, `reclaim`, `clearObstacle`, `buildWalls`, `setOpening`, `paint`, `demolish`, `place`, `move`, `store`) enthalten keine Position, nur Rasterkoordinaten auf dem eigenen Gelände. Ob du gerade „zu Hause“ bist, prüft allein das Gerät. Später sieht der Server also nur die Einrichtung, nie die Adresse.
 
 **Bauen ist serverfähig.** `core/building.ts` enthält Gelände, Abschnitte, Hindernisse (deterministisch aus Spieler-ID, Schauplatz und Abschnitt), Bauteile, Kanten-Logik, Raumerkennung und Gemütlichkeit. Die Oberfläche rechnet die Vorschau mit denselben Funktionen (`planWalls`, `planPaint` …), die Regeln wenden sie an. Wände liegen auf Kanten zwischen Feldern (`h3,4` / `v3,4`), Böden und Dächer auf Feldern. Möbel stehen in `core/furniture.ts`.
 
@@ -90,7 +90,7 @@ Ohne Framework, kleine Hilfsfunktion `h()` in `ui/dom.ts`. Jeder Bildschirm ist 
 - `npm run build:preview`: eine einzige HTML-Datei für die Vorschau in Claude (MapLibre per CDN, nur Demo-Dorf und Simulation).
 - **Android-App (APK):** baut GitHub bei jedem Push (`.github/workflows/apk.yml`) und legt sie unter Releases ab. Capacitor (`capacitor.config.ts`) packt `dist/` in eine App. Der Ordner `android/` wird jedes Mal neu erzeugt und ist nicht im Repo; `scripts/android-prepare.mjs` passt ihn an (Icon und Startbild aus `native/android/res`, Standort-Rechte, Querformat, Versionsnummer). Signiert mit einem Test-Schlüssel (`native/android/test-signing.jks`), für den Play Store kommt später ein geheimer. `services/native.ts` erkennt, ob das Spiel als App läuft.
 
-## 3D-Endstation und Spielfigur
+## 3D-Zuhause und Spielfigur
 
 - `src/base/BaseScene.ts`: Szene, Kamera (ein Finger schiebt, zwei zoomen, Drehen per Knopf), Antippen über Strahl und Raster, Vorschau, Wetter.
 - `src/base/models.ts`, `structures.ts`, `environment.ts`: alle Modelle aus einfachen Formen (Low-Poly, keine Bilddateien).
@@ -100,4 +100,4 @@ Ohne Framework, kleine Hilfsfunktion `h()` in `ui/dom.ts`. Jeder Bildschirm ist 
 - `src/ui/art.ts`: gemalte Hintergrundbilder (Hauptmenü, Start, Charaktererstellung, Einstieg, Kampf, Schauplätze).
 - Oberfläche: `src/ui/base/baseView.ts`, `sitePicker.ts`.
 
-three.js wird erst nachgeladen, wenn es gebraucht wird (Figur, Endstation), damit die Karte schnell startet.
+three.js wird erst nachgeladen, wenn es gebraucht wird (Figur, Zuhause), damit die Karte schnell startet.

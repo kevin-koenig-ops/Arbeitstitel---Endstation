@@ -107,7 +107,7 @@ export function openSitePicker(app: App, host: HTMLElement, opts: { first: boole
         'p',
         { class: 'site-lead' },
         opts.first
-          ? 'Such dir einen Ort für deine Endstation aus. Die anderen findest du später draußen als Lageplan.'
+          ? 'Such dir einen Ort für dein Zuhause aus. Die anderen findest du später draußen als Lageplan.'
           : 'Jeder Schauplatz ist ein eigenes Gelände. Was du gebaut hast, bleibt stehen, auch wenn du wechselst.',
       ),
       h('div', { class: 'site-list' }, cards),

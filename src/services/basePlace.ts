@@ -1,4 +1,4 @@
-// Der Ort deiner Endstation. Liegt NUR auf diesem Gerät: nicht im Spielstand,
+// Der Ort deines Zuhauses. Liegt NUR auf diesem Gerät: nicht im Spielstand,
 // nicht auf einem Server. Bau-Aktionen schicken deshalb auch keine Position mit.
 
 import { distanceM } from '../core/geo';
@@ -11,7 +11,7 @@ export interface BasePlace {
 }
 
 const KEY = 'endstation.basePlace';
-/** So nah musst du an deiner Endstation sein, um zu bauen (GPS drinnen ist ungenau). */
+/** So nah musst du an deinem Zuhause sein, um zu bauen (GPS drinnen ist ungenau). */
 export const BASE_RADIUS_M = 150;
 
 export function getBasePlace(): BasePlace | null {
@@ -28,7 +28,7 @@ export function clearBasePlace() {
   removeKey(KEY);
 }
 
-/** Bist du gerade an deiner Endstation? */
+/** Bist du gerade zu Hause? */
 export function atBase(place: BasePlace | null, pos: LatLon | null, accuracyM = 0): boolean {
   if (!place || !pos) return false;
   return distanceM(place.pos, pos) <= BASE_RADIUS_M + Math.min(accuracyM, 50);

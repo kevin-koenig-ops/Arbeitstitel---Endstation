@@ -1,4 +1,4 @@
-// Die Endstation in 3D: Gelände mit Umgebung, Hindernissen, Wänden, Böden, Dächern,
+// Das Zuhause in 3D: Gelände mit Umgebung, Hindernissen, Wänden, Böden, Dächern,
 // Möbeln und deiner Figur. Kamera schräg von oben: ein Finger schiebt, zwei Finger
 // zoomen, gedreht wird nur per Knopf (in 90°-Schritten).
 // Wände vor einem Raum werden abgesenkt, damit man hineinsieht (wie bei Die Sims).

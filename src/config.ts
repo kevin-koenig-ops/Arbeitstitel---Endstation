@@ -1,6 +1,6 @@
 // Zentrale Einstellungen. Titel und Version an einer Stelle.
 
-export const GAME_TITLE = 'Endstation'; // Arbeitstitel
+export const GAME_TITLE = 'Nachhall'; // Platzhalter-Titel (Arbeitstitel)
 export const GAME_VERSION = '0.1.0';
 
 /** Bestimmt, wo in der Welt welche Fundstellen liegen. Ändern = neue Welt. */

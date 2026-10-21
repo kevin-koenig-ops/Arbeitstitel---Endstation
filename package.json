@@ -8,15 +8,13 @@
     "build": "tsc --noEmit && vite build",
     "build:preview": "vite build --mode preview && node scripts/make-artifact.mjs",
     "test": "vitest run",
-    "gen:world": "node scripts/gen-demo-world.mjs",
-    "gen:logo": "node scripts/gen-logo.mjs"
+    "gen:world": "node scripts/gen-demo-world.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",
     "@capacitor/core": "^8.5.3",
     "@fontsource/barlow-semi-condensed": "^5.3.0",
     "@fontsource/covered-by-your-grace": "^5.3.0",
-    "@fontsource/doto": "^5.3.0",
     "maplibre-gl": "^5.24.0",
     "three": "^0.169.0"
   },

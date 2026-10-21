@@ -255,12 +255,12 @@ export class GameMap {
     return this.map.getBearing();
   }
 
-  /** Die eigene Endstation auf der Karte (nur für dich sichtbar). */
+  /** Das eigene Zuhause auf der Karte (nur für dich sichtbar). */
   setBase(p: LatLon | null) {
     this.baseMarker?.remove();
     this.baseMarker = null;
     if (!p) return;
-    const el = h('button', { class: 'base-marker', type: 'button', 'aria-label': 'Deine Endstation' }, h('span', { class: 'base-sign' }, 'H'), h('span', { class: 'base-pole' }));
+    const el = h('button', { class: 'base-marker', type: 'button', 'aria-label': 'Dein Zuhause' }, h('span', { class: 'base-sign' }, 'H'), h('span', { class: 'base-pole' }));
     el.addEventListener('click', (ev) => {
       ev.stopPropagation();
       this.lastMarkerTap = Date.now();

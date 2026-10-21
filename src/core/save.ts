@@ -24,7 +24,7 @@ const MIGRATIONS: Record<number, (s: Raw) => void> = {
     s.explored = {};
     s.sectors = {};
   },
-  // Version 3 -> 4: Basisbau (Endstation) und Baupläne
+  // Version 3 -> 4: Basisbau (Zuhause, früher „Endstation“) und Baupläne
   3: (s) => {
     s.base = { items: [], rubble: [], nextUid: 1 };
     s.blueprints = {};

@@ -1,6 +1,6 @@
 {
-  "name": "Endstation",
-  "short_name": "Endstation",
+  "name": "Nachhall",
+  "short_name": "Nachhall",
   "description": "Endzeit-Erkundung auf der echten Karte",
   "lang": "de",
   "start_url": "./",

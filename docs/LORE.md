@@ -1,4 +1,4 @@
-<!-- Spiele-Lore von Kevin (Quelle: Entstehungsgeschichte.docx, übernommen am 21.10.2026). Kapitel I–VI sind Kevins Text; am 21.10. wurden echte Staaten durch erfundene ersetzt und Notlazarette statt Krankenhäuser eingesetzt. Zeittafel, Kapitel VII und „Für das Spiel“ sind Ergänzungen. -->
+<!-- Spiele-Lore von Kevin (Quelle: Entstehungsgeschichte.docx, übernommen am 21.10.2026). Kapitel I–VI sind Kevins Text; am 21.10. wurden echte Staaten durch erfundene ersetzt und Notlazarette statt Krankenhäuser eingesetzt. Zeittafel, Kapitel VII und „Für das Spiel“ sind Ergänzungen. Am 21.10. abends auf Kevins Wunsch entfernt: die Geschichte von Linie 0 und Endstation. -->
 
 # Die Entstehung der Welt
 
@@ -27,7 +27,7 @@
 | 2017 | Digitaler Kollaps: Internet, GPS und Strom fallen aus |
 | 2018 | Der Westbund entwickelt die Biowaffe APATIT-V |
 | 2019 | Freisetzung über den Feldern des Ostpakts, Sprung auf den Menschen: das Weinen beginnt |
-| 2020 | Globale Pandemie. Der Krieg endet aus Erschöpfung. Die Linie 0 bringt Menschen aus den Städten |
+| 2020 | Globale Pandemie. Der Krieg endet aus Erschöpfung |
 | 2021 | Die Große Aussaat von Elysis |
 | 2022 | Der Flux beginnt. Bis 2024 kollabieren alle Großstädte |
 | 2025 | Der Flux wird langsamer, die bekannten Formen bleiben |
@@ -681,11 +681,9 @@ Die bekannten Formen sind 2026 stabil genug, dass man Regeln kennt. Im Spiel zei
 - **Elysis-Felder:** In schattigen Tälern stehen Pflanzen, die wie perfekte Nutzpflanzen aussehen. Ihre Knollen machen satt. Ob sie sicher sind, darüber streiten die Siedlungen.
 - **Wurzelnester:** Wo Massengräber im Wald liegen, entstehen neue Wandler. Landstreifer brennen sie aus.
 
-### 4. Die Linie 0 und die Endstation
+### 4. Dein Zuhause
 
-Im Frühjahr 2020, als die Menschen aus den Städten flohen, fuhr die **Linie 0** als Evakuierungslinie aufs Land, Tag und Nacht, bis der Sprit ausging. Die Busse retteten Tausende und brachten das Weinen dabei in die Dörfer.
-
-Seitdem fährt die Linie 0 nicht mehr. Du hast einen ihrer alten Busse noch einmal zum Laufen gebracht. Er kam bis zur **Endstation** am Stadtrand, dann war Schluss. Hier bleibst du und baust dir ein Zuhause.
+Am Stadtrand hast du ein Fleckchen gefunden, das noch steht. Hier bleibst du und baust dir ein Zuhause.
 
 Noch offen: Warum warst du unterwegs? Eine Idee: Deine alte Siedlung gibt es nicht mehr, oder du suchst jemanden.
 
@@ -693,7 +691,7 @@ Noch offen: Warum warst du unterwegs? Eine Idee: Deine alte Siedlung gibt es nic
 
 Funksprüche und Zettel erzählen von einer Siedlung an der Küste. Fisch, Muscheln und Seetang liefern dort Nahrung ohne Kunstdünger, und der Wind und die offene Sonne halten die Keime klein. Ob es sie wirklich gibt, weiß niemand.
 
-Mögliches Endziel: Die Linie 0 fährt wieder, mit deinen Leuten an Bord, Richtung Küste.
+Mögliches Endziel: noch offen. Eine Idee: mit deinen Leuten zur Küste aufbrechen.
 
 ---
 

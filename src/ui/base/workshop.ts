@@ -11,7 +11,7 @@ import { REJECT_TEXT } from '../texts';
 import { costChips, itemsLine, thingThumb } from '../game/chips';
 
 interface Opts {
-  /** Steht man gerade an der Endstation? (Zerlegen nur vor Ort, wie Bauen) */
+  /** Ist man gerade zu Hause? (Zerlegen nur vor Ort, wie Bauen) */
   needHere: () => boolean;
   onChanged: () => void;
   onClose: () => void;

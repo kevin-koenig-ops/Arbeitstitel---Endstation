@@ -1,4 +1,4 @@
-// Die Spielfigur außerhalb der Endstation: als Porträt-Bild (Ausweis, Kopfzeile)
+// Die Spielfigur außerhalb des Zuhauses: als Porträt-Bild (Ausweis, Kopfzeile)
 // und als kleine Live-Ansicht (Charaktererstellung, Spielerfigur auf der Karte).
 
 import * as THREE from 'three';

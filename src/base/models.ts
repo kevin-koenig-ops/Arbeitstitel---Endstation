@@ -1,4 +1,4 @@
-// Low-Poly-Modelle für die Endstation, aus einfachen Formen gebaut.
+// Low-Poly-Modelle für das Zuhause, aus einfachen Formen gebaut.
 // Maße in Metern. Jedes Modell steht mittig auf dem Ursprung; Breite entlang x,
 // Tiefe entlang z (Rückseite bei -z), so wie die Grundfläche in furniture.ts.
 
@@ -838,29 +838,5 @@ export function buildRubble(w: number, d: number, seed: number): THREE.Group {
     else box(g, size * 2, size * 0.6, size * 1.2, mat(colors[(i + 1) % colors.length]), x, 0, z, r() * 3);
   }
   box(g, w * 0.7, 0.04, 0.12, mat('#7a5a3a'), 0, 0.2, 0, 0.4);
-  return g;
-}
-
-/** Der alte Bus, draußen geparkt. Länge entlang z. */
-export function buildBus(): THREE.Group {
-  const g = new THREE.Group();
-  const ivory = mat('#b9ac8a');
-  const lower = mat('#7a6d55');
-  box(g, 2.5, 1.0, 10, lower, 0, 0.35, 0);
-  box(g, 2.5, 1.7, 10, ivory, 0, 1.35, 0);
-  box(g, 2.52, 0.12, 10.02, mat('#8f4b2b'), 0, 1.3, 0);
-  box(g, 2.54, 0.85, 8.2, mat('#232421'), 0, 1.75, -0.6);
-  box(g, 2.3, 0.08, 9.8, mat('#9c917a'), 0, 3.05, 0);
-  for (const z of [-3.4, 3.3])
-    for (const x of [-1.2, 1.2]) {
-      const w = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.3, 18), mat('#161614')), x, 0.48, z);
-      w.rotation.z = Math.PI / 2;
-    }
-  // Front mit Zielanzeige
-  box(g, 2.2, 1.0, 0.04, mat('#1b1a17'), 0, 1.75, 5.0);
-  const sign = add(g, new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.28, 0.03), glow('#ffb22e')), 0, 2.72, 5.02);
-  sign.name = 'busSign';
-  box(g, 0.3, 0.16, 0.04, glow('#ffe6a8'), -0.85, 0.75, 5.02);
-  box(g, 0.3, 0.16, 0.04, glow('#ffe6a8'), 0.85, 0.75, 5.02);
   return g;
 }

@@ -252,8 +252,8 @@ export function openPackPanel(app: App, host: HTMLElement, onClose: () => void, 
         { class: 'stock-lager' },
         svgEl(icon('wrench', 16)),
         missing.length
-          ? `Neue Waffen baust du am Werktisch in deiner Endstation, zum Beispiel: ${missing.map((w) => WEAPONS[w].name).join(', ')}.`
-          : 'Neue oder kaputte Waffen baust du am Werktisch in deiner Endstation.',
+          ? `Neue Waffen baust du am Werktisch bei dir zu Hause, zum Beispiel: ${missing.map((w) => WEAPONS[w].name).join(', ')}.`
+          : 'Neue oder kaputte Waffen baust du am Werktisch bei dir zu Hause.',
       ),
     );
   };

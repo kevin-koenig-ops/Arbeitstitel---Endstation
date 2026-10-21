@@ -1,11 +1,11 @@
-// Die Umgebung rund um das Gelände, je nach Schauplatz: Busdepot, Bauernhof, Seeufer,
+// Die Umgebung rund um das Gelände, je nach Schauplatz: Betriebshof, Bauernhof, Seeufer,
 // Tankstelle, Schrebergarten. Alles aus einfachen Formen und einmal verschmolzen.
 // Weltkoordinaten: das Gelände liegt bei x, z zwischen -HALF und HALF (36 m). Süden ist +z.
 
 import * as THREE from 'three';
 import { PLOT, type SiteId } from '../core/building';
 import { Assembler, bake, GLOW, LIT } from './bake';
-import { add, blob, box, buildBus, cone, cyl, mat, METAL, WOOD, WOOD_DARK } from './models';
+import { add, blob, box, cone, cyl, mat, METAL, WOOD, WOOD_DARK } from './models';
 import { buildBush, buildCarWreck, buildTree } from './structures';
 
 type G = THREE.Group;
@@ -475,18 +475,8 @@ function allotment(g: G, r: () => number) {
 
 export interface Environment {
   group: THREE.Group;
-  /** Position des eigenen Busses (für die Figur: hier steigt man aus). */
-  bus: THREE.Vector3;
   dispose(): void;
 }
-
-const BUS_SPOT: Record<SiteId, [number, number, number]> = {
-  depot: [8, HALF + 5.5, 0],
-  farm: [8, HALF + 5.5, 0],
-  lake: [8, HALF + 5.5, 0],
-  fuel: [8, HALF + 6.5, Math.PI / 2],
-  allotment: [8, HALF + 5.5, 0],
-};
 
 export function buildEnvironment(site: SiteId): Environment {
   const r = rnd(site.length * 131 + site.charCodeAt(0));
@@ -497,10 +487,6 @@ export function buildEnvironment(site: SiteId): Environment {
   else if (site === 'lake') lake(g, r, extras);
   else if (site === 'fuel') fuel(g, r);
   else allotment(g, r);
-  // Dein Bus
-  const [bx, bz, br] = BUS_SPOT[site];
-  const bus = buildBus();
-  put(g, bus, bx, bz, br, -0.02);
 
   const t = bake(g);
   g.traverse((o) => {
@@ -518,10 +504,8 @@ export function buildEnvironment(site: SiteId): Environment {
   if (gm) out.add(gm);
   out.add(outerGround(site));
   for (const e of extras) out.add(e);
-  if (site === 'depot') out.add(endstationSign());
   return {
     group: out,
-    bus: new THREE.Vector3(bx, 0, bz),
     dispose() {
       out.traverse((o) => {
         const mesh = o as THREE.Mesh;
@@ -529,44 +513,4 @@ export function buildEnvironment(site: SiteId): Environment {
       });
     },
   };
-}
-
-/** Die alte Zielanzeige „0 ENDSTATION“ über der Einfahrt des Depots. */
-function endstationSign(): THREE.Object3D {
-  const g = new THREE.Group();
-  const c = document.createElement('canvas');
-  c.width = 840;
-  c.height = 124;
-  const x = c.getContext('2d')!;
-  x.fillStyle = '#0b0a09';
-  x.fillRect(0, 0, 840, 124);
-  for (let y = 6; y < 124; y += 8)
-    for (let i = 6; i < 840; i += 8) {
-      x.fillStyle = '#2a1e0c';
-      x.beginPath();
-      x.arc(i, y, 2.2, 0, Math.PI * 2);
-      x.fill();
-    }
-  x.font = '900 78px Doto, monospace';
-  x.textAlign = 'center';
-  x.textBaseline = 'middle';
-  x.shadowColor = '#ff9d1a';
-  x.shadowBlur = 18;
-  x.fillStyle = '#ffc35a';
-  x.fillText('0  ENDSTATION', 420, 66);
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  const dark = new THREE.MeshStandardMaterial({ color: '#111', flatShading: true });
-  const sign = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.82, 0.12), [dark, dark, dark, dark, new THREE.MeshBasicMaterial({ map: tex }), dark]);
-  sign.position.set(0, 4.3, 0);
-  sign.castShadow = true;
-  g.add(sign);
-  for (const s of [-1, 1]) {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.2, 4.7, 0.2), mat('#3b3f3a'));
-    post.position.set(s * 3, 2.35, 0);
-    post.castShadow = true;
-    g.add(post);
-  }
-  g.position.set(8, 0, HALF + 1.2);
-  return g;
 }

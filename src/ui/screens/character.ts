@@ -147,7 +147,7 @@ export function characterScreen(app: App): Screen {
       h(
         'section',
         { class: 'id-card', 'aria-label': 'Vorschau' },
-        h('div', { class: 'id-head' }, h('span', null, 'Fahrgastausweis'), h('span', null, 'Linie 0')),
+        h('div', { class: 'id-head' }, h('span', null, 'Ausweis'), h('span', null, 'Notausgabe')),
         h('div', { class: 'id-body' }, cardFace, h('div', { class: 'id-fields' }, h('small', null, 'Name'), cardName, h('small', null, 'Vorgeschichte'), cardRole, cardPerk)),
         h('div', { class: 'id-foot' }, 'Gültig bis auf Weiteres'),
       ),
@@ -155,7 +155,7 @@ export function characterScreen(app: App): Screen {
       hairRow,
       h('div', { class: 'two-col' }, skinRow, colorRow),
       h('div', { class: 'field-group' }, h('div', { class: 'label', id: 'lbl-bg' }, 'Vorgeschichte'), bgList),
-      h('div', { class: 'page-actions' }, h('button', { class: 'btn wide', type: 'button', onclick: start }, 'Einsteigen')),
+      h('div', { class: 'page-actions' }, h('button', { class: 'btn wide', type: 'button', onclick: start }, 'Weiter')),
     ),
   );
 

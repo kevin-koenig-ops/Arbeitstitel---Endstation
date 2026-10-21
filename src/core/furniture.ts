@@ -1,4 +1,4 @@
-// Möbel und Deko für die Endstation, als Daten.
+// Möbel und Deko für das Zuhause, als Daten.
 // Neue Teile kommen hier dazu; das 3D-Modell dazu steht in src/base/models.ts.
 // Wände, Böden, Dächer und das Gelände stehen in building.ts.
 
@@ -74,7 +74,7 @@ export interface FurnitureDef {
   collectible?: boolean;
   /** Nützliche Anlage: gibt es nur einmal (aufrüsten statt mehrfach bauen). */
   unique?: boolean;
-  /** Anlage, die von selbst etwas erzeugt (abholen in der Endstation). */
+  /** Anlage, die von selbst etwas erzeugt (abholen zu Hause). */
   produces?: { res: Survival; everyH: number; cap: number };
 }
 
@@ -107,7 +107,7 @@ const BUILT: Record<BuiltFurnitureId, FurnitureDef> = {
   washline: { name: 'Wäscheleine', category: 'deko', w: 2, d: 1, layer: 'object', comfort: 2, cost: { wood: 1, cloth: 1 }, starter: true, desc: 'Frische Wäsche. Ein Zeichen, dass hier jemand lebt.' },
   toolwall: { name: 'Werkzeugwand', category: 'deko', w: 2, d: 1, layer: 'object', comfort: 3, cost: { wood: 2, metal: 2, screws: 2 }, desc: 'Jedes Werkzeug an seinem Platz.' },
   clock: { name: 'Bahnhofsuhr', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 5, cost: { metal: 2, glass: 1, electronics: 1 }, desc: 'Steht auf fünf vor zwölf. Für immer.' },
-  timetable: { name: 'Fahrplantafel', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 3, cost: { metal: 1, glass: 1 }, desc: 'Linie 0: alle 10 Minuten. Früher.' },
+  timetable: { name: 'Fahrplantafel', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 3, cost: { metal: 1, glass: 1 }, desc: 'Linie 7: alle 10 Minuten. Früher.' },
   medCabinet: { name: 'Sanitätsschrank', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 3, cost: { metal: 2, glass: 1, medicine: 1 }, unique: true, produces: { res: 'medicine', everyH: 8, cap: 2 }, desc: 'Verbandszeug immer griffbereit: 1 Medizin alle 8 Stunden, bis zu 2.' },
   radioSet: { name: 'Funkgerät', category: 'deko', w: 1, d: 1, layer: 'object', comfort: 2, cost: { electronics: 3, metal: 2, screws: 2 }, unique: true, desc: 'Kurzwelle, Kanal 4. Alle 20 Stunden ein Funkspruch, manchmal mit einem Hinweis auf ein Versteck.' },
   picture: { name: 'Familienfoto', category: 'deko', w: 1, d: 1, layer: 'wall', comfort: 4, cost: { wood: 1, glass: 1 }, desc: 'Fremde Leute, die lachen. Trotzdem schön. Hängt an einer Wand.' },

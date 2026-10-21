@@ -1,6 +1,6 @@
 // App-Rahmen: hält Backend und Einstellungen, wechselt zwischen Bildschirmen, zeigt Hinweise.
 
-import { WORLD_SEED } from '../config';
+import { GAME_TITLE, WORLD_SEED } from '../config';
 import { GuestAuth } from '../services/auth';
 import { LocalBackend, type GameBackend } from '../services/backend';
 import { isNativeApp } from '../services/native';
@@ -46,7 +46,7 @@ export async function createApp(root: HTMLElement) {
     { class: 'rotate-hint', role: 'alert' },
     h('div', { class: 'rotate-phone', 'aria-hidden': 'true' }),
     h('p', null, 'Bitte dreh dein Handy ins Querformat.'),
-    h('small', null, 'Endstation spielt sich quer, wie ein richtiges Spiel.'),
+    h('small', null, `${GAME_TITLE} spielt sich quer, wie ein richtiges Spiel.`),
   );
   root.append(stage, toasts, rotate);
   installGrain(root);

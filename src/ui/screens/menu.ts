@@ -1,24 +1,23 @@
-// Hauptmenü als Linienplan: jede Option ist eine Haltestelle.
+// Hauptmenü: Logo, Hintergrundbild und eine schlichte Liste mit großen Knöpfen.
 
-import logoUrl from '../../assets/logo.svg';
-import { GAME_TITLE, GAME_VERSION, IS_PREVIEW } from '../../config';
+import { GAME_VERSION, IS_PREVIEW } from '../../config';
 import { MEMENTOS } from '../../core/content';
 import { dayNumber } from '../../core/rules';
 import type { App, Screen } from '../app';
 import { clear, h } from '../dom';
 import { artStyle } from '../art';
+import { logoEl } from '../logo';
+
+/** Ein Eintrag im Menü (auch im Pausenmenü benutzt). */
+export function menuItem(label: string, sub: string | null, onclick: () => void, primary = false): HTMLElement {
+  return h('li', { class: primary ? 'primary' : '' }, h('button', { type: 'button', onclick }, h('span', { class: 'item-text' }, label, sub ? h('small', null, sub) : null)));
+}
 
 export function menuScreen(app: App): Screen {
-  // Platzhalter für das Bild im Hintergrund (links frei, rechts der Linienplan)
+  // Platz für das Bild im Hintergrund (links frei, rechts das Menü)
   const canvas = h('div', { class: 'menu-scene', 'aria-hidden': 'true' });
-  const routeHost = h('nav', { class: 'menu-route', 'aria-label': 'Hauptmenü' });
-
-  const stop = (label: string, sub: string | null, onclick: () => void, primary = false) =>
-    h(
-      'li',
-      { class: primary ? 'primary' : '' },
-      h('button', { type: 'button', onclick }, h('span', { class: 'stop-dot' }), h('span', { class: 'stop-text' }, label, sub ? h('small', null, sub) : null)),
-    );
+  const routeHost = h('nav', { class: 'menu-nav', 'aria-label': 'Hauptmenü' });
+  const stop = menuItem;
 
   const renderRoute = () => {
     clear(routeHost);
@@ -37,7 +36,7 @@ export function menuScreen(app: App): Screen {
     }
     items.push(stop('Neues Spiel', save ? null : 'Erstelle deine Figur', () => (save ? confirmNew() : app.go('character')), !save));
     items.push(stop('Einstellungen', null, () => app.go('settings')));
-    routeHost.append(h('ol', { class: 'route' }, items));
+    routeHost.append(h('ol', { class: 'menu-list' }, items));
   };
 
   const confirmNew = () => {
@@ -62,7 +61,7 @@ export function menuScreen(app: App): Screen {
   const el = h(
     'div',
     { class: 'screen menu has-art', style: artStyle('menu') },
-    h('header', { class: 'menu-head' }, h('img', { class: 'menu-logo', src: logoUrl, alt: GAME_TITLE })),
+    h('header', { class: 'menu-head' }, logoEl('menu-logo')),
     canvas,
     routeHost,
     h('footer', { class: 'menu-foot' }, `Prototyp ${GAME_VERSION}${IS_PREVIEW ? ' · Vorschau' : ''} · Arbeitstitel`),

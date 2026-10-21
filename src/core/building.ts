@@ -1,4 +1,4 @@
-// Das Gelände deiner Endstation: Abschnitte zurückerobern, Hindernisse wegräumen,
+// Das Gelände deines Zuhauses: Abschnitte zurückerobern, Hindernisse wegräumen,
 // frei bauen (Wände, Türen, Fenster, Böden, Dächer) und einrichten.
 // Reine Daten und Rechnungen, ohne Browser: läuft später genauso auf dem Server.
 //
@@ -37,9 +37,9 @@ export interface SiteDef {
 
 export const SITES: Record<SiteId, SiteDef> = {
   depot: {
-    name: 'Busdepot',
+    name: 'Betriebshof',
     where: 'Am Stadtrand',
-    desc: 'Die alte Endhaltestelle der Linie 0. Viel Beton, viel Schrott, viel Platz.',
+    desc: 'Eine alte Fahrzeughalle mit großem Hof. Viel Beton, viel Schrott, viel Platz.',
     start: true,
     findAt: ['stop'],
     obstacles: [['rubble', 3], ['debris', 3], ['wreck', 2], ['tires', 2], ['trash', 2], ['barrels', 1], ['bush', 1]],

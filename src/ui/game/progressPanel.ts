@@ -1,5 +1,5 @@
 // Fortschritt auf einen Blick: Ziele (mit Belohnung zum Abholen), die Stufe der
-// Endstation mit ihren Vorteilen und dein Ruf als Streifer.
+// Zuhause mit seinen Vorteilen und dein Ruf als Streifer.
 
 import { COMFORT_TIERS } from '../../core/building';
 import { RANK_POINTS, RANKS, TIER_PERKS } from '../../core/content';
@@ -96,12 +96,12 @@ export function openProgressPanel(app: App, host: HTMLElement, onClose: () => vo
     );
     if (!goals.length) body.append(h('p', { class: 'mod-desc' }, 'Alle Ziele geschafft. Respekt!'));
 
-    // --- Endstation ---
+    // --- Zuhause ---
     const tier = baseTier(s);
     const value = comfort(s);
     const next = COMFORT_TIERS[tier + 1];
     body.append(
-      h('h3', { class: 'gear-head' }, 'Deine Endstation'),
+      h('h3', { class: 'gear-head' }, 'Dein Zuhause'),
       s.base.active
         ? h(
             'div',
@@ -116,7 +116,7 @@ export function openProgressPanel(app: App, host: HTMLElement, onClose: () => vo
               ),
             ),
           )
-        : h('p', { class: 'mod-desc' }, 'Noch keine Endstation. Tippe auf der Karte unten links auf das Haus.'),
+        : h('p', { class: 'mod-desc' }, 'Noch kein Zuhause. Tippe auf der Karte unten links auf das Haus.'),
     );
 
     // --- Streifer-Ruf ---

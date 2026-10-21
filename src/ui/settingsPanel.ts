@@ -107,7 +107,7 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
       h(
         'div',
         { class: 'set-row' },
-        h('div', { class: 'set-label', id: 'lbl-ctrl' }, 'Figur bewegen', h('small', null, 'Antippen: Figur läuft zur Stelle, wie bei Die Sims. Joystick: selbst steuern, mit Benutzen-Taste. Gilt in der Endstation und in der Simulation.')),
+        h('div', { class: 'set-label', id: 'lbl-ctrl' }, 'Figur bewegen', h('small', null, 'Antippen: Figur läuft zur Stelle, wie bei Die Sims. Joystick: selbst steuern, mit Benutzen-Taste. Gilt zu Hause und in der Simulation.')),
         segmented('control', 'lbl-ctrl', [
           ['tap', 'Antippen'],
           ['joystick', 'Joystick'],
@@ -142,7 +142,7 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
       'section',
       { class: 'set-group' },
       h('h2', null, 'Datenschutz'),
-      h('p', { class: 'note' }, 'Dein genauer Standort verlässt dein Gerät nicht. Für die echte Karte lädt die App Kartenkacheln von OpenFreeMap; dabei sieht der Kartenserver nur, welcher Kartenausschnitt geladen wird. Für echtes Wetter geht ein auf etwa 10 km gerundeter Ort an Open-Meteo. Das kannst du oben ausschalten. Den Ort deiner Endstation speichert nur dieses Gerät; andere Spieler sehen ihn nie.'),
+      h('p', { class: 'note' }, 'Dein genauer Standort verlässt dein Gerät nicht. Für die echte Karte lädt die App Kartenkacheln von OpenFreeMap; dabei sieht der Kartenserver nur, welcher Kartenausschnitt geladen wird. Für echtes Wetter geht ein auf etwa 10 km gerundeter Ort an Open-Meteo. Das kannst du oben ausschalten. Den Ort deines Zuhauses speichert nur dieses Gerät; andere Spieler sehen ihn nie.'),
     ),
     h('section', { class: 'set-group' }, h('h2', null, 'Spielstand'), del),
     h('p', { class: 'version' }, `Version ${GAME_VERSION} · Kartendaten © OpenStreetMap-Mitwirkende`),

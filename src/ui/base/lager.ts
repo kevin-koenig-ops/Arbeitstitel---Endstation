@@ -1,4 +1,4 @@
-// Das Lager in der Endstation: hier liegt alles sicher. Rucksack auspacken,
+// Das Lager zu Hause: hier liegt alles sicher. Rucksack auspacken,
 // Rohstoffe und Kram ansehen, Kram zum Werktisch geben, Sammelstücke aufstellen.
 
 import { COLLECTIBLE_ORDER, COLLECTIBLES, KRAM, KRAM_ORDER, MATERIAL_ORDER, RESOURCES } from '../../core/content';

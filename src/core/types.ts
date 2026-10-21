@@ -176,7 +176,7 @@ export interface Plot {
   nextUid: number;
 }
 
-/** Die Endstation. Ihr echter Ort steht NICHT hier, sondern nur auf dem Gerät. */
+/** Dein Zuhause. Sein echter Ort steht NICHT hier, sondern nur auf dem Gerät. */
 export interface BaseState {
   /** Gerade bewohnter Schauplatz (null = noch keiner gewählt). */
   active: SiteId | null;
@@ -205,7 +205,7 @@ export interface PlayerState {
   collectibles: Partial<Record<CollectibleId, number>>;
   /** Vollständige Sets: id -> Zeitpunkt (Belohnung gab es dann). */
   sets: Partial<Record<SetId, number>>;
-  /** Werktisch in der Endstation (Zerlegen mit Wartezeit). */
+  /** Werktisch zu Hause (Zerlegen mit Wartezeit). */
   workshop: Workshop;
   /** Wann welche Fundstelle zuletzt durchsucht wurde (für die Abklingzeit). */
   spots: Record<string, number>;
@@ -224,7 +224,7 @@ export interface PlayerState {
   explored: Record<string, string>;
   /** Erreichte Stufe pro Sektor (1 = erkundet, 2 = gesichert). */
   sectors: Record<string, number>;
-  /** Die Endstation (Basis). Ihr Ort steht NICHT hier, sondern nur auf dem Gerät. */
+  /** Das Zuhause (Basis). Sein Ort steht NICHT hier, sondern nur auf dem Gerät. */
   base: BaseState;
   /** Gefundene Baupläne: id -> Fundzeitpunkt. */
   blueprints: Partial<Record<BlueprintId, number>>;
@@ -320,7 +320,7 @@ export type Action =
   | { type: 'craft'; weapon: WeaponId }
   | { type: 'heal' }
   | { type: 'explore'; at: LatLon; accuracyM: number }
-  // Basis: bewusst ohne Position, damit der Ort der Endstation privat bleibt
+  // Basis: bewusst ohne Position, damit der Ort des Zuhauses privat bleibt
   | { type: 'chooseSite'; site: SiteId }
   | { type: 'reclaim'; sx: number; sy: number }
   | { type: 'clearObstacle'; id: string }

@@ -19,18 +19,18 @@ export const REJECT_TEXT: Record<RejectReason, string> = {
   blocked: 'Da ist kein Platz.',
   no_blueprint: 'Dafür fehlt dir noch der Bauplan.',
   not_found: 'Das gibt es hier nicht (mehr).',
-  no_site: 'Such dir zuerst einen Schauplatz für deine Endstation aus.',
+  no_site: 'Such dir zuerst einen Schauplatz für dein Zuhause aus.',
   no_wall: 'Das geht nur an einer passenden Wand.',
   not_adjacent: 'Nur Abschnitte direkt neben deinem Gelände.',
-  no_workbench: 'Dafür brauchst du einen Werktisch in deiner Endstation.',
+  no_workbench: 'Dafür brauchst du zu Hause einen Werktisch.',
   queue_full: 'Der Werktisch ist voll. Hol erst etwas ab oder rüste ihn auf.',
   no_junk: 'Davon ist nichts im Lager.',
   only_one: 'Davon gibt es nur einen. Aufrüsten statt neu bauen.',
   max_level: 'Schon voll ausgebaut.',
   not_done: 'Das Ziel ist noch nicht erreicht.',
-  no_radio: 'Dafür brauchst du ein Funkgerät in deiner Endstation.',
+  no_radio: 'Dafür brauchst du zu Hause ein Funkgerät.',
   radio_quiet: 'Auf Kanal 4 rauscht es nur. Später nochmal reinhören.',
-  no_stove: 'Dafür brauchst du einen Holzofen in deiner Endstation.',
+  no_stove: 'Dafür brauchst du zu Hause einen Holzofen.',
 };
 
 /** Fundstellen in der Mehrzahl, für Hinweise wie "Zu finden in: Autos, Packstationen". */
