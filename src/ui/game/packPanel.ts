@@ -1,5 +1,5 @@
-// Der Rucksack: was du dabeihast, dein Fundbuch (Sammelstücke, Sets, Erinnerungen)
-// und deine Ausrüstung (Gesundheit, Waffen).
+// Charakterfenster: links Ausrüstung (Gesundheit, Waffen), in der Mitte die Figur,
+// rechts der Rucksack als Fächer. Dazu das Fundbuch (Orte, Sammelstücke, Sets, Erinnerungen).
 
 import {
   PLACE_WHERE,
@@ -13,6 +13,7 @@ import {
   MATERIAL_ORDER,
   MAX_HEALTH,
   MEMENTOS,
+  RARITY,
   RESOURCES,
   SET_ORDER,
   SETS,
@@ -25,14 +26,13 @@ import {
 } from '../../core/content';
 import { deckFor } from '../../core/tactics';
 import { blueprintName } from '../../core/building';
-import { bestWeapon, collectiblePlaced, currentHealth, dayNumber, kramCount, nextHealthIn, packCount } from '../../core/rules';
-import type { CollectibleId, KramId, SpotKind } from '../../core/types';
+import { bestWeapon, collectiblePlaced, currentHealth, dayNumber, kramCount, packCount } from '../../core/rules';
+import type { CollectibleId, KramId, PlayerState, SpotKind } from '../../core/types';
 import type { App } from '../app';
 import { clear, h, svgEl } from '../dom';
 import { icon, resIcon, spotIcon } from '../icons';
 import { REJECT_TEXT, SPOT_PLURAL } from '../texts';
 import { exploredStats } from '../../core/explore';
-import { formatWait } from './spotSheet';
 import { costChips, itemsLine, partsChips, thingThumb } from './chips';
 
 export type PackTab = 'pack' | 'book' | 'gear';
@@ -64,72 +64,165 @@ export function kramRow(id: KramId, n: number, extra?: HTMLElement | null) {
 }
 
 export function openPackPanel(app: App, host: HTMLElement, onClose: () => void, onChanged: () => void, startTab: PackTab = 'pack') {
-  let tab: PackTab = startTab;
+  // Ausrüstung und Rucksack stehen jetzt zusammen im Charakterfenster
+  let tab: PackTab = startTab === 'gear' ? 'pack' : startTab;
   const body = h('div', { class: 'pack-body' });
   const tabs = h('div', { class: 'tabs', role: 'tablist' });
+  let figure: import('../../base/figureView').FigureView | null = null;
+  const dropFigure = () => {
+    figure?.dispose();
+    figure = null;
+  };
 
   const tabBtn = (id: PackTab, label: string) => h('button', { type: 'button', role: 'tab', 'data-tab': id, onclick: () => ((tab = id), render()) }, label);
-  tabs.append(tabBtn('pack', 'Rucksack'), tabBtn('book', 'Fundbuch'), tabBtn('gear', 'Ausrüstung'));
+  tabs.append(tabBtn('pack', 'Charakter'), tabBtn('book', 'Fundbuch'));
 
   const render = () => {
     [...tabs.children].forEach((b) => b.setAttribute('aria-selected', String((b as HTMLElement).dataset.tab === tab)));
+    dropFigure();
     clear(body);
-    if (tab === 'pack') body.append(packView());
+    panel.classList.toggle('wide', tab === 'pack');
+    if (tab === 'pack') body.append(charView());
     if (tab === 'book') body.append(bookView());
-    if (tab === 'gear') body.append(gearView());
     body.scrollTop = 0;
   };
 
-  // --- Rucksack -----------------------------------------------------------------------
-  const packView = () => {
+  // --- Charakterfenster: links Ausrüstung, Mitte Figur, rechts Rucksack ----------------
+  const charView = () => {
     const s = app.backend.current()!;
+    const now = app.backend.now();
+    return h('div', { class: 'char' }, gearColumn(s, now), figureColumn(s, now), packColumn(s));
+  };
+
+  /** Links: Gesundheit, Waffen, Karten. */
+  const gearColumn = (s: PlayerState, now: number) => {
+    const hp = currentHealth(s, now);
+    const best = bestWeapon(s);
+    const hpSegs = h('span', { class: 'hp-bar me-hp' });
+    for (let i = 0; i < MAX_HEALTH; i++) hpSegs.append(h('span', { class: i < hp ? 'on' : '' }));
+    const missing = WEAPON_ORDER.filter((w) => !s.weapons.some((x) => x.kind === w));
+    return h(
+      'section',
+      { class: 'char-col char-gear', 'aria-label': 'Ausrüstung' },
+      h('h3', { class: 'char-head' }, 'Ausrüstung'),
+      h(
+        'div',
+        { class: 'char-health' },
+        h('div', { class: 'gear-row' }, h('span', null, 'Gesundheit'), h('b', null, `${hp} / ${MAX_HEALTH}`)),
+        hpSegs,
+        hp < MAX_HEALTH
+          ? h(
+              'button',
+              {
+                class: 'btn small',
+                type: 'button',
+                disabled: s.inventory.medicine < 1,
+                onclick: async () => {
+                  const res = await app.backend.dispatch({ type: 'heal' });
+                  const ev = res.events[0];
+                  if (ev.type === 'healed') app.toast(`Verarztet: +${ev.amount} Gesundheit`, 'good');
+                  else if (ev.type === 'rejected') app.toast(REJECT_TEXT[ev.reason], 'warn');
+                  onChanged();
+                  render();
+                },
+              },
+              svgEl(resIcon('medicine', 16)),
+              `Medizin nehmen (+${HEAL_AMOUNT})`,
+            )
+          : h('small', null, 'Du bist fit.'),
+      ),
+      s.weapons.length
+        ? h(
+            'ul',
+            { class: 'char-weapons' },
+            s.weapons.map((w) =>
+              h(
+                'li',
+                { class: 'char-weapon' + (w === best ? ' active' : '') },
+                h('span', { class: 'cw-name' }, WEAPONS[w.kind].name, w === best ? h('small', null, 'in der Hand') : null),
+                h('span', { class: 'dur' }, h('span', { style: `width:${Math.min(100, (w.dur / WEAPONS[w.kind].dur) * 100)}%` })),
+                h('span', { class: 'cw-cards' }, cardLine(WEAPON_CARDS[w.kind])),
+              ),
+            ),
+          )
+        : h('p', { class: 'char-note' }, 'Keine Waffe. Du kämpfst mit Fäusten, Tritten und Steinen.'),
+      h('p', { class: 'char-note' }, svgEl(icon('sword', 14)), ' Im Kampf: ', cardLine(deckFor(s.weapons, s.inventory.medicine))),
+      missing.length ? h('p', { class: 'char-note' }, svgEl(icon('wrench', 14)), ` Am Werktisch zu Hause: ${missing.map((w) => WEAPONS[w].name).join(', ')}`) : null,
+    );
+  };
+
+  /** Mitte: deine Figur in 3D (zum Drehen), mit der Waffe in der Hand. */
+  const figureColumn = (s: PlayerState, now: number) => {
+    const stage = h('div', { class: 'char-stage' });
+    const best = bestWeapon(s);
+    const ex = exploredStats(s.explored);
+    void import('../../base/figureView')
+      .then((fv) => {
+        if (!stage.isConnected || tab !== 'pack') return;
+        dropFigure();
+        figure = new fv.FigureView({ mode: 'stage', width: Math.max(160, stage.clientWidth), height: Math.max(200, stage.clientHeight) });
+        figure.setLook(s.character.look);
+        figure.holdWeapon(best?.kind ?? null);
+        stage.append(figure.canvas);
+        figure.start();
+      })
+      .catch(() => undefined);
+    return h(
+      'section',
+      { class: 'char-col char-figure', 'aria-label': 'Deine Figur' },
+      stage,
+      h('p', { class: 'char-name' }, s.character.name),
+      h('p', { class: 'char-sub' }, `Tag ${dayNumber(s, now)} · ${s.stats.searches} Orte · ${s.stats.kills} Gegner · ${ex.km2.toFixed(2).replace('.', ',')} km²`),
+    );
+  };
+
+  /** Rechts: Vorräte und der Rucksack als Fächer; ein Fach antippen zeigt, was drinsteckt. */
+  const packColumn = (s: PlayerState) => {
     const mats = MATERIAL_ORDER.filter((r) => (s.pack[r] ?? 0) > 0);
     const kram = KRAM_ORDER.filter((k) => (s.packKram[k] ?? 0) > 0);
+    const detail = h('div', { class: 'char-detail' }, h('p', { class: 'char-note' }, mats.length || kram.length ? 'Tippe ein Fach an, um zu sehen, was es ist.' : 'Leer. Draußen findest du Kram und Rohstoffe: in Autos, Containern, Paketen und Schuppen.'));
+    const slots: HTMLElement[] = [];
+    const select = (el: HTMLElement, fill: () => HTMLElement[]) => {
+      for (const x of slots) x.classList.remove('sel');
+      el.classList.add('sel');
+      clear(detail);
+      detail.append(...fill());
+    };
+    for (const r of mats) {
+      const el: HTMLElement = h(
+        'button',
+        { class: `slot rar-${RARITY[r]}`, type: 'button', title: RESOURCES[r].name, onclick: () => select(el, () => [h('b', null, RESOURCES[r].name), h('p', { class: 'char-note' }, RESOURCES[r].where ? `Findet man in: ${RESOURCES[r].where}` : 'Rohstoff zum Bauen.')]) },
+        svgEl(resIcon(r, 26)),
+        h('span', { class: 'slot-n' }, String(s.pack[r])),
+      );
+      slots.push(el);
+    }
+    for (const k of kram) {
+      const el: HTMLElement = h(
+        'button',
+        { class: 'slot kram', type: 'button', title: KRAM[k].name, onclick: () => select(el, () => [h('b', null, KRAM[k].name), h('p', { class: 'char-note' }, KRAM[k].desc), h('span', { class: 'junk-parts' }, 'Enthält ', partsChips(k)), h('small', null, 'Zerlegen am Werktisch zu Hause')]) },
+        thingThumb(k, 40),
+        (s.packKram[k] ?? 0) > 1 ? h('span', { class: 'slot-n' }, String(s.packKram[k])) : null,
+      );
+      slots.push(el);
+    }
+    // Leere Fächer füllen das Raster auf (mindestens zwei Reihen)
+    const free = Math.max(0, 12 - slots.length) + ((6 - ((slots.length + Math.max(0, 12 - slots.length)) % 6)) % 6);
+    const empties = Array.from({ length: free }, () => h('span', { class: 'slot empty', 'aria-hidden': 'true' }));
     const lagerMats = MATERIAL_ORDER.reduce((a, r) => a + s.inventory[r], 0);
     const lagerKram = kramCount(s.kram);
     return h(
-      'div',
-      { class: 'stock' },
-      h('h3', { class: 'stock-head' }, 'Im Rucksack', h('small', null, packCount(s) ? 'Zu Hause auspacken, dann liegt es sicher im Lager' : '')),
-      mats.length
-        ? h(
-            'ul',
-            { class: 'stock-list mats' },
-            mats.map((r) =>
-              h('li', null, svgEl(resIcon(r, 24)), h('span', { class: 'stock-name' }, RESOURCES[r].name), h('span', { class: 'stock-num' }, String(s.pack[r]))),
-            ),
-          )
-        : null,
-      kram.length ? h('ul', { class: 'junk-list' }, kram.map((k) => kramRow(k, s.packKram[k] ?? 0))) : null,
-      !mats.length && !kram.length
-        ? h('p', { class: 'stock-empty' }, 'Leer. Draußen findest du Rohstoffe und Kram: in Autos, Containern, Packstationen und Schuppen.')
-        : null,
-      h('h3', { class: 'stock-head' }, 'Zum Überleben', h('small', null, 'Hast du immer dabei')),
+      'section',
+      { class: 'char-col char-pack', 'aria-label': 'Rucksack' },
+      h('h3', { class: 'char-head' }, 'Rucksack', h('small', null, `${slots.length} Fächer belegt · Vorräte immer dabei`)),
       h(
         'ul',
-        { class: 'stock-list survival' },
-        SURVIVAL_ORDER.map((r) => h('li', { title: RESOURCES[r].name }, svgEl(resIcon(r, 26)), h('span', { class: 'stock-name' }, RESOURCES[r].name), h('span', { class: 'stock-num' }, String(s.inventory[r])))),
+        { class: 'char-survival' },
+        SURVIVAL_ORDER.map((r) => h('li', { title: RESOURCES[r].name, 'aria-label': `${RESOURCES[r].name}: ${s.inventory[r]}` }, svgEl(resIcon(r, 18)), h('b', null, String(s.inventory[r])))),
       ),
-      h(
-        'p',
-        { class: 'stock-lager' },
-        svgEl(icon('home', 16)),
-        `Im Lager zu Hause: ${lagerMats} Rohstoffe${lagerKram ? `, ${lagerKram} Kram` : ''}. Nichts davon kann unterwegs verloren gehen.`,
-      ),
-      h(
-        'dl',
-        { class: 'stats' },
-        h('dt', null, 'Unterwegs seit'),
-        h('dd', null, `Tag ${dayNumber(s, app.backend.now())}`),
-        h('dt', null, 'Durchsuchte Orte'),
-        h('dd', null, String(s.stats.searches)),
-        h('dt', null, 'Erledigte Gegner'),
-        h('dd', null, String(s.stats.kills)),
-        h('dt', null, 'Erkundete Fläche'),
-        h('dd', null, `${exploredStats(s.explored).km2.toFixed(2).replace('.', ',')} km²`),
-        h('dt', null, 'Sektoren erkundet / gesichert'),
-        h('dd', null, `${Object.values(s.sectors).filter((l) => l >= 1).length} / ${Object.values(s.sectors).filter((l) => l >= 2).length}`),
-      ),
+      h('div', { class: 'slot-grid' }, slots, empties),
+      detail,
+      h('p', { class: 'char-note lager' }, svgEl(icon('home', 14)), ` Zu Hause im Lager: ${lagerMats} Rohstoffe${lagerKram ? `, ${lagerKram} Kram` : ''}. ${packCount(s) ? 'Zu Hause auspacken, dann ist alles sicher.' : ''}`),
     );
   };
 
@@ -221,91 +314,30 @@ export function openPackPanel(app: App, host: HTMLElement, onClose: () => void, 
     );
   };
 
-  // --- Ausrüstung ---------------------------------------------------------------------
-  const gearView = () => {
-    const s = app.backend.current()!;
-    const now = app.backend.now();
-    const hp = currentHealth(s, now);
-    const best = bestWeapon(s);
-    const hpSegs = h('span', { class: 'hp-bar me-hp big' });
-    for (let i = 0; i < MAX_HEALTH; i++) hpSegs.append(h('span', { class: i < hp ? 'on' : '' }));
-    const missing = WEAPON_ORDER.filter((w) => !s.weapons.some((x) => x.kind === w));
-    return h(
-      'div',
-      { class: 'gear' },
-      h(
-        'section',
-        { class: 'gear-health' },
-        h('div', { class: 'gear-row' }, h('span', { class: 'gear-label' }, 'Gesundheit'), h('b', null, `${hp} / ${MAX_HEALTH}`)),
-        hpSegs,
-        h('p', { class: 'mod-desc' }, hp < MAX_HEALTH ? `Erholt sich von selbst, nächster Punkt in ${formatWait(nextHealthIn(s, now))}` : 'Du bist fit.'),
-        h(
-          'button',
-          {
-            class: 'btn small',
-            type: 'button',
-            disabled: hp >= MAX_HEALTH || s.inventory.medicine < 1,
-            onclick: async () => {
-              const res = await app.backend.dispatch({ type: 'heal' });
-              const ev = res.events[0];
-              if (ev.type === 'healed') app.toast(`Verarztet: +${ev.amount} Gesundheit`, 'good');
-              else if (ev.type === 'rejected') app.toast(REJECT_TEXT[ev.reason], 'warn');
-              onChanged();
-              render();
-            },
-          },
-          svgEl(resIcon('medicine', 16)),
-          `Medizin nehmen (+${HEAL_AMOUNT})`,
-        ),
-      ),
-      h('h3', { class: 'gear-head' }, 'Deine Waffen'),
-      s.weapons.length
-        ? h(
-            'ul',
-            { class: 'weapons' },
-            s.weapons.map((w) =>
-              h(
-                'li',
-                { class: 'weapon' + (w === best ? ' active' : '') },
-                h('span', { class: 'mod-name' }, WEAPONS[w.kind].name),
-                h('span', { class: 'weapon-dmg' }, cardLine(WEAPON_CARDS[w.kind])),
-                h('span', { class: 'dur' }, h('span', { style: `width:${Math.min(100, (w.dur / WEAPONS[w.kind].dur) * 100)}%` })),
-                h('span', { class: 'weapon-left' }, w === best ? `in der Hand · hält noch ${w.dur} Einsätze` : `hält noch ${w.dur} Einsätze`),
-              ),
-            ),
-          )
-        : h('p', { class: 'mod-desc' }, 'Keine Waffe. Du kämpfst mit Fäusten, Tritten und Steinen.'),
-      h('h3', { class: 'gear-head' }, 'Deine Karten im Kampf'),
-      h('p', { class: 'mod-desc' }, cardLine(deckFor(s.weapons, s.inventory.medicine))),
-      h('p', { class: 'mod-desc small' }, 'Jede Waffe bringt eigene Karten mit, jede gespielte Waffenkarte nutzt die Waffe ein bisschen ab. Verbinden-Karten gibt es, solange du Medizin dabeihast.'),
-      h(
-        'p',
-        { class: 'stock-lager' },
-        svgEl(icon('wrench', 16)),
-        missing.length
-          ? `Neue Waffen baust du am Werktisch bei dir zu Hause, zum Beispiel: ${missing.map((w) => WEAPONS[w].name).join(', ')}.`
-          : 'Neue oder kaputte Waffen baust du am Werktisch bei dir zu Hause.',
-      ),
-    );
-  };
-
-  const panel = h(
+  const panel: HTMLElement = h(
     'div',
-    { class: 'overlay pack-panel', role: 'dialog', 'aria-label': 'Rucksack' },
+    { class: 'overlay pack-panel', role: 'dialog', 'aria-label': 'Charakter und Rucksack' },
     h(
       'div',
       { class: 'overlay-inner' },
       h(
         'header',
-        { class: 'topbar' },
-        h('h1', { class: 'sign-title' }, 'Rucksack'),
+        { class: 'topbar pack-top' },
+        tabs,
         h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Schließen', onclick: onClose }, svgEl(icon('close'))),
       ),
-      tabs,
       body,
     ),
   );
   host.append(panel);
+  // Wird das Fenster entfernt (egal wie), die 3D-Figur freigeben
+  const watch = new MutationObserver(() => {
+    if (!panel.isConnected) {
+      dropFigure();
+      watch.disconnect();
+    }
+  });
+  watch.observe(host, { childList: true });
   render();
   return panel;
 }

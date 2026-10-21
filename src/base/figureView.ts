@@ -2,7 +2,7 @@
 // und als kleine Live-Ansicht (Charaktererstellung, Spielerfigur auf der Karte).
 
 import * as THREE from 'three';
-import type { Character } from '../core/types';
+import type { Character, WeaponId } from '../core/types';
 import { blobShadow, CharacterRig } from './character';
 
 type Look = Character['look'];
@@ -165,6 +165,12 @@ export class FigureView {
 
   wave() {
     this.rig?.wave();
+  }
+
+  /** Waffe in die Hand (null = Fäuste). Nach setLook aufrufen. */
+  holdWeapon(kind: WeaponId | null) {
+    this.rig?.holdWeapon(kind);
+    this.renderOnce();
   }
 
   start() {

@@ -304,7 +304,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
   position: relative;
   display: grid;
   grid-template-columns: 44px 1fr 44px;
-  grid-template-areas: "home bus locate";
+  grid-template-areas: "home . locate";
   align-items: end;
   justify-items: center;
   padding-left: var(--gutter-l);
@@ -317,8 +317,8 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .loc-chip[data-q="ok"] .svg { color: var(--amber); }
 .loc-chip[data-q="bad"] .svg { color: var(--rust); }
 .loc-chip[data-q="sim"] .svg { color: var(--amber); }
-/* Rucksack: runder Hauptknopf in der Mitte (wie der Pokéball bei Pokémon Go) */
-.pack-btn { grid-area: bus; position: relative; display: grid; place-items: center; width: 58px; height: 58px; padding: 0; border-radius: 50%; border: 0; background: var(--amber); color: var(--ink); cursor: pointer; box-shadow: 0 0 0 3px rgba(18, 17, 15, 0.85), 0 0 18px var(--amber-glow); transition: transform 0.12s ease; }
+/* Rucksack: runder Hauptknopf rechts am Rand, in der Mitte der Höhe (gut mit dem Daumen erreichbar) */
+.pack-btn { position: absolute; right: calc(var(--gutter-r) + 2px); top: 50%; margin-top: -29px; z-index: 2; display: grid; place-items: center; width: 58px; height: 58px; padding: 0; border-radius: 50%; border: 0; background: var(--amber); color: var(--ink); cursor: pointer; box-shadow: 0 0 0 3px rgba(18, 17, 15, 0.85), 0 0 18px var(--amber-glow); transition: transform 0.12s ease; }
 .pack-btn:active { transform: scale(0.94); }
 .pack-btn.bump { animation: pack-bump 0.6s ease; }
 @keyframes pack-bump { 0% { transform: scale(1); } 30% { transform: scale(1.14); box-shadow: 0 0 0 3px rgba(18, 17, 15, 0.85), 0 0 30px var(--amber); } 100% { transform: scale(1); } }
@@ -1322,4 +1322,54 @@ button.base-res { align-items: center; padding: 3px 6px 3px 4px; border: 1px sol
 .link-btn { border: 0; background: none; padding: 0; color: inherit; font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .title-art, .title-weather, .fog-layer, .title-touch { animation: none; }
+}
+
+/* Charakterfenster (src/ui/game/packPanel.ts): links Ausrüstung, Mitte Figur, rechts Rucksack */
+.pack-panel.wide .overlay-inner { max-width: 1180px; }
+.pack-top { display: flex; align-items: center; gap: 12px; }
+.pack-top .tabs { flex: 1; margin: 0; }
+.char { display: grid; grid-template-columns: minmax(200px, 0.9fr) minmax(180px, 0.8fr) minmax(280px, 1.3fr); gap: 14px; align-items: start; }
+.char-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.char-head { display: flex; align-items: baseline; gap: 8px; margin: 0; font: 700 14px var(--font-ui); color: var(--amber); text-transform: uppercase; letter-spacing: 0.1em; }
+.char-head small { font: 400 12px var(--font-ui); color: var(--dust); text-transform: none; letter-spacing: 0; }
+.char-health { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 10px; background: var(--steel); border: 1px solid var(--line); }
+.char-health .gear-row span { font: 700 14px var(--font-ui); text-transform: uppercase; letter-spacing: 0.06em; }
+.char-health .gear-row b { font-size: 16px; }
+.char-health .hp-bar span { width: auto; flex: 1; }
+.char-health .btn { align-self: flex-start; }
+.char-health small { color: var(--dust); }
+.char-weapons { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.char-weapon { display: flex; flex-direction: column; gap: 5px; padding: 8px 12px; border-radius: 10px; background: var(--steel); border: 1px solid var(--line); }
+.char-weapon.active { border-color: var(--amber); }
+.cw-name { display: flex; justify-content: space-between; align-items: baseline; font: 700 15px var(--font-ui); color: var(--bone); }
+.cw-name small { font: 600 11px var(--font-ui); color: var(--amber); text-transform: uppercase; letter-spacing: 0.08em; }
+.cw-cards { font-size: 12px; color: var(--dust); }
+.char-weapon .dur { height: 5px; }
+.char-note { margin: 0; font-size: 13px; line-height: 1.35; color: var(--dust); }
+.char-note .svg { vertical-align: -2px; }
+.char-figure { align-items: center; text-align: center; }
+.char-stage { width: 100%; height: clamp(200px, 52vh, 340px); border-radius: 14px; background: radial-gradient(ellipse at 50% 70%, rgba(255, 178, 46, 0.12), rgba(255, 255, 255, 0.02) 60%, transparent 75%); }
+.char-stage canvas { display: block; width: 100%; height: 100%; touch-action: pan-y; }
+.char-name { margin: 0; font: 800 22px/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.06em; color: var(--bone); }
+.char-sub { margin: 0; font-size: 12px; color: var(--dust); }
+.char-survival { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; }
+.char-survival li { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 6px 8px; border-radius: 8px; background: var(--steel); border: 1px solid var(--line); font-size: 12px; color: var(--dust); min-width: 0; }
+.char-survival li span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.char-survival b { font: 700 16px var(--font-ui); color: var(--bone); }
+.slot-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.slot { position: relative; aspect-ratio: 1; display: grid; place-items: center; padding: 0; border-radius: 9px; border: 1px solid var(--line); background: var(--steel); color: var(--bone); cursor: pointer; }
+.slot.sel { border-color: var(--amber); box-shadow: 0 0 0 2px rgba(255, 178, 46, 0.35); }
+.slot.empty { background: none; border-style: dashed; cursor: default; }
+.slot.rar-uncommon { border-color: rgba(122, 176, 120, 0.55); }
+.slot.rar-rare { border-color: rgba(110, 160, 220, 0.6); }
+.slot.rar-epic { border-color: rgba(190, 140, 230, 0.7); }
+.slot .junk-thumb { border-radius: 6px; }
+.slot-n { position: absolute; right: 4px; bottom: 2px; font: 700 13px var(--font-ui); color: var(--bone); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9); }
+.char-detail { min-height: 64px; display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); }
+.char-detail b { font: 700 15px var(--font-ui); color: var(--bone); }
+.char-detail small { color: var(--dust); font-size: 12px; }
+.char-note.lager { font-size: 12px; }
+@media (max-width: 760px) and (orientation: portrait) {
+  .char { grid-template-columns: 1fr; }
+  .char-figure { order: -1; }
 }

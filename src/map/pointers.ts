@@ -27,8 +27,8 @@ interface Item {
   dist: HTMLElement;
 }
 
-/** Abstand zum Rand: oben die Anzeigen, unten die Knöpfe. */
-const INSET = { top: 86, bottom: 112, left: 34, right: 34 };
+/** Abstand zum Rand: oben die Anzeigen, unten die Knöpfe, rechts der Rucksack-Knopf. */
+const INSET = { top: 86, bottom: 112, left: 34, right: 112 };
 
 export class Pointers {
   private items = new Map<string, Item>();

@@ -146,7 +146,7 @@ export function gameScreen(app: App): Screen {
   const whoBtn = h('button', { class: 'who', type: 'button', 'aria-label': 'Gesundheit und Waffen', onclick: () => openPack('gear') }, whoFace, hpRing);
   // Rucksack: Hauptknopf. Die Zahl zeigt, was du gerade nach Hause trägst.
   const packBadge = h('span', { class: 'pack-badge', hidden: true });
-  const packBtn = h('button', { class: 'pack-btn', type: 'button', 'aria-label': 'Rucksack', onclick: () => openPack('pack') }, svgEl(icon('backpack', 28)), packBadge);
+  const packBtn = h('button', { class: 'pack-btn', type: 'button', 'aria-label': 'Charakter und Rucksack', onclick: () => openPack('pack') }, svgEl(icon('backpack', 28)), packBadge);
   let lastLoot = -1;
   const banners = h('div', { class: 'banners' });
   // Kurzer Hinweis unten (Simulation, GPS sucht noch). Gutes GPS zeigt nur ein Punkt am Zentrieren-Knopf.
@@ -174,7 +174,8 @@ export function gameScreen(app: App): Screen {
     ),
     compassBtn,
     banners,
-    h('div', { class: 'hud-bottom' }, locChip, homeBtn, packBtn, locateBtn),
+    packBtn,
+    h('div', { class: 'hud-bottom' }, locChip, homeBtn, locateBtn),
   );
   const el = h('div', { class: 'screen game' }, mapEl, tilt, fog, tint, wfog, dust, bolt, hud, sheetHost, overlayHost);
 
