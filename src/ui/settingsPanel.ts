@@ -147,6 +147,21 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
           ['own', 'Eigenbau'],
         ]),
       ),
+      h(
+        'div',
+        { class: 'set-row' },
+        h(
+          'div',
+          { class: 'set-label', id: 'lbl-houses' },
+          'Häuser auf der Karte',
+          h('small', null, 'Detailreich: echte Grundrisse mit Fenstern, Dächern, Ruinen, dazu Autos und Kram an den Straßen. Stadt-Bausatz: Häuser in der Nähe aus Bauteilen des Quaternius „Downtown City MegaKit“ (Stilprobe). Einfach: schlichte Blöcke, schont alte Handys.'),
+        ),
+        segmented('mapHouses', 'lbl-houses', [
+          ['detail', 'Detailreich'],
+          ['citykit', 'Stadt-Bausatz'],
+          ['simple', 'Einfach'],
+        ]),
+      ),
     ),
     h(
       'section',

@@ -21,13 +21,13 @@ import {
   type PlotIndex,
   type SiteId,
 } from '../core/building';
-import { footprint, type FurnitureId } from '../core/furniture';
+import { footprint, FURNITURE as FURNITURE_DEFS, type FurnitureId } from '../core/furniture';
 import { hashString } from '../core/rng';
 import type { DayPhase } from '../core/sun';
 import type { Character, Plot } from '../core/types';
 import type { WeatherKind } from '../services/weather';
 import { Assembler, GLOW, LIT, placeMatrix, TemplateCache, type Template } from './bake';
-import { CharacterRig } from './character';
+import { furnitureFromPack, makePlayerRig, packFurniture, packObstacle, type PlayerRig } from './modelPack';
 import { buildEnvironment, type Environment } from './environment';
 import { buildFurniture, PAT, type LightSpec } from './models';
 import { findPath, nearestWalkable, walkable } from './path';
@@ -149,7 +149,8 @@ export class BaseScene {
   private sectionMarks: THREE.InstancedMesh;
 
   // Figur
-  private rig: CharacterRig | null = null;
+  private rig: PlayerRig | null = null;
+  private look: Character['look'] | null = null;
   private lookKey = '';
   private charPos = new THREE.Vector2(HALF, HALF);
   private charHeading = 0;
@@ -292,7 +293,8 @@ export class BaseScene {
       this.scene.remove(this.rig.root);
       this.rig.dispose();
     }
-    this.rig = new CharacterRig(look);
+    this.look = look;
+    this.rig = makePlayerRig(look);
     this.scene.add(this.rig.root);
     this.charLight.position.set(0.25, 1.5, 0.3);
     this.rig.root.add(this.charLight);
@@ -492,7 +494,11 @@ export class BaseScene {
     const glow = new Assembler();
     for (const o of d.idx.obstacles) {
       const variant = hash(o.id) % 4;
-      const t = this.cache.get(`o:${o.kind}:${d.site}:${variant}`, () => buildObstacle(o.kind, d.site, variant));
+      const pack = furnitureFromPack();
+      const t = this.cache.get(`o:${o.kind}:${d.site}:${variant}${pack ? ':pack' : ''}`, () => {
+        const def = OBSTACLES[o.kind];
+        return (pack ? packObstacle(o.kind, variant, def.w, def.d) : null) ?? buildObstacle(o.kind, d.site, variant);
+      });
       const turned = o.w !== OBSTACLES[o.kind].w;
       const ry = (turned ? Math.PI / 2 : 0) + (o.w === o.d ? (variant % 4) * (Math.PI / 2) : 0);
       const mm = placeMatrix(W(o.x + o.w / 2), 0, W(o.y + o.d / 2), ry);
@@ -650,11 +656,32 @@ export class BaseScene {
   }
 
   private furnitureTemplate(kind: FurnitureId): Template {
-    return this.cache.get(`f:${kind}`, () => {
+    const pack = furnitureFromPack();
+    return this.cache.get(`f:${kind}${pack ? ':pack' : ''}`, () => {
       const m = buildFurniture(kind);
       this.lightSpecs.set(kind, m.light);
-      return m.group;
+      // Modellpaket (Stilprobe): fertiges Möbelstück, Licht und Flammen wie beim eigenen
+      const def = FURNITURE_DEFS[kind];
+      const model = pack ? packFurniture(kind, def.w, def.d) : null;
+      if (!model) return m.group;
+      m.group.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (mesh.isMesh && mesh.name === 'flame') model.add(mesh.clone());
+      });
+      return model;
     });
+  }
+
+  /** Modellpaket geladen oder umgestellt: Figur, Möbel und Hindernisse neu aufbauen. */
+  refreshModels() {
+    if (this.look) {
+      const pos = this.rig?.root.position.clone();
+      this.lookKey = '';
+      this.setLook(this.look);
+      if (pos) this.rig?.root.position.copy(pos);
+    }
+    this.sig = {};
+    if (this.data) this.setData(this.data);
   }
 
   private itemMatrix(kind: FurnitureId, x: number, y: number, rot: number): THREE.Matrix4 {

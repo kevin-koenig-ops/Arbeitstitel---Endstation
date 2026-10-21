@@ -500,6 +500,7 @@ export function gameScreen(app: App): Screen {
   let lastControl = app.settings.get().control;
   const offSettings = app.settings.onChange((st) => {
     gm?.setComic(st.graphics === 'comic');
+    gm?.setHouses(st.mapHouses);
     if (st.control === lastControl) return;
     lastControl = st.control;
     if (provider) setupJoystick();
@@ -820,6 +821,7 @@ export function gameScreen(app: App): Screen {
         onSpotTap: (id) => sheet.open(id),
         onBaseTap: () => void openBase(),
         onCacheTap: (id) => showCacheHint(id),
+        houses: app.settings.get().mapHouses,
         onFollowChange: (f) => locateBtn.classList.toggle('lost', !f),
         onCameraMove: updateFog,
         onDataChanged: () => {
@@ -851,6 +853,7 @@ export function gameScreen(app: App): Screen {
       ambience = new AmbienceController(app, el, gm.map, gm.fog?.canvas ?? null, particles, bolt);
       ambience.onChange((a) => {
         renderEnvChip(a);
+        gm?.setPhase(a.phase);
         updateSpots();
       });
       ambience.refresh();

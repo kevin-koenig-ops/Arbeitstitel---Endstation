@@ -6,12 +6,12 @@ import { MEMENTOS } from '../../core/content';
 import { dayNumber } from '../../core/rules';
 import type { App, Screen } from '../app';
 import { clear, h } from '../dom';
-import { mountScene } from '../scene';
+import { artStyle } from '../art';
 
 export function menuScreen(app: App): Screen {
-  const canvas = h('canvas', { class: 'menu-scene', 'aria-hidden': 'true' });
+  // Platzhalter für das Bild im Hintergrund (links frei, rechts der Linienplan)
+  const canvas = h('div', { class: 'menu-scene', 'aria-hidden': 'true' });
   const routeHost = h('nav', { class: 'menu-route', 'aria-label': 'Hauptmenü' });
-  let unmountScene = () => {};
 
   const stop = (label: string, sub: string | null, onclick: () => void, primary = false) =>
     h(
@@ -61,7 +61,7 @@ export function menuScreen(app: App): Screen {
 
   const el = h(
     'div',
-    { class: 'screen menu' },
+    { class: 'screen menu has-art', style: artStyle('menu') },
     h('header', { class: 'menu-head' }, h('img', { class: 'menu-logo', src: logoUrl, alt: GAME_TITLE })),
     canvas,
     routeHost,
@@ -72,10 +72,6 @@ export function menuScreen(app: App): Screen {
     el,
     mount() {
       renderRoute();
-      unmountScene = mountScene(canvas);
-    },
-    destroy() {
-      unmountScene();
     },
   };
 }

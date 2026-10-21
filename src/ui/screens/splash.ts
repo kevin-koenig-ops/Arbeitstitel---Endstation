@@ -3,6 +3,7 @@
 import logoUrl from '../../assets/logo.svg';
 import { GAME_TITLE } from '../../config';
 import type { App, Screen } from '../app';
+import { artStyle } from '../art';
 import { h, reducedMotion } from '../dom';
 
 export function splashScreen(app: App): Screen {
@@ -15,7 +16,7 @@ export function splashScreen(app: App): Screen {
   };
   const el = h(
     'div',
-    { class: 'screen splash', onclick: next },
+    { class: 'screen splash has-art', style: artStyle('home'), onclick: next },
     h('img', { class: 'splash-logo', src: logoUrl, alt: GAME_TITLE }),
     h('p', { class: 'splash-hint' }, 'Tippen zum Überspringen'),
   );

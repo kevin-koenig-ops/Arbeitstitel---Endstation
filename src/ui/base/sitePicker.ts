@@ -5,6 +5,7 @@ import { siteStatus } from '../../core/rules';
 import type { SpotKind } from '../../core/types';
 import type { App } from '../app';
 import { h, svgEl } from '../dom';
+import { artStyle } from '../art';
 import { icon } from '../icons';
 
 const FIND_NAMES: Partial<Record<SpotKind, string>> = {
@@ -92,7 +93,7 @@ export function openSitePicker(app: App, host: HTMLElement, opts: { first: boole
   });
   const el = h(
     'div',
-    { class: 'overlay site-picker', role: 'dialog', 'aria-label': 'Schauplatz wählen' },
+    { class: 'overlay site-picker has-art', style: artStyle('home'), role: 'dialog', 'aria-label': 'Schauplatz wählen' },
     h(
       'div',
       { class: 'overlay-inner' },

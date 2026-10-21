@@ -13,7 +13,9 @@ import * as THREE from 'three';
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import type { ObstacleKind } from '../core/building';
 import type { FoeKind } from '../core/content';
+import type { FurnitureId } from '../core/furniture';
 import type { Character, WeaponId } from '../core/types';
 import { CharacterRig, type CharacterAction } from './character';
 import { modelSet } from './modelChoice';
@@ -22,8 +24,11 @@ import { ZombieRig, type ZombiePose } from './zombie';
 
 // --- Die Liste -------------------------------------------------------------------------------
 
-const FILES = import.meta.glob('../assets/models/quaternius-zombie/*.glb', { query: '?url', import: 'default', eager: true }) as Record<string, string>;
-const fileUrl = (name: string) => FILES[`../assets/models/quaternius-zombie/${name}.glb`];
+const FILES = {
+  ...(import.meta.glob('../assets/models/quaternius-zombie/*.glb', { query: '?url', import: 'default', eager: true }) as Record<string, string>),
+  ...(import.meta.glob('../assets/models/quaternius-interior/*.glb', { query: '?url', import: 'default', eager: true }) as Record<string, string>),
+};
+const fileUrl = (name: string) => Object.entries(FILES).find(([k]) => k.endsWith(`/${name}.glb`))?.[1] ?? '';
 
 /** Name eines Bewegungsablaufs, oder ein festgehaltenes Bild daraus (at = Anteil 0..1). */
 type Clip = string | { name: string; at: number; speed?: number };
@@ -99,40 +104,130 @@ export const PROPS = {
 } satisfies Record<string, { file: string; pat: Pat; scale: number }>;
 export type PropId = keyof typeof PROPS;
 
-export const PACK_INFO = { name: 'Quaternius – Zombie Apocalypse Kit', license: 'CC0 (gemeinfrei)' };
+/** Ein Teil, das in eine Grundfläche eingepasst wird (Meter; Zelle relativ zur Mitte der Fläche). */
+interface FitPart {
+  file: string;
+  /** Teilfläche [x, z, Breite, Tiefe], sonst die ganze Fläche */
+  cell?: [number, number, number, number];
+  /** Höhe über dem Boden (z. B. gestapelt) */
+  y?: number;
+  ry?: number;
+  /** größte Höhe dieses Teils */
+  h?: number;
+}
+interface FitSpec {
+  parts: FitPart[];
+  /** größte Höhe (Meter) */
+  h: number;
+}
+
+/** Möbel der Endstation aus dem „Ultimate House Interior Pack“ (und Kisten aus dem Zombie-Kit). */
+export const FURNITURE_MODELS: Partial<Record<FurnitureId, FitSpec>> = {
+  sofa: { parts: [{ file: 'couch-medium1' }], h: 0.95 },
+  bed: { parts: [{ file: 'bed-king' }], h: 1.1 },
+  mattress: { parts: [{ file: 'bed-single' }], h: 0.85 },
+  table: { parts: [{ file: 'table-roundsmall' }], h: 0.78 },
+  chair: { parts: [{ file: 'chair-1' }], h: 0.95 },
+  shelf: { parts: [{ file: 'shelf-small1' }], h: 1.8 },
+  fridge: { parts: [{ file: 'kitchen-fridge' }], h: 1.85 },
+  kitchen: {
+    parts: [
+      { file: 'kitchen-sink', cell: [-0.5, 0, 1, 1] },
+      { file: 'kitchen-oven-large', cell: [0.5, 0, 1, 1] },
+    ],
+    h: 1.0,
+  },
+  lamp: { parts: [{ file: 'light-floor1' }], h: 1.7 },
+  rug: { parts: [{ file: 'carpet-1' }], h: 0.05 },
+  plant: { parts: [{ file: 'houseplant-4' }], h: 1.0 },
+  medCabinet: { parts: [{ file: 'drawer-1' }], h: 1.1 },
+  crates: {
+    parts: [
+      { file: 'chest', h: 0.45 },
+      { file: 'chest', y: 0.44, ry: 0.35, cell: [0.04, -0.02, 0.8, 0.8], h: 0.42 },
+    ],
+    h: 0.9,
+  },
+};
+
+/** Hindernisse auf dem Gelände der Endstation (Zombie-Kit). Mehrere Fassungen je Art. */
+export const OBSTACLE_MODELS: Partial<Record<ObstacleKind, FitSpec[]>> = {
+  wreck: [{ parts: [{ file: 'vehicle-pickup' }], h: 1.6 }, { parts: [{ file: 'vehicle-sports' }], h: 1.5 }, { parts: [{ file: 'vehicle-truck' }], h: 2.4 }],
+  tires: [{ parts: [{ file: 'wheels-stack' }], h: 0.8 }],
+  trash: [
+    {
+      parts: [
+        { file: 'trashbag-2', cell: [-0.45, 0, 1, 1] },
+        { file: 'trashbag-1', cell: [0.5, 0.05, 0.9, 0.9] },
+      ],
+      h: 0.6,
+    },
+  ],
+  barrels: [
+    {
+      parts: [
+        { file: 'barrel', cell: [-0.18, -0.12, 0.6, 0.6] },
+        { file: 'barrel', cell: [0.22, 0.2, 0.55, 0.55], ry: 1.3 },
+      ],
+      h: 1.0,
+    },
+  ],
+};
+
+export const PACK_INFO = { name: 'Quaternius – Zombie Apocalypse Kit, Ultimate House Interior Pack', license: 'CC0 (gemeinfrei)' };
 
 // --- Laden -----------------------------------------------------------------------------------
 
 const loaded = new Map<string, GLTF>();
-let loading: Promise<boolean> | null = null;
+const loadingFiles = new Map<string, Promise<void>>();
+let loader: GLTFLoader | null = null;
 
-/** Lädt alle Dateien des Pakets einmal (danach sofort). false = hat nicht geklappt. */
-export function loadPack(): Promise<boolean> {
-  if (!loading) {
-    loading = (async () => {
-      const loader = new GLTFLoader();
-      loader.setMeshoptDecoder(MeshoptDecoder);
-      const names = Object.keys(FILES).map((k) => k.split('/').pop()!.replace(/\.glb$/, ''));
-      await Promise.all(
-        names.map(async (n) => {
-          const g = await loader.loadAsync(fileUrl(n));
-          prepare(g, n);
-          loaded.set(n, g);
-        }),
-      );
-      return true;
-    })().catch((e) => {
-      console.warn('Modellpaket nicht geladen', e);
-      loading = null;
-      return false;
-    });
+/** Lädt einzelne Dateien des Pakets (jede nur einmal). false = mindestens eine hat nicht geklappt. */
+export async function loadModels(names: string[]): Promise<boolean> {
+  if (!loader) {
+    loader = new GLTFLoader();
+    loader.setMeshoptDecoder(MeshoptDecoder);
   }
-  return loading;
+  const l = loader;
+  const jobs = names.map((n) => {
+    let job = loadingFiles.get(n);
+    if (!job) {
+      job = l.loadAsync(fileUrl(n)).then((g) => {
+        prepare(g, n);
+        loaded.set(n, g);
+      });
+      job.catch(() => loadingFiles.delete(n));
+      loadingFiles.set(n, job);
+    }
+    return job;
+  });
+  try {
+    await Promise.all(jobs);
+    return true;
+  } catch (e) {
+    console.warn('Modellpaket nicht (ganz) geladen', e);
+    return false;
+  }
+}
+
+/** Lädt alle Dateien des Pakets (Kampf, Endstation). */
+export function loadPack(): Promise<boolean> {
+  return loadModels(Object.keys(FILES).map((k) => k.split('/').pop()!.replace(/\.glb$/, '')));
+}
+
+/** Nur die Kulissen-Teile (für die Karte, ohne Figuren). */
+export function loadProps(): Promise<boolean> {
+  return loadModels([...new Set(Object.values(PROPS).map((p) => p.file))]);
 }
 
 /** Sollen die Szenen jetzt das Paket benutzen? (eingeschaltet und fertig geladen) */
 export function usePack(): boolean {
   return modelSet() === 'pack' && loaded.size > 0;
+}
+
+/** Ist dieses Kulissen-Teil geladen und das Paket eingeschaltet? */
+export function hasProp(id: PropId): boolean {
+  return modelSet() === 'pack' && loaded.has(PROPS[id].file);
 }
 
 /** Materialien vorbereiten: matt, Farben an den Ecken, keine leuchtenden Scheinwerfer. */
@@ -166,6 +261,61 @@ export function packProp(id: PropId): THREE.Object3D | null {
   const holder = new THREE.Group();
   holder.add(o);
   return holder;
+}
+
+// --- Einpassen in eine Grundfläche (Möbel, Hindernisse) ---------------------------------------
+
+/** Alle Dateien da und das Paket an? */
+function ready(spec: FitSpec): boolean {
+  return modelSet() === 'pack' && spec.parts.every((p) => loaded.has(p.file));
+}
+
+/** Modelle passend in eine Fläche w × d (Meter) stellen, Mitte im Ursprung, Boden bei y = 0. */
+function fit(spec: FitSpec, w: number, d: number): THREE.Group {
+  const g = new THREE.Group();
+  const box = new THREE.Box3();
+  const size = new THREE.Vector3();
+  const center = new THREE.Vector3();
+  for (const p of spec.parts) {
+    const obj = loaded.get(p.file)!.scene.clone(true);
+    const holder = new THREE.Group();
+    holder.add(obj);
+    obj.rotation.y = p.ry ?? 0;
+    const [cx, cz, cw, cd] = p.cell ?? [0, 0, w, d];
+    holder.updateMatrixWorld(true);
+    box.setFromObject(holder).getSize(size);
+    // Lange Seite des Modells an die lange Seite der Fläche drehen
+    if (Math.abs(cw - cd) > 0.01 && cw > cd !== size.x > size.z) {
+      obj.rotation.y += Math.PI / 2;
+      holder.updateMatrixWorld(true);
+      box.setFromObject(holder).getSize(size);
+    }
+    const s = Math.min((cw * 0.94) / Math.max(0.01, size.x), (cd * 0.94) / Math.max(0.01, size.z), (p.h ?? spec.h) / Math.max(0.01, size.y));
+    holder.scale.setScalar(s);
+    holder.updateMatrixWorld(true);
+    box.setFromObject(holder).getCenter(center);
+    holder.position.set(cx - center.x, (p.y ?? 0) - box.min.y, cz - center.z);
+    g.add(holder);
+  }
+  return g;
+}
+
+/** Möbelstück aus dem Paket (oder null: eigenes Modell nehmen). */
+export function packFurniture(kind: FurnitureId, w: number, d: number): THREE.Group | null {
+  const spec = FURNITURE_MODELS[kind];
+  return spec && ready(spec) ? fit(spec, w, d) : null;
+}
+
+/** Hindernis aus dem Paket (oder null). */
+export function packObstacle(kind: ObstacleKind, variant: number, w: number, d: number): THREE.Group | null {
+  const list = OBSTACLE_MODELS[kind];
+  const spec = list?.[variant % list.length];
+  return spec && ready(spec) ? fit(spec, w, d) : null;
+}
+
+/** Ob gerade Paket-Modelle für Möbel/Hindernisse da sind (für Vorlagen-Schlüssel). */
+export function furnitureFromPack(): boolean {
+  return modelSet() === 'pack' && loaded.has('couch-medium1');
 }
 
 // --- Bewegungsabläufe ------------------------------------------------------------------------

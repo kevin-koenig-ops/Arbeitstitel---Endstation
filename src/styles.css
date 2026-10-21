@@ -1222,3 +1222,21 @@ button.base-res { align-items: center; padding: 3px 6px 3px 4px; border: 1px sol
 .ctx-actions .btn .cost { margin-left: 4px; }
 .t-row { font: 600 9px/1 var(--font-ui); color: var(--dust); text-transform: uppercase; letter-spacing: 0.08em; }
 .t-row:empty { display: none; }
+
+/* Gemalte Hintergründe (src/ui/art.ts): Bild über --art, darüber eine Abdunklung je Ort */
+.has-art {
+  background-color: var(--ink);
+  background-image: var(--art-shade, linear-gradient(rgba(14, 12, 10, 0.55), rgba(14, 12, 10, 0.8))), var(--art);
+  background-size: cover;
+  background-position: center;
+}
+.splash.has-art { --art-shade: radial-gradient(ellipse at center, rgba(14, 12, 10, 0.35), rgba(14, 12, 10, 0.85) 75%); }
+.menu.has-art { --art-shade: linear-gradient(180deg, rgba(14, 12, 10, 0.55) 0%, rgba(14, 12, 10, 0.1) 30%, rgba(14, 12, 10, 0.25) 55%, rgba(14, 12, 10, 0.92) 85%); background-position: 30% center; }
+.menu.has-art .menu-scene { pointer-events: none; }
+.intro.has-art { --art-shade: linear-gradient(rgba(14, 12, 10, 0.72), rgba(14, 12, 10, 0.88)); }
+.character.has-art { --art-shade: linear-gradient(rgba(14, 12, 10, 0.8), rgba(14, 12, 10, 0.9)); background-attachment: local; }
+.battle-loading.has-art { --art-shade: radial-gradient(ellipse at 55% 45%, rgba(14, 12, 10, 0.1), rgba(14, 12, 10, 0.75) 80%); text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9); }
+.overlay.site-picker.has-art { --art-shade: linear-gradient(rgba(14, 12, 10, 0.78), rgba(14, 12, 10, 0.9)); }
+@media (orientation: landscape) {
+  .menu.has-art { --art-shade: linear-gradient(90deg, rgba(14, 12, 10, 0.25) 0%, rgba(14, 12, 10, 0.05) 35%, rgba(14, 12, 10, 0.55) 58%, rgba(14, 12, 10, 0.9) 78%); background-position: left center; }
+}

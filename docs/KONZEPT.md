@@ -15,6 +15,7 @@ Wie es zum Weltuntergang kam (Phosphat-Krieg, das Weinen, Elysis, der Flux), ste
 5. **Tagsüber raus, abends einrichten.** Draußen sammelst du Rohstoffe, Kram, Sammelstücke und Baupläne, zu Hause baust du in Ruhe deine Endstation aus, gern auch vom Bett aus.
 6. **Eins statt viele.** Jede nützliche Anlage (Regentonne, Werkbank, Windrad, Ofen …) gibt es nur einmal. Statt mehr davon zu bauen, wird sie in Stufen aufgerüstet und bleibt dabei stehen, wo sie steht. Niemand soll ständig umbauen müssen. Deko darf man beliebig oft aufstellen.
 7. **Draußen gefährlich, zu Hause gemütlich.** Die Welt draußen bleibt rau (Lore: eher The Division als grüne Idylle). Die Endstation dagegen ist warm, sicher und voller kleiner Rituale, wie bei Animal Crossing. Und man braucht nur ein Handy, keine Konsole.
+8. **Langsam aufbauen.** Niemand wird beim Einstieg überschwemmt. Man lernt Stück für Stück alles kennen, ohne Hast. Neue Spielteile schalten sich nach und nach frei (siehe „Langsamer Aufbau“), jedes mit einem kleinen Moment, der es erklärt.
 
 ## Kernschleife
 
@@ -52,6 +53,44 @@ Vorbild ist Animal Crossing: Die Welt läuft in echter Zeit mit, jeden Tag gibt 
 - **Wochenkurs beim Tauschhändler:** Montags kauft man z. B. Konserven, unter der Woche schwankt der Tauschkurs, wie der Rübenmarkt bei Animal Crossing. Nur mit Spiel-Rohstoffen, nie mit echtem Geld.
 - **Jahreszeiten und Feiertage:** Pilze im Herbst, der erste Schnee, Lichterketten im Dezember, Halloween. Manche Funde gibt es nur zu bestimmten Zeiten, sie kommen aber jedes Jahr wieder.
 - **Sich ausdrücken:** Figur einkleiden, eigene Schilder und Plakate gestalten, Fotomodus zum Teilen.
+
+## Der rote Faden: warum man dranbleibt (geplant)
+
+Am Handy braucht es einen Sog: etwas, das man erleben will, ein Rätsel, das man lösen will, und ein Ziel, auf das man hinarbeitet. Der Sog kommt aus Neugier und Vorfreude, nie aus Angst, etwas zu verpassen.
+
+- **Das große Ziel ab Minute eins:** Das Hauptmenü ist ein Linienplan. Jede Haltestelle ist ein Kapitel, die letzte ist von Anfang an zu sehen, aber grau. Vorschlag fürs Endziel: **Die Linie 0 fährt wieder** (den Bus zum Laufen bringen und mit deinen Leuten zur Küste fahren). Noch nicht entschieden. Jede Station schaltet etwas Großes frei (Gegner, Rote Zonen, Raids, Bewohner).
+- **Das Rätsel:** Am ersten Abend knackt das Funkgerät, eine Stimme auf Kanal 4 spricht von der Küste und bricht ab. Jeden Samstag kommt eine neue Folge mit Cliffhanger, wie bei einer Serie. Wer sendet das? Stimmt das mit der Küste? Erinnerungsstücke, Laborzettel und der Archivar füllen die Lücken. Verpasste Folgen kann man nachhören.
+- **Das Endgame:** wöchentliche Raids mit drei Schwierigkeiten (nur dort Raid-Material für legendäre Waffen, höchste Ausbaustufen, Trophäen), Rote Zonen mit Tiefenstufen und Bestmarke, Saisons von etwa 8 bis 10 Wochen mit neuem Kapitel, neuer Kreatur und neuem Raid-Boss. Alte Saisons bleiben spielbar. Nach dem Endziel öffnet sich „Linie 1“ als nächste Strecke. Ruf-Stufen nach „Legende“ mit Abzeichen und Kleidung.
+- **Der Rhythmus:** jeden Tag Zielleiste und „Heute zu Hause“, montags ein neues Raid-Nest, samstags Lagerfeuer und Funk-Folge, alle zwei bis drei Monate eine Saison. Raids bleiben zwei Wochen offen.
+- **Die ersten 10 Minuten** zeigen den Haken schon: erster Fund, erster Wandler, abends der abgebrochene Funkspruch, und auf dem Linienplan leuchtet in der Ferne die graue Endstation.
+
+## Langsamer Aufbau (geplant)
+
+Das Spiel öffnet sich wie eine Geschichte: erst wenig, dann immer mehr. Jedes neue Spielteil kommt mit einem kleinen Moment (ein Funkspruch, ein Fund, ein Besucher), nie als Wand aus Erklärungen. Was noch nicht freigeschaltet ist, taucht nicht in Menüs auf, höchstens als graue Haltestelle auf dem Linienplan.
+
+Grobe Reihenfolge (Zahlen werden beim Testen angepasst):
+
+1. **Erster Tag:** Karte, Fundstellen durchsuchen, Rucksack, die Endstation mit ein paar Möbeln.
+2. **Erste Tage:** Werktisch (Kram zerlegen), erste Wache und damit der erste Kampf, Händlerkisten.
+3. **Erste Woche:** Funkgerät und die erste Folge auf Kanal 4, Kreidezeichen und Verstecke, Holzofen.
+4. **Erster Samstag:** das erste Lagerfeuer am Abend.
+5. **Danach:** der erste Bewohner zieht ein, mit ihm kommen Briefe und Wünsche.
+6. **Später:** Die **Fall-Tafel** wird freigeschaltet, zum Beispiel weil ein Bewohner einen Toten gefunden hat. Erst ab dann gibt es Fälle auf der Karte.
+7. **Ab Rang Streifer:** Klassen, Rote Zonen, Raids über das Funkgerät.
+
+Das Tempo richtet sich nach dem, was man tut, nicht nach Kalendertagen allein. Wer viel spielt, kommt schneller voran. Wer wenig spielt, verpasst nichts.
+
+## Rätsel und Fälle (geplant)
+
+Knobeln passt perfekt zu „draußen kurz, zu Hause die Tiefe“: Hinweise findet man unterwegs in Sekunden, gelöst wird abends in Ruhe.
+
+- **Erst später freigeschaltet:** Fälle gibt es erst, wenn die Fall-Tafel da ist (siehe „Langsamer Aufbau“).
+- **Fälle auf der Karte (Krimi im Witcher-Stil):** Ein Überlebender ist tot, Vorräte sind verschwunden, ein Brunnen wurde vergiftet. In der Nähe liegen 3 bis 5 Hinweise an Fundstellen: ein Zettel, Spuren, ein verlorener Gegenstand, eine Aussage über Funk. Neue Hinweise erscheinen als eigene Marken auf der Karte.
+- **Die Ermittlungstafel zu Hause:** eine Pinnwand mit Fotos, Zetteln und rotem Faden. Man verbindet Hinweise und streicht Verdächtige, Orte und Tatwerkzeuge aus, wie bei einem Logikrätsel (wer, wo, womit). Am Ende benennt man den Täter.
+- **Kein Zwang:** Ein falscher Verdacht kostet nichts, man bekommt einen Tipp und darf weiter knobeln. Fälle laufen nicht ab.
+- **Belohnung:** Geschichte (der Fall erzählt ein Stück Lore), Ruf, seltene Funde. Manchmal zieht danach jemand bei dir ein, den du entlastet hast.
+- **Kleine Rätsel nebenbei:** Kreidezeichen als Geheimschrift, Funksprüche zum Entschlüsseln (z. B. Morse oder einfache Verschiebung), Zahlenschlösser an Verstecken, deren Code man aus Hinweisen zusammensetzt.
+- **Echte Orte respektieren:** Fälle und Hinweise liegen nie an sensiblen Orten und nie an echten Wohnhäusern. Tatorte sind erfundene Fundstellen, echte Namen von Geschäften oder Menschen tauchen in Fällen nicht auf.
 
 ## Kampf: wie es weitergeht (geplant)
 
@@ -186,5 +225,7 @@ Name, Aussehen (Frisur, Hautton, Jacke) und eine Vorgeschichte mit kleinem Vorte
 ## Gestaltung
 
 Bus-Zielanzeige trifft Endzeit: LED-Punktschrift in Bernstein, dunkle Paneele, das Hauptmenü als Linienplan mit Haltestellen. Fundbelege sehen aus wie Kassenzettel, Erinnerungsstücke sind handschriftliche Zettel.
+
+**Fertige Modelle und 3D-Karte (Stilprobe):** Einstellungen → Grafik → „Figuren und Kulisse“ (Modellpaket oder Eigenbau) und „Häuser auf der Karte“ (Detailreich, Stadt-Bausatz, Einfach). Die Karte zeigt echte Grundrisse als Häuser mit Fenstern und Dächern, manche ausgebrannt oder als Ruine, dazu Bäume, Autowracks, Laternen und Kram am Straßenrand. Hauptmenü, Start, Charaktererstellung, Einstieg, Kampf und Schauplätze haben gemalte Hintergrundbilder.
 
 **Grafikstil zum Vergleichen** (Einstellungen → Grafik): *Polygon* (kantig, weiches Licht) oder *Comic* (Cel-Shading: flächige Farben in wenigen Stufen, dunkle Umrisslinien, kräftigere Farben). Comic wirkt in Endstation, Kampf, Charaktererstellung und bei der Figur auf der Karte voll; die Karte selbst bekommt nur flache Hausseiten und dunkle Kanten am Fuß der Häuser.

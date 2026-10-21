@@ -1,11 +1,12 @@
 import type { App, Screen } from '../app';
+import { artStyle } from '../art';
 import { h } from '../dom';
 
 export function introScreen(app: App): Screen {
   const name = app.backend.current()?.character.name ?? '';
   const el = h(
     'div',
-    { class: 'screen intro' },
+    { class: 'screen intro has-art', style: artStyle('intro') },
     h(
       'div',
       { class: 'page narrow' },

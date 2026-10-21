@@ -5,6 +5,7 @@ import type { BackgroundId, Character } from '../../core/types';
 import type { App, Screen } from '../app';
 import { avatarSvg, SKIN_TONES } from '../avatar';
 import { clear, h, svgEl } from '../dom';
+import { artStyle } from '../art';
 import { icon } from '../icons';
 
 const NAMES = ['Kim', 'Alex', 'Robin', 'Sascha', 'Jo', 'Mika', 'Toni', 'Charlie', 'Luca', 'Sam'];
@@ -132,7 +133,7 @@ export function characterScreen(app: App): Screen {
 
   const el = h(
     'div',
-    { class: 'screen character' },
+    { class: 'screen character has-art', style: artStyle('character') },
     h(
       'div',
       { class: 'page' },

@@ -25,13 +25,15 @@ export interface Settings {
   graphics: 'poly' | 'comic' | 'painted';
   /** Figuren und Kulisse: fertiges Modellpaket (Stilprobe) oder selbst gebaut. */
   models: 'pack' | 'own';
+  /** Häuser auf der Karte: 3D mit Fassaden, mit Stadt-Bausatz (Quaternius) oder einfache Blöcke. */
+  mapHouses: 'detail' | 'citykit' | 'simple';
   /** Letzter bekannter Standort, nur auf diesem Gerät gespeichert. */
   lastPos?: LatLon;
 }
 
 const KEY = 'endstation.settings';
 
-const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', control: 'tap', lootGames: 'on', fullscreen: true, graphics: 'poly', models: 'pack' } as const;
+const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', control: 'tap', lootGames: 'on', fullscreen: true, graphics: 'poly', models: 'pack', mapHouses: 'detail' } as const;
 const DEFAULTS: Settings = IS_PREVIEW ? { ...COMMON, map: 'demo', location: 'sim' } : { ...COMMON, map: 'real', location: 'gps' };
 
 export class SettingsStore {

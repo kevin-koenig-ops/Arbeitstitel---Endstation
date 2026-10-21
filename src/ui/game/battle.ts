@@ -19,6 +19,7 @@ import { faceEl } from '../portrait';
 import { walkerMood } from './ambience';
 import type { ShownFoe, TacticsScene } from '../../base/CombatScene';
 import { modelSet } from '../../base/modelChoice';
+import { artStyle } from '../art';
 
 export interface CombatEnd {
   outcome: 'won' | 'lost' | 'fled';
@@ -130,7 +131,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
   const endBtn = h('button', { class: 'btn t-end', type: 'button' }, 'Runde beenden');
   const pileEl = h('span', { class: 't-pile' });
   const handEl = h('div', { class: 't-hand' });
-  const loading = h('div', { class: 'battle-loading' }, 'Achtung …');
+  const loading = h('div', { class: 'battle-loading has-art', style: artStyle('battle') }, 'Achtung …');
   const el = h(
     'div',
     { class: 'overlay battle tactics', role: 'dialog', 'aria-label': `Kampf an: ${spot.name}` },

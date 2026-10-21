@@ -6,12 +6,12 @@ Alle geplanten Features an einer Stelle: erst was für Version 1.0 noch fehlt, d
 
 Version 1.0 ist fertig, wenn der ganze Kreislauf ohne Lücken läuft: rausgehen, finden, heimkommen, auspacken, bauen. **Schwerpunkt seit 21.10.: erst ein rundes Kern-Gameplay, danach neue Features.** Pakete 1–9 (Bus raus bis Balancing) sind erledigt, siehe unten.
 
-10. **Einstieg:** die ersten 10 Minuten geführt, über die Zielleiste.
+10. **Einstieg und langsamer Aufbau:** die ersten 10 Minuten geführt, über die Zielleiste. Spielteile schalten sich nach und nach frei (Werktisch, Kampf, Funkgerät, Lagerfeuer …), nichts überschwemmt einen am Anfang. Details im [Konzept](KONZEPT.md).
 11. **Klang:** Geräusche für Fund, Bauen, Kampf und Heimkehr.
 12. **Draußen-Test und Fehlerrunde:** eine Woche echt spielen, dann alles Hakelige reparieren. Dazu der Taschenmodus: Bildschirm schwarz, GPS läuft weiter, Vibration bei Fundstellen.
 13. **Feinschliff nach dem Test:** Zahlen für Beute, Kämpfe und Stufen anhand echter Spielrunden nachstellen (das Rechenmodell dafür gibt es schon).
 14. **Drinnen und draußen im Gleichgewicht:** Zu Hause muss es immer etwas zu tun geben, draußen das Besondere. Mehr Startmaterial, „Ums Haus streifen“ ein paarmal am Tag, Ziele auch für zu Hause, das Rechenmodell mit „Stubenhocker“ und „Läufer“. Details im [Konzept](KONZEPT.md).
-15. **Grafik-Stilprobe mit fertigen Modellen:** eine Ecke der Endstation und den Kampf mit freien Modell-Paketen (CC0, z. B. Quaternius „Zombie Apocalypse Kit“, „Downtown City MegaKit“, „Ultimate House Interior“, KayKit) statt der im Code gebauten Kästen. Dazu unser gemaltes Licht. Danach entscheiden.
+15. **Grafik-Stilprobe mit fertigen Modellen (zum Testen da, Entscheidung offen):** Kampf, Endstation (Figur, Möbel, Hindernisse) und Karte mit Quaternius-Paketen (CC0): „Zombie Apocalypse Kit“, „Ultimate House Interior Pack“, „Downtown City MegaKit“. Dazu die Karte als 3D-Welt mit echten Grundrissen, Fenstern, Dächern, Bäumen, Autowracks und Kram an den Straßen, und gemalte Hintergrundbilder. Schalter in den Einstellungen („Figuren und Kulisse“, „Häuser auf der Karte“). Noch offen: Charaktererstellung und Porträts zeigen weiter die eigene Figur; Aussehen der Paket-Figur nur über die Frisur.
 16. **Wahrzeichen auf der Karte:** echte Apotheken, Supermärkte, Baumärkte, Tankstellen und Haltestellen als 3D-Gebäude aus dem echten Grundriss plus Modell-Teilen (Schild, vernagelte Fenster, Einkaufswagen). Nur in der Nähe geladen, nie an sensiblen Orten. Kommt nach der Entscheidung zur Stilprobe, damit es gleich im richtigen Stil ist. Details im [Konzept](KONZEPT.md).
 17. **Gemütliche Rituale, erste Fassung:** Samstagabend am Lagerfeuer mit einem Lagerfeuerlied pro Woche, die Leiste „Heute zu Hause“ mit 2 bis 3 Überraschungen am Tag und „Willkommen zurück“ nach einer Pause. Braucht Klang (Punkt 11). Details im [Konzept](KONZEPT.md).
 
@@ -32,6 +32,8 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 - **Tauschhändler mit Wochenkurs:** montags einkaufen, unter der Woche zu wechselnden Kursen tauschen (wie der Rübenmarkt bei Animal Crossing), nur mit Spiel-Rohstoffen.
 - **Quests mit Witcher-Anspruch:** wenige, aber gute Aufträge, die in Stadt und Dorf funktionieren, gern mit echten Straßennamen („Bring Medizin aus der Apotheke in der Bahnhofstraße zum Stadtpark“).
 - **Funk ausbauen:** Aufträge zu echten Orten in der Nähe, dazu Nachrichten, die das Funkgerät erst nach gelaufenen Kilometern entschlüsselt (das Funkgerät mit Funksprüchen und Versteck-Hinweisen gibt es schon).
+- **Der rote Faden:** Linienplan im Hauptmenü als Kapitel-Reise mit sichtbarem Endziel, jeden Samstag eine neue Funk-Folge auf Kanal 4 (zum Nachhören). Details im [Konzept](KONZEPT.md).
+- **Fälle und Rätsel:** Krimi-Fälle mit 3 bis 5 Hinweisen auf der Karte und einer Ermittlungstafel zu Hause (Logikrätsel: wer, wo, womit), dazu Geheimschrift, Funk-Codes und Zahlenschlösser. Falsch raten kostet nichts.
 - **Geschichte in Häppchen:** Erinnerungsstücke werden zu zusammenhängenden Kapiteln, dazu Laborzettel, Archivnotizen und Funksprüche aus der Lore. Die Biologie wird nie erklärt.
 - **Hund als Begleiter:** erschnüffelt draußen Verstecke, schläft zu Hause am Lagerfeuer.
 
@@ -64,6 +66,7 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 - **Konto** (z. B. Google-Login, Server in der EU): Spielstand auf mehreren Geräten, der Gast-Spielstand wird übernommen. Der Server rechnet mit denselben Spielregeln (`src/core`).
 - **Spuren anderer Spieler:** Notizen aus vorgegebenen Bausteinen (wie bei Dark Souls, kein freier Text), Vorratskisten, Warnschilder, Verstecke.
 - **Basen besuchen:** nur virtuell über Freundesliste oder Code, nie mit echtem Ort.
+- **Saisons:** alle 8 bis 10 Wochen ein neues Kapitel mit neuer Kreatur und neuem Raid-Boss, alte Saisons bleiben spielbar. Nach dem Endziel öffnet sich „Linie 1“.
 - **Zeitversetzte Raids für alle:** einmal pro Woche ein Nest (z. B. ein befallener Supermarkt) mit gemeinsamem Lebensbalken. Jeder macht Schaden, wann es passt, auch von zu Hause, die Belohnung gibt es nach Anteil.
 - **Tauschen per Funk:** Pakete brauchen echte Stunden, je nach Entfernung. Dörfer liefern Nahrung, Städte Medizin und Technik.
 - **Gemeinsam eine Stadt befreien,** Stadtteil für Stadtteil, ohne gleichzeitig online zu sein.

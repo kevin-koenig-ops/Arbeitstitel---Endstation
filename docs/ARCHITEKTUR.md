@@ -83,6 +83,7 @@ Ohne Framework, kleine Hilfsfunktion `h()` in `ui/dom.ts`. Jeder Bildschirm ist 
 - **Echte Karte:** Vektorkacheln von OpenFreeMap (OpenMapTiles-Schema, Daten von OpenStreetMap), kostenlos und ohne API-Schlüssel. Der Endzeit-Stil steckt in `map/style.ts`, die Texturen (Wald, Felder, Schutt, Boden) werden in `map/patterns.ts` zur Laufzeit gezeichnet.
 - **Demo-Dorf:** `map/demoWorld.json`, erzeugt von `scripts/gen-demo-world.mjs`. Gleiche Ebenen- und Klassennamen wie die echten Kacheln, deshalb gilt derselbe Stil.
 - **Echte Orte:** `GameMap.poiCandidates()` liest Supermärkte, Apotheken, Haltestellen usw. aus den geladenen Kacheln. Welche OSM-Werte zu welcher Fundstelle werden, steht in `core/content.ts` (`POI_KINDS`).
+- **3D-Welt auf der Karte:** `map/worldPlan.ts` plant aus den Kartendaten (ohne three.js), wie jedes Haus aussieht (Grundriss, Stockwerke, Sattel-, Walm- oder Flachdach, intakt, ausgebrannt oder Ruine) und wo Bäume, Autowracks, Laternen, Masten und Kram am Straßenrand stehen. `map/world3d.ts` baut daraus eine eigene MapLibre-Ebene mit three.js: Häuser als eine Form mit Fassaden-Shader (Fenster, Läden, Ruß, Ziegel), alles andere per Instancing. Einstellung „Häuser auf der Karte“: *Detailreich* (Standard), *Stadt-Bausatz* (die nächsten Häuser bekommen Wände aus Quaternius-Bauteilen) oder *Einfach* (die alten Blöcke aus `map/decor.ts`).
 
 ## Zwei Build-Ziele
 
@@ -96,6 +97,8 @@ Ohne Framework, kleine Hilfsfunktion `h()` in `ui/dom.ts`. Jeder Bildschirm ist 
 - `src/base/bake.ts`: verschmilzt alles zu wenigen großen Meshes mit Farben pro Ecke. Ein Gelände mit Hunderten Teilen braucht so nur eine Handvoll Zeichenaufrufe.
 - `src/base/character.ts`: die Spielfigur, `figureView.ts` zeigt sie bei der Erstellung, auf der Karte und als Porträt.
 - `src/base/path.ts`: Wegfindung der Figur (Wände sperren, Türen lassen durch).
+- `src/base/modelPack.ts`: die zentrale Liste für fertige Modelle (Stilprobe). Welche Datei welche Rolle spielt (Spielfigur je Frisur, Gegner, Kulisse, Möbel, Hindernisse), Laden, Einpassen in Grundflächen und Figuren mit Bewegungsabläufen. Ein anderes Paket = andere Dateien und diese Liste anpassen. Umgewandelt werden die Pakete mit `scripts/import-models.mjs` (Zombie-Kit), `import-interior.mjs` (Möbel) und `import-citykit.mjs` (Fassaden). Einstellung „Figuren und Kulisse“: Modellpaket oder Eigenbau.
+- `src/ui/art.ts`: gemalte Hintergrundbilder (Hauptmenü, Start, Charaktererstellung, Einstieg, Kampf, Schauplätze).
 - Oberfläche: `src/ui/base/baseView.ts`, `sitePicker.ts`.
 
 three.js wird erst nachgeladen, wenn es gebraucht wird (Figur, Endstation), damit die Karte schnell startet.

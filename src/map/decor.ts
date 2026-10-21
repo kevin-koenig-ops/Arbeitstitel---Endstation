@@ -8,8 +8,8 @@
 import { rngFrom, type Rng } from '../core/rng';
 import type { LatLon } from '../core/types';
 
-type Pt = [number, number];
-type Ring = Pt[];
+export type Pt = [number, number];
+export type Ring = Pt[];
 
 /** Polygon in Längen/Breite: erster Ring außen, weitere Ringe sind Löcher. */
 export interface RawPolygon {
@@ -65,7 +65,7 @@ const POLE = '#4a3f33';
 const pick = <T>(r: Rng, a: readonly T[]) => a[Math.floor(r() * a.length)];
 
 // --- lokale Projektion in Metern ------------------------------------------------------
-class Proj {
+export class Proj {
   kx: number;
   ky = 111320;
   constructor(public c: LatLon) {
@@ -76,13 +76,13 @@ class Proj {
 }
 
 // --- Geometrie-Helfer ------------------------------------------------------------------
-function ringArea(r: Ring): number {
+export function ringArea(r: Ring): number {
   let a = 0;
   for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j][0] + r[i][0]) * (r[j][1] - r[i][1]);
   return a / 2;
 }
 
-function centroid(r: Ring): Pt {
+export function centroid(r: Ring): Pt {
   let x = 0;
   let y = 0;
   let a = 0;
@@ -96,7 +96,7 @@ function centroid(r: Ring): Pt {
   return [x / (3 * a), y / (3 * a)];
 }
 
-function inRing(p: Pt, r: Ring): boolean {
+export function inRing(p: Pt, r: Ring): boolean {
   let inside = false;
   for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
     const [xi, yi] = r[i];
@@ -106,13 +106,13 @@ function inRing(p: Pt, r: Ring): boolean {
   return inside;
 }
 
-function inPolygon(p: Pt, rings: Ring[]): boolean {
+export function inPolygon(p: Pt, rings: Ring[]): boolean {
   if (!inRing(p, rings[0])) return false;
   for (let i = 1; i < rings.length; i++) if (inRing(p, rings[i])) return false;
   return true;
 }
 
-function bbox(r: Ring) {
+export function bbox(r: Ring) {
   let x0 = Infinity;
   let y0 = Infinity;
   let x1 = -Infinity;
@@ -126,11 +126,11 @@ function bbox(r: Ring) {
   return { x0, y0, x1, y1 };
 }
 
-function scaleRing(r: Ring, c: Pt, f: number): Ring {
+export function scaleRing(r: Ring, c: Pt, f: number): Ring {
   return r.map(([x, y]) => [c[0] + (x - c[0]) * f, c[1] + (y - c[1]) * f]);
 }
 
-function distToSeg(p: Pt, a: Pt, b: Pt): number {
+export function distToSeg(p: Pt, a: Pt, b: Pt): number {
   const dx = b[0] - a[0];
   const dy = b[1] - a[1];
   const l2 = dx * dx + dy * dy;
@@ -138,7 +138,7 @@ function distToSeg(p: Pt, a: Pt, b: Pt): number {
   return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
 }
 
-function ngon(x: number, y: number, r: number, n: number, rot: number): Ring {
+export function ngon(x: number, y: number, r: number, n: number, rot: number): Ring {
   const out: Ring = [];
   for (let i = 0; i <= n; i++) {
     const a = rot + (i / n) * Math.PI * 2;
@@ -161,7 +161,7 @@ function box(x: number, y: number, len: number, wid: number, ang: number, shift 
 }
 
 /** Einfaches Raster für schnelle Nachbarschaftsabfragen. */
-class Grid<T> {
+export class Grid<T> {
   private cells = new Map<string, T[]>();
   constructor(private size: number) {}
   private key(cx: number, cy: number) {
