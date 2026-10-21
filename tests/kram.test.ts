@@ -6,7 +6,7 @@ import type { Material, SpotKind } from '../src/core/types';
 // Kram wie bei Fallout: viele Sorten, jedes Bauteil steckt irgendwo drin und wird irgendwo gebraucht.
 describe('Kram und Bauteile', () => {
   it('gibt es in vielen Sorten, jede an mindestens einem Ort', () => {
-    expect(KRAM_ORDER.length).toBeGreaterThanOrEqual(150);
+    expect(KRAM_ORDER.length).toBeGreaterThanOrEqual(250);
     const found = new Set(Object.values(SPOT_KINDS).flatMap((d) => d.kram.map(([k]) => k)));
     for (const k of KRAM_ORDER) expect(found.has(k), k).toBe(true);
   });
