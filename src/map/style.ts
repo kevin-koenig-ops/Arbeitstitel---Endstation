@@ -13,20 +13,21 @@ import type {
 } from 'maplibre-gl';
 
 export const MAP_COLORS = {
-  ground: '#4b4538',
-  residential: '#48423a',
-  industrial: '#4d4136',
-  water: '#1f2b29',
-  waterEdge: '#52625a',
-  casing: '#24221e',
-  roadMajor: '#8d8574',
-  roadMinor: '#766f61',
-  track: '#6f6655',
-  marking: '#b0965e',
-  building: '#38332d',
-  buildingTop: '#4a433a',
-  label: '#d9ccb0',
-  labelHalo: '#1d1b17',
+  ground: '#8c8663',
+  residential: '#8b856b',
+  industrial: '#86837a',
+  water: '#577f87',
+  waterEdge: '#a3ad8f',
+  casing: '#57534b',
+  roadMajor: '#8f8a7f',
+  roadMinor: '#7f7b72',
+  track: '#a48e66',
+  path: '#b6a27a',
+  marking: '#e6dcb8',
+  building: '#5f584e',
+  buildingTop: '#7a7062',
+  label: '#3a342b',
+  labelHalo: '#f1e9d6',
 };
 
 type Mode = 'real' | 'demo';
@@ -65,14 +66,33 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
   const layers: LayerSpecification[] = [
     { id: 'ground', type: 'background', paint: { 'background-pattern': 'pat-ground' } },
 
-    { id: 'landuse-residential', type: 'fill', ...from('landuse', cls('residential', 'suburb', 'neighbourhood')), paint: { 'fill-color': C.residential, 'fill-opacity': 0.45 } },
-    { id: 'landuse-industrial', type: 'fill', ...from('landuse', cls('industrial', 'commercial', 'retail', 'railway', 'garages', 'quarry')), paint: { 'fill-pattern': 'pat-rubble', 'fill-opacity': 0.9 } },
-    { id: 'landcover-farm', type: 'fill', ...from('landcover', cls('farmland')), paint: { 'fill-pattern': 'pat-farm' } },
-    { id: 'landcover-grass', type: 'fill', ...from('landcover', cls('grass', 'meadow')), paint: { 'fill-pattern': 'pat-grass' } },
-    { id: 'landuse-green', type: 'fill', ...from('landuse', cls('pitch', 'playground', 'stadium', 'park', 'cemetery', 'school')), paint: { 'fill-color': '#47493a' } },
-    { id: 'landuse-cemetery-edge', type: 'line', ...from('landuse', cls('cemetery')), paint: { 'line-color': '#5c5a4a', 'line-width': 1.2, 'line-dasharray': [2, 2] } },
-    { id: 'landcover-sand', type: 'fill', ...from('landcover', cls('sand', 'rock')), paint: { 'fill-color': '#5f5644' } },
-    { id: 'landcover-wetland', type: 'fill', ...from('landcover', cls('wetland')), paint: { 'fill-color': '#3a4236' } },
+    // Flächen: gemalte Texturen je Untergrund (map/patterns.ts)
+    { id: 'landuse-residential', type: 'fill', ...from('landuse', cls('residential', 'suburb', 'neighbourhood')), paint: { 'fill-pattern': 'pat-yard', 'fill-opacity': 0.9 } },
+    { id: 'landuse-industrial', type: 'fill', ...from('landuse', cls('industrial', 'commercial', 'retail', 'railway', 'garages', 'quarry')), paint: { 'fill-pattern': 'pat-rubble', 'fill-opacity': 0.95 } },
+    {
+      id: 'landcover-farm',
+      type: 'fill',
+      ...from('landcover', cls('farmland')),
+      // Drei Sorten Acker (Erde, Grün, Korn), je Feld eine: wie ein Flickenteppich
+      paint: { 'fill-pattern': ['match', ['%', ['to-number', ['coalesce', ['id'], 0]], 3], 0, 'pat-farm-a', 1, 'pat-farm-b', 'pat-farm-c'] as ExpressionSpecification },
+    },
+    { id: 'landcover-farm-edge', type: 'line', ...from('landcover', cls('farmland')), paint: { 'line-color': '#6f6a46', 'line-width': z([[14, 0.6], [17, 2], [20, 5]]), 'line-opacity': 0.55, 'line-blur': 1 } },
+    {
+      id: 'landcover-grass',
+      type: 'fill',
+      ...from('landcover', cls('grass', 'meadow')),
+      // Gepflegter Rasen nur in Parks und Gärten, sonst wilde Wiese mit Blumen
+      paint: {
+        'fill-pattern': ['match', ['coalesce', ['get', 'subclass'], ''], ['park', 'garden', 'village_green', 'recreation_ground', 'golf_course', 'flowerbed'], 'pat-grass', 'pat-meadow'] as ExpressionSpecification,
+      },
+    },
+    { id: 'landuse-green', type: 'fill', ...from('landuse', cls('pitch', 'playground', 'stadium', 'park', 'school')), paint: { 'fill-pattern': 'pat-grass' } },
+    // Friedhöfe bleiben schlicht (sensible Orte)
+    { id: 'landuse-cemetery', type: 'fill', ...from('landuse', cls('cemetery')), paint: { 'fill-color': '#7e8463' } },
+    { id: 'landuse-cemetery-edge', type: 'line', ...from('landuse', cls('cemetery')), paint: { 'line-color': '#5f6248', 'line-width': 1.2, 'line-dasharray': [2, 2] } },
+    { id: 'landcover-sand', type: 'fill', ...from('landcover', cls('sand')), paint: { 'fill-pattern': 'pat-sand' } },
+    { id: 'landcover-rock', type: 'fill', ...from('landcover', cls('rock')), paint: { 'fill-pattern': 'pat-rock' } },
+    { id: 'landcover-wetland', type: 'fill', ...from('landcover', cls('wetland')), paint: { 'fill-pattern': 'pat-wetland' } },
     {
       id: 'landcover-wood',
       type: 'fill',
@@ -80,10 +100,19 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
       // Von weitem Baumkronen, nah dran Waldboden (die Bäume stehen dann in 3D darauf)
       paint: { 'fill-pattern': ['step', ['zoom'], 'pat-forest', DECOR_MINZOOM, 'pat-forest-floor'] },
     },
-    { id: 'landcover-wood-edge', type: 'line', ...from('landcover', cls('wood', 'forest')), paint: { 'line-color': '#1c2217', 'line-width': 2, 'line-blur': 2 } },
+    { id: 'landcover-wood-edge', type: 'line', ...from('landcover', cls('wood', 'forest')), paint: { 'line-color': '#3c4a28', 'line-width': 3, 'line-blur': 3, 'line-opacity': 0.6 } },
 
+    // Wasser mit hellem Ufer
+    { id: 'water-shore', type: 'line', ...from('water'), paint: { 'line-color': C.waterEdge, 'line-width': z([[14, 1.5], [17, 5], [20, 12]]), 'line-blur': 2, 'line-opacity': 0.9 } },
     { id: 'water', type: 'fill', ...from('water'), paint: { 'fill-pattern': 'pat-water' } },
-    { id: 'water-edge', type: 'line', ...from('water'), paint: { 'line-color': C.waterEdge, 'line-width': 1.4, 'line-opacity': 0.7 } },
+    { id: 'water-edge', type: 'line', ...from('water'), paint: { 'line-color': '#3f646c', 'line-width': 1.2, 'line-opacity': 0.6 } },
+    {
+      id: 'waterway-shore',
+      type: 'line',
+      ...from('waterway'),
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': C.waterEdge, 'line-width': z([[13, 2], [17, 10], [20, 30]]), 'line-blur': 2, 'line-opacity': 0.8 },
+    },
     {
       id: 'waterway',
       type: 'line',
@@ -93,8 +122,10 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
     },
 
     // Straßen: Kante, Belag, verblasste Mittellinie
-    { id: 'road-path', type: 'line', ...from('transportation', road(['path', 'track', 'footway', 'cycleway', 'bridleway'])), layout: { 'line-cap': 'round' }, paint: { 'line-color': C.track, 'line-width': z([[14, 0.6], [17, 2.4], [20, 6]]), 'line-dasharray': [2, 1.4] } },
-    { id: 'road-rail', type: 'line', ...from('transportation', road(['rail', 'transit'])), paint: { 'line-color': '#2f2c27', 'line-width': z([[13, 1], [18, 5]]), 'line-dasharray': [1, 1] } },
+    // Feldwege als Erdspur, Fußwege schmaler und heller
+    { id: 'road-track', type: 'line', ...from('transportation', road(['track'])), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': C.track, 'line-width': z([[14, 1], [17, 4.5], [20, 14]]), 'line-opacity': 0.9 } },
+    { id: 'road-path', type: 'line', ...from('transportation', road(['path', 'footway', 'cycleway', 'bridleway'])), layout: { 'line-cap': 'round' }, paint: { 'line-color': C.path, 'line-width': z([[14, 0.6], [17, 2.6], [20, 7]]), 'line-dasharray': [2, 1.2] } },
+    { id: 'road-rail', type: 'line', ...from('transportation', road(['rail', 'transit'])), paint: { 'line-color': '#5a5550', 'line-width': z([[13, 1], [18, 5]]), 'line-dasharray': [1, 1] } },
     { id: 'road-minor-casing', type: 'line', ...from('transportation', road(MINOR)), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': C.casing, 'line-width': z([[13, 1.4], [15, 4.6], [17, 13], [19, 36], [21, 112]]) } },
     { id: 'road-major-casing', type: 'line', ...from('transportation', road(MAJOR)), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': C.casing, 'line-width': z([[12, 2.4], [15, 8], [17, 20], [19, 54], [21, 164]]) } },
     { id: 'road-minor', type: 'line', ...from('transportation', road(MINOR)), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': C.roadMinor, 'line-width': wMinor } },
@@ -157,14 +188,14 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
       maxzoom: DECOR_MINZOOM,
       ...from('building'),
       paint: {
-        'fill-extrusion-color': ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 6], 2, '#3a352e', 8, '#4a443b', 20, '#565046'],
+        'fill-extrusion-color': ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 6], 2, '#8a8070', 8, '#9a907e', 20, '#a69c8a'],
         'fill-extrusion-height': ['*', 0.75, ['coalesce', ['get', 'render_height'], 6]],
         'fill-extrusion-base': ['*', 0.75, ['coalesce', ['get', 'render_min_height'], 0]],
         'fill-extrusion-opacity': 0.94,
       },
     },
     // Nah dran: nur Grundrisse; die Häuser selbst kommen aus der Detail-Ebene
-    { id: 'buildings-flat', type: 'fill', minzoom: DECOR_MINZOOM, ...from('building'), paint: { 'fill-color': '#2b2823' } },
+    { id: 'buildings-flat', type: 'fill', minzoom: DECOR_MINZOOM, ...from('building'), paint: { 'fill-color': C.building } },
     // Detail-Ebene (map/decor.ts): Häuser mit Dächern und Ruinen, Bäume, Autowracks
     {
       id: 'decor',
@@ -216,19 +247,38 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
     );
   }
 
+  // Gelände: Hänge und Täler als weiche Schattierung (Höhendaten, nur auf der echten Karte)
+  if (mode === 'real') {
+    const at = layers.findIndex((l) => l.id === 'water-shore');
+    layers.splice(at < 0 ? layers.length : at, 0, {
+      id: 'hillshade',
+      type: 'hillshade',
+      source: 'dem',
+      paint: {
+        'hillshade-exaggeration': z([[10, 0.65], [14, 0.55], [17, 0.42], [20, 0.3]]),
+        'hillshade-shadow-color': 'rgba(58, 46, 30, 0.6)',
+        'hillshade-highlight-color': 'rgba(255, 246, 222, 0.4)',
+        'hillshade-accent-color': 'rgba(70, 58, 40, 0.3)',
+        'hillshade-illumination-direction': 315,
+        'hillshade-illumination-anchor': 'map',
+      },
+    });
+  }
+
   const empty: SourceSpecification = { type: 'geojson', data: { type: 'FeatureCollection', features: [] } };
   const sources: Record<string, SourceSpecification> = { range: empty, decor: { ...empty }, glow: { ...empty }, caches: { ...empty }, route: { ...empty } };
   if (mode === 'real' && real) sources.omt = real.source;
+  if (mode === 'real') sources.dem = { type: 'raster-dem', tiles: [DEM_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: 15, attribution: 'Höhen: <a href="https://registry.opendata.aws/terrain-tiles/">Terrain Tiles</a>' };
 
   const style: StyleSpecification = {
     version: 8,
     sources,
     layers,
-    light: { anchor: 'viewport', color: '#ffd7a0', intensity: 0.42, position: [1.3, 210, 40] },
+    light: { anchor: 'viewport', color: '#fff1d6', intensity: 0.5, position: [1.3, 210, 40] },
     sky: {
-      'sky-color': '#2a251f',
-      'horizon-color': '#6d5a43',
-      'fog-color': '#4b4538',
+      'sky-color': '#9fb2bb',
+      'horizon-color': '#d9cfb6',
+      'fog-color': '#b9b49c',
       'sky-horizon-blend': 0.7,
       'horizon-fog-blend': 0.9,
       'fog-ground-blend': 0.75,
@@ -241,6 +291,8 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
 // --- Echte Kartendaten -----------------------------------------------------------
 
 const OFM_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
+/** Höhendaten (frei, ohne Schlüssel): Farbe der Kachel = Höhe in Metern. */
+const DEM_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const OFM_FALLBACK: RealSource = {
   source: { type: 'vector', url: 'https://tiles.openfreemap.org/planet' },
   glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',

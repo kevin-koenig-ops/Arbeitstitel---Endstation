@@ -80,7 +80,8 @@ export class FogOfWar {
 
     // Nebel über alles
     ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = 'rgba(86, 80, 68, 0.68)';
+    // Heller Nebel wie Wolken: Unbekanntes liegt im Dunst, nicht im Dunkeln
+    ctx.fillStyle = 'rgba(214, 214, 204, 0.7)';
     ctx.fillRect(0, 0, w, h);
     if (this.texture) {
       ctx.fillStyle = this.texture;
@@ -160,7 +161,7 @@ function makeTexture(ctx: CanvasRenderingContext2D): CanvasPattern | null {
     for (const dx of [-S, 0, S])
       for (const dy of [-S, 0, S]) {
         const grad = g.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, rad);
-        grad.addColorStop(0, light ? 'rgba(200, 190, 168, 0.22)' : 'rgba(40, 36, 30, 0.2)');
+        grad.addColorStop(0, light ? 'rgba(250, 250, 244, 0.32)' : 'rgba(120, 124, 118, 0.18)');
         grad.addColorStop(1, 'rgba(0,0,0,0)');
         g.fillStyle = grad;
         g.fillRect(x + dx - rad, y + dy - rad, rad * 2, rad * 2);

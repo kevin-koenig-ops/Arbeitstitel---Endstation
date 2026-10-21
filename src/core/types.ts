@@ -231,6 +231,8 @@ export type SpotKind =
   | 'hide'
   | 'barrel'
   | 'parcel'
+  // Nur im Wald (die Karte filtert), wandert wie die Grid-Fundstellen
+  | 'mushrooms'
   | 'market'
   | 'pharmacy'
   | 'hardware'
@@ -252,6 +254,8 @@ export interface Spot {
   source: 'grid' | 'poi' | 'special';
   pos: LatLon;
   name: string;
+  /** Liegt nur in diesem Gelände (sonst blendet die Karte die Fundstelle aus). */
+  biome?: 'forest';
 }
 
 export type BackgroundId = 'rescue' | 'workshop' | 'farm' | 'courier';

@@ -95,7 +95,7 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 ## Ideen für irgendwann
 
 - **Legenden einmal im Jahr:** seltene Wesen wie Waldriese, Hungermann, Wolpertinger oder der weiße Hirsch, mit Gerüchten vorab, Spuren und einer Trophäe. Verpassen kostet nichts (Details im [Konzept](KONZEPT.md)).
-- **Gelände aus echten Daten:** Höhe (Hügel, Täler, Aussicht), Bodenfeuchte und Frost aus dem Wetterdienst, Untergrund aus der Karte (Wald, Acker, Sand, Moor, Schotterweg). Siehe Antwort vom 22.10.
+- **Gelände aus echten Daten:** Höhe für das Spiel nutzen (Aussicht von Hügeln, bergauf langsamer; sichtbar ist sie schon), Bodenfeuchte und Frost aus dem Wetterdienst, Untergrund aus der Karte (Wald, Acker, Sand, Moor, Schotterweg). Siehe Antwort vom 22.10.
 - **Zuhause im echten Gebäude:** Beim Einrichten nimmt das Zuhause den echten Grundriss, die Stockwerke und das Grundstück des Gebäudes an dieser Stelle aus den Kartendaten (Low-Poly, nur auf dem Gerät). So kann man sich überall einrichten: in der Scheune am Dorfrand oder im leeren Laden um die Ecke. (Street View und Googles 3D-Städte gehen nicht: nur zum Anschauen erlaubt, kein Nachbauen, kostet pro Abruf.)
 - **Begleiter kämpfen mit (großes Update):** Hund oder Bewohner stehen im Kampf neben dir und bringen eigene Karten ins Deck (heilen, Falle stellen, ablenken).
 - Weitere Haustiere, die mitlaufen und in der Basis wohnen
@@ -235,3 +235,6 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - **Kram wie bei Fallout:** 150 Sorten Kram statt 18, je nach Ort (Autoradio im Auto, Blutdruckmessgerät in der Apotheke, Heckenschere im Schuppen …), jede mit Spruch und 3D-Bild. 9 neue Bauteile (Gummi, Leder, Federn, Zahnräder, Kupfer, Öl, Batteriezellen, Desinfektionsmittel, Phosphat), die in Rezepten gebraucht werden. Fundstellen geben öfter Kram. Fehlt ein Bauteil, sagt das Spiel, in welchem Kram es steckt. Spielstand Version 12
 - **Startbild und Anmelden:** Kevins Bild mit dem Bleichen Wächter im Nebel, darüber ziehender Nebel und Niesel, „Zum Starten berühren“. Danach Anmelden: Gast geht, Google und Apple stehen als Platzhalter da. Im Hauptmenü unten „Abmelden“
 - **Wandernde Fundstellen:** Die kleinen Fundstellen würfeln etwa einmal am Tag neu (Ort, Art, Anzahl), jede Ecke zu ihrer eigenen Uhrzeit. 20 Minuten Nachfrist, Erstfund zählt pro Ecke. Echte und besondere Orte bleiben
+- **Schönere Karte:** gemalte Untergründe (Wiese und Waldboden als Bilder von Kevin, dazu drei Sorten Acker, Sand, Fels, Sumpf, Hof, Schutt), freundlichere Farben, Ufer an Seen und Bächen. Bäume als echte 3D-Modelle (Laub, Nadel, Birke, tot, im Herbst bunt), dazu Büsche, Unterholz und Steine; kein Baum mehr im Wasser. Auf der echten Karte sieht man Hügel und Täler als Schattierung
+- **Pilzstellen:** nur im Wald, wandern wie die anderen Fundstellen, im Herbst am meisten, im Winter kaum. Geben Nahrung, selten Heilkräuter, nie bewacht
+- **Testmodus:** Die Figur läuft nicht mehr durch Flüsse, Bäche und Seen

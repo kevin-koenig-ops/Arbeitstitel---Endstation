@@ -16,6 +16,7 @@ export const GAME_FOR: Record<SpotKind, LootGameKind> = {
   fuel: 'lock',
   stop: 'lock',
   container: 'rummage',
+  mushrooms: 'rummage',
   backpack: 'rummage',
   market: 'rummage',
   barrel: 'rummage',

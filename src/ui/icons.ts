@@ -37,6 +37,7 @@ const P: Record<string, string> = {
   hide: '<path d="M7 3.5h10v6.5H7z"/><path d="M5 3.5L12 2l7 1.5"/><path d="M8 10l-3 12M16 10l3 12M6.6 16h10.8"/>',
   barrel: '<path d="M6 3.5h12M6 20.5h12"/><path d="M6 3.5c-1.2 5.5-1.2 11.5 0 17M18 3.5c1.2 5.5 1.2 11.5 0 17"/><path d="M5.3 9h13.4M5.3 15h13.4"/>',
   parcel: '<path d="M3 7.2l9-4.2 9 4.2v9.6L12 21l-9-4.2z"/><path d="M3 7.2l9 4.2 9-4.2M12 11.4V21M7.5 5.1l9 4.2"/>',
+  mushrooms: '<path d="M3.5 11.5a8.5 7 0 0 1 17 0z"/><path d="M9.5 11.5l-.8 7.5a1.5 1.5 0 0 0 1.5 1.5h3.6a1.5 1.5 0 0 0 1.5-1.5l-.8-7.5"/><circle cx="8.5" cy="8" r="1"/><circle cx="14.5" cy="6.5" r="1"/>',
   market: '<path d="M2 4h3l2.6 11.2h11.2L21 7.2H6"/><circle cx="9" cy="19.2" r="1.5"/><circle cx="17" cy="19.2" r="1.5"/>',
   pharmacy: '<path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"/>',
   hardware: '<path d="M4 4.5h9.5l3 3H20v4h-3.5l-2-2H4z"/><path d="M9.5 9.5V21"/>',

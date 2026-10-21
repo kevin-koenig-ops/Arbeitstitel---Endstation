@@ -408,7 +408,9 @@ export function gameScreen(app: App): Screen {
     if (destroyed || !gm) return;
     // Besondere Orte weiter weg: für die Hinweise am Horizont
     specials = app.backend.specialsNear(fix.pos, SPECIAL.hintM);
-    spots = new Map(list.filter((s) => !sensitive(s.pos, s.source === 'grid')).map((s) => [s.id, s]));
+    // Pilzstellen nur im Wald
+    const forest = gm.forestCheck();
+    spots = new Map(list.filter((s) => !sensitive(s.pos, s.source === 'grid') && (s.biome !== 'forest' || forest(s.pos))).map((s) => [s.id, s]));
     updateSpots();
   };
 

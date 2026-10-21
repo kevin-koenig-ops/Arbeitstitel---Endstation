@@ -203,6 +203,20 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     mementoChance: 0.18,
   },
   // --- echte Orte aus der Karte (POI) ---
+  // Pilze wachsen nur im Wald (die Karte blendet sie anderswo aus), im Herbst am meisten
+  mushrooms: {
+    names: ['Pilzstelle', 'Pilze am Baumstumpf', 'Hexenring', 'Moosiger Hang'],
+    hint: 'Pilze zum Essen, ab und zu Heilkräuter',
+    cooldownMin: 120,
+    loot: [
+      { res: 'food', min: 1, max: 3, chance: 1 },
+      { res: 'medicine', min: 1, max: 1, chance: 0.12 },
+    ],
+    kramChance: 0,
+    kram: [],
+    collectibles: [],
+    mementoChance: 0,
+  },
   market: {
     names: ['Geplünderter Supermarkt', 'Dorfladen', 'Bäckerei mit Vorratskeller'],
     hint: 'Viel Nahrung und Wasser, dazu Kunststoff und Glas',
@@ -647,6 +661,9 @@ export const WORKBENCH_LEVELS: WorkbenchLevel[] = [
 export const GRID_TURN = { hours: 24, graceMin: 20 };
 
 /** Wie häufig welche Grid-Fundstelle vorkommt. */
+/** Pilzstellen: Chance pro Kachel und Runde, je Monat (Januar … Dezember). Im Herbst am meisten. */
+export const MUSHROOM_CHANCE = [0.05, 0.05, 0.08, 0.12, 0.18, 0.25, 0.3, 0.4, 0.6, 0.65, 0.45, 0.1] as const;
+
 export const GRID_KIND_WEIGHTS: readonly (readonly [SpotKind, number])[] = [
   ['car', 22],
   ['backpack', 18],
@@ -1121,6 +1138,7 @@ export const PLACE_WHERE: Record<SpotKind, string> = {
   hide: 'Am Waldrand, mit Blick aufs Feld',
   barrel: 'Bei Höfen, Werkstätten und Baustellen',
   parcel: 'Vor Häusern und an Packstationen',
+  mushrooms: 'Nur im Wald, im Herbst besonders oft',
   market: 'Supermärkte und Läden in der Stadt',
   pharmacy: 'Apotheken und Drogerien',
   hardware: 'Baumärkte, Werkstätten, Gartencenter',
@@ -1146,6 +1164,7 @@ export const SPOT_STORIES: Record<SpotKind, string[]> = {
   hide: ['Von hier oben sieht man das ganze Feld. Und das, was darüber zieht.', 'Eingeritzt ins Holz: Striche, sehr viele Striche.'],
   barrel: ['Ein Fass ist mit Kreide markiert: ein Kreuz, ein Pfeil.', 'Es tropft noch. Irgendwer war vor Kurzem hier.'],
   parcel: ['„Bitte beim Nachbarn abgeben.“ Der Nachbar ist auch nicht mehr da.', 'Das Paket ist aufgerissen, aber nicht ausgeräumt. Seltsam.'],
+  mushrooms: ['Hier ist es still. Nur Moos, Laub und der Geruch von Regen.', 'Jemand hat ein paar Pilze stehen lassen, die guten. Absicht?', 'Im Wald ist der Keim tagsüber schwach. Man atmet freier.'],
   market: ['Die Regale sind leer, nur die Kasse steht noch offen.', 'Ein Einkaufswagen voller Wasserflaschen, mitten im Gang stehen gelassen.', 'Über der Tür hängt noch „Wir haben für Sie geöffnet“.'],
   pharmacy: ['Hinter der Theke Zettel mit Namen und Dosierungen, säuberlich.', 'Die Glastür ist eingeschlagen, aber jemand hat danach aufgeräumt.'],
   hardware: ['Die Kettensägen fehlen alle. Die Gartenzwerge sind noch da.', 'Am Eingang ein Schild: „Nur Barzahlung“. Darunter: „Nur Tausch“.'],

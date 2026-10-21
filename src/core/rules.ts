@@ -245,6 +245,8 @@ export function guardWindow(spot: Spot, now: number): number {
  * Fundstelle und Zeitfenster, also für alle Spieler gleich.
  */
 export function guardOf(seed: string, spot: Spot, now: number): EnemyId | null {
+  // Pilze sammeln ist ruhig: tagsüber ist der Keim im Wald schwach
+  if (spot.kind === 'mushrooms') return null;
   if (cartOf(seed, spot, now)) return null;
   const r = rngFrom(seed, 'wache', spot.id, guardWindow(spot, now));
   const night = dayPhase(spot.pos, now) === 'night';
@@ -259,6 +261,7 @@ export function guardOf(seed: string, spot: Spot, now: number): EnemyId | null {
  * jeweils für ein Zeitfenster von ein paar Stunden. Gibt das Ende des Fensters zurück.
  */
 export function cartOf(seed: string, spot: Spot, now: number): { until: number } | null {
+  if (spot.kind === 'mushrooms') return null;
   const ms = CART.windowH * HOUR;
   const w = Math.floor(now / ms);
   const r = rngFrom(seed, 'karren', spot.id, w);

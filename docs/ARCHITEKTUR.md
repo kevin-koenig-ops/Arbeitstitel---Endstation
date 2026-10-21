@@ -80,7 +80,8 @@ Ohne Framework, kleine Hilfsfunktion `h()` in `ui/dom.ts`. Jeder Bildschirm ist 
 
 ## Karte
 
-- **Echte Karte:** Vektorkacheln von OpenFreeMap (OpenMapTiles-Schema, Daten von OpenStreetMap), kostenlos und ohne API-Schlüssel. Der Endzeit-Stil steckt in `map/style.ts`, die Texturen (Wald, Felder, Schutt, Boden) werden in `map/patterns.ts` zur Laufzeit gezeichnet.
+- **Echte Karte:** Vektorkacheln von OpenFreeMap (OpenMapTiles-Schema, Daten von OpenStreetMap), kostenlos und ohne API-Schlüssel. Der Endzeit-Stil steckt in `map/style.ts`. Texturen: gemalte Bilder in `src/assets/textures/` (512 × 512, nahtlos gemacht), wo noch keins da ist, zeichnet `map/patterns.ts` ein Muster zur Laufzeit. Hügel und Täler als Schattierung aus freien Höhendaten (AWS Terrain Tiles).
+- **Details in 3D:** `map/decor.ts` verteilt Häuser, Bäume, Büsche, Steine und Wracks (fest pro Ort, nie im Wasser). Häuser und Wracks sind MapLibre-Extrusionen, Bäume zeichnet `map/treeLayer.ts` mit three.js als eigene Kartenebene (eine Instanz-Liste pro Baumart).
 - **Demo-Dorf:** `map/demoWorld.json`, erzeugt von `scripts/gen-demo-world.mjs`. Gleiche Ebenen- und Klassennamen wie die echten Kacheln, deshalb gilt derselbe Stil.
 - **Echte Orte:** `GameMap.poiCandidates()` liest Supermärkte, Apotheken, Haltestellen usw. aus den geladenen Kacheln. Welche OSM-Werte zu welcher Fundstelle werden, steht in `core/content.ts` (`POI_KINDS`).
 

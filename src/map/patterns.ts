@@ -1,6 +1,41 @@
-// Kartentexturen, zur Laufzeit auf ein Canvas gezeichnet (keine Bilddateien nötig).
+// Kartentexturen: gemalte Bilder (src/assets/textures, nahtlos gemacht) und, wo es
+// noch kein Bild gibt, zur Laufzeit auf ein Canvas gezeichnete Muster.
 
 import { rngFrom } from '../core/rng';
+import waldboden from '../assets/textures/waldboden.webp';
+import wiese from '../assets/textures/wiese.webp';
+
+/**
+ * Gemalte Texturen (512 × 512, nahtlos). Ersetzen das gezeichnete Muster gleichen Namens.
+ * pr: je größer, desto kleiner erscheint das Bild auf der Karte (2 = 256 Bildpunkte breit).
+ */
+const IMAGES: Record<string, { url: string; pr: number }> = {
+  'pat-meadow': { url: wiese, pr: 2 },
+  'pat-forest-floor': { url: waldboden, pr: 3.5 },
+};
+const loaded = new Map<string, { data: ImageData; pixelRatio: number }>();
+
+/** Vor dem Kartenstart aufrufen: lädt die Bild-Texturen (fehlt eins, bleibt das gezeichnete Muster). */
+export async function loadTextures(): Promise<void> {
+  await Promise.all(
+    Object.entries(IMAGES).map(async ([id, { url, pr }]) => {
+      if (loaded.has(id)) return;
+      try {
+        const img = new Image();
+        img.src = url;
+        await img.decode();
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        const ctx = c.getContext('2d')!;
+        ctx.drawImage(img, 0, 0);
+        loaded.set(id, { data: ctx.getImageData(0, 0, c.width, c.height), pixelRatio: pr });
+      } catch (err) {
+        console.warn('[Textur]', id, err);
+      }
+    }),
+  );
+}
 
 const PR = 2; // Pixeldichte der Muster
 
@@ -20,82 +55,276 @@ function wrap(s: number, draw: (dx: number, dy: number) => void) {
   for (const dx of [-s, 0, s]) for (const dy of [-s, 0, s]) draw(dx, dy);
 }
 
-const PAINTERS: Record<string, [number, Painter]> = {
-  // Staubiger Boden mit Flecken und Splittern, liegt unter allem
-  'pat-ground': [
-    128,
+// --- Malhelfer -------------------------------------------------------------------------
+type R = () => number;
+
+/** Weiche Farbflecken (wie Aquarell), nahtlos. */
+function blotches(ctx: CanvasRenderingContext2D, s: number, r: R, n: number, minR: number, maxR: number, colors: string[]) {
+  for (let i = 0; i < n; i++) {
+    const x = r() * s;
+    const y = r() * s;
+    const rad = minR + r() * (maxR - minR);
+    const col = colors[Math.floor(r() * colors.length)];
+    wrap(s, (dx, dy) => {
+      const g = ctx.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, rad);
+      g.addColorStop(0, col);
+      g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(x + dx - rad, y + dy - rad, rad * 2, rad * 2);
+    });
+  }
+}
+
+/** Kleine Tupfen (Steinchen, Blätter, Blüten). */
+function specks(ctx: CanvasRenderingContext2D, s: number, r: R, n: number, colors: string[], size: [number, number], round = false) {
+  for (let i = 0; i < n; i++) {
+    const x = r() * s;
+    const y = r() * s;
+    const w = size[0] + r() * (size[1] - size[0]);
+    ctx.fillStyle = colors[Math.floor(r() * colors.length)];
+    wrap(s, (dx, dy) => {
+      if (round) {
+        ctx.beginPath();
+        ctx.arc(x + dx, y + dy, w / 2, 0, Math.PI * 2);
+        ctx.fill();
+      } else ctx.fillRect(x + dx, y + dy, w, w * (0.6 + r() * 0.4));
+    });
+  }
+}
+
+/** Grashalme: kurze, leicht schräge Striche. */
+function blades(ctx: CanvasRenderingContext2D, s: number, r: R, n: number, colors: string[], len = 3.2) {
+  ctx.lineWidth = 0.8;
+  ctx.lineCap = 'round';
+  for (let i = 0; i < n; i++) {
+    const x = r() * s;
+    const y = r() * s;
+    const l = len * (0.6 + r() * 0.7);
+    const lean = (r() - 0.5) * 1.6;
+    ctx.strokeStyle = colors[Math.floor(r() * colors.length)];
+    wrap(s, (dx, dy) => {
+      ctx.beginPath();
+      ctx.moveTo(x + dx, y + dy);
+      ctx.lineTo(x + dx + lean, y + dy - l);
+      ctx.stroke();
+    });
+  }
+}
+
+/** Ackerreihen: parallele, leicht wellige Linien. */
+function rows(ctx: CanvasRenderingContext2D, s: number, r: R, gap: number, dark: string, light: string) {
+  ctx.lineWidth = gap * 0.42;
+  for (let y = gap / 2; y < s; y += gap) {
+    for (const [col, off] of [[dark, 0], [light, gap / 2]] as const) {
+      ctx.strokeStyle = col;
+      ctx.beginPath();
+      for (let x = 0; x <= s; x += 4) {
+        const yy = y + off + Math.sin((x / s) * Math.PI * 2 + y) * 0.6;
+        if (x === 0) ctx.moveTo(x, yy);
+        else ctx.lineTo(x, yy);
+      }
+      ctx.stroke();
+    }
+  }
+  specks(ctx, s, r, 40, ['rgba(60, 44, 28, 0.35)', 'rgba(220, 200, 150, 0.25)'], [0.8, 1.8]);
+}
+
+/** Feld in einer Grundfarbe mit Reihen (Acker, Getreide, Raps …). */
+function field(base: string, dark: string, light: string, seed: string): [number, Painter] {
+  return [
+    96,
     (ctx, s) => {
-      ctx.fillStyle = '#4b4538';
+      ctx.fillStyle = base;
       ctx.fillRect(0, 0, s, s);
-      const r = rngFrom('ground');
-      for (let i = 0; i < 26; i++) {
-        const x = r() * s;
-        const y = r() * s;
-        const rad = 8 + r() * 26;
-        const dark = r() < 0.6;
-        wrap(s, (dx, dy) => {
-          const g = ctx.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, rad);
-          g.addColorStop(0, dark ? 'rgba(40, 36, 29, 0.28)' : 'rgba(96, 88, 70, 0.22)');
-          g.addColorStop(1, 'rgba(0, 0, 0, 0)');
-          ctx.fillStyle = g;
-          ctx.fillRect(x + dx - rad, y + dy - rad, rad * 2, rad * 2);
-        });
-      }
-      for (let i = 0; i < 90; i++) {
-        const x = r() * s;
-        const y = r() * s;
-        ctx.fillStyle = r() < 0.5 ? 'rgba(30, 27, 22, 0.55)' : 'rgba(110, 100, 80, 0.45)';
-        ctx.fillRect(x, y, 0.8 + r() * 1.4, 0.8 + r() * 1.2);
-      }
+      const r = rngFrom(seed);
+      blotches(ctx, s, r, 10, 14, 36, ['rgba(255, 245, 210, 0.08)', 'rgba(40, 30, 20, 0.08)']);
+      rows(ctx, s, r, 6, dark, light);
+    },
+  ];
+}
+
+// Freundlich, aber nicht bunt: warme, leicht entsättigte Naturfarben, wie gemalt.
+const PAINTERS: Record<string, [number, Painter]> = {
+  // Boden unter allem: trockene Wiese und Erde, Flecken und Steinchen
+  'pat-ground': [
+    192,
+    (ctx, s) => {
+      ctx.fillStyle = '#8c8663';
+      ctx.fillRect(0, 0, s, s);
+      const r = rngFrom('ground-v2');
+      blotches(ctx, s, r, 30, 14, 48, ['rgba(120, 132, 80, 0.32)', 'rgba(150, 132, 96, 0.28)', 'rgba(104, 96, 70, 0.22)', 'rgba(170, 160, 120, 0.2)']);
+      blades(ctx, s, r, 160, ['rgba(96, 108, 62, 0.55)', 'rgba(150, 150, 98, 0.5)'], 3);
+      specks(ctx, s, r, 70, ['rgba(70, 62, 48, 0.45)', 'rgba(190, 180, 150, 0.45)'], [0.7, 1.6]);
     },
   ],
-  'pat-forest': [
-    56,
+  // Rasen, Parks, Grünflächen
+  'pat-grass': [
+    128,
     (ctx, s) => {
-      ctx.fillStyle = '#273020';
+      ctx.fillStyle = '#7c8a4c';
       ctx.fillRect(0, 0, s, s);
-      const r = rngFrom('forest');
-      const crowns = Array.from({ length: 11 }, () => ({ x: r() * s, y: r() * s, rad: 4 + r() * 5, dead: r() < 0.22 }));
+      const r = rngFrom('grass-v2');
+      blotches(ctx, s, r, 18, 10, 34, ['rgba(140, 156, 86, 0.35)', 'rgba(98, 112, 58, 0.3)', 'rgba(156, 160, 96, 0.22)']);
+      blades(ctx, s, r, 260, ['rgba(88, 104, 52, 0.7)', 'rgba(150, 168, 96, 0.6)', 'rgba(120, 138, 70, 0.6)']);
+    },
+  ],
+  // Wiese: Gras mit ein paar Blüten
+  'pat-meadow': [
+    160,
+    (ctx, s) => {
+      ctx.fillStyle = '#86904f';
+      ctx.fillRect(0, 0, s, s);
+      const r = rngFrom('meadow');
+      blotches(ctx, s, r, 22, 12, 40, ['rgba(160, 166, 92, 0.32)', 'rgba(104, 118, 60, 0.3)', 'rgba(176, 160, 100, 0.2)']);
+      blades(ctx, s, r, 320, ['rgba(92, 108, 54, 0.7)', 'rgba(160, 170, 100, 0.6)'], 4);
+      specks(ctx, s, r, 26, ['#f1ead6', '#e8c84a', '#b79bcf', '#d0623f'], [1.4, 2.2], true);
+    },
+  ],
+  // Äcker: drei Sorten, damit nicht jedes Feld gleich aussieht
+  'pat-farm-a': field('#8f7250', '#7a5e40', '#a2845d', 'acker-erde'),
+  'pat-farm-b': field('#8d9852', '#78833f', '#a1ab63', 'acker-gruen'),
+  'pat-farm-c': field('#bca865', '#a89354', '#cdbb7a', 'acker-korn'),
+  // Wald von weitem: Baumkronen
+  'pat-forest': [
+    96,
+    (ctx, s) => {
+      ctx.fillStyle = '#44562f';
+      ctx.fillRect(0, 0, s, s);
+      const r = rngFrom('forest-v2');
+      const crowns = Array.from({ length: 22 }, () => ({ x: r() * s, y: r() * s, rad: 5 + r() * 7, c: r() }));
       for (const c of crowns)
         wrap(s, (dx, dy) => {
-          ctx.fillStyle = '#1b2116';
+          ctx.fillStyle = 'rgba(30, 40, 22, 0.55)';
           ctx.beginPath();
-          ctx.arc(c.x + dx + 1.5, c.y + dy + 2, c.rad, 0, Math.PI * 2);
+          ctx.arc(c.x + dx + 2, c.y + dy + 2.5, c.rad, 0, Math.PI * 2);
           ctx.fill();
-          ctx.fillStyle = c.dead ? '#4a4231' : '#344029';
+          ctx.fillStyle = c.c < 0.12 ? '#9a7d3e' : c.c < 0.45 ? '#5d7440' : c.c < 0.75 ? '#4f6638' : '#6a8046';
           ctx.beginPath();
           ctx.arc(c.x + dx, c.y + dy, c.rad, 0, Math.PI * 2);
           ctx.fill();
-          ctx.fillStyle = c.dead ? '#5a4f39' : '#3f4c30';
+          ctx.fillStyle = 'rgba(190, 210, 140, 0.25)';
           ctx.beginPath();
-          ctx.arc(c.x + dx - c.rad * 0.3, c.y + dy - c.rad * 0.3, c.rad * 0.45, 0, Math.PI * 2);
+          ctx.arc(c.x + dx - c.rad * 0.35, c.y + dy - c.rad * 0.35, c.rad * 0.45, 0, Math.PI * 2);
           ctx.fill();
         });
     },
   ],
-  // Waldboden: Laub, Nadeln, Moos. Darauf stehen nah dran die 3D-Bäume.
+  // Waldboden: Moos, Laub, Nadeln. Darauf stehen nah dran die 3D-Bäume.
   'pat-forest-floor': [
-    64,
+    128,
     (ctx, s) => {
-      ctx.fillStyle = '#2b3122';
+      ctx.fillStyle = '#5c6038';
       ctx.fillRect(0, 0, s, s);
-      const r = rngFrom('waldboden');
-      for (let i = 0; i < 16; i++) {
+      const r = rngFrom('waldboden-v2');
+      blotches(ctx, s, r, 26, 8, 30, ['rgba(110, 126, 64, 0.4)', 'rgba(130, 98, 56, 0.35)', 'rgba(70, 70, 40, 0.3)']);
+      specks(ctx, s, r, 160, ['rgba(160, 112, 58, 0.7)', 'rgba(184, 140, 70, 0.6)', 'rgba(70, 60, 36, 0.6)', 'rgba(132, 150, 80, 0.6)'], [1, 2.2]);
+      ctx.strokeStyle = 'rgba(80, 62, 40, 0.6)';
+      ctx.lineWidth = 0.8;
+      for (let i = 0; i < 14; i++) {
         const x = r() * s;
         const y = r() * s;
-        const rad = 5 + r() * 12;
-        const col = r() < 0.5 ? 'rgba(52, 60, 38, 0.6)' : 'rgba(60, 50, 34, 0.45)';
+        const a = r() * Math.PI;
+        const l = 3 + r() * 5;
         wrap(s, (dx, dy) => {
-          ctx.fillStyle = col;
           ctx.beginPath();
-          ctx.arc(x + dx, y + dy, rad, 0, Math.PI * 2);
+          ctx.moveTo(x + dx, y + dy);
+          ctx.lineTo(x + dx + Math.cos(a) * l, y + dy + Math.sin(a) * l);
+          ctx.stroke();
+        });
+      }
+    },
+  ],
+  // Sand, Dünen, Strand
+  'pat-sand': [
+    128,
+    (ctx, s) => {
+      ctx.fillStyle = '#cbb78a';
+      ctx.fillRect(0, 0, s, s);
+      const r = rngFrom('sand');
+      blotches(ctx, s, r, 14, 12, 36, ['rgba(220, 204, 160, 0.35)', 'rgba(170, 150, 108, 0.25)']);
+      ctx.strokeStyle = 'rgba(160, 138, 96, 0.35)';
+      ctx.lineWidth = 1;
+      for (let y = 4; y < s; y += 9) {
+        ctx.beginPath();
+        for (let x = 0; x <= s; x += 4) {
+          const yy = y + Math.sin((x / s) * Math.PI * 4 + y * 0.7) * 1.6;
+          if (x === 0) ctx.moveTo(x, yy);
+          else ctx.lineTo(x, yy);
+        }
+        ctx.stroke();
+      }
+      specks(ctx, s, r, 50, ['rgba(120, 104, 74, 0.4)', 'rgba(240, 230, 200, 0.5)'], [0.6, 1.3]);
+    },
+  ],
+  // Fels und Geröll
+  'pat-rock': [
+    128,
+    (ctx, s) => {
+      ctx.fillStyle = '#8e897c';
+      ctx.fillRect(0, 0, s, s);
+      const r = rngFrom('fels');
+      blotches(ctx, s, r, 16, 10, 30, ['rgba(120, 128, 90, 0.3)', 'rgba(70, 66, 58, 0.25)']);
+      for (let i = 0; i < 46; i++) {
+        const x = r() * s;
+        const y = r() * s;
+        const rad = 2 + r() * 5;
+        const n = 5 + Math.floor(r() * 3);
+        const pts = Array.from({ length: n }, (_, k) => {
+          const a = (k / n) * Math.PI * 2;
+          const rr = rad * (0.7 + r() * 0.4);
+          return [Math.cos(a) * rr, Math.sin(a) * rr * 0.75];
+        });
+        const light = r() < 0.5 ? '#a8a294' : '#9a9486';
+        wrap(s, (dx, dy) => {
+          ctx.fillStyle = 'rgba(50, 46, 40, 0.4)';
+          ctx.beginPath();
+          pts.forEach(([px, py], k) => (k ? ctx.lineTo(x + dx + px + 1, y + dy + py + 1.2) : ctx.moveTo(x + dx + px + 1, y + dy + py + 1.2)));
+          ctx.fill();
+          ctx.fillStyle = light;
+          ctx.beginPath();
+          pts.forEach(([px, py], k) => (k ? ctx.lineTo(x + dx + px, y + dy + py) : ctx.moveTo(x + dx + px, y + dy + py)));
           ctx.fill();
         });
       }
-      for (let i = 0; i < 70; i++) {
-        ctx.fillStyle = r() < 0.5 ? 'rgba(90, 76, 50, 0.6)' : 'rgba(24, 28, 18, 0.6)';
-        ctx.fillRect(r() * s, r() * s, 1 + r() * 1.5, 0.8 + r());
+    },
+  ],
+  // Moor, Sumpf, Feuchtwiese: Pfützen und Schilf
+  'pat-wetland': [
+    128,
+    (ctx, s) => {
+      ctx.fillStyle = '#6d7650';
+      ctx.fillRect(0, 0, s, s);
+      const r = rngFrom('moor');
+      blotches(ctx, s, r, 18, 10, 30, ['rgba(90, 104, 66, 0.4)', 'rgba(120, 120, 70, 0.3)']);
+      for (let i = 0; i < 9; i++) {
+        const x = r() * s;
+        const y = r() * s;
+        const w = 6 + r() * 12;
+        const h = 3 + r() * 5;
+        wrap(s, (dx, dy) => {
+          ctx.fillStyle = 'rgba(78, 108, 112, 0.75)';
+          ctx.beginPath();
+          ctx.ellipse(x + dx, y + dy, w, h, r() * 0.4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(200, 220, 214, 0.25)';
+          ctx.beginPath();
+          ctx.ellipse(x + dx - w * 0.3, y + dy - h * 0.3, w * 0.3, h * 0.25, 0, 0, Math.PI * 2);
+          ctx.fill();
+        });
       }
+      blades(ctx, s, r, 200, ['rgba(140, 140, 80, 0.75)', 'rgba(96, 104, 58, 0.75)', 'rgba(170, 150, 96, 0.6)'], 5);
+    },
+  ],
+  // Wohngebiet: Höfe, Kies und kleine Rasenflächen
+  'pat-yard': [
+    160,
+    (ctx, s) => {
+      ctx.fillStyle = '#8b856b';
+      ctx.fillRect(0, 0, s, s);
+      const r = rngFrom('hof');
+      blotches(ctx, s, r, 22, 12, 40, ['rgba(120, 136, 76, 0.4)', 'rgba(160, 150, 120, 0.3)', 'rgba(110, 104, 84, 0.25)']);
+      blades(ctx, s, r, 120, ['rgba(100, 116, 60, 0.6)', 'rgba(150, 160, 96, 0.5)'], 3);
+      specks(ctx, s, r, 90, ['rgba(180, 172, 150, 0.6)', 'rgba(96, 90, 76, 0.5)'], [0.7, 1.5]);
     },
   ],
   // Risse und Schlaglöcher für Straßen. Die Bildhöhe entspricht der Straßenbreite,
@@ -107,7 +336,7 @@ const PAINTERS: Record<string, [number, Painter]> = {
       const r = rngFrom('risse2');
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      ctx.strokeStyle = 'rgba(30, 27, 22, 0.7)';
+      ctx.strokeStyle = 'rgba(52, 48, 42, 0.55)';
       for (const [sx, sy] of [[8, 30], [52, 66], [70, 20]]) {
         let x = sx;
         let y = sy;
@@ -121,91 +350,76 @@ const PAINTERS: Record<string, [number, Painter]> = {
         }
         ctx.stroke();
       }
-      ctx.fillStyle = 'rgba(30, 27, 23, 0.55)';
+      ctx.fillStyle = 'rgba(60, 56, 50, 0.45)';
       ctx.beginPath();
       ctx.ellipse(s * 0.33, s * 0.6, 5, 3.4, 0.4, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = 'rgba(170, 160, 138, 0.1)';
-      ctx.fillRect(s * 0.62, s * 0.4, 16, 12);
-    },
-  ],
-  'pat-water': [
-    64,
-    (ctx, s) => {
-      ctx.fillStyle = '#1f2b29';
-      ctx.fillRect(0, 0, s, s);
-      const r = rngFrom('wasser');
-      ctx.strokeStyle = 'rgba(120, 140, 128, 0.18)';
-      ctx.lineWidth = 1;
-      for (let i = 0; i < 9; i++) {
-        const x = r() * s;
-        const y = r() * s;
-        const w = 6 + r() * 10;
-        wrap(s, (dx, dy) => {
-          ctx.beginPath();
-          ctx.moveTo(x + dx, y + dy);
-          ctx.quadraticCurveTo(x + dx + w / 2, y + dy - 2, x + dx + w, y + dy);
-          ctx.stroke();
-        });
-      }
-    },
-  ],
-  'pat-farm': [
-    24,
-    (ctx, s) => {
-      ctx.fillStyle = '#5b523e';
-      ctx.fillRect(0, 0, s, s);
-      ctx.strokeStyle = '#4b4333';
-      ctx.lineWidth = 1.6;
-      for (let i = -s; i < s * 2; i += 6) {
+      // Ein Grasbüschel, das durch den Asphalt wächst
+      ctx.strokeStyle = 'rgba(110, 128, 64, 0.8)';
+      ctx.lineWidth = 0.9;
+      for (let i = 0; i < 6; i++) {
         ctx.beginPath();
-        ctx.moveTo(i, 0);
-        ctx.lineTo(i + s, s);
+        ctx.moveTo(s * 0.7 + i, s * 0.45);
+        ctx.lineTo(s * 0.7 + i + (r() - 0.5) * 3, s * 0.45 - 3 - r() * 3);
         ctx.stroke();
       }
     },
   ],
-  'pat-grass': [
-    32,
+  // Wasser: blaugrün, sanfte Wellen und Lichtpunkte
+  'pat-water': [
+    128,
     (ctx, s) => {
-      ctx.fillStyle = '#4c5034';
+      ctx.fillStyle = '#577f87';
       ctx.fillRect(0, 0, s, s);
-      const r = rngFrom('grass');
-      ctx.strokeStyle = '#5c5d3c';
-      ctx.lineWidth = 1;
-      for (let i = 0; i < 14; i++) {
+      const r = rngFrom('wasser-v2');
+      blotches(ctx, s, r, 14, 14, 44, ['rgba(110, 150, 156, 0.3)', 'rgba(60, 96, 104, 0.3)']);
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 22; i++) {
         const x = r() * s;
         const y = r() * s;
+        const w = 6 + r() * 12;
+        ctx.strokeStyle = r() < 0.6 ? 'rgba(170, 206, 206, 0.45)' : 'rgba(40, 70, 78, 0.35)';
+        ctx.lineWidth = 1 + r() * 0.6;
         wrap(s, (dx, dy) => {
           ctx.beginPath();
           ctx.moveTo(x + dx, y + dy);
-          ctx.lineTo(x + dx - 1.5, y + dy - 3.5);
-          ctx.moveTo(x + dx, y + dy);
-          ctx.lineTo(x + dx + 1.5, y + dy - 3);
+          ctx.quadraticCurveTo(x + dx + w / 2, y + dy - 2.2, x + dx + w, y + dy);
           ctx.stroke();
         });
       }
+      specks(ctx, s, r, 18, ['rgba(236, 246, 240, 0.7)'], [0.8, 1.4], true);
     },
   ],
+  // Alte Äcker-Vorlage (bleibt für ältere Stile)
+  'pat-farm': field('#8f7250', '#7a5e40', '#a2845d', 'acker-erde'),
+  // Gewerbe und Industrie: Beton mit Rissen, Kies und Unkraut
   'pat-rubble': [
-    28,
+    128,
     (ctx, s) => {
-      ctx.fillStyle = '#4d4136';
+      ctx.fillStyle = '#86837a';
       ctx.fillRect(0, 0, s, s);
-      const r = rngFrom('rubble');
-      for (let i = 0; i < 18; i++) {
-        const x = r() * s;
-        const y = r() * s;
-        const w = 1 + r() * 2.5;
-        ctx.fillStyle = r() < 0.5 ? '#5a4b3c' : '#3f352c';
-        wrap(s, (dx, dy) => ctx.fillRect(x + dx, y + dy, w, w * 0.7));
+      const r = rngFrom('rubble-v2');
+      blotches(ctx, s, r, 18, 10, 34, ['rgba(110, 106, 96, 0.35)', 'rgba(150, 146, 134, 0.3)', 'rgba(110, 124, 72, 0.25)']);
+      ctx.strokeStyle = 'rgba(80, 76, 68, 0.35)';
+      ctx.lineWidth = 0.8;
+      for (let i = 0; i <= s; i += 32) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, s);
+        ctx.moveTo(0, i);
+        ctx.lineTo(s, i);
+        ctx.stroke();
       }
+      specks(ctx, s, r, 80, ['rgba(70, 66, 58, 0.5)', 'rgba(180, 176, 160, 0.5)'], [0.8, 2]);
+      blades(ctx, s, r, 50, ['rgba(110, 128, 64, 0.7)'], 3);
     },
   ],
 };
 
 /** Für map.on('styleimagemissing'): liefert ein Muster, falls wir es kennen. */
 export function patternImage(id: string): { data: ImageData; pixelRatio: number } | null {
+  const img = loaded.get(id);
+  if (img) return img;
   const p = PAINTERS[id];
   if (!p) return null;
   return { data: make(p[0], p[1]), pixelRatio: PR };

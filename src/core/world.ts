@@ -9,7 +9,7 @@
 // 3. Besondere Orte: einmal pro Gegend (~1,5 km) ein Hubschrauberwrack, ein Konvoi,
 //    eine Bunkertür … Fest aus dem Weltstartwert, nie an sensiblen Orten.
 
-import { GRID_KIND_WEIGHTS, GRID_TURN, POI_KINDS, POI_NAMES, SPECIAL, SPECIAL_WEIGHTS, SPOT_KINDS } from './content';
+import { GRID_KIND_WEIGHTS, GRID_TURN, MUSHROOM_CHANCE, POI_KINDS, POI_NAMES, SPECIAL, SPECIAL_WEIGHTS, SPOT_KINDS } from './content';
 import { distanceM, fromTile, toTile } from './geo';
 import { pick, pickWeighted, rngFrom } from './rng';
 import type { LatLon, Spot, SpotKind } from './types';
@@ -50,6 +50,20 @@ function gridSpotsInCell(seed: string, x: number, y: number, turn: number): Spot
       source: 'grid',
       pos: fromTile(fx, fy, GRID_ZOOM),
       name: pick(r, SPOT_KINDS[kind].names),
+    });
+  }
+  // Pilzstelle: eigener Würfel (ändert die übrigen Fundstellen nicht). Liegt nur im Wald,
+  // das prüft die Karte. Wie oft, hängt vom Monat ab: im Herbst am meisten.
+  const rp = rngFrom(seed, 'pilze', GRID_ZOOM, x, y, turn);
+  const month = new Date(turnSpan(seed, x, y, turn).from).getUTCMonth();
+  if (rp() < MUSHROOM_CHANCE[month]) {
+    spots.push({
+      id: `g:${GRID_ZOOM}:${x}:${y}:${turn}:${spots.length}`,
+      kind: 'mushrooms',
+      source: 'grid',
+      pos: fromTile(x + 0.1 + rp() * 0.8, y + 0.1 + rp() * 0.8, GRID_ZOOM),
+      name: pick(rp, SPOT_KINDS.mushrooms.names),
+      biome: 'forest',
     });
   }
   return spots;

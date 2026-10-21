@@ -10,10 +10,11 @@ import { icon, spotIcon } from '../ui/icons';
 import { generateDecor, type DecorInput, type RawLine, type RawPolygon } from './decor';
 import { FogOfWar } from './fogOfWar';
 import demoWorld from './demoWorld.json';
-import { patternImage } from './patterns';
+import { loadTextures, patternImage } from './patterns';
 import { buildStyle, DECOR_MINZOOM, loadRealSource } from './style';
 import type { WalkInput } from './walkNet';
 import type { HintKind } from '../core/content';
+import type { TreeLayer } from './treeLayer';
 
 /** Umkreis der Detail-Ebene. Dahinter liegt ohnehin Nebel. */
 const DECOR_RADIUS_M = 550;
@@ -95,6 +96,8 @@ export class GameMap {
   private decorCenter: LatLon | null = null;
   private tilesDirty = true;
   private decorTimer = 0;
+  /** 3D-Bäume (three.js), wird nach dem Laden nachgeladen. Bis dahin Klötzchen-Bäume. */
+  private trees: TreeLayer | null = null;
 
   constructor(
     private container: HTMLElement,
@@ -103,8 +106,10 @@ export class GameMap {
 
   async init() {
     const { mode, start } = this.opts;
-    const style = mode === 'real' ? buildStyle('real', await loadRealSource()) : buildStyle('demo');
-    if (mode === 'demo') style.sources.demo = { type: 'geojson', data: DEMO.geojson };
+    const [source] = await Promise.all([mode === 'real' ? loadRealSource() : null, loadTextures()]);
+    const style = source ? buildStyle('real', source) : buildStyle('demo');
+    // generateId: jede Fläche bekommt eine Nummer (damit Äcker unterschiedlich aussehen)
+    if (mode === 'demo') style.sources.demo = { type: 'geojson', data: DEMO.geojson, generateId: true };
 
     this.map = new maplibregl.Map({
       container: this.container,
@@ -144,6 +149,8 @@ export class GameMap {
 
     this.map.on('error', (e) => {
       console.warn('[Karte]', e.error);
+      // Fehlen Höhendaten, fehlt nur die Schattierung: kein Grund für eine Fehlermeldung
+      if ((e as { sourceId?: string }).sourceId === 'dem') return;
       if (mode === 'real' && !this.errorShown && /fetch|load|tile|NetworkError|Failed/i.test(String(e.error?.message ?? ''))) {
         this.errorShown = true;
         this.opts.onError('Kartendaten konnten nicht geladen werden. Prüfe deine Internetverbindung.');
@@ -167,6 +174,23 @@ export class GameMap {
     this.fog = new FogOfWar(this.map);
     if (this.pendingRange) this.setRange(this.pendingRange.c, this.pendingRange.r);
     if (this.pendingCaches) this.setCaches(this.pendingCaches);
+    void this.initTrees();
+  }
+
+  /** three.js erst laden, wenn die Karte steht (die Karte soll schnell erscheinen). */
+  private async initTrees() {
+    try {
+      const { TreeLayer } = await import('./treeLayer');
+      if (!this.map) return;
+      this.trees = new TreeLayer(DECOR_MINZOOM);
+      this.map.addLayer(this.trees, this.map.getLayer('street-names') ? 'street-names' : undefined);
+      // Details neu aufbauen, jetzt mit echten Bäumen statt Klötzchen
+      this.decorCenter = null;
+      this.scheduleDecor();
+    } catch (err) {
+      console.warn('[Bäume]', err);
+      this.trees = null;
+    }
   }
 
   /** Suchkreise für Verstecke, mit einem Kreidezeichen in der Mitte. */
@@ -475,7 +499,11 @@ export class GameMap {
   private buildDecor(center: LatLon) {
     const t0 = performance.now();
     try {
-      const res = generateDecor(this.collectDecorInput(center, DECOR_RADIUS_M + 250), center, DECOR_RADIUS_M);
+      const res = generateDecor(this.collectDecorInput(center, DECOR_RADIUS_M + 250), center, DECOR_RADIUS_M, {
+        month: new Date().getMonth() + 1,
+        treeParts: !this.trees,
+      });
+      this.trees?.setTrees(res.trees, center);
       (this.map.getSource('decor') as GeoJSONSource | undefined)?.setData({
         type: 'FeatureCollection',
         features: res.parts.map((p) => ({
@@ -550,6 +578,9 @@ export class GameMap {
       greens: [...polys(landuse, ['park', 'cemetery', 'village_green', 'garden', 'allotments']), ...(real ? polys(query('park'), ['park']) : [])],
       meadows: polys(landcover, ['grass', 'meadow', 'scrub']),
       residential: polys(landuse, ['residential']),
+      rocks: polys(landcover, ['rock']),
+      water: polys(query('water')),
+      waterways: lines(query('waterway')),
       roads: lines(query('transportation')),
     };
   }
@@ -633,6 +664,43 @@ export class GameMap {
       if (houses.some((b) => p.lon > b.x0 - padX && p.lon < b.x1 + padX && p.lat > b.y0 - pad && p.lat < b.y1 + pad)) return true;
       return areas.some((a) => p.lon > a.x0 && p.lon < a.x1 && p.lat > a.y0 && p.lat < a.y1 && inside(p, a.ring));
     };
+  }
+
+  /** Liegt der Punkt im Wald? (Für Pilzstellen, die nur im Wald wachsen.) */
+  forestCheck(): (p: LatLon) => boolean {
+    const areas: { ring: number[][]; x0: number; y0: number; x1: number; y1: number }[] = [];
+    try {
+      const real = this.opts.mode === 'real';
+      const features: { geometry: GeoJSON.Geometry; properties: Record<string, unknown> | null }[] = real
+        ? this.loaded && this.map.getSource('omt')
+          ? this.map.querySourceFeatures('omt', { sourceLayer: 'landcover' })
+          : []
+        : (DEMO.geojson.features.filter((f) => f.properties?._layer === 'landcover') as unknown as typeof features);
+      for (const f of features) {
+        if (!['wood', 'forest'].includes(String(f.properties?.class ?? ''))) continue;
+        const g = f.geometry;
+        const list = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+        for (const rings of list) {
+          const ring = rings[0];
+          if (!ring || ring.length < 4) continue;
+          const xs = ring.map((c) => c[0]);
+          const ys = ring.map((c) => c[1]);
+          areas.push({ ring, x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) });
+        }
+      }
+    } catch {
+      /* ohne Kartendaten: kein Wald bekannt */
+    }
+    const inside = (p: LatLon, ring: number[][]) => {
+      let c = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [xi, yi] = ring[i];
+        const [xj, yj] = ring[j];
+        if (yi > p.lat !== yj > p.lat && p.lon < ((xj - xi) * (p.lat - yi)) / (yj - yi) + xi) c = !c;
+      }
+      return c;
+    };
+    return (p: LatLon) => areas.some((a) => p.lon > a.x0 && p.lon < a.x1 && p.lat > a.y0 && p.lat < a.y1 && inside(p, a.ring));
   }
 
   sensitiveCheck(): (p: LatLon, grid?: boolean) => boolean {

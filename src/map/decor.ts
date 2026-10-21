@@ -32,7 +32,34 @@ export interface DecorInput {
   meadows: RawPolygon[];
   /** Wohngebiete: Gartenbäume zwischen den Häusern */
   residential: RawPolygon[];
+  /** Fels und Geröll: Steinbrocken */
+  rocks?: RawPolygon[];
+  /** Seen, Teiche und Flüsse (Flächen): dort wächst nichts */
+  water?: RawPolygon[];
+  /** Bäche und Flüsse als Linien: Ufer bleibt frei */
+  waterways?: RawLine[];
   roads: RawLine[];
+}
+
+/** Ein Baum, Busch oder Stein für die 3D-Ebene (map/treeLayer.ts). */
+export interface TreeSpec {
+  lon: number;
+  lat: number;
+  kind: TreeKind;
+  /** Größe (1 = normal) */
+  s: number;
+  /** Drehung in Bogenmaß */
+  rot: number;
+  /** Farbe der Krone (bei Steinen: des Steins) */
+  color: string;
+}
+export type TreeKind = 'leaf' | 'pine' | 'birch' | 'dead' | 'bush' | 'rock';
+
+export interface DecorOptions {
+  /** Bäume auch als Blöcke in die Extrusions-Ebene (falls die 3D-Ebene fehlt) */
+  treeParts?: boolean;
+  /** Monat 1–12 für Herbstlaub (aus der Oberfläche, nicht aus der Spiellogik) */
+  month?: number;
 }
 export interface DecorPart {
   ring: Ring; // Längen/Breite
@@ -42,25 +69,30 @@ export interface DecorPart {
 }
 export interface DecorResult {
   parts: DecorPart[];
+  trees: TreeSpec[];
   counts: { buildings: number; trees: number; cars: number };
 }
 
 // --- Farben --------------------------------------------------------------------------
-const WALLS = ['#6f675a', '#7b725f', '#5f5c56', '#6d4b3b', '#857d6c', '#55524a', '#6a5d4a', '#73685a'];
-const SOOT = ['#2f2b27', '#38332d', '#332e29'];
-const ROOFS = ['#7a4433', '#5b3a2f', '#3d3f43', '#4c5040', '#5c5248', '#6b3d2f'];
-const FLAT_ROOF = ['#4f4c46', '#5a564e', '#47443f'];
+const WALLS = ['#b9ae98', '#c6baa1', '#a99e88', '#9c907b', '#a0634b', '#b7a58a', '#8f8676', '#c2b59b'];
+const SOOT = ['#4a4440', '#56504a', '#4f4943'];
+const ROOFS = ['#a24f38', '#8e4632', '#5e5b58', '#7a5a42', '#b0603f', '#6a6660'];
+const FLAT_ROOF = ['#7d7a72', '#8a867c', '#73706a'];
 // Überwiegend grün, ein paar kränkliche und herbstliche Kronen
-const LEAF = ['#465230', '#3e4a2b', '#4b5a30', '#40502e', '#525a31', '#485830', '#5e5a33', '#6a5232'];
-const CONIFER = ['#2f3b29', '#35422d', '#2a3424'];
-const TRUNK = '#4a3a2b';
-const DEAD = '#6a6157';
-const CARS = ['#6e3f28', '#7a3a2e', '#3f4b57', '#8a857a', '#2f2b28', '#5a5a4e', '#4e5a4a'];
-const CABIN = '#26272a';
-const PLINTH = '#3a352f';
-const CHIMNEY = ['#5a3a2e', '#3a3633', '#6b4a3a'];
-const RUBBLE = ['#5a5246', '#4a443c', '#615848', '#3f3a33'];
-const POLE = '#4a3f33';
+const LEAF = ['#5f7a3a', '#6b8540', '#58703a', '#7a8f45', '#64803c', '#708a42', '#8a8a3e', '#a8873a'];
+const CONIFER = ['#3f5a35', '#4a6638', '#365232'];
+const AUTUMN = ['#c08a3a', '#b8682e', '#a8873a', '#c9a43e', '#9a5a2e'];
+const BIRCH = ['#8aa04a', '#9aab55', '#7f9645'];
+const BUSH = ['#5f7a3a', '#6e8a44', '#557035', '#7a8a40'];
+const STONE = ['#9a958a', '#8a857a', '#a8a296'];
+const TRUNK = '#6a4f36';
+const DEAD = '#8a7c6a';
+const CARS = ['#9a5a3a', '#8a4a3a', '#5a6a7a', '#a8a294', '#5a554e', '#7a7a62', '#6a7a5a'];
+const CABIN = '#3a3c40';
+const PLINTH = '#6a6256';
+const CHIMNEY = ['#8a5a44', '#6a6460', '#9a6a52'];
+const RUBBLE = ['#9a9282', '#8a8272', '#a39a88', '#7f786a'];
+const POLE = '#6a5a46';
 
 const pick = <T>(r: Rng, a: readonly T[]) => a[Math.floor(r() * a.length)];
 
@@ -183,9 +215,9 @@ class Grid<T> {
 
 // --- Hauptfunktion ---------------------------------------------------------------------
 
-export const DECOR_LIMITS = { trees: 4500, cars: 220, poles: 260 };
+export const DECOR_LIMITS = { trees: 6000, cars: 220, poles: 260 };
 
-export function generateDecor(input: DecorInput, center: LatLon, radiusM: number): DecorResult {
+export function generateDecor(input: DecorInput, center: LatLon, radiusM: number, opts: DecorOptions = {}): DecorResult {
   const P = new Proj(center);
   const parts: DecorPart[] = [];
   const add = (ring: Ring, base: number, top: number, color: string) =>
@@ -266,10 +298,37 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
   const latRef = Math.round(center.lat);
   const degLat = 1 / 111320;
   const degLon = 1 / (111320 * Math.cos((latRef * Math.PI) / 180));
-  const trees: { p: Pt; key: string; forest: boolean }[] = [];
+  type Where = 'forest' | 'green' | 'meadow' | 'yard' | 'bush' | 'rock';
+  const trees: { p: Pt; key: string; forest: boolean; where: Where }[] = [];
   const seenT = new Set<string>();
 
-  const scatter = (polys: RawPolygon[], spacing: number, prob: number, tag: string, forest: boolean, ok?: (p: Pt) => boolean) => {
+  // Wasser: kein Baum im Teich, keiner mitten im Bach
+  const waterAreas: { b: ReturnType<typeof bbox>; rings: Ring[] }[] = [];
+  for (const w of input.water ?? []) {
+    if (!roughlyNear(w.rings)) continue;
+    const rings = toM(w.rings);
+    waterAreas.push({ b: bbox(rings[0]), rings });
+  }
+  const streamGrid = new Grid<[Pt, Pt]>(40);
+  for (const l of input.waterways ?? []) {
+    const m = l.coords.map(P.toM);
+    for (let i = 0; i < m.length - 1; i++) {
+      const sb = bbox([m[i], m[i + 1]]);
+      streamGrid.addBox({ x0: sb.x0 - 6, y0: sb.y0 - 6, x1: sb.x1 + 6, y1: sb.y1 + 6 }, [m[i], m[i + 1]]);
+    }
+  }
+  const dry = (p: Pt) => {
+    for (const w of waterAreas) {
+      if (p[0] < w.b.x0 - 3 || p[0] > w.b.x1 + 3 || p[1] < w.b.y0 - 3 || p[1] > w.b.y1 + 3) continue;
+      if (inPolygon(p, w.rings)) return false;
+      for (const ring of w.rings) for (let i = 0; i < ring.length - 1; i++) if (distToSeg(p, ring[i], ring[i + 1]) < 2.5) return false;
+    }
+    for (const [a, b] of streamGrid.near(p)) if (distToSeg(p, a, b) < 4) return false;
+    return true;
+  };
+
+  const scatter = (polys: RawPolygon[], spacing: number, prob: number, tag: string, where: Where, ok?: (p: Pt) => boolean) => {
+    const forest = where === 'forest';
     const sLat = spacing * degLat;
     const sLon = spacing * degLon;
     for (const poly of polys) {
@@ -285,9 +344,9 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
           const lon = (gx + 0.1 + 0.8 * r()) * sLon;
           const lat = (gy + 0.1 + 0.8 * r()) * sLat;
           const p = P.toM([lon, lat]);
-          if (!near(p) || !inPolygon(p, rings) || (ok && !ok(p))) continue;
+          if (!near(p) || !inPolygon(p, rings) || (ok && !ok(p)) || !dry(p)) continue;
           seenT.add(key);
-          trees.push({ p, key, forest });
+          trees.push({ p, key, forest, where });
         }
       }
     }
@@ -317,38 +376,75 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
   };
 
   const offPath = (p: Pt) => roadGrid.near(p).every(([a, b]) => distToSeg(p, a, b) >= 4);
-  scatter(input.forests, 11, 0.86, 'w', true, offPath);
-  scatter(input.greens, 22, 0.45, 'g', false, freeSpot);
-  scatter(input.meadows, 42, 0.22, 'm', false, freeSpot);
-  scatter(input.residential, 23, 0.42, 'r', false, freeSpot);
+  scatter(input.forests, 10, 0.9, 'w', 'forest', offPath);
+  scatter(input.greens, 22, 0.45, 'g', 'green', freeSpot);
+  scatter(input.meadows, 42, 0.22, 'm', 'meadow', freeSpot);
+  scatter(input.residential, 23, 0.42, 'r', 'yard', freeSpot);
+  // Büsche: auf Wiesen, in Gärten und Parks, dazu Steinbrocken auf Fels und Geröll
+  scatter(input.meadows, 19, 0.3, 'bm', 'bush', freeSpot);
+  scatter(input.residential, 15, 0.22, 'br', 'bush', freeSpot);
+  scatter(input.greens, 16, 0.3, 'bg', 'bush', freeSpot);
+  scatter(input.forests, 13, 0.3, 'bf', 'bush', offPath);
+  scatter(input.rocks ?? [], 9, 0.5, 'st', 'rock');
 
   if (trees.length > DECOR_LIMITS.trees) {
     trees.sort((a, b) => a.p[0] ** 2 + a.p[1] ** 2 - (b.p[0] ** 2 + b.p[1] ** 2));
     trees.length = DECOR_LIMITS.trees;
   }
+  const autumn = opts.month !== undefined && opts.month >= 9 && opts.month <= 11;
+  const specs: TreeSpec[] = [];
   for (const t of trees) {
     const r = rngFrom('form', t.key);
     const [x, y] = t.p;
-    const s = 0.8 + r() * 0.55;
+    const s = (t.forest ? 0.95 : 0.8) + r() * 0.55;
     const rot = r() * Math.PI;
     const roll = r();
-    if (roll < 0.12) {
+    const ll = P.toLL(t.p);
+    const spec = (kind: TreeKind, color: string, size = s) => specs.push({ lon: ll[0], lat: ll[1], kind, s: Math.round(size * 100) / 100, rot: Math.round(rot * 100) / 100, color });
+    if (t.where === 'bush') {
+      spec('bush', pick(r, BUSH), 0.7 + r() * 0.6);
+      continue;
+    }
+    if (t.where === 'rock') {
+      spec('rock', pick(r, STONE), 0.5 + r() * 0.9);
+      continue;
+    }
+    // Herbst: ein Teil der Laubbäume färbt sich
+    const leaf = () => (autumn && r() < 0.4 ? pick(r, AUTUMN) : pick(r, LEAF));
+    if (roll < 0.08) {
       // abgestorbener Baum
-      add(ngon(x, y, 0.42 * s, 5, rot), 0, 7 * s, DEAD);
-      add(ngon(x + 0.6 * s, y + 0.2 * s, 0.25 * s, 5, rot), 4 * s, 5.2 * s, DEAD);
-    } else if (roll < (t.forest ? 0.6 : 0.3)) {
-      // Nadelbaum in drei Stufen
+      spec('dead', DEAD);
+      if (opts.treeParts) {
+        add(ngon(x, y, 0.42 * s, 5, rot), 0, 7 * s, DEAD);
+        add(ngon(x + 0.6 * s, y + 0.2 * s, 0.25 * s, 5, rot), 4 * s, 5.2 * s, DEAD);
+      }
+    } else if (roll < (t.forest ? 0.52 : 0.22)) {
+      // Nadelbaum
       const c = pick(r, CONIFER);
-      add(ngon(x, y, 0.35 * s, 5, rot), 0, 1.8 * s, TRUNK);
-      add(ngon(x, y, 2.8 * s, 7, rot), 1.6 * s, 5.8 * s, c);
-      add(ngon(x, y, 1.9 * s, 7, rot + 0.5), 5.8 * s, 9.4 * s, c);
-      add(ngon(x, y, 0.95 * s, 6, rot), 9.4 * s, 12.6 * s, c);
+      spec('pine', c);
+      if (opts.treeParts) {
+        add(ngon(x, y, 0.35 * s, 5, rot), 0, 1.8 * s, TRUNK);
+        add(ngon(x, y, 2.8 * s, 7, rot), 1.6 * s, 5.8 * s, c);
+        add(ngon(x, y, 1.9 * s, 7, rot + 0.5), 5.8 * s, 9.4 * s, c);
+        add(ngon(x, y, 0.95 * s, 6, rot), 9.4 * s, 12.6 * s, c);
+      }
+    } else if (roll < (t.forest ? 0.62 : 0.36)) {
+      // Birke
+      const c = autumn && r() < 0.5 ? '#d0b04a' : pick(r, BIRCH);
+      spec('birch', c, s * 0.9);
+      if (opts.treeParts) {
+        add(ngon(x, y, 0.3 * s, 5, rot), 0, 3.4 * s, '#d8d2c2');
+        add(ngon(x, y, 2.2 * s, 7, rot), 3 * s, 7.6 * s, c);
+      }
     } else {
       // Laubbaum
-      const c = pick(r, LEAF);
-      add(ngon(x, y, 0.4 * s, 5, rot), 0, 3 * s, TRUNK);
-      add(ngon(x, y, 3.2 * s, 8, rot), 2.6 * s, 7.6 * s, c);
-      add(ngon(x + 0.4 * s, y - 0.3 * s, 2 * s, 7, rot + 0.3), 7.6 * s, 9.2 * s, c);
+      const c = leaf();
+      spec('leaf', c);
+      if (opts.treeParts) {
+        add(ngon(x, y, 0.4 * s, 5, rot), 0, 3 * s, TRUNK);
+        add(ngon(x, y, 3.2 * s, 8, rot), 2.6 * s, 7.6 * s, c);
+        add(ngon(x + 0.4 * s, y - 0.3 * s, 2 * s, 7, rot + 0.3), 7.6 * s, 9.2 * s, c);
+      }
     }
   }
 
@@ -433,5 +529,5 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
     poles++;
   }
 
-  return { parts, counts: { buildings, trees: trees.length, cars } };
+  return { parts, trees: specs, counts: { buildings, trees: trees.length, cars } };
 }
