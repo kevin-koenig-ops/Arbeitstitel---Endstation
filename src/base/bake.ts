@@ -75,6 +75,8 @@ export function bake(group: THREE.Object3D): Template {
     const g = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry;
     const p = g.getAttribute('position');
     const gn = isRound(mesh.geometry) ? g.getAttribute('normal') : null;
+    // Fertige Modelle (Modellpaket) bringen ihre Farben pro Ecke mit
+    const vc = mat.vertexColors ? g.getAttribute('color') : null;
     nm.getNormalMatrix(mt);
     const pat = (mat.userData?.pat as number | undefined) ?? 0;
     let target = lit;
@@ -87,7 +89,8 @@ export function bake(group: THREE.Object3D): Template {
     for (let i = 0; i < p.count; i++) {
       v.fromBufferAttribute(p, i).applyMatrix4(mt);
       target.pos.push(v.x, v.y, v.z);
-      target.col.push(color.r, color.g, color.b);
+      if (vc) target.col.push(color.r * vc.getX(i), color.g * vc.getY(i), color.b * vc.getZ(i));
+      else target.col.push(color.r, color.g, color.b);
       target.pat.push(pat);
       box.expandByPoint(v);
       if (gn) {

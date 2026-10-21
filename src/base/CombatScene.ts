@@ -8,10 +8,10 @@ import type { FoeKind } from '../core/content';
 import type { DayPhase } from '../core/sun';
 import type { Character, WeaponId } from '../core/types';
 import { Assembler, bake, GLOW, LIT } from './bake';
-import { CharacterRig, type CharacterAction } from './character';
+import type { CharacterAction } from './character';
+import { makeFoeRig, makePlayerRig, packProp, usePack, type FoeRig, type PlayerRig, type PropId } from './modelPack';
 import { box, buildRubble, cyl, mat } from './models';
 import { buildBush, buildCarWreck, buildTree } from './structures';
-import { ZombieRig } from './zombie';
 
 const PHASES: Record<DayPhase, { hemi: [string, string, number]; sun: [string, number]; fog: string; exposure: number }> = {
   day: { hemi: ['#ffe9c8', '#5a5040', 1.1], sun: ['#ffe0b0', 2.4], fog: '#3a3328', exposure: 1 },
@@ -31,7 +31,7 @@ export interface ShownFoe {
 }
 
 interface FoeView {
-  rig: ZombieRig;
+  rig: FoeRig;
   pos: THREE.Vector3;
   target: THREE.Vector3;
   /** kurzer Rückstoß nach einem Treffer */
@@ -75,7 +75,7 @@ export class TacticsScene {
   private hemi = new THREE.HemisphereLight();
   private sun = new THREE.DirectionalLight();
   private lantern = new THREE.PointLight('#ffc98a', 0, 8, 1.6);
-  private player: CharacterRig;
+  private player: PlayerRig;
   private foes = new Map<number, FoeView>();
   private bits: Bit[] = [];
   private shots: Shot[] = [];
@@ -129,7 +129,7 @@ export class TacticsScene {
 
     this.buildArena();
 
-    this.player = new CharacterRig(look);
+    this.player = makePlayerRig(look);
     this.player.holdWeapon(weapon);
     this.player.root.add(this.lantern);
     this.lantern.position.set(0.3, 1.6, 0.4);
@@ -188,6 +188,9 @@ export class TacticsScene {
     g.computeVertexNormals();
     const ground = new THREE.Mesh(g, LIT);
     ground.receiveShadow = true;
+    const pack = usePack();
+    // Mit Modellpaket liegt die fertige Straße obendrauf
+    if (pack) ground.position.y = -0.04;
     this.scene.add(ground);
 
     // Kulisse (vor allem hinter der Straße, damit nichts die Figuren verdeckt)
@@ -197,19 +200,51 @@ export class TacticsScene {
       o.rotation.y = ry;
       props.add(o);
     };
-    for (let x = -20; x < 20; x += 3) box(props, 1.6, 0.05, 0.18, mat('#d8d2c2'), x, 0.005, 0.05);
-    for (const side of [-1, 1]) box(props, 44, 0.14, 0.25, mat('#6e6a62'), 0, 0, side * 2.7);
-    put(buildCarWreck(2), -6.6, -3.5, Math.PI / 2 + 0.2);
-    put(buildCarWreck(5), 7.4, -3.7, -Math.PI / 2 + 0.3);
-    put(buildRubble(2, 2, 41), 4.6, -5.2);
-    put(buildRubble(1.5, 1.5, 17), -9, 3.6);
-    const barrel = new THREE.Group();
-    cyl(barrel, 0.3, 0.3, 0.9, mat('#7a3b24'), 0, 0, 0, 10);
-    put(barrel, -4.6, -3.4);
-    const lamp = new THREE.Group();
-    cyl(lamp, 0.07, 0.09, 4.6, mat('#4a524a'), 0, 0, 0, 6);
-    box(lamp, 0.08, 0.08, 1.1, mat('#4a524a'), 0, 4.5, 0.5);
-    put(lamp, 1.6, -3.3, 0);
+    const putP = (id: PropId, x: number, z: number, ry = 0) => {
+      const o = packProp(id);
+      if (o) put(o, x, z, ry);
+    };
+    const Q = Math.PI / 2;
+    if (pack) {
+      // Straße aus Fertigteilen, quer durchs Bild; die kaputten Stücke außen, wo niemand steht
+      for (let i = -4; i <= 4; i++) putP(i === -2 ? 'roadCracked' : i === 2 || i === -4 ? 'roadBroken' : 'road', i * 8, 0, Q);
+      putP('pickup', -7.4, -5.6, Q + 0.22);
+      putP('sportsCar', 8.4, -5.9, -Q + 0.35);
+      putP('van', 16, -9.5, 0.6);
+      putP('streetLight', 1.6, -4.2, 0);
+      putP('streetLight', -13.5, -4.2, 0);
+      putP('barrel', -3.9, -4.6, 0.3);
+      putP('barrel', -3.15, -5.1, 1.2);
+      putP('couch', -0.9, -5.6, 0.12);
+      putP('palletBroken', -2.3, -6.6, 0.4);
+      putP('cinderBlock', 0.9, -4.7, 0.5);
+      putP('trashBags', 3.4, -4.6, -0.3);
+      putP('trashBag', 4.2, -4.2, 0.8);
+      putP('tires', 5.4, -4.8, 0);
+      putP('plasticBarrier', 11.2, -3.9, 0.1);
+      putP('roadBarrier', -10.6, -4.1, -0.15);
+      putP('barrierDrum', 13, 3.9, 0);
+      putP('cone', -12.4, 3.8, 0);
+      putP('cone', -11.6, 4.3, 0.6);
+      putP('containerRed', -16, -10, 0.25);
+      putP('containerGreen', 5.5, -12, -0.08);
+      put(buildRubble(1.5, 1.5, 17), -9, 5);
+      put(buildRubble(2, 2, 41), 12.5, -6.4);
+    } else {
+      for (let x = -20; x < 20; x += 3) box(props, 1.6, 0.05, 0.18, mat('#d8d2c2'), x, 0.005, 0.05);
+      for (const side of [-1, 1]) box(props, 44, 0.14, 0.25, mat('#6e6a62'), 0, 0, side * 2.7);
+      put(buildCarWreck(2), -6.6, -3.5, Math.PI / 2 + 0.2);
+      put(buildCarWreck(5), 7.4, -3.7, -Math.PI / 2 + 0.3);
+      put(buildRubble(2, 2, 41), 4.6, -5.2);
+      put(buildRubble(1.5, 1.5, 17), -9, 3.6);
+      const barrel = new THREE.Group();
+      cyl(barrel, 0.3, 0.3, 0.9, mat('#7a3b24'), 0, 0, 0, 10);
+      put(barrel, -4.6, -3.4);
+      const lamp = new THREE.Group();
+      cyl(lamp, 0.07, 0.09, 4.6, mat('#4a524a'), 0, 0, 0, 6);
+      box(lamp, 0.08, 0.08, 1.1, mat('#4a524a'), 0, 4.5, 0.5);
+      put(lamp, 1.6, -3.3, 0);
+    }
     for (const [x, z, i] of [
       [-10, -7, 1],
       [9.5, -7.5, 2],
@@ -218,7 +253,7 @@ export class TacticsScene {
       [-14, -9, 5],
       [5, -10, 6],
     ])
-      put(i % 2 ? buildTree('scraggly', i, 1.1) : buildBush(i, 1.4), x, z, i);
+      if (!pack || i !== 4) put(i % 2 ? buildTree('scraggly', i, 1.1) : buildBush(i, 1.4), x, z, i);
     // Häuserruinen hinten
     for (let i = 0; i < 7; i++) {
       const ruin = new THREE.Group();
@@ -261,7 +296,7 @@ export class TacticsScene {
       let v = this.foes.get(f.id);
       const target = f.alive ? this.slotPos(list, f) : (v?.target ?? this.slotPos(list, f));
       if (!v) {
-        const rig = new ZombieRig(f.kind);
+        const rig = makeFoeRig(f.kind);
         this.scene.add(rig.root);
         const big = f.kind === 'brute' ? 1.3 : f.kind === 'screamer' ? 1.1 : 1;
         const ring = new THREE.Mesh(new THREE.RingGeometry(0.58 * big, 0.72 * big, 40), new THREE.MeshBasicMaterial({ color: '#ffb22e', transparent: true, opacity: 0, depthWrite: false }));

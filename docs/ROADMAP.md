@@ -12,6 +12,8 @@ Version 1.0 ist fertig, wenn der ganze Kreislauf ohne Lücken läuft: rausgehen,
 13. **Feinschliff nach dem Test:** Zahlen für Beute, Kämpfe und Stufen anhand echter Spielrunden nachstellen (das Rechenmodell dafür gibt es schon).
 14. **Drinnen und draußen im Gleichgewicht:** Zu Hause muss es immer etwas zu tun geben, draußen das Besondere. Mehr Startmaterial, „Ums Haus streifen“ ein paarmal am Tag, Ziele auch für zu Hause, das Rechenmodell mit „Stubenhocker“ und „Läufer“. Details im [Konzept](KONZEPT.md).
 15. **Grafik-Stilprobe mit fertigen Modellen:** eine Ecke der Endstation und den Kampf mit freien Modell-Paketen (CC0, z. B. Quaternius „Zombie Apocalypse Kit“, „Downtown City MegaKit“, „Ultimate House Interior“, KayKit) statt der im Code gebauten Kästen. Dazu unser gemaltes Licht. Danach entscheiden.
+16. **Wahrzeichen auf der Karte:** echte Apotheken, Supermärkte, Baumärkte, Tankstellen und Haltestellen als 3D-Gebäude aus dem echten Grundriss plus Modell-Teilen (Schild, vernagelte Fenster, Einkaufswagen). Nur in der Nähe geladen, nie an sensiblen Orten. Kommt nach der Entscheidung zur Stilprobe, damit es gleich im richtigen Stil ist. Details im [Konzept](KONZEPT.md).
+17. **Gemütliche Rituale, erste Fassung:** Samstagabend am Lagerfeuer mit einem Lagerfeuerlied pro Woche, die Leiste „Heute zu Hause“ mit 2 bis 3 Überraschungen am Tag und „Willkommen zurück“ nach einer Pause. Braucht Klang (Punkt 11). Details im [Konzept](KONZEPT.md).
 
 **Entschieden:** Kampf als kurze Taktik mit Karten statt Echtzeit. **Noch offen:** Grafikstil (Polygon, Comic, Gemalt oder 2D mit gemalten Bildern), Endziel (Vorschlag aus der Lore: „Die Linie 0 fährt wieder“, mit deinen Leuten zur Küste).
 
@@ -26,7 +28,8 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 
 ## Version 1.2: Geschichte und Bewohner
 
-- **Überlebende ziehen ein:** Menschen mit Name, Geschichte und Fähigkeit wohnen sichtbar in der Endstation, wünschen sich Möbel und geben kleine Aufträge. Gut versorgt helfen sie mehr; niemand stirbt, wenn du mal nicht spielst.
+- **Überlebende ziehen ein:** Menschen mit Name, Geschichte und Fähigkeit wohnen sichtbar in der Endstation, wünschen sich Möbel und geben kleine Aufträge. Gut versorgt helfen sie mehr; niemand stirbt, wenn du mal nicht spielst. Sie schreiben Briefe, haben Geburtstag und singen samstags am Lagerfeuer mit.
+- **Tauschhändler mit Wochenkurs:** montags einkaufen, unter der Woche zu wechselnden Kursen tauschen (wie der Rübenmarkt bei Animal Crossing), nur mit Spiel-Rohstoffen.
 - **Quests mit Witcher-Anspruch:** wenige, aber gute Aufträge, die in Stadt und Dorf funktionieren, gern mit echten Straßennamen („Bring Medizin aus der Apotheke in der Bahnhofstraße zum Stadtpark“).
 - **Funk ausbauen:** Aufträge zu echten Orten in der Nähe, dazu Nachrichten, die das Funkgerät erst nach gelaufenen Kilometern entschlüsselt (das Funkgerät mit Funksprüchen und Versteck-Hinweisen gibt es schon).
 - **Geschichte in Häppchen:** Erinnerungsstücke werden zu zusammenhängenden Kapiteln, dazu Laborzettel, Archivnotizen und Funksprüche aus der Lore. Die Biologie wird nie erklärt.
@@ -45,10 +48,12 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 
 ## Version 1.4: Zuhause, Wetter und Jahreszeiten
 
+- **In die Höhe bauen:** zwei bis drei Stockwerke wie bei Die Sims, mit Treppe oder Leiter. Oben nur, wo unten etwas trägt. Das aktuelle Stockwerk ist scharf, darüber ausgeblendet, darunter abgedunkelt. Dach als Ausguck. Details im [Konzept](KONZEPT.md).
+
 - **Wetter treibt Anlagen an:** Regentonne füllt sich bei echtem Regen, Solarpaneel bei Sonne, Windrad bei Wind, bei Gewitter selten ein Blitz-Bauplan.
 - **Mehr Anlagen in Stufen:** Lagerfeuer, Apfelbaum und Beete wachsen über Stunden.
 - **Gemütlichkeit wirkt sich aus,** z. B. schnellere Erholung.
-- **Museum der alten Welt:** Sammelstücke ausstellen, wie das Museum bei Animal Crossing.
+- **Museum der alten Welt:** Sammelstücke ausstellen, wie das Museum bei Animal Crossing. Ein Archivar erzählt zu jedem Stück ein Stück Lore.
 - **Trophäen an der Wand** von harten Kämpfen und seltenen Funden.
 - **Heimkehr mit Musik und warmem Licht.**
 - **Fotomodus** ohne Bedienelemente, zum Teilen.

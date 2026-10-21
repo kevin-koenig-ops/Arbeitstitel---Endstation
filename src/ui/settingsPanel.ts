@@ -138,6 +138,15 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
           ['painted', 'Gemalt'],
         ]),
       ),
+      h(
+        'div',
+        { class: 'set-row' },
+        h('div', { class: 'set-label', id: 'lbl-models' }, 'Figuren und Kulisse', h('small', null, 'Modellpaket: fertige 3D-Modelle (Quaternius, frei nutzbar) für Figuren, Gegner, Autos und Kram. Eigenbau: unsere selbst gebauten Formen. Stilprobe zum Vergleichen.')),
+        segmented('models', 'lbl-models', [
+          ['pack', 'Modellpaket'],
+          ['own', 'Eigenbau'],
+        ]),
+      ),
     ),
     h(
       'section',

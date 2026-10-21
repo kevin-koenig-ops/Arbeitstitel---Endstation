@@ -23,13 +23,15 @@ export interface Settings {
   fullscreen: boolean;
   /** Grafikstil: kantige Polygone oder Comic (Cel-Shading mit Umrissen). */
   graphics: 'poly' | 'comic' | 'painted';
+  /** Figuren und Kulisse: fertiges Modellpaket (Stilprobe) oder selbst gebaut. */
+  models: 'pack' | 'own';
   /** Letzter bekannter Standort, nur auf diesem Gerät gespeichert. */
   lastPos?: LatLon;
 }
 
 const KEY = 'endstation.settings';
 
-const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', control: 'tap', lootGames: 'on', fullscreen: true, graphics: 'poly' } as const;
+const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', control: 'tap', lootGames: 'on', fullscreen: true, graphics: 'poly', models: 'pack' } as const;
 const DEFAULTS: Settings = IS_PREVIEW ? { ...COMMON, map: 'demo', location: 'sim' } : { ...COMMON, map: 'real', location: 'gps' };
 
 export class SettingsStore {

@@ -5,6 +5,7 @@ import { GuestAuth } from '../services/auth';
 import { LocalBackend, type GameBackend } from '../services/backend';
 import { SettingsStore } from '../services/settings';
 import { setGraphicsStyle } from '../base/gfxStyle';
+import { setModelSet } from '../base/modelChoice';
 import { h, reducedMotion } from './dom';
 import { characterScreen } from './screens/character';
 import { gameScreen } from './screens/game';
@@ -57,6 +58,7 @@ export async function createApp(root: HTMLElement) {
   // Grafikstil gilt sofort für alle 3D-Ansichten
   const applyGfx = () => {
     setGraphicsStyle(settings.get().graphics);
+    setModelSet(settings.get().models);
     root.dataset.gfx = settings.get().graphics;
   };
   applyGfx();

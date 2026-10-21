@@ -14,6 +14,7 @@ Wie es zum Weltuntergang kam (Phosphat-Krieg, das Weinen, Elysis, der Flux), ste
 4. **Datenschutz.** Den Ort deiner Endstation legst du selbst fest, er bleibt aber nur auf deinem Gerät. Andere Spieler (und später der Server) erfahren nie, wo sie steht.
 5. **Tagsüber raus, abends einrichten.** Draußen sammelst du Rohstoffe, Kram, Sammelstücke und Baupläne, zu Hause baust du in Ruhe deine Endstation aus, gern auch vom Bett aus.
 6. **Eins statt viele.** Jede nützliche Anlage (Regentonne, Werkbank, Windrad, Ofen …) gibt es nur einmal. Statt mehr davon zu bauen, wird sie in Stufen aufgerüstet und bleibt dabei stehen, wo sie steht. Niemand soll ständig umbauen müssen. Deko darf man beliebig oft aufstellen.
+7. **Draußen gefährlich, zu Hause gemütlich.** Die Welt draußen bleibt rau (Lore: eher The Division als grüne Idylle). Die Endstation dagegen ist warm, sicher und voller kleiner Rituale, wie bei Animal Crossing. Und man braucht nur ein Handy, keine Konsole.
 
 ## Kernschleife
 
@@ -36,6 +37,21 @@ Grundregel: **Draußen findest du, zu Hause machst du etwas daraus.** Beides sol
   - Ziele, die zu Hause erfüllbar sind (Raum bauen, Eintopf kochen, Deck bauen, Raid-Beitrag).
 - **Draußen ist nie Pflicht:** Wer ein paar Tage nicht rausgeht, kann trotzdem einrichten, Raids kämpfen und Geschichten lesen. Er kommt nur langsamer voran. Wegbleiben wird nie bestraft.
 - **Zahlen im Blick behalten:** Das Rechenmodell für das Gleichgewicht (14 Spieltage, verschiedene Spielertypen) bekommt einen „Stubenhocker“ und einen „Läufer“ dazu. Beide sollen Spaß haben: der Läufer schneller vorankommen, der Stubenhocker nie feststecken.
+
+## Gemütliche Endzeit: Rituale und Events (geplant)
+
+**Richtung (entschieden am 21.10.2026):** Kein Umbau zum reinen Wohlfühlspiel, sondern beides: drinnen gemütlich, draußen gefährlich. Im Hinterkopf bleibt ein zweites, ganz gemütliches Spiel auf demselben Motor (z. B. Spaziergänge mit Pflanzen statt Wandlern). Das ginge, weil Spielregeln, Inhalte (`content.ts`), Modelle (eine Liste) und Oberfläche sauber getrennt sind.
+
+Vorbild ist Animal Crossing: Die Welt läuft in echter Zeit mit, jeden Tag gibt es ein paar Kleinigkeiten, man kann nicht verlieren, und es gibt feste Höhepunkte, auf die man sich freut. Das übernehmen wir für die Endstation:
+
+- **Samstagabend am Lagerfeuer:** Jeden Samstagabend (echte Zeit, etwa 18 bis 24 Uhr) brennt das Lagerfeuer, jemand spielt Gitarre, später singen die Bewohner mit. Es gibt ein Lagerfeuerlied, das man danach behält und auf dem Funkgerät hören kann, dazu eine kleine Belohnung. Mit der Zeit wächst die Liedersammlung. Verpassen ist nicht schlimm: Lieder kommen wieder, nichts Spielwichtiges hängt daran.
+- **Heute zu Hause:** Jeden Tag 2 bis 3 kleine Überraschungen an der Endstation, z. B. ein Händler am Tor mit einem Tagesangebot, ein Zettel am Zaun, ein Funkspruch, ein Tier, das vorbeischaut. Eine kleine Leiste zeigt, was heute da ist.
+- **Willkommen zurück:** Nach einer Pause eine freundliche Zusammenfassung, was passiert ist (Ernte, Funksprüche, Besuch). Kein Unkraut, kein Vorwurf.
+- **Der Archivar:** Im Museum der alten Welt erzählt ein Bewohner zu jedem Sammel- und Erinnerungsstück ein Stück Lore, so wie die Eule im Museum bei Animal Crossing.
+- **Bewohner mit Charakter** (Version 1.2): Sie schreiben Briefe, haben Wünsche und Geburtstage, schenken dir etwas und erinnern sich an das, was du für sie getan hast.
+- **Wochenkurs beim Tauschhändler:** Montags kauft man z. B. Konserven, unter der Woche schwankt der Tauschkurs, wie der Rübenmarkt bei Animal Crossing. Nur mit Spiel-Rohstoffen, nie mit echtem Geld.
+- **Jahreszeiten und Feiertage:** Pilze im Herbst, der erste Schnee, Lichterketten im Dezember, Halloween. Manche Funde gibt es nur zu bestimmten Zeiten, sie kommen aber jedes Jahr wieder.
+- **Sich ausdrücken:** Figur einkleiden, eigene Schilder und Plakate gestalten, Fotomodus zum Teilen.
 
 ## Kampf: wie es weitergeht (geplant)
 
@@ -89,6 +105,16 @@ Grundregel: **Draußen findest du, zu Hause machst du etwas daraus.** Beides sol
 - **Echte Tageszeit und echtes Wetter** auch zu Hause: Regen, Schnee, Nebel, Gewitter. Nachts leuchten Feuer, Lampen und Lichterketten.
 - **Grundsatz:** Draußen ist es gefährlich, die Basis nie. Sie wird nicht angegriffen und ist ein echter Rückzugsort.
 
+### In die Höhe bauen (geplant)
+
+Mehrere Stockwerke wie bei Die Sims, zuerst zwei bis drei Ebenen: Erdgeschoss, erster Stock und ein Dach als Ausguck.
+
+- **Jedes Teil gehört zu einem Stockwerk** (Wände, Böden, Möbel). Der Spielstand wird dafür einmal automatisch umgestellt, alles Gebaute landet im Erdgeschoss.
+- **Treppe oder Leiter** als eigenes Bauteil. Die Figur läuft darüber hoch und runter.
+- **Tragen:** Oben bauen geht nur, wo unten Wände oder Pfeiler stehen. Einfache Regel, kein Statik-Rechnen.
+- **Ansicht:** Das Stockwerk, auf dem du gerade bist, ist scharf. Darüber wird ausgeblendet, darunter leicht abgedunkelt. Umschalten per Knopf (hoch/runter) oder automatisch, wenn die Figur die Treppe nimmt. Die Wand-Ansichten (geschnitten, ganz, flach) gelten pro Stockwerk.
+- **Wofür:** mehr Platz auf kleinem Gelände, Schlafzimmer oben, Ausguck auf dem Dach (z. B. Fernglas als Anlage, das Verstecke in der Nähe verrät). Räume oben zählen für die Gemütlichkeit wie unten.
+
 ## Bedienung
 
 - **Immer im Querformat.** Hochkant zeigt das Handy nur einen Hinweis zum Drehen. Als installierte App bleibt es fest quer, im Browser geht es auf Wunsch ins Vollbild.
@@ -109,6 +135,15 @@ Die Figur aus der Charaktererstellung ist ein Low-Poly-Modell (Frisur, Hautton, 
 - **Echte Tageszeit** aus dem Sonnenstand: Tag, Dämmerung, Nacht. Nachts mehr Wächter, dafür 30 % mehr Beute, dazu Taschenlampe und glühende Funken.
 - **Echtes Wetter** (Open-Meteo, Position auf ~10 km gerundet): bei Nebel, Regen und nachts sind Wandler zäher (+2 Gesundheit), in praller Sonne träge (−2), bei Nebel sieht man Wächter erst aus der Nähe, Gewitter mit Blitzen.
 - In den Einstellungen kann man Tageszeit und Wetter zum Ausprobieren erzwingen (nur Optik).
+
+### Wahrzeichen auf der Karte (geplant)
+
+Die Häuser stehen schon als einfache Klötze in echter Höhe auf der Karte. Echte Orte, an denen es Fundstellen gibt, sollen zusätzlich als 3D-Wahrzeichen erkennbar sein: Apotheke, Supermarkt, Baumarkt, Tankstelle, Haltestelle.
+
+- **Echter Grundriss statt Fertighaus:** Ein fertiges Modell „Apotheke“ hätte nie die Form des echten Gebäudes. Deshalb nehmen wir den Grundriss aus der Karte, ziehen ihn hoch und setzen passende Modell-Teile dran: kaputtes Schild mit grünem Kreuz (kein echtes Apotheken-Logo), vernagelte Fenster, Einkaufswagen, Zapfsäulen, Wartehäuschen.
+- **Technik:** eine eigene 3D-Ebene in der Karte (MapLibre mit three.js), dieselben Modelle und Grafikstile wie im Rest des Spiels.
+- **Leistung:** nur Wahrzeichen in der Nähe laden (etwa 300 m), weiter weg bleiben die einfachen Klötze.
+- **Sensible Orte** (Krankenhäuser, Schulen, Kitas, Friedhöfe, Kirchen, Gedenkstätten) bekommen keine Wahrzeichen, wie bei den Fundstellen.
 
 ## Bedrohung und Kampf
 

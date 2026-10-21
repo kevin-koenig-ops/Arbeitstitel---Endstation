@@ -18,6 +18,7 @@ import { icon, resIcon } from '../icons';
 import { faceEl } from '../portrait';
 import { walkerMood } from './ambience';
 import type { ShownFoe, TacticsScene } from '../../base/CombatScene';
+import { modelSet } from '../../base/modelChoice';
 
 export interface CombatEnd {
   outcome: 'won' | 'lost' | 'fled';
@@ -714,7 +715,9 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
   // 3D nachladen und los
   renderAll(true);
   void import('../../base/CombatScene')
-    .then((mod) => {
+    .then(async (mod) => {
+      // Modellpaket (Stilprobe): einmal laden, danach sofort da. Klappt es nicht, gibt es die eigenen Figuren.
+      if (modelSet() === 'pack') await (await import('../../base/modelPack')).loadPack();
       if (!el.isConnected) return;
       scene = new mod.TacticsScene(stage, s0.character.look, weapon, phase);
       scene.setFoes(shownList(), shownList().map((f) => f.id));
