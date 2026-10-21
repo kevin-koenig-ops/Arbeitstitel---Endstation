@@ -97,6 +97,12 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 
 **Testen:** Ist Auspacken zu Hause ein schöner Moment oder lästig? Findet man genug Sammelstücke? Ist klar, was im Rucksack und was im Lager ist?
 
+## ✅ Zwischenschritt: Stilprobe „Gemalt“
+
+- Dritter Grafikstil zum Vergleichen: weiche, abgerundete Formen, Oberflächen mit Pinselstruktur (Holz, Stein, Rost, Gras, Laub), feine braune Linien, weiche Schatten in Ecken, Leuchten um Feuer und Lampen, warmes Licht
+- Gilt für Endstation, Kampf, Figur und Vorschaubilder; die Karte bekommt nur einen wärmeren Farbton
+- **Testen:** Polygon, Comic oder Gemalt? Läuft „Gemalt“ am Handy flüssig? Wenn ja: als Nächstes detailliertere Modelle (Ruinen ringsum, Efeu, Fensterrahmen, rundere Figur)
+
 ## Iteration 1h (Teil 2): Weitere Werkstätten und Wetter
 
 - Weitere Anlagen mit echten Wartezeiten: Holzofen (Eintopf), Lagerfeuer, Hochbeet, Apfelbaum

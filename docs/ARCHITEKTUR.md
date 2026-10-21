@@ -48,7 +48,7 @@ Ohne Framework, kleine Hilfsfunktion `h()` in `ui/dom.ts`. Jeder Bildschirm ist 
 
 **Aktionen statt Zustandsänderungen.** Der Client sagt „ich durchsuche X an Position P“, nicht „ich habe jetzt 5 Wasser“. Genau das wird später zur API.
 
-**Grafikstil.** Alle 3D-Ansichten zeichnen über `StyledRenderer` (`base/comic.ts`). Im Comic-Stil werden die Materialien gegen Toon-Materialien getauscht (Farben bleiben verknüpft) und ein zweiter Schritt zieht Umrisse aus Tiefensprüngen und starken Farbwechseln. Polygon zeichnet wie bisher direkt.
+**Grafikstil.** Alle 3D-Ansichten zeichnen über `StyledRenderer` (`base/comic.ts`). Im Comic-Stil werden die Materialien gegen Toon-Materialien getauscht (Farben bleiben verknüpft) und ein zweiter Schritt zieht Umrisse aus Tiefensprüngen und starken Farbwechseln. Polygon zeichnet wie bisher direkt. Der Stil „Gemalt“ (`base/painted.ts`) tauscht auf weich schattierte Materialien mit Oberflächen aus dem Shader (Pinselstruktur, Holz, Stein, Rost, Gras, Laub; welche Art, steht im Attribut `pat` der verschmolzenen Meshes bzw. in `material.userData.pat`). Danach folgen feine braune Linien, weiche Verschattung in Ecken, Leuchten um Lampen und Feuer und eine warme Farbstimmung. Quader bekommen dort abgerundete Kanten (`base/softBox.ts`), auf freiem Boden wachsen Grasbüschel.
 
 **Werktisch mit echten Wartezeiten.** Ein Auftrag speichert nur, wann er fertig ist (`endsAt`, aus `ctx.now`). Was fertig ist, rechnet `readyParts` beim Abholen aus. Kein Hintergrund-Timer nötig, die App darf zu sein, und ein Server kann es genauso nachrechnen.
 

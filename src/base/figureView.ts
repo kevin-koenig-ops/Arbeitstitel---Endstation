@@ -43,7 +43,7 @@ export function renderPortrait(look: Look, size = 128): string {
   const cam = new THREE.PerspectiveCamera(26, 1, 0.1, 20);
   cam.position.set(0.12, 1.78, 1.5);
   cam.lookAt(0, 1.62, 0);
-  if (!portraitStyled) portraitStyled = new StyledRenderer(r, 1.6);
+  if (!portraitStyled) portraitStyled = new StyledRenderer(r, 1.6, false);
   portraitStyled.render(scene, cam);
   const url = r.domElement.toDataURL('image/png');
   rig.dispose();
@@ -81,7 +81,7 @@ export class FigureView {
     const stage = opts.mode === 'stage';
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     // Auf der Karte wird die Figur stark verkleinert: dort dickere Linien
-    this.styled = new StyledRenderer(this.renderer, opts.mode === 'marker' ? 2 : 1.5);
+    this.styled = new StyledRenderer(this.renderer, opts.mode === 'marker' ? 2 : 1.5, opts.mode !== 'marker');
     this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     this.renderer.setSize(opts.width, opts.height);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;

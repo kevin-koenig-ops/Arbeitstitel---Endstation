@@ -131,10 +131,11 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
       h(
         'div',
         { class: 'set-row' },
-        h('div', { class: 'set-label', id: 'lbl-gfx' }, 'Grafikstil', h('small', null, 'Polygon: kantig, mit weichem Licht. Comic: flächige Farben und dunkle Umrisse wie im Zeichentrick.')),
+        h('div', { class: 'set-label', id: 'lbl-gfx' }, 'Grafikstil', h('small', null, 'Polygon: kantig, mit weichem Licht. Comic: flächige Farben und dunkle Umrisse wie im Zeichentrick. Gemalt: weiche Formen, Pinselstruktur und warmes Licht (Stilprobe).')),
         segmented('graphics', 'lbl-gfx', [
           ['poly', 'Polygon'],
           ['comic', 'Comic'],
+          ['painted', 'Gemalt'],
         ]),
       ),
     ),

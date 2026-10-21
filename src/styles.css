@@ -994,6 +994,7 @@ button.res-bar:active { transform: translateY(1px); }
 
 /* Comic-Stil: kräftigere Farben auf der Karte */
 [data-gfx="comic"] .map canvas { filter: saturate(1.3) contrast(1.06); }
+[data-gfx="painted"] .map canvas { filter: sepia(0.14) saturate(1.12) brightness(1.04); }
 
 /* --- Rucksack, Lager, Fundbuch (v8) --- */
 .pack-body { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; }

@@ -5,12 +5,22 @@
 import * as THREE from 'three';
 import type { FurnitureId } from '../core/furniture';
 import type { KramId } from '../core/types';
+import { softBox } from './softBox';
+
+export const WOOD = '#8a6a45';
+export const WOOD_DARK = '#6b5034';
+export const METAL = '#3b3f3a';
 
 const mats = new Map<string, THREE.Material>();
 
-/** Matte, flach schattierte Farbe (wird geteilt). */
-export function mat(color: string, opts: { emissive?: string; emissiveIntensity?: number; transparent?: boolean; opacity?: number } = {}) {
-  const key = `${color}|${opts.emissive ?? ''}|${opts.emissiveIntensity ?? ''}|${opts.opacity ?? ''}`;
+/** Oberflächenarten für den Stil „Gemalt“ (Pinselstruktur, Maserung, Rost …). */
+export const PAT = { plain: 0, ground: 1, leaf: 2, wood: 3, stone: 4, metal: 5 } as const;
+export type Pat = (typeof PAT)[keyof typeof PAT];
+
+/** Matte, flach schattierte Farbe (wird geteilt). pat: Oberflächenart für „Gemalt“. */
+export function mat(color: string, opts: { emissive?: string; emissiveIntensity?: number; transparent?: boolean; opacity?: number; pat?: Pat } = {}) {
+  const pat = opts.pat ?? (color === WOOD || color === WOOD_DARK ? PAT.wood : PAT.plain);
+  const key = `${color}|${opts.emissive ?? ''}|${opts.emissiveIntensity ?? ''}|${opts.opacity ?? ''}|${pat}`;
   let m = mats.get(key);
   if (!m) {
     const params: THREE.MeshStandardMaterialParameters = { color, roughness: 0.88, metalness: 0.02, flatShading: true };
@@ -23,6 +33,7 @@ export function mat(color: string, opts: { emissive?: string; emissiveIntensity?
       params.opacity = opts.opacity ?? 1;
     }
     m = new THREE.MeshStandardMaterial(params);
+    m.userData.pat = pat;
     mats.set(key, m);
   }
   return m;
@@ -34,6 +45,7 @@ export function glow(color: string) {
   let m = mats.get(key);
   if (!m) {
     m = new THREE.MeshBasicMaterial({ color });
+    m.userData.glow = true;
     mats.set(key, m);
   }
   return m;
@@ -52,7 +64,7 @@ export function add(g: THREE.Object3D, mesh: THREE.Mesh, x = 0, y = 0, z = 0, ry
 
 /** Quader; y ist die Unterkante. */
 export function box(g: THREE.Object3D, w: number, h: number, d: number, m: M, x = 0, y = 0, z = 0, ry = 0) {
-  return add(g, new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m), x, y + h / 2, z, ry);
+  return add(g, new THREE.Mesh(softBox(w, h, d), m), x, y + h / 2, z, ry);
 }
 
 /** Feinere Polygone: Rundungen bekommen mehr Segmente (der Low-Poly-Stil bleibt). */
@@ -70,9 +82,6 @@ export function blob(g: THREE.Object3D, r: number, m: M, x: number, y: number, z
   return mesh;
 }
 
-export const WOOD = '#8a6a45';
-export const WOOD_DARK = '#6b5034';
-export const METAL = '#3b3f3a';
 
 /** Kegel (Flamme, Blatt, Hut); y ist die Unterkante. */
 export function cone(g: THREE.Object3D, r: number, h: number, m: M, x = 0, y = 0, z = 0, seg = 6) {

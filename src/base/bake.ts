@@ -7,6 +7,10 @@ import * as THREE from 'three';
 export interface Part {
   pos: Float32Array;
   col: Float32Array;
+  /** Normalen: rund bei runden Formen (Bäume, Fässer), sonst flach pro Fläche. */
+  nrm: Float32Array;
+  /** Oberflächenart je Ecke (für den Stil „Gemalt“), siehe PAT in models.ts. */
+  pat: Float32Array;
 }
 
 export interface Template {
@@ -20,13 +24,41 @@ export interface Template {
 /** Gemeinsame Materialien für alles Verschmolzene. */
 export const LIT = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0.02, flatShading: true });
 export const GLOW = new THREE.MeshBasicMaterial({ vertexColors: true });
+GLOW.userData.glow = true;
+
+/** Runde Formen behalten ihre weichen Normalen, eckige werden flach. */
+function isRound(g: THREE.BufferGeometry): boolean {
+  if (g.userData?.round) return true;
+  const p = (g as unknown as { parameters?: Record<string, number> }).parameters ?? {};
+  switch (g.type) {
+    case 'IcosahedronGeometry':
+    case 'DodecahedronGeometry':
+    case 'OctahedronGeometry':
+      return (p.detail ?? 0) > 0;
+    case 'SphereGeometry':
+    case 'TorusGeometry':
+    case 'CapsuleGeometry':
+    case 'RoundedBoxGeometry':
+      return true;
+    case 'CylinderGeometry':
+    case 'ConeGeometry':
+      return (p.radialSegments ?? 0) >= 7;
+    default:
+      return false;
+  }
+}
 
 /** Eine Gruppe aus Meshes in eine Vorlage (Ecken + Farben) umwandeln. */
 export function bake(group: THREE.Object3D): Template {
   group.updateMatrixWorld(true);
   const inv = new THREE.Matrix4().copy(group.matrixWorld).invert();
-  const lit = { pos: [] as number[], col: [] as number[] };
-  const glow = { pos: [] as number[], col: [] as number[] };
+  const lit = { pos: [] as number[], col: [] as number[], nrm: [] as number[], pat: [] as number[] };
+  const glow = { pos: [] as number[], col: [] as number[], nrm: [] as number[], pat: [] as number[] };
+  const n = new THREE.Vector3();
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  const nm = new THREE.Matrix3();
   const flames: Template['flames'] = [];
   const box = new THREE.Box3();
   const v = new THREE.Vector3();
@@ -42,6 +74,9 @@ export function bake(group: THREE.Object3D): Template {
     }
     const g = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry;
     const p = g.getAttribute('position');
+    const gn = isRound(mesh.geometry) ? g.getAttribute('normal') : null;
+    nm.getNormalMatrix(mt);
+    const pat = (mat.userData?.pat as number | undefined) ?? 0;
     let target = lit;
     color.copy(mat.color);
     if ((mat as unknown as THREE.MeshBasicMaterial).isMeshBasicMaterial) target = glow;
@@ -53,13 +88,26 @@ export function bake(group: THREE.Object3D): Template {
       v.fromBufferAttribute(p, i).applyMatrix4(mt);
       target.pos.push(v.x, v.y, v.z);
       target.col.push(color.r, color.g, color.b);
+      target.pat.push(pat);
       box.expandByPoint(v);
+      if (gn) {
+        n.fromBufferAttribute(gn, i).applyMatrix3(nm).normalize();
+      } else {
+        // Flache Normale des Dreiecks
+        const t0 = i - (i % 3);
+        a.fromBufferAttribute(p, t0).applyMatrix4(mt);
+        b.fromBufferAttribute(p, t0 + 1).applyMatrix4(mt);
+        c.fromBufferAttribute(p, t0 + 2).applyMatrix4(mt);
+        n.subVectors(c, b).cross(a.sub(b)).normalize();
+      }
+      target.nrm.push(n.x, n.y, n.z);
     }
     if (g !== mesh.geometry) g.dispose();
   });
+  const part = (x: typeof lit): Part => ({ pos: new Float32Array(x.pos), col: new Float32Array(x.col), nrm: new Float32Array(x.nrm), pat: new Float32Array(x.pat) });
   return {
-    lit: { pos: new Float32Array(lit.pos), col: new Float32Array(lit.col) },
-    glow: { pos: new Float32Array(glow.pos), col: new Float32Array(glow.col) },
+    lit: part(lit),
+    glow: part(glow),
     flames,
     box,
   };
@@ -83,10 +131,13 @@ export class Assembler {
   geometry(): THREE.BufferGeometry {
     const pos = new Float32Array(this.count);
     const col = new Float32Array(this.count);
+    const nrm = new Float32Array(this.count);
+    const pat = new Float32Array(this.count / 3);
     let o = 0;
     for (const { p, m } of this.parts) {
       const e = m.elements;
       const src = p.pos;
+      const sn = p.nrm;
       for (let i = 0; i < src.length; i += 3) {
         const x = src[i];
         const y = src[i + 1];
@@ -94,14 +145,27 @@ export class Assembler {
         pos[o + i] = e[0] * x + e[4] * y + e[8] * z + e[12];
         pos[o + i + 1] = e[1] * x + e[5] * y + e[9] * z + e[13];
         pos[o + i + 2] = e[2] * x + e[6] * y + e[10] * z + e[14];
+        // Drehung (mit gleichmäßiger Skalierung) auch auf die Normalen
+        const nx = sn[i];
+        const ny = sn[i + 1];
+        const nz = sn[i + 2];
+        const rx = e[0] * nx + e[4] * ny + e[8] * nz;
+        const ry = e[1] * nx + e[5] * ny + e[9] * nz;
+        const rz = e[2] * nx + e[6] * ny + e[10] * nz;
+        const l = Math.hypot(rx, ry, rz) || 1;
+        nrm[o + i] = rx / l;
+        nrm[o + i + 1] = ry / l;
+        nrm[o + i + 2] = rz / l;
       }
       col.set(p.col, o);
+      pat.set(p.pat, o / 3);
       o += src.length;
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    g.computeVertexNormals();
+    g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+    g.setAttribute('pat', new THREE.BufferAttribute(pat, 1));
     g.computeBoundingSphere();
     return g;
   }

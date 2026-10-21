@@ -9,6 +9,7 @@
 
 import * as THREE from 'three';
 import { graphicsStyle } from './gfxStyle';
+import { PaintedPost, paintedOf, unpainted } from './painted';
 
 let gradient: THREE.DataTexture | null = null;
 
@@ -55,33 +56,39 @@ function comicOf(s: THREE.MeshStandardMaterial): THREE.MeshToonMaterial {
   return t;
 }
 
-function swap(m: THREE.Material, comic: boolean): THREE.Material {
-  if (comic) {
-    if ((m as THREE.MeshStandardMaterial).isMeshStandardMaterial) return comicOf(m as THREE.MeshStandardMaterial);
-    const s = toStd.get(m);
-    if (s) comicOf(s);
-    return m;
+/** Das ursprüngliche Material (Polygon-Stil) zu einer Comic- oder gemalten Fassung. */
+function original(m: THREE.Material): THREE.Material {
+  return toStd.get(m) ?? unpainted(m);
+}
+
+function swap(m: THREE.Material, style: string, patAttr: boolean): THREE.Material {
+  const o = original(m);
+  if (style === 'comic') {
+    if ((o as THREE.MeshStandardMaterial).isMeshStandardMaterial) return comicOf(o as THREE.MeshStandardMaterial);
+    return o;
   }
-  return toStd.get(m) ?? m;
+  if (style === 'painted') return paintedOf(o, patAttr);
+  return o;
 }
 
 /** Materialien der Szene auf den aktuellen Stil bringen. */
 export function applyStyle(root: THREE.Object3D) {
-  const comic = graphicsStyle() === 'comic';
+  const style = graphicsStyle();
   root.traverse((o) => {
     const mesh = o as THREE.Mesh;
     if (!mesh.isMesh) return;
+    const patAttr = !!mesh.geometry?.getAttribute('pat');
     const mats = mesh.material;
     if (Array.isArray(mats)) {
       let changed = false;
       const next = mats.map((m) => {
-        const n = swap(m, comic);
+        const n = swap(m, style, patAttr);
         if (n !== m) changed = true;
         return n;
       });
       if (changed) mesh.material = next;
     } else {
-      const n = swap(mats, comic);
+      const n = swap(mats, style, patAttr);
       if (n !== mats) mesh.material = n;
     }
   });
@@ -213,25 +220,34 @@ export class ComicPost {
   }
 }
 
-/** Zeichnet im eingestellten Stil: Polygon direkt, Comic mit Umrissen. */
+/** Zeichnet im eingestellten Stil: Polygon direkt, Comic mit Umrissen, Gemalt mit Licht und Farbstimmung. */
 export class StyledRenderer {
   private post: ComicPost | null = null;
+  private paint: PaintedPost | null = null;
 
+  /** vignette: Bildrand im Stil „Gemalt“ abdunkeln (aus bei kleinen Vorschaubildern). */
   constructor(
     private renderer: THREE.WebGLRenderer,
     private thick = 1.2,
+    private vignette = true,
   ) {}
 
   render(scene: THREE.Scene, camera: THREE.PerspectiveCamera) {
     applyStyle(scene);
-    if (graphicsStyle() === 'comic') {
+    const style = graphicsStyle();
+    if (style === 'comic') {
       if (!this.post) this.post = new ComicPost(this.renderer, this.thick);
       this.post.render(scene, camera);
+    } else if (style === 'painted') {
+      if (!this.paint) this.paint = new PaintedPost(this.renderer, Math.max(0.8, this.thick * 0.75), this.vignette);
+      this.paint.render(scene, camera);
     } else this.renderer.render(scene, camera);
   }
 
   dispose() {
     this.post?.dispose();
     this.post = null;
+    this.paint?.dispose();
+    this.paint = null;
   }
 }

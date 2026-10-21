@@ -22,7 +22,7 @@ export interface Settings {
   /** Am Handy ins Vollbild wechseln und das Querformat festhalten (wo möglich). */
   fullscreen: boolean;
   /** Grafikstil: kantige Polygone oder Comic (Cel-Shading mit Umrissen). */
-  graphics: 'poly' | 'comic';
+  graphics: 'poly' | 'comic' | 'painted';
   /** Letzter bekannter Standort, nur auf diesem Gerät gespeichert. */
   lastPos?: LatLon;
 }

@@ -4,6 +4,7 @@
 
 import * as THREE from 'three';
 import type { FoeKind } from '../core/content';
+import { softBox } from './softBox';
 
 interface Look {
   skin: string;
@@ -63,7 +64,7 @@ export class ZombieRig {
       parent.add(g);
       return g;
     };
-    const B = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d);
+    const B = (w: number, h: number, d: number) => softBox(w, h, d, 0.4, 0.06);
     const skin = m(L.skin, 0.8);
     const w = L.thin ? 0.8 : 1;
 

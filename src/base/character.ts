@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { HAIR_COLOR, JACKET_COLORS, SKIN_TONES } from '../core/content';
 import type { Character, WeaponId } from '../core/types';
+import { softBox } from './softBox';
 
 type Look = Character['look'];
 
@@ -34,7 +35,7 @@ function part(parent: THREE.Object3D, geo: THREE.BufferGeometry, mat: THREE.Mate
   return mesh;
 }
 
-const B = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d);
+const B = (w: number, h: number, d: number) => softBox(w, h, d, 0.4, 0.06);
 
 function pivot(parent: THREE.Object3D, x: number, y: number, z = 0): THREE.Group {
   const g = new THREE.Group();

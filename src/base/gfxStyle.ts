@@ -1,7 +1,7 @@
-// Grafikstil (Polygon oder Comic). Ohne three.js, damit die Oberfläche ihn setzen kann,
+// Grafikstil (Polygon, Comic oder Gemalt). Ohne three.js, damit die Oberfläche ihn setzen kann,
 // bevor die 3D-Teile geladen sind.
 
-export type GraphicsStyle = 'poly' | 'comic';
+export type GraphicsStyle = 'poly' | 'comic' | 'painted';
 
 let current: GraphicsStyle = 'poly';
 
