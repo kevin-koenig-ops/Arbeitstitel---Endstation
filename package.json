@@ -12,6 +12,8 @@
     "gen:logo": "node scripts/gen-logo.mjs"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
     "@fontsource/barlow-semi-condensed": "^5.3.0",
     "@fontsource/covered-by-your-grace": "^5.3.0",
     "@fontsource/doto": "^5.3.0",
@@ -19,6 +21,7 @@
     "three": "^0.169.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
     "@types/geojson": "^7946.0.16",
     "@types/three": "^0.169.0",
     "typescript": "^5.9.3",

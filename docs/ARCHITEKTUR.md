@@ -84,10 +84,11 @@ Ohne Framework, kleine Hilfsfunktion `h()` in `ui/dom.ts`. Jeder Bildschirm ist 
 - **Demo-Dorf:** `map/demoWorld.json`, erzeugt von `scripts/gen-demo-world.mjs`. Gleiche Ebenen- und Klassennamen wie die echten Kacheln, deshalb gilt derselbe Stil.
 - **Echte Orte:** `GameMap.poiCandidates()` liest Supermärkte, Apotheken, Haltestellen usw. aus den geladenen Kacheln. Welche OSM-Werte zu welcher Fundstelle werden, steht in `core/content.ts` (`POI_KINDS`).
 
-## Zwei Build-Ziele
+## Build-Ziele
 
 - `npm run build`: normale Web-App für GitHub Pages (MapLibre gebündelt, PWA-Manifest).
 - `npm run build:preview`: eine einzige HTML-Datei für die Vorschau in Claude (MapLibre per CDN, nur Demo-Dorf und Simulation).
+- **Android-App (APK):** baut GitHub bei jedem Push (`.github/workflows/apk.yml`) und legt sie unter Releases ab. Capacitor (`capacitor.config.ts`) packt `dist/` in eine App. Der Ordner `android/` wird jedes Mal neu erzeugt und ist nicht im Repo; `scripts/android-prepare.mjs` passt ihn an (Icon und Startbild aus `native/android/res`, Standort-Rechte, Querformat, Versionsnummer). Signiert mit einem Test-Schlüssel (`native/android/test-signing.jks`), für den Play Store kommt später ein geheimer. `services/native.ts` erkennt, ob das Spiel als App läuft.
 
 ## 3D-Endstation und Spielfigur
 

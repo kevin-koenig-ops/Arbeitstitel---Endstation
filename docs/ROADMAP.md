@@ -80,7 +80,7 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 ## Technik nebenher
 
 - **Offline-Modus:** Karte der Umgebung zwischenspeichern (Service Worker).
-- **Echte App** (Capacitor): zuerst eine Android-APK, die GitHub bei jedem Hochladen baut (zum Selbst-Installieren), später Play Store (einmalig 25 $) und App Store (99 €/Jahr, braucht einen Mac). Schritte und Kilometer im Hintergrund über Apple Health / Health Connect (nur Kilometer, keine Orte), optional Hintergrund-GPS.
+- **Echte App** (Capacitor): Android-APK zum Selbst-Installieren läuft, GitHub baut sie bei jedem Hochladen (Download: Releases, „endstation.apk“). Später Play Store (einmalig 25 $) und App Store (99 €/Jahr, braucht einen Mac). Schritte und Kilometer im Hintergrund über Apple Health / Health Connect (nur Kilometer, keine Orte), optional Hintergrund-GPS.
 - **Benachrichtigungen:** freundlich und abschaltbar („Dein Eintopf ist fertig“), nie Druck.
 - **Smartwatch-Anzeige.**
 

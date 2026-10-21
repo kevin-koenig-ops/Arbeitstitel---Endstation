@@ -3,6 +3,7 @@
 import { WORLD_SEED } from '../config';
 import { GuestAuth } from '../services/auth';
 import { LocalBackend, type GameBackend } from '../services/backend';
+import { isNativeApp } from '../services/native';
 import { SettingsStore } from '../services/settings';
 import { h, reducedMotion } from './dom';
 import { characterScreen } from './screens/character';
@@ -80,7 +81,8 @@ export async function createApp(root: HTMLElement) {
     },
   };
 
-  // Am Handy beim ersten Antippen ins Vollbild und Querformat (wo der Browser das erlaubt)
+  // Am Handy beim ersten Antippen ins Vollbild und Querformat (wo der Browser das erlaubt).
+  // Die Android-App ist schon von sich aus Vollbild und quer.
   const coarse = () => {
     try {
       return matchMedia('(pointer: coarse)').matches;
@@ -89,7 +91,7 @@ export async function createApp(root: HTMLElement) {
     }
   };
   const goLandscape = () => {
-    if (!app.settings.get().fullscreen || !coarse() || document.fullscreenElement) return;
+    if (isNativeApp() || !app.settings.get().fullscreen || !coarse() || document.fullscreenElement) return;
     const el = document.documentElement as HTMLElement & { requestFullscreen?: (o?: FullscreenOptions) => Promise<void> };
     el.requestFullscreen?.({ navigationUI: 'hide' })
       .then(() => (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.('landscape'))
