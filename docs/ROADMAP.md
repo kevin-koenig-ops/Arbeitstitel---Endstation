@@ -94,6 +94,8 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 
 ## Ideen für irgendwann
 
+- **Legenden einmal im Jahr:** seltene Wesen wie Waldriese, Hungermann, Wolpertinger oder der weiße Hirsch, mit Gerüchten vorab, Spuren und einer Trophäe. Verpassen kostet nichts (Details im [Konzept](KONZEPT.md)).
+- **Gelände aus echten Daten:** Höhe (Hügel, Täler, Aussicht), Bodenfeuchte und Frost aus dem Wetterdienst, Untergrund aus der Karte (Wald, Acker, Sand, Moor, Schotterweg). Siehe Antwort vom 22.10.
 - **Zuhause im echten Gebäude:** Beim Einrichten nimmt das Zuhause den echten Grundriss, die Stockwerke und das Grundstück des Gebäudes an dieser Stelle aus den Kartendaten (Low-Poly, nur auf dem Gerät). So kann man sich überall einrichten: in der Scheune am Dorfrand oder im leeren Laden um die Ecke. (Street View und Googles 3D-Städte gehen nicht: nur zum Anschauen erlaubt, kein Nachbauen, kostet pro Abruf.)
 - **Begleiter kämpfen mit (großes Update):** Hund oder Bewohner stehen im Kampf neben dir und bringen eigene Karten ins Deck (heilen, Falle stellen, ablenken).
 - Weitere Haustiere, die mitlaufen und in der Basis wohnen

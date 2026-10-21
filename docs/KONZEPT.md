@@ -54,6 +54,19 @@ Vorbild ist Animal Crossing: Die Welt läuft in echter Zeit mit, jeden Tag gibt 
 - **Jahreszeiten und Feiertage:** Pilze im Herbst, der erste Schnee, Lichterketten im Dezember, Halloween. Manche Funde gibt es nur zu bestimmten Zeiten, sie kommen aber jedes Jahr wieder.
 - **Sich ausdrücken:** Figur einkleiden, eigene Schilder und Plakate gestalten, Fotomodus zum Teilen.
 
+### Legenden: einmal im Jahr (Idee, 22.10.2026)
+
+Am Funk erzählt man sich von Wesen, die kaum jemand gesehen hat, so wie früher von Bigfoot oder dem Wendigo. Einmal im Jahr zeigt sich eines davon, irgendwo. Passend zur Lore ist nichts davon übernatürlich: Es sind seltene Launen des Flux, einmalige Formen, die so nur ein Mal entstanden sind.
+
+- **Beispiele:**
+  - Der Waldriese: ein riesiger, behaarter Mensch, der seit dem Zusammenbruch allein im Wald lebt (wie Bigfoot).
+  - Der Hungermann: ausgemergelt, mit Kalkauswüchsen am Schädel wie ein Geweih, satt wird er nie (wie der Wendigo).
+  - Der Wolpertinger: ein Feldhase mit kleinem Kalkgeweih, aus der bayerischen Sage, hier echt.
+  - Der weiße Hirsch: ganz ohne Farbe, sehr scheu.
+- **Ablauf:** Wochen vorher Gerüchte über Funk und Zettel. Dann gibt es etwa zwei Wochen lang Sichtungen in einer Gegend: Spuren, Haare am Zaun, ein zerwühltes Lager. Das Wesen selbst trifft man selten, an wechselnden Orten.
+- **Belohnung:** Jedes Wesen hat einen eigenen Kampf oder eine eigene Begegnung mit besonderen Karten und eine einmalige Trophäe fürs Zuhause.
+- **Kein Zwang:** Wer die Zeit verpasst, verliert nichts. Schon eine gefundene Spur ergibt den Eintrag im Bestiarium, und nächstes Jahr kommt das nächste Wesen (oder dasselbe wieder).
+
 ## Der rote Faden: warum man dranbleibt (geplant)
 
 Am Handy braucht es einen Sog: etwas, das man erleben will, ein Rätsel, das man lösen will, und ein Ziel, auf das man hinarbeitet. Der Sog kommt aus Neugier und Vorfreude, nie aus Angst, etwas zu verpassen.
