@@ -255,10 +255,11 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
       type: 'hillshade',
       source: 'dem',
       paint: {
-        'hillshade-exaggeration': z([[10, 0.65], [14, 0.55], [17, 0.42], [20, 0.3]]),
-        'hillshade-shadow-color': 'rgba(58, 46, 30, 0.6)',
-        'hillshade-highlight-color': 'rgba(255, 246, 222, 0.4)',
-        'hillshade-accent-color': 'rgba(70, 58, 40, 0.3)',
+        // Kräftig, sonst geht das Gelände unter den Texturen verloren
+        'hillshade-exaggeration': z([[10, 1], [15, 0.95], [18, 0.8], [20, 0.7]]),
+        'hillshade-shadow-color': 'rgba(28, 20, 10, 1)',
+        'hillshade-highlight-color': 'rgba(255, 240, 200, 0.9)',
+        'hillshade-accent-color': 'rgba(40, 30, 16, 0.5)',
         'hillshade-illumination-direction': 315,
         'hillshade-illumination-anchor': 'map',
       },
