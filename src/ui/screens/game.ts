@@ -24,6 +24,7 @@ import { Joystick, useButton } from '../joystick';
 import { append, clear, h, svgEl } from '../dom';
 import { openPackPanel, type PackTab } from '../game/packPanel';
 import { getBasePlace } from '../../services/basePlace';
+import { seasonOf } from '../../services/settings';
 import { openBattle } from '../game/battle';
 import { AmbienceController, ambienceEffects, currentAmbience, guardSightM, PHASE_NAMES, WEATHER_NAMES, type Ambience } from '../game/ambience';
 import { Particles } from '../game/dust';
@@ -749,6 +750,7 @@ export function gameScreen(app: App): Screen {
   let lastControl = app.settings.get().control;
   const offSettings = app.settings.onChange((st) => {
     gm?.setWaterMotion(st.waterMotion);
+    void gm?.setSeason(seasonOf(st));
     if (st.control === lastControl) return;
     lastControl = st.control;
     if (provider) setupJoystick();
@@ -1104,6 +1106,7 @@ export function gameScreen(app: App): Screen {
         mode: mapMode,
         start,
         waterMotion: app.settings.get().waterMotion,
+        season: seasonOf(app.settings.get()),
         onTap: (p) => {
           sheet.close();
           if (provider?.kind === 'sim' && !joy) walkTo(p);

@@ -2,6 +2,7 @@
 // noch kein Bild gibt, zur Laufzeit auf ein Canvas gezeichnete Muster.
 
 import { rngFrom } from '../core/rng';
+import type { Season } from '../services/settings';
 import ackerErde from '../assets/textures/acker-erde.webp';
 import ackerGruen from '../assets/textures/acker-gruen.webp';
 import ackerKorn from '../assets/textures/acker-korn.webp';
@@ -36,28 +37,54 @@ const IMAGES: Record<string, { url: string; pr: number }> = {
   'pat-farm-c': { url: ackerKorn, pr: 2.5 },
   'pat-farm': { url: ackerErde, pr: 2.5 },
 };
-const loaded = new Map<string, { data: ImageData; pixelRatio: number }>();
+const loaded = new Map<string, { data: ImageData; pixelRatio: number; url: string }>();
 
-/** Vor dem Kartenstart aufrufen: lädt die Bild-Texturen (fehlt eins, bleibt das gezeichnete Muster). */
-export async function loadTextures(): Promise<void> {
+/** Alle Bilder im Texturen-Ordner, auch die je Jahreszeit (sobald Kevin sie liefert). */
+const ALL_FILES = import.meta.glob('../assets/textures/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+const fileUrl = (name: string): string | undefined => ALL_FILES[`../assets/textures/${name}.webp`];
+const SEASON_NAME: Record<Season, string> = { spring: 'fruehling', summer: 'sommer', autumn: 'herbst', winter: 'winter' };
+/** Muster mit eigenen Bildern je Jahreszeit, z. B. wiese-herbst.webp. Fehlt eins, bleibt das normale. */
+const SEASONAL: Record<string, string> = {
+  'pat-meadow': 'wiese',
+  'pat-grass': 'rasen',
+  'pat-forest-floor': 'wald',
+  'pat-farm': 'acker-a',
+  'pat-farm-a': 'acker-a',
+  'pat-farm-b': 'acker-b',
+  'pat-farm-c': 'acker-b',
+  'pat-wetland': 'sumpf',
+};
+
+/**
+ * Vor dem Kartenstart aufrufen: lädt die Bild-Texturen (fehlt eins, bleibt das gezeichnete Muster).
+ * Mit Jahreszeit: wo es ein Bild für diese Jahreszeit gibt, wird es genommen.
+ * Gibt die Muster zurück, die sich gegenüber vorher geändert haben.
+ */
+export async function loadTextures(season?: Season): Promise<string[]> {
+  const changed: string[] = [];
   await Promise.all(
     Object.entries(IMAGES).map(async ([id, { url, pr }]) => {
-      if (loaded.has(id)) return;
+      const seasonal = season && SEASONAL[id] ? fileUrl(`${SEASONAL[id]}-${SEASON_NAME[season]}`) : undefined;
+      const want = seasonal ?? url;
+      const cur = loaded.get(id);
+      if (cur?.url === want) return;
       try {
         const img = new Image();
-        img.src = url;
+        img.src = want;
         await img.decode();
         const c = document.createElement('canvas');
         c.width = img.naturalWidth;
         c.height = img.naturalHeight;
         const ctx = c.getContext('2d')!;
         ctx.drawImage(img, 0, 0);
-        loaded.set(id, { data: ctx.getImageData(0, 0, c.width, c.height), pixelRatio: pr });
+        loaded.set(id, { data: ctx.getImageData(0, 0, c.width, c.height), pixelRatio: pr, url: want });
+        if (cur) changed.push(id);
       } catch (err) {
         console.warn('[Textur]', id, err);
       }
     }),
   );
+  return changed;
 }
 
 const PR = 2; // Pixeldichte der Muster

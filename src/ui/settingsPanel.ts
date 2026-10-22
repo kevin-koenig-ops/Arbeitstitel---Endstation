@@ -6,6 +6,10 @@ import type { App } from './app';
 import { h, svgEl } from './dom';
 import { flagSvg, LANGUAGES } from './flags';
 
+type Cat = 'general' | 'map' | 'control' | 'graphics' | 'test' | 'account';
+/** Zuletzt offener Bereich (bleibt beim nächsten Öffnen). */
+let lastCat: Cat = 'general';
+
 export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): HTMLElement {
   const s = app.settings;
 
@@ -39,7 +43,7 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
   waterToggle.checked = s.get().waterMotion;
 
 
-  const select = <K extends 'testPhase' | 'testWeather'>(key: K, id: string, options: [Settings[K], string][]) => {
+  const select = <K extends 'testPhase' | 'testWeather' | 'testSeason'>(key: K, id: string, options: [Settings[K], string][]) => {
     const sel = h('select', { id, class: 'select', onchange: () => s.set({ [key]: sel.value } as Partial<Settings>) }, options.map(([v, label]) => h('option', { value: String(v) }, label)));
     sel.value = String(s.get()[key]);
     return sel;
@@ -58,6 +62,14 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
     ['storm', 'Gewitter'],
     ['snow', 'Schnee'],
     ['fog', 'Nebel'],
+  ]);
+
+  const seasonSelect = select('testSeason', 'set-season', [
+    ['auto', 'Echt (Kalender)'],
+    ['spring', 'Frühling'],
+    ['summer', 'Sommer'],
+    ['autumn', 'Herbst'],
+    ['winter', 'Winter'],
   ]);
 
   let armed = false;
@@ -120,72 +132,83 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
     ? h('p', { class: 'note' }, 'In dieser Vorschau gibt es nur das Demo-Dorf und Tippen-zum-Laufen. Echte Karte und GPS laufen in der App-Version auf dem Handy.')
     : null;
 
-  return h(
-    'div',
-    { class: 'settings' },
-    h(
-      'section',
-      { class: 'set-group' },
-      h('h2', { id: 'lbl-lang' }, 'Sprache'),
-      h('p', { class: 'note' }, 'Bisher gibt es das Spiel nur auf Deutsch. Die anderen Sprachen kommen, sobald die Texte fertig sind.'),
-      langGrid,
-    ),
-    h(
-      'section',
-      { class: 'set-group' },
-      h('h2', null, 'Karte & Standort'),
-      h('div', { class: 'set-row' }, h('div', { class: 'set-label', id: 'lbl-map' }, 'Karte', h('small', null, 'Echte Umgebung oder das fiktive Dorf Altenbrück')), segmented('map', 'lbl-map', [['real', 'Echt'], ['demo', 'Demo-Dorf']], IS_PREVIEW)),
-      h('div', { class: 'set-row' }, h('div', { class: 'set-label', id: 'lbl-loc' }, 'Standort', h('small', null, 'GPS draußen, Simulation zum Testen drinnen')), segmented('location', 'lbl-loc', [['gps', 'GPS'], ['sim', 'Simulation']], IS_PREVIEW)),
-      previewNote,
-      h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-vibration' }, 'Vibration', h('small', null, 'Kurz vibrieren, wenn eine Fundstelle in Reichweite ist')), vib),
-      h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-weather' }, 'Echtes Wetter', h('small', null, 'Regen, Schnee und Nebel wie draußen. Dafür geht dein Standort, auf etwa 10 km gerundet, an Open-Meteo.')), weatherToggle),
-    ),
-    h(
-      'section',
-      { class: 'set-group' },
-      h('h2', null, 'Steuerung'),
-      h(
-        'div',
-        { class: 'set-row' },
-        h('div', { class: 'set-label', id: 'lbl-ctrl' }, 'Figur bewegen', h('small', null, 'Antippen: Figur läuft zur Stelle, wie bei Die Sims. Joystick: selbst steuern, mit Benutzen-Taste. Gilt zu Hause und in der Simulation.')),
-        segmented('control', 'lbl-ctrl', [
-          ['tap', 'Antippen'],
-          ['joystick', 'Joystick'],
-        ]),
-      ),
-      h(
-        'div',
-        { class: 'set-row' },
-        h('div', { class: 'set-label', id: 'lbl-lgames' }, 'Minispiele beim Durchsuchen', h('small', null, 'Schloss knacken, aufhebeln, wühlen: Wer es gut macht, findet mehr. Aus: immer ein normales Ergebnis.')),
-        segmented('lootGames', 'lbl-lgames', [
-          ['on', 'An'],
-          ['off', 'Aus'],
-        ]),
-      ),
-      h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-water' }, 'Bewegtes Wasser', h('small', null, 'Wellen und Glitzern auf der Karte und am See. Aus spart etwas Akku.')), waterToggle),
-      h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-full' }, 'Vollbild', h('small', null, 'Am Handy beim Spielen ins Vollbild und im Querformat bleiben (geht nicht in jedem Browser).')), fullToggle),
-    ),
-    h(
-      'section',
-      { class: 'set-group' },
-      h('h2', null, 'Zum Ausprobieren'),
-      h('p', { class: 'note' }, 'Tageszeit und Wetter erzwingen, um die Stimmungen zu sehen. Ändert nur die Optik, nicht Beute oder Gegner.'),
-      h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-phase' }, 'Tageszeit'), phaseSelect),
-      h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-wx' }, 'Wetter'), weatherSelect),
-    ),
-    h(
-      'section',
-      { class: 'set-group' },
-      h('h2', null, 'Konto'),
-      h('div', { class: 'set-row' }, h('div', { class: 'set-label' }, 'Gast auf diesem Gerät', h('small', null, 'Dein Spielstand liegt nur auf diesem Gerät.')), h('button', { class: 'btn ghost small', type: 'button', disabled: true }, 'Google · bald')),
-    ),
-    h(
-      'section',
-      { class: 'set-group' },
-      h('h2', null, 'Datenschutz'),
-      h('p', { class: 'note' }, 'Dein genauer Standort verlässt dein Gerät nicht. Für die echte Karte lädt die App Kartenkacheln von OpenFreeMap; dabei sieht der Kartenserver nur, welcher Kartenausschnitt geladen wird. Für echtes Wetter geht ein auf etwa 10 km gerundeter Ort an Open-Meteo. Das kannst du oben ausschalten. Den Ort deines Zuhauses speichert nur dieses Gerät; andere Spieler sehen ihn nie.'),
-    ),
-    h('section', { class: 'set-group' }, h('h2', null, 'Spielstand'), del),
-    h('p', { class: 'version' }, `Version ${GAME_VERSION}${BUILD_STAMP ? ` (Stand ${BUILD_STAMP})` : ''} · Kartendaten © OpenStreetMap-Mitwirkende`),
-  );
+  // Unterpunkte: eine Leiste oben, darunter immer nur ein Bereich
+  const row = (label: HTMLElement, control: HTMLElement | null) => h('div', { class: 'set-row' }, label, control);
+  const lbl = (forId: string, title: string, hint?: string) => h('label', { class: 'set-label', for: forId }, title, hint ? h('small', null, hint) : null);
+  const cats: [Cat, string, (HTMLElement | null)[]][] = [
+    [
+      'general',
+      'Allgemein',
+      [
+        h('h2', { id: 'lbl-lang' }, 'Sprache'),
+        h('p', { class: 'note' }, 'Bisher gibt es das Spiel nur auf Deutsch. Die anderen Sprachen kommen, sobald die Texte fertig sind.'),
+        langGrid,
+        row(lbl('set-vibration', 'Vibration', 'Kurz vibrieren, wenn eine Fundstelle in Reichweite ist'), vib),
+        row(lbl('set-full', 'Vollbild', 'Am Handy beim Spielen ins Vollbild und im Querformat bleiben (geht nicht in jedem Browser).'), fullToggle),
+      ],
+    ],
+    [
+      'map',
+      'Karte & Standort',
+      [
+        row(h('div', { class: 'set-label', id: 'lbl-map' }, 'Karte', h('small', null, 'Echte Umgebung oder das fiktive Dorf Altenbrück')), segmented('map', 'lbl-map', [['real', 'Echt'], ['demo', 'Demo-Dorf']], IS_PREVIEW)),
+        row(h('div', { class: 'set-label', id: 'lbl-loc' }, 'Standort', h('small', null, 'GPS draußen, Simulation zum Testen drinnen')), segmented('location', 'lbl-loc', [['gps', 'GPS'], ['sim', 'Simulation']], IS_PREVIEW)),
+        previewNote,
+        row(lbl('set-weather', 'Echtes Wetter', 'Regen, Schnee und Nebel wie draußen. Dafür geht dein Standort, auf etwa 10 km gerundet, an Open-Meteo.'), weatherToggle),
+      ],
+    ],
+    [
+      'control',
+      'Steuerung',
+      [
+        row(
+          h('div', { class: 'set-label', id: 'lbl-ctrl' }, 'Figur bewegen', h('small', null, 'Antippen: Figur läuft zur Stelle, wie bei Die Sims. Joystick: selbst steuern, mit Benutzen-Taste. Gilt zu Hause und in der Simulation.')),
+          segmented('control', 'lbl-ctrl', [
+            ['tap', 'Antippen'],
+            ['joystick', 'Joystick'],
+          ]),
+        ),
+        row(
+          h('div', { class: 'set-label', id: 'lbl-lgames' }, 'Minispiele beim Durchsuchen', h('small', null, 'Schloss knacken, aufhebeln, wühlen: Wer es gut macht, findet mehr. Aus: immer ein normales Ergebnis.')),
+          segmented('lootGames', 'lbl-lgames', [
+            ['on', 'An'],
+            ['off', 'Aus'],
+          ]),
+        ),
+      ],
+    ],
+    ['graphics', 'Grafik', [row(lbl('set-water', 'Bewegtes Wasser', 'Wellen und Glitzern auf der Karte und am See. Aus spart etwas Akku.'), waterToggle)]],
+    [
+      'test',
+      'Testen',
+      [
+        h('p', { class: 'note' }, 'Zum Ausprobieren: Tageszeit, Wetter und Jahreszeit erzwingen, um die Stimmungen zu sehen. Ändert nur die Optik, nicht Beute oder Gegner.'),
+        row(lbl('set-phase', 'Tageszeit'), phaseSelect),
+        row(lbl('set-wx', 'Wetter'), weatherSelect),
+        row(lbl('set-season', 'Jahreszeit', 'Laub, kahle Bäume, Schnee und später die Bodenbilder je Jahreszeit'), seasonSelect),
+      ],
+    ],
+    [
+      'account',
+      'Konto & Daten',
+      [
+        row(h('div', { class: 'set-label' }, 'Gast auf diesem Gerät', h('small', null, 'Dein Spielstand liegt nur auf diesem Gerät.')), h('button', { class: 'btn ghost small', type: 'button', disabled: true }, 'Google · bald')),
+        h('h2', null, 'Datenschutz'),
+        h('p', { class: 'note' }, 'Dein genauer Standort verlässt dein Gerät nicht. Für die echte Karte lädt die App Kartenkacheln von OpenFreeMap; dabei sieht der Kartenserver nur, welcher Kartenausschnitt geladen wird. Für echtes Wetter geht ein auf etwa 10 km gerundeter Ort an Open-Meteo. Das kannst du unter „Karte & Standort“ ausschalten. Den Ort deines Zuhauses speichert nur dieses Gerät; andere Spieler sehen ihn nie.'),
+        h('h2', null, 'Spielstand'),
+        del,
+        h('p', { class: 'version' }, `Version ${GAME_VERSION}${BUILD_STAMP ? ` (Stand ${BUILD_STAMP})` : ''} · Kartendaten © OpenStreetMap-Mitwirkende`),
+      ],
+    ],
+  ];
+  const tabs = h('nav', { class: 'set-tabs', role: 'tablist', 'aria-label': 'Bereiche' });
+  const body = h('section', { class: 'set-group', role: 'tabpanel' });
+  const show = (cat: Cat) => {
+    lastCat = cat;
+    [...tabs.children].forEach((b, i) => b.setAttribute('aria-selected', String(cats[i][0] === cat)));
+    body.replaceChildren(...(cats.find((c) => c[0] === cat)![2].filter(Boolean) as HTMLElement[]));
+  };
+  for (const [cat, name] of cats) tabs.append(h('button', { type: 'button', role: 'tab', class: 'set-tab', onclick: () => show(cat) }, name));
+  show(lastCat);
+  return h('div', { class: 'settings' }, tabs, body);
 }

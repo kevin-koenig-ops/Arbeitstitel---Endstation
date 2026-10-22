@@ -235,7 +235,13 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .unlocks-calm { margin: 14px 0 0; color: var(--amber); font-size: 16px; }
 
 /* --- Einstellungen ------------------------------------------------------------------ */
-.settings { display: flex; flex-direction: column; gap: 22px; }
+.settings { display: flex; flex-direction: column; gap: 16px; }
+/* Unterpunkte der Einstellungen */
+.set-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.set-tab { border: 1px solid var(--line); background: var(--steel); color: var(--dust); border-radius: 999px; padding: 8px 14px; font: 600 14px var(--font-ui); cursor: pointer; }
+.set-tab[aria-selected="true"] { background: var(--amber); border-color: var(--amber); color: var(--ink); }
+.set-group > h2 + .note, .set-group > .note + .lang-grid { margin-top: 0; }
+.set-group > h2:not(:first-child) { margin-top: 16px; }
 .set-group { display: flex; flex-direction: column; gap: 4px; }
 .set-group h2 { margin: 0 0 6px; font: 600 13px/1 var(--font-ui); letter-spacing: 0.16em; text-transform: uppercase; color: var(--dust); }
 .set-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }

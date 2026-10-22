@@ -12,6 +12,7 @@ import { FogOfWar } from './fogOfWar';
 import { WaterAnimation } from './waterAnim';
 import demoWorld from './demoWorld.json';
 import { loadTextures, patternImage } from './patterns';
+import { seasonMonth, type Season } from '../services/settings';
 import { buildStyle, DECOR_MINZOOM, loadRealSource } from './style';
 import type { WalkInput } from './walkNet';
 import type { HintKind } from '../core/content';
@@ -59,6 +60,8 @@ interface Options {
   start: LatLon;
   /** Wasser bewegt sich (Einstellung). */
   waterMotion: boolean;
+  /** Jahreszeit für die Optik (Laub, Schnee, Bodenbilder). */
+  season: Season;
   onTap: (p: LatLon) => void;
   onSpotTap: (id: string) => void;
   onFollowChange: (follow: boolean) => void;
@@ -113,7 +116,7 @@ export class GameMap {
 
   async init() {
     const { mode, start } = this.opts;
-    const [source] = await Promise.all([mode === 'real' ? loadRealSource() : null, loadTextures()]);
+    const [source] = await Promise.all([mode === 'real' ? loadRealSource() : null, loadTextures(this.opts.season)]);
     const style = source ? buildStyle('real', source) : buildStyle('demo');
     // generateId: jede Fläche bekommt eine Nummer (damit Äcker unterschiedlich aussehen)
     if (mode === 'demo') style.sources.demo = { type: 'geojson', data: DEMO.geojson, generateId: true };
@@ -208,6 +211,7 @@ export class GameMap {
     this.loaded = true;
     this.fog = new FogOfWar(this.map);
     this.water = new WaterAnimation(this.map, this.opts.waterMotion);
+    this.applySnow();
     if (this.pendingRange) this.setRange(this.pendingRange.c, this.pendingRange.r);
     if (this.pendingCaches) this.setCaches(this.pendingCaches);
     void this.initTrees();
@@ -538,7 +542,7 @@ export class GameMap {
     const t0 = performance.now();
     try {
       const res = generateDecor(this.collectDecorInput(center, DECOR_RADIUS_M + 250), center, DECOR_RADIUS_M, {
-        month: new Date().getMonth() + 1,
+        month: seasonMonth(this.opts.season),
         treeParts: !this.trees,
       });
       this.trees?.setTrees(res.trees, center);
@@ -800,6 +804,37 @@ export class GameMap {
     // Echte Läden liegen natürlich in Gebäuden; nur erfundene Fundstellen dürfen nicht in Häusern liegen
     return (p: LatLon, grid = true) =>
       rings.some((r) => inside(p, r) || nearEdge(p, r, 20)) || points.some((q) => distanceM(p, q) < 40) || (grid && buildings.some((r) => inside(p, r)));
+  }
+
+  /** Jahreszeit umgeschaltet (Testen): Laub und Büsche neu, Schnee, Bodenbilder der Jahreszeit. */
+  async setSeason(season: Season) {
+    if (season === this.opts.season) return;
+    this.opts.season = season;
+    if (!this.loaded) return;
+    this.decorCenter = null;
+    this.tilesDirty = true;
+    this.scheduleDecor();
+    this.applySnow();
+    for (const id of await loadTextures(season)) {
+      const img = patternImage(id);
+      if (!img || !this.map.hasImage(id)) continue;
+      this.map.removeImage(id);
+      this.map.addImage(id, img.data, { pixelRatio: img.pixelRatio });
+    }
+  }
+
+  /** Im Winter liegt eine dünne Schneeschicht über allem Boden (bis es eigene Winterbilder gibt). */
+  private applySnow() {
+    const on = this.opts.season === 'winter';
+    if (on && !this.map.getLayer('snow')) {
+      if (!this.map.getSource('snow')) {
+        this.map.addSource('snow', { type: 'geojson', data: { type: 'Polygon', coordinates: [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]]] } });
+      }
+      const before = ['hillshade', 'water-shore'].find((id) => this.map.getLayer(id));
+      this.map.addLayer({ id: 'snow', type: 'fill', source: 'snow', paint: { 'fill-color': '#eef1f2', 'fill-opacity': 0.5 } }, before);
+    } else if (!on && this.map.getLayer('snow')) {
+      this.map.removeLayer('snow');
+    }
   }
 
   /** Einstellung „Bewegtes Wasser“ geändert. */

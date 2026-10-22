@@ -87,6 +87,11 @@ const BUSH = ['#5f7a3a', '#6e8a44', '#557035', '#7a8a40'];
 const STONE = ['#9a958a', '#8a857a', '#a8a296'];
 const TRUNK = '#6a4f36';
 const DEAD = '#8a7c6a';
+/** Jahreszeiten: frisches Frühlingsgrün, kahle Äste und braune Büsche im Winter. */
+const SPRING = ['#8fb054', '#9cbc5e', '#82a64c'];
+const BARE = ['#7d6c58', '#74624f', '#86745e'];
+const BARE_BIRCH = '#d6cfc0';
+const BUSH_WINTER = ['#7a6a4e', '#6e6448', '#80704f'];
 const CARS = ['#9a5a3a', '#8a4a3a', '#5a6a7a', '#a8a294', '#5a554e', '#7a7a62', '#6a7a5a'];
 const CABIN = '#3a3c40';
 const PLINTH = '#6a6256';
@@ -395,6 +400,8 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
     trees.length = DECOR_LIMITS.trees;
   }
   const autumn = opts.month !== undefined && opts.month >= 9 && opts.month <= 11;
+  const winter = opts.month !== undefined && (opts.month === 12 || opts.month <= 2);
+  const spring = opts.month !== undefined && opts.month >= 3 && opts.month <= 5;
   const specs: TreeSpec[] = [];
   for (const t of trees) {
     const r = rngFrom('form', t.key);
@@ -405,7 +412,7 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
     const ll = P.toLL(t.p);
     const spec = (kind: TreeKind, color: string, size = s) => specs.push({ lon: ll[0], lat: ll[1], kind, s: Math.round(size * 100) / 100, rot: Math.round(rot * 100) / 100, color });
     if (t.where === 'bush') {
-      spec('bush', pick(r, BUSH), 0.7 + r() * 0.6);
+      spec('bush', pick(r, winter ? BUSH_WINTER : BUSH), 0.7 + r() * 0.6);
       continue;
     }
     if (t.where === 'rock') {
@@ -413,7 +420,7 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
       continue;
     }
     // Herbst: ein Teil der Laubbäume färbt sich
-    const leaf = () => (autumn && r() < 0.4 ? pick(r, AUTUMN) : pick(r, LEAF));
+    const leaf = () => (autumn && r() < 0.4 ? pick(r, AUTUMN) : spring && r() < 0.6 ? pick(r, SPRING) : pick(r, LEAF));
     if (roll < 0.08) {
       // abgestorbener Baum
       spec('dead', DEAD);
@@ -431,6 +438,12 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
         add(ngon(x, y, 1.9 * s, 7, rot + 0.5), 5.8 * s, 9.4 * s, c);
         add(ngon(x, y, 0.95 * s, 6, rot), 9.4 * s, 12.6 * s, c);
       }
+    } else if (winter && roll >= (t.forest ? 0.52 : 0.22)) {
+      // Winter: Laubbäume und Birken stehen kahl da (nur Äste)
+      const birch = roll < (t.forest ? 0.62 : 0.36);
+      const c = birch ? BARE_BIRCH : pick(r, BARE);
+      spec('dead', c, birch ? s * 0.9 : s * 1.1);
+      if (opts.treeParts) add(ngon(x, y, 0.4 * s, 5, rot), 0, 7 * s, c);
     } else if (roll < (t.forest ? 0.62 : 0.36)) {
       // Birke
       const c = autumn && r() < 0.5 ? '#d0b04a' : pick(r, BIRCH);
