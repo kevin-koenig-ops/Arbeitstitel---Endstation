@@ -88,6 +88,18 @@ export interface SpotKindDef {
   mementoChance: number;
 }
 
+/**
+ * Sichtweite auf der Karte (Meter, Tag, klare Sicht). Kleines (Pilze, Rucksäcke, Fässer,
+ * Pakete, Verstecke) sieht man erst aus der Nähe: es taucht auf, wenn man herankommt.
+ * Nachts und bei Nebel oder Staub kürzer, in offenen Gegenden und von Hügeln weiter.
+ */
+export const SIGHT = {
+  baseM: 150,
+  nightFactor: 0.65,
+  fogFactor: 0.55,
+  smallKinds: ['mushrooms', 'backpack', 'barrel', 'parcel', 'hide'] as readonly SpotKind[],
+};
+
 export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
   // --- überall verteilt (Grid) ---
   car: {

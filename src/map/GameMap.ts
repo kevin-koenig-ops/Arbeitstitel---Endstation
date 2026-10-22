@@ -37,6 +37,8 @@ export interface SpotView {
   cart?: boolean;
   /** Noch nie durchsucht (Erstfund-Bonus). */
   fresh?: boolean;
+  /** Taucht beim Näherkommen auf: mit kleinem Hüpfer einblenden. */
+  pop?: boolean;
 }
 
 /** Ein Trupp auf der Karte. */
@@ -698,6 +700,11 @@ export class GameMap {
           h('span', { class: 'spot-stake' }),
           h('span', { class: 'spot-guard', 'aria-hidden': 'true' }),
         );
+        if (v.pop) {
+          el.classList.add('spot-pop');
+          // Danach wieder frei für andere Bewegungen (Leuchten in Reichweite)
+          el.addEventListener('animationend', () => el.classList.remove('spot-pop'), { once: true });
+        }
         el.addEventListener('click', (ev) => {
           ev.stopPropagation();
           this.lastMarkerTap = Date.now();

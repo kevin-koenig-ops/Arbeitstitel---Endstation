@@ -1,7 +1,7 @@
 // Der Spielbildschirm: Karte, Standort, Fundstellen, HUD und Overlays.
 
 import { FALLBACK_START, IS_PREVIEW, VIEW_RADIUS_M } from '../../config';
-import { CACHE, ENEMIES, FOE_TACTICS, GEAR, HINT_NAMES, MAX_HEALTH, PATROL, REGIONS, RESOURCE_ORDER, RESOURCES, SPECIAL, SPECIAL_HINT, SURVIVAL_ORDER, TIER, WORLD_EVENT, WORLD_EVENTS } from '../../core/content';
+import { CACHE, ENEMIES, FOE_TACTICS, GEAR, HINT_NAMES, MAX_HEALTH, PATROL, REGIONS, RESOURCE_ORDER, RESOURCES, SIGHT, SPECIAL, SPECIAL_HINT, SURVIVAL_ORDER, TIER, WORLD_EVENT, WORLD_EVENTS } from '../../core/content';
 import { ExploredView, SECTOR_LEVELS, sectorOf } from '../../core/explore';
 import { bearingDeg, distanceM, formatDistance, offsetM } from '../../core/geo';
 import { rankOf } from '../../core/progress';
@@ -442,15 +442,26 @@ export function gameScreen(app: App): Screen {
     updateSpots();
   };
 
+  /** So weit sieht man gerade Kleines auf der Karte (Tageszeit, Wetter, Staub, Gegend, Aussicht). */
+  const sightM = () => {
+    const a = currentAmbience();
+    const dust = patrols?.conditions().dust ?? false;
+    return SIGHT.baseM * REGIONS[currentRegion()].view * viewBonus * (a.phase === 'night' ? SIGHT.nightFactor : 1) * (a.weather === 'fog' || dust ? SIGHT.fogFactor : 1);
+  };
+
   const updateSpots = () => {
     const s = app.backend.current();
     if (!gm || !s) return;
     const now = app.backend.now();
     const range = searchRangeM(s);
+    const sight = sightM();
     const views: SpotView[] = [];
     for (const spot of spots.values()) {
       const wait = readyAt(s, spot) - now;
       const d = fix ? distanceM(fix.pos, spot.pos) : Infinity;
+      // Kleines (Pilze, Rucksack, Fass …) taucht erst auf, wenn man nah genug ist
+      const small = SIGHT.smallKinds.includes(spot.kind);
+      if (small && d > Math.max(sight, range)) continue;
       const st = wait > 0 ? 'cooldown' : d <= range ? 'inrange' : 'ready';
       // Bei Nebel sieht man Wächter erst aus der Nähe
       const guard = wait > 0 || d > guardSightM() ? null : app.backend.guardFor(spot);
@@ -466,7 +477,7 @@ export function gameScreen(app: App): Screen {
         }
       } else if (d > range + 15) notified.delete(spot.id);
       const unknown = spot.source === 'special' && !s.discovered[spot.id] && st !== 'inrange' ? SPECIAL_HINT[spot.kind] : undefined;
-      views.push({ spot, state: st, guard, cart: !!cart, fresh: !seenSet(s).has(spotKey(spot.id)), unknown });
+      views.push({ spot, state: st, guard, cart: !!cart, fresh: !seenSet(s).has(spotKey(spot.id)), unknown, pop: small });
     }
     gm.setSpots(views);
     updatePointers();

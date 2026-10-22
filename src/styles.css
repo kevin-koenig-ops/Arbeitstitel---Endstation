@@ -1744,3 +1744,6 @@ button.base-res { align-items: center; padding: 3px 6px 3px 4px; border: 1px sol
 .base-panel .drawer-hint.tip b { color: var(--bp-amber); font-weight: 800; }
 .base-panel .drawer-hint .svg { display: inline-block; vertical-align: -3px; color: var(--bp-amber); }
 .base-panel .land-panel { background: #222a34; border-color: rgba(255, 255, 255, 0.1); }
+/* Kleines auf der Karte taucht beim Näherkommen mit einem Hüpfer auf */
+.spot.spot-pop .spot-badge { animation: spot-pop 0.5s cubic-bezier(0.3, 1.7, 0.5, 1) both; }
+@keyframes spot-pop { from { transform: scale(0.2) translateY(14px); opacity: 0; } }
