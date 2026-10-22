@@ -1,6 +1,6 @@
 # Hinweise für Claude
 
-Endzeit-Erkundungsspiel auf der echten Karte (Platzhalter-Titel „Nachhall“, früher „Endstation“; die Basis heißt „Zuhause“). Web-App mit Vite + TypeScript + MapLibre, ohne UI-Framework. Konzept: `docs/KONZEPT.md`, Architektur: `docs/ARCHITEKTUR.md`, nächste Schritte: `docs/ROADMAP.md`. Hintergrundgeschichte (Lore): `docs/LORE.md`.
+Endzeit-Erkundungsspiel auf der echten Karte (Titel „Home“, früher „Nachhall“ und „Endstation“; die Basis im Spiel heißt „Zuhause“). Web-App mit Vite + TypeScript + MapLibre, ohne UI-Framework. Konzept: `docs/KONZEPT.md`, Architektur: `docs/ARCHITEKTUR.md`, nächste Schritte: `docs/ROADMAP.md`. Hintergrundgeschichte (Lore): `docs/LORE.md`.
 
 ## Regeln
 

@@ -1,6 +1,6 @@
 {
-  "name": "Nachhall",
-  "short_name": "Nachhall",
+  "name": "Home",
+  "short_name": "Home",
   "description": "Endzeit-Erkundung auf der echten Karte",
   "lang": "de",
   "start_url": "./",

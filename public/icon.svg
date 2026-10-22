@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-<title>Nachhall</title>
+<title>Home</title>
 <defs>
 <radialGradient id="bg" cx="50%" cy="42%" r="70%"><stop offset="0" stop-color="#2a241c"/><stop offset="1" stop-color="#14120f"/></radialGradient>
 <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="10"/></filter>

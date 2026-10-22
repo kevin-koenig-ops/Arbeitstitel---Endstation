@@ -1,6 +1,6 @@
 // Zentrale Einstellungen. Titel und Version an einer Stelle.
 
-export const GAME_TITLE = 'Nachhall'; // Platzhalter-Titel (Arbeitstitel)
+export const GAME_TITLE = 'Home'; // Spieltitel (seit 22.10., vorher „Nachhall“)
 export const GAME_VERSION = '0.1.0';
 
 declare const __BUILD_STAMP__: string;

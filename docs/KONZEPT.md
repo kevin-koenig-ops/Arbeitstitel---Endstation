@@ -360,7 +360,7 @@ Name, Aussehen (Frisur, Hautton, Jacke) und eine Vorgeschichte mit kleinem Vorte
 
 ## Gestaltung
 
-Endzeit, aber zu Hause warm: dunkle Flächen mit warmem Bernstein als Akzent, klare Schrift (Barlow), Hauptmenü als schlichte Liste vor einem gemalten Bild. Fundbelege sehen aus wie Kassenzettel, Erinnerungsstücke sind handschriftliche Zettel. Titel „Nachhall“ ist nur ein Platzhalter; der alte Bus-Look (LED-Schrift, Linienplan) ist seit 21.10. raus.
+Endzeit, aber zu Hause warm: dunkle Flächen mit warmem Bernstein als Akzent, klare Schrift (Barlow), Hauptmenü als schlichte Liste vor einem gemalten Bild. Fundbelege sehen aus wie Kassenzettel, Erinnerungsstücke sind handschriftliche Zettel. Der Spieltitel heißt seit dem 22.10. „Home“ (vorher der Platzhalter „Nachhall“); der alte Bus-Look (LED-Schrift, Linienplan) ist seit 21.10. raus.
 
 **Gemalte Hintergrundbilder** für Start, Hauptmenü, Charaktererstellung, Einstieg, Kampf und Schauplätze.
 

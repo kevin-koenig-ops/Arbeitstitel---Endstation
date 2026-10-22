@@ -1,4 +1,4 @@
-# Nachhall (Platzhalter-Titel)
+# Home
 
 Ein Endzeit-Erkundungsspiel auf der echten Karte. Tagsüber gehst du draußen herum, findest Vorräte und Baupläne an echten Orten. Abends baust du dein Zuhause aus: ein eigenes Gelände in 3D, das du Stück für Stück zurückeroberst. Kein Zwang, kein Stress: Wer eine Pause macht, verliert nichts.
 
