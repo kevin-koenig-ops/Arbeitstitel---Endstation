@@ -7,7 +7,7 @@
 
 import { rngFrom, type Rng } from '../core/rng';
 import type { LatLon } from '../core/types';
-import type { FacadeKind, HouseSpec } from './houseMesh';
+import type { FacadeKind, HouseSpec, RoofKind } from './houseMesh';
 import { isHallKind, isShopKind, landmarkOf, type LandmarkKind, type PropKind, type PropSpec, type ShopKind } from './landmarks';
 
 type Pt = [number, number];
@@ -34,6 +34,8 @@ export interface DecorInput {
   meadows: RawPolygon[];
   /** Wohngebiete: Gartenbäume zwischen den Häusern */
   residential: RawPolygon[];
+  /** Gewerbe und Industrie: dort stehen Hallen */
+  industrial?: RawPolygon[];
   /** Fels und Geröll: Steinbrocken */
   rocks?: RawPolygon[];
   /** Seen, Teiche und Flüsse (Flächen): dort wächst nichts */
@@ -104,13 +106,43 @@ const FACADE_TINTS: Record<FacadeKind, [number, number, number][]> = {
     [1, 1, 1],
     [0.95, 0.93, 0.9],
   ],
+  platte: [
+    [1, 1, 1],
+    [0.95, 0.95, 0.97],
+    [1, 0.97, 0.92],
+  ],
+  holz: [
+    [1, 1, 1],
+    [0.88, 0.86, 0.84],
+    [1.05, 1, 0.94],
+  ],
+  halle: [
+    [1, 1, 1],
+    [0.94, 0.96, 1],
+    [1, 0.96, 0.9],
+  ],
 };
+/** Leichte Farbunterschiede über den Dachbildern (die Dachart bringt die Farbe schon mit). */
 const ROOF_TINTS: [number, number, number][] = [
   [1, 1, 1],
   [1, 1, 1],
-  [0.8, 0.7, 0.64],
-  [0.52, 0.52, 0.55],
+  [0.92, 0.9, 0.88],
+  [1.04, 1.02, 1],
 ];
+/** Dacharten mit Gewicht: Wohnhäuser, Scheunen, Hallen, Schuppen, Flachdächer. */
+type Weighted<T> = [T, number][];
+const ROOFS_HOUSE: Weighted<RoofKind> = [['ziegel', 3], ['biber', 2], ['beton', 2], ['schiefer', 1.5], ['moos', 1.5]];
+const ROOFS_BARN: Weighted<RoofKind> = [['wellblech', 3], ['ziegel', 2], ['moos', 2], ['teerpappe', 1.5], ['blech', 1]];
+const ROOFS_HALL: Weighted<RoofKind> = [['wellblech', 2], ['blech', 1]];
+const ROOFS_SHED: Weighted<RoofKind> = [['wellblech', 2], ['teerpappe', 2], ['blech', 1]];
+const FLATS_HOUSE: Weighted<RoofKind> = [['flach', 3], ['teerpappe', 2]];
+const FLATS_HALL: Weighted<RoofKind> = [['wellblech', 2], ['flach', 1.5], ['teerpappe', 1.5]];
+const FLATS_SHED: Weighted<RoofKind> = [['teerpappe', 2], ['wellblech', 1.5]];
+function pickW<T>(r: Rng, list: Weighted<T>): T {
+  let x = r() * list.reduce((s, [, w]) => s + w, 0);
+  for (const [v, w] of list) if ((x -= w) < 0) return v;
+  return list[list.length - 1][0];
+}
 const SOOT_TINT: [number, number, number] = [0.42, 0.38, 0.35];
 // Überwiegend grün, ein paar kränkliche und herbstliche Kronen
 const LEAF = ['#5f7a3a', '#6b8540', '#58703a', '#7a8f45', '#64803c', '#708a42', '#8a8a3e', '#a8873a'];
@@ -294,6 +326,18 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
   };
 
   // Gebäude ----------------------------------------------------------------------
+  // Lage: Gewerbe (Hallen), Wohngebiet oder draußen (dort auch Scheunen)
+  const zonePolys = (list: RawPolygon[] | undefined) =>
+    opts.houseMeshes
+      ? (list ?? []).filter((q) => roughlyNear(q.rings)).map((q) => {
+          const rings = toM(q.rings);
+          return { rings, b: bbox(rings[0]) };
+        })
+      : [];
+  const resZones = zonePolys(input.residential);
+  const workZones = zonePolys(input.industrial);
+  const inZone = (zs: { rings: Ring[]; b: ReturnType<typeof bbox> }[], p: Pt) => zs.some((z) => p[0] >= z.b.x0 && p[0] <= z.b.x1 && p[1] >= z.b.y0 && p[1] <= z.b.y1 && inPolygon(p, z.rings));
+  const zoneOf = (p: Pt): Zone => (inZone(workZones, p) ? 'work' : inZone(resZones, p) ? 'home' : 'open');
   const seenB = new Set<string>();
   const bGrid = new Grid<Ring>(40);
   const houseSpecs: HouseSpec[] = [];
@@ -312,6 +356,9 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
       if (isShopKind(def.kind)) shopPois.addBox({ x0: p[0], y0: p[1], x1: p[0], y1: p[1] }, poi);
       else propPois.push(poi);
     }
+  // Kirchen, Schulen, Rathäuser …: bleiben gemauert (nie Scheune, Halle oder Plattenbau)
+  const civic: Pt[] = [];
+  if (opts.houseMeshes) for (const q of input.pois ?? []) if (q.cls && CIVIC.includes(q.cls)) civic.push(P.toM([q.lon, q.lat]));
   /** Der Laden in diesem Gebäude (Punkt drin oder höchstens 8 m daneben). */
   const shopFor = (ring: Ring, c: Pt, rad: number): Poi | null => {
     let best: Poi | null = null;
@@ -356,7 +403,7 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
     if (opts.houseMeshes) {
       const poi = minH === 0 ? shopFor(ring, c, Math.sqrt(area)) : null;
       if (poi) poi.used = true;
-      const hs = houseSpec(ring, key, poi ? 'intact' : state, h0, minH * k, poi ? Math.max(3.4, h0 * 0.9) : wallTop, wall, simple, area);
+      const hs = houseSpec(ring, key, poi ? 'intact' : state, h0, minH * k, poi ? Math.max(3.4, h0 * 0.9) : wallTop, wall, simple, area, poi ? 'home' : civic.some((q) => inRing(q, ring)) ? 'civic' : zoneOf(c));
       if (poi) dressShop(hs, poi.kind as ShopKind, poi.sign, poi.p, rngFrom('laden', poi.key)(), area, h0);
       if (snowRoofs) {
         hs.snow = true;
@@ -919,18 +966,43 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
   return { parts, trees: specs, houses: houseSpecs, props, counts: { buildings, trees: trees.length, cars, street, gardens, forest, landmarks } };
 }
 
-/** Ein Haus für die 3D-Ebene: Fassade, Stockwerke, Dach. Zufall je Haus, immer gleich. */
-function houseSpec(ring: Ring, key: string, state: 'intact' | 'burnt' | 'ruin', h0: number, base: number, wallTop: number, wall: string, simple: boolean, area: number): HouseSpec {
+/** Lage eines Hauses: Wohngebiet, Gewerbe, draußen, oder ein öffentliches Gebäude. */
+type Zone = 'home' | 'work' | 'open' | 'civic';
+/** Kartenorte (Klassen), deren Gebäude gemauert bleiben. */
+const CIVIC = ['place_of_worship', 'school', 'college', 'university', 'hospital', 'town_hall', 'kindergarten', 'library', 'police', 'fire_station', 'museum'];
+
+/**
+ * Ein Haus für die 3D-Ebene: Wandbild, Stockwerke, Dach. Zufall je Haus, immer gleich.
+ * Die Kartendaten sagen nicht, ob es Scheune oder Wohnhaus ist; geraten wird aus Größe,
+ * Höhe und Lage (Gewerbegebiet: Hallen, draußen: auch Scheunen, hoch: Plattenbau).
+ */
+function houseSpec(ring: Ring, key: string, state: 'intact' | 'burnt' | 'ruin', h0: number, base: number, wallTop: number, wall: string, simple: boolean, area: number, zone: Zone): HouseSpec {
   const r = rngFrom('fassade', key);
-  // Schuppen und Garagen bleiben schlicht (ohne Fenster)
-  const small = area < 30;
   const f = r();
-  const facade: FacadeKind | null = small ? null : f < 0.5 ? 'putz' : f < 0.78 ? 'klinker' : h0 > 12 ? 'putz' : 'fachwerk';
+  const g = r();
+  // Schuppen und Garagen: Holz oder schlicht verputzt, höchstens 3,2 m hoch
+  const shed = area < 30;
+  const low = h0 <= 8;
+  let facade: FacadeKind | null;
+  if (shed) facade = f < 0.55 ? 'holz' : null;
+  else if (zone === 'civic' || (h0 > 12 && area < 200)) facade = f < 0.55 ? 'klinker' : 'putz';
+  else if (zone === 'work' && area >= 120) facade = f < 0.8 ? 'halle' : 'klinker';
+  else if (zone === 'open' && low && area >= 150) facade = f < 0.55 ? 'holz' : f < 0.75 ? 'halle' : g < 0.6 ? 'putz' : 'klinker';
+  else if (zone === 'open' && low && area >= 30 && f < 0.15) facade = 'holz';
+  else if (zone === 'home' && low && area > 250 && f < 0.25) facade = 'holz';
+  else if (h0 > 12) facade = f < 0.6 ? 'platte' : g < 0.5 ? 'putz' : 'klinker';
+  else facade = f < 0.5 ? 'putz' : f < 0.78 ? 'klinker' : 'fachwerk';
+  const hall = facade === 'halle';
+  const barn = facade === 'holz' && !shed;
   // Fenster stockwerksgenau: die Wand endet zwischen zwei Fensterreihen
   let top = wallTop;
-  if (facade && base === 0 && state !== 'ruin') top = 0.5 + Math.max(1, Math.round((wallTop - 0.5) / 2.9)) * 2.9;
+  if (shed) top = Math.min(wallTop, 2.6 + r() * 0.6);
+  else if (facade && base === 0 && state !== 'ruin') top = 0.5 + Math.max(1, Math.round((wallTop - 0.5) / 2.9)) * 2.9;
   const tint = facade ? (state === 'burnt' ? SOOT_TINT : pick(r, FACADE_TINTS[facade])) : rgb(wall);
-  const roof = state !== 'intact' ? 'none' : base > 0 || !simple || area > 450 ? 'flat' : small ? (r() < 0.5 ? 'flat' : 'pitched') : 'pitched';
+  const flatShape = base > 0 || !simple || area > 450 || facade === 'platte';
+  const roof = state !== 'intact' ? 'none' : flatShape ? 'flat' : shed ? (r() < 0.5 ? 'flat' : 'pitched') : 'pitched';
+  const roofKind = zone === 'civic' ? (r() < 0.6 ? 'schiefer' : 'ziegel') : pickW(r, shed ? ROOFS_SHED : hall ? ROOFS_HALL : barn ? ROOFS_BARN : ROOFS_HOUSE);
+  const flatKind = pickW(r, shed ? FLATS_SHED : hall ? FLATS_HALL : FLATS_HOUSE);
   return {
     ring,
     base,
@@ -940,10 +1012,14 @@ function houseSpec(ring: Ring, key: string, state: 'intact' | 'burnt' | 'ruin', 
     state,
     roof,
     roofTint: pick(r, ROOF_TINTS),
+    roofKind,
+    flatKind,
+    shed: shed || undefined,
     flatColor: rgb(pick(r, FLAT_ROOF)),
-    slope: 0.7 + r() * 0.3,
-    chimney: r() < 0.6,
-    plinth: state !== 'ruin',
+    // Hallen haben flache Dächer, Scheunen steile
+    slope: hall ? 0.22 + r() * 0.1 : barn ? 0.85 + r() * 0.2 : 0.7 + r() * 0.3,
+    chimney: !hall && !barn && !shed && r() < 0.6,
+    plinth: state !== 'ruin' && !hall,
     seed: r(),
   };
 }
@@ -963,10 +1039,15 @@ function dressShop(hs: HouseSpec, kind: ShopKind, sign: string, toward: Pt, rnd:
     hs.facade = null;
     hs.tint = HALL_TINTS[variant];
     hs.roof = 'flat';
+    hs.flatKind = hs.flatKind === 'wellblech' ? 'flach' : hs.flatKind;
     hs.chimney = false;
     hs.top = Math.max(5.2, Math.min(9, h0 * 0.85));
-  } else if (!hs.facade && area >= 30) {
+  } else if ((!hs.facade || hs.facade === 'holz' || hs.facade === 'halle') && area >= 30) {
+    // Läden im Erdgeschoss: ein verputztes Haus mit Wohnhausdach
     hs.facade = 'putz';
     hs.tint = [1, 1, 1];
+    hs.shed = undefined;
+    hs.slope = 0.7 + rnd * 0.3;
+    if (hs.roofKind === 'wellblech' || hs.roofKind === 'blech' || hs.roofKind === 'teerpappe') hs.roofKind = 'ziegel';
   }
 }

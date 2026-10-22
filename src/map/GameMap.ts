@@ -839,6 +839,7 @@ export class GameMap {
       greens: [...polys(landuse, ['park', 'cemetery', 'village_green', 'garden', 'allotments']), ...(real ? polys(query('park'), ['park']) : [])],
       meadows: polys(landcover, ['grass', 'meadow', 'scrub']),
       residential: polys(landuse, ['residential']),
+      industrial: polys(landuse, ['industrial', 'commercial', 'retail', 'garages']),
       rocks: polys(landcover, ['rock']),
       water: polys(query('water')),
       waterways: lines(query('waterway')),

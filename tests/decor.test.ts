@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { distanceM } from '../src/core/geo';
 import { DECOR_LIMITS, generateDecor, type DecorInput, type RawPolygon } from '../src/map/decor';
-import { buildHouses, orientedBox, type HouseSpec } from '../src/map/houseMesh';
+import { buildHouses, FACADES, orientedBox, ROOF_KINDS, roofKey, type HouseMeshes, type HouseSpec } from '../src/map/houseMesh';
 import world from '../src/map/demoWorld.json';
+
+/** Alle Dachflächen zusammen (jede Dachart hat ihr eigenes Mesh). */
+const roofPos = (m: HouseMeshes['meshes']) => ROOF_KINDS.flatMap((k) => m[roofKey(k)].pos);
 
 type F = { properties: Record<string, unknown>; geometry: { type: string; coordinates: unknown } };
 const feats = (world as unknown as { geojson: { features: F[] } }).geojson.features;
@@ -65,14 +68,14 @@ describe('Kartendetails', () => {
       expect(m.col.length).toBe(m.pos.length);
       expect(m.pos.every(Number.isFinite) && m.uv.every(Number.isFinite)).toBe(true);
     }
-    expect(meshes.roof.pos.length).toBeGreaterThan(0);
-    expect(meshes.putz.pos.length + meshes.klinker.pos.length + meshes.fachwerk.pos.length).toBeGreaterThan(0);
+    expect(roofPos(meshes).length).toBeGreaterThan(0);
+    expect(FACADES.reduce((n, f) => n + meshes[f].pos.length, 0)).toBeGreaterThan(0);
     expect(shadow.length % 9).toBe(0);
     // Immer gleich
-    expect(JSON.stringify(buildHouses(generateDecor(input, center, 400, { houseMeshes: true, month: 7 }).houses).meshes.roof.pos)).toBe(JSON.stringify(meshes.roof.pos));
+    expect(JSON.stringify(roofPos(buildHouses(generateDecor(input, center, 400, { houseMeshes: true, month: 7 }).houses).meshes))).toBe(JSON.stringify(roofPos(meshes)));
     // Winter: Schnee auf den Dächern
     const w = buildHouses(generateDecor(input, center, 400, { houseMeshes: true, month: 1 }).houses);
-    expect(w.meshes.roof.pos.length).toBe(0);
+    expect(roofPos(w.meshes).length).toBe(0);
     expect(w.meshes.roofSnow.pos.length).toBeGreaterThan(0);
   });
 
@@ -109,9 +112,9 @@ describe('Kartendetails', () => {
     const { meshes } = buildHouses([house]);
     // 4 Wände + 2 Giebel = 10 Dreiecke Fassade, 2 Dachflächen = 4 Dreiecke
     expect(meshes.putz.pos.length / 9).toBe(10);
-    expect(meshes.roof.pos.length / 9).toBe(4);
+    expect(meshes['roof-ziegel'].pos.length / 9).toBe(4);
     // First (höchster Punkt) 4 m über der Traufe (halbe Breite × Neigung 1)
-    const ys = meshes.roof.pos.filter((_, i) => i % 3 === 1);
+    const ys = meshes['roof-ziegel'].pos.filter((_, i) => i % 3 === 1);
     expect(Math.max(...ys)).toBeCloseTo(10.3, 5);
     // Das Wandbild läuft um das Haus herum: 40 m Umfang = 40/6 Bildbreiten
     expect(Math.max(...meshes.putz.uv.filter((_, i) => i % 2 === 0))).toBeCloseTo(40 / 6, 5);
@@ -124,5 +127,39 @@ describe('Kartendetails', () => {
     // Ein Nachbar an der Ostwand: dort keine Fenster mehr
     const blocked = buildHouses([{ ...house, neighbors: [[[12, 0], [20, 0], [20, 8], [12, 8]]] }]);
     expect(blocked.meshes.win.pos.length / 18).toBe(26 - 4 - 1);
+  });
+  it('Halle mit Fensterbändern und Rolltor, Plattenbau mit Fenstern mitten in den Platten', () => {
+    const base: HouseSpec = {
+      ring: [
+        [0, 0],
+        [30, 0],
+        [30, 15],
+        [0, 15],
+      ],
+      base: 0,
+      top: 6.3,
+      facade: 'halle',
+      tint: [1, 1, 1],
+      state: 'intact',
+      roof: 'flat',
+      roofTint: [1, 1, 1],
+      flatKind: 'wellblech',
+      flatColor: [0.5, 0.5, 0.5],
+      slope: 0.25,
+      chimney: false,
+      plinth: false,
+      seed: 0.5,
+    };
+    // Halle: Bänder aus 5,4-m-Stücken (je Langseite 4, je Stirnseite 2), über dem Tor fallen 2 weg
+    const hall = buildHouses([{ ...base, street: [15, -10] }]).meshes;
+    expect(hall.win.pos.length / 18).toBe(4 + 2 + 2 + 2 + 1);
+    expect(hall['roof-wellblech'].pos.length).toBeGreaterThan(0);
+    expect(hall.halle.pos.length).toBeGreaterThan(0);
+    // Plattenbau: Fenster 1,7 m breit, Mitte bei 1,5 m + 3 m · k (das Wandbild hat 3-m-Platten)
+    const pl = buildHouses([{ ...base, facade: 'platte', ring: [[0, 0], [12, 0], [12, 10], [0, 10]] }]).meshes;
+    const south: number[] = [];
+    for (let i = 0; i < pl.win.pos.length; i += 3) if (Math.abs(pl.win.pos[i + 2] - 0.03) < 1e-6) south.push(pl.win.pos[i]);
+    expect(south.length).toBe(4 * 2 * 6);
+    for (const x of south) expect([0.65, 2.35].some((v) => Math.abs((((x % 3) + 3) % 3) - v) < 1e-6)).toBe(true);
   });
 });

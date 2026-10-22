@@ -5,8 +5,9 @@
 # lässt sich der Rand mit einer verschobenen Kopie glätten, ohne dass Geisterfenster entstehen.
 #
 # Aufruf (braucht Python mit Pillow und numpy):
-#   python3 scripts/fassade.py kunst/texturen/haus-putz.jpg src/assets/textures/haus-putz.webp [oben=0] [unten=1] [Größe=512] [Übergang=0.06]
+#   python3 scripts/fassade.py kunst/texturen/haus-putz.jpg src/assets/textures/haus-putz.webp [oben=0] [unten=1] [Größe=512] [Übergang=0.06] [glätten=0]
 # oben/unten: welcher Teil der Höhe bleibt (0–1), z. B. um ein Gesims oben oder einen Sockel unten abzuschneiden.
+# glätten (0–1): große helle und dunkle Flecken angleichen, damit man auf großen Flächen kein Kachelmuster sieht.
 # Daneben entsteht <name>_check.png (3 × 3 gekachelt) zum Prüfen der Ränder; nicht einchecken.
 import sys
 import numpy as np
@@ -17,12 +18,17 @@ top = float(sys.argv[3]) if len(sys.argv) > 3 else 0.0
 bottom = float(sys.argv[4]) if len(sys.argv) > 4 else 1.0
 size = int(sys.argv[5]) if len(sys.argv) > 5 else 512
 band = float(sys.argv[6]) if len(sys.argv) > 6 else 0.06
+flatten = float(sys.argv[7]) if len(sys.argv) > 7 else 0.0
 
 im = Image.open(src).convert('RGB')
 w, h = im.size
 im = im.crop((0, int(h * top), w, int(h * bottom))).resize((1024, 1024), Image.LANCZOS)
 a = np.asarray(im).astype(np.float32)
 N = a.shape[0]
+if flatten > 0:
+    from PIL import ImageFilter
+    blur = np.asarray(im.filter(ImageFilter.GaussianBlur(90))).astype(np.float32)
+    a = a - (blur - blur.reshape(-1, 3).mean(axis=0)) * flatten
 
 
 def ramp(n):

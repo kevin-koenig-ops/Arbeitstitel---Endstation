@@ -12,16 +12,15 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { LatLon } from '../core/types';
 import type { TreeKind, TreeSpec } from './decor';
 import { buildHome } from './homeModel';
-import { buildHouses, type HouseSpec, type MatKey } from './houseMesh';
+import { buildHouses, FACADES, ROOF_KINDS, roofKey, type HouseSpec, type MatKey } from './houseMesh';
 import type { PropSpec } from './landmarks';
 import { drawSign } from './signArt';
-import texPutz from '../assets/textures/haus-wand-putz.webp';
-import texKlinker from '../assets/textures/haus-wand-klinker.webp';
-import texFachwerk from '../assets/textures/haus-wand-fachwerk.webp';
-import texDach from '../assets/textures/haus-dach-ziegel.webp';
-import texFenster from '../assets/textures/haus-fenster.webp';
-
-const HOUSE_TEX: Partial<Record<MatKey, string>> = { putz: texPutz, klinker: texKlinker, fachwerk: texFachwerk, roof: texDach, roofSnow: texDach, win: texFenster };
+// Alle Hausbilder (Wände, Dächer, Fensterbogen) als Adressen, Schlüssel = Dateiname ohne Endung
+const HAUS_FILES = import.meta.glob<string>('../assets/textures/haus-*.webp', { eager: true, import: 'default' });
+const hausTex = (name: string) => HAUS_FILES[`../assets/textures/${name}.webp`];
+const HOUSE_TEX: Partial<Record<MatKey, string>> = { roofSnow: hausTex('haus-dach-ziegel'), win: hausTex('haus-fenster') };
+for (const f of FACADES) HOUSE_TEX[f] = hausTex(`haus-wand-${f}`);
+for (const k of ROOF_KINDS) HOUSE_TEX[roofKey(k)] = hausTex(`haus-dach-${k}`);
 
 /** sRGB (0–1, auch etwas darüber) in lineare Farbe, wie three.js rechnet. */
 function toLinear(c: number) {
@@ -143,7 +142,7 @@ export class TreeLayer implements CustomLayerInterface {
     const { plain, roof } = buildHome(tier);
     for (const [key, m] of [
       ['plain', plain],
-      ['roof', roof],
+      ['roof-ziegel', roof],
     ] as const) {
       if (!m.pos.length) continue;
       const geo = new THREE.BufferGeometry();
