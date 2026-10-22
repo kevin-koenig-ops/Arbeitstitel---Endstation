@@ -926,6 +926,10 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 @keyframes glow-red { from { box-shadow: 0 0 4px rgba(255, 58, 42, 0.4); } to { box-shadow: 0 0 18px rgba(255, 58, 42, 0.9); } }
 .t-foe.targetable .t-intent { outline: 2px solid var(--amber); outline-offset: 2px; }
 .t-foe.targetable .bar { box-shadow: 0 0 0 2px var(--amber); }
+/* Anvisiert: kleines Fadenkreuz vor dem Namen, Lebensbalken umrandet */
+.t-lock { display: none; color: var(--amber); }
+.t-foe.locked .t-lock { display: inline-flex; }
+.t-foe.locked .bar { box-shadow: 0 0 0 2px var(--amber); }
 
 .t-bottom { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; padding: 0 calc(var(--gutter-r) + 4px) calc(var(--safe-b) + 8px) calc(var(--gutter-l) + 4px); display: flex; flex-direction: column; gap: 6px; pointer-events: none; background: linear-gradient(transparent, rgba(13, 11, 9, 0.75) 40%); }
 .t-bottom > * { pointer-events: auto; }

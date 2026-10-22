@@ -189,12 +189,19 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
   // --- Eingaben -----------------------------------------------------------------------------
   let busy = false;
   let selected: number | null = null; // Index der Karte auf der Hand, die auf ein Ziel wartet
+  let locked: number | null = null; // Anvisierter Gegner: Karten treffen ihn, bis man einen anderen antippt
+
+  const lockOn = (id: number | null) => {
+    locked = id;
+    scene?.setLocked(id);
+    for (const [fid, v] of foeEls) v.el.classList.toggle('locked', fid === id);
+  };
   let ended = false;
   let fleeArmed = false;
 
   const defaultInfo = () => {
     const foes = aliveFoes(st);
-    if (firstFight && st.turn === 1) return 'Tippe eine Karte an. Jede kostet Kraft (⚡), pro Runde hast du 3.';
+    if (firstFight && st.turn === 1) return 'Tippe eine Karte an. Jede kostet Kraft (⚡), pro Runde hast du 3. Tippst du einen Gegner an, treffen ihn deine Karten, bis du wechselst.';
     if (foes.some((f) => f.row === 'near' && f.intent.kind === 'smash')) return 'Achtung, Wuchtschlag! Ausweichen oder ihn wegtreten.';
     if (st.turn === 1 && mood && foes.some((f) => f.kind === 'walker')) return mood === 'strong' ? 'Nacht, Nebel oder Regen: Die Wandler sind zäher als sonst.' : 'Pralle Sonne: Die Wandler sind träge.';
     if (foes.some((f) => f.kind === 'screamer')) return 'Der Heuler ruft Verstärkung. Erst ihn ausschalten, mit Wurf oder Bolzen.';
@@ -235,6 +242,8 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
       if (btn) shake(btn);
       return setInfo(def.target === 'near' ? 'Vorne steht niemand. Diese Karte trifft nur Gegner vorne.' : 'Kein Ziel.');
     }
+    // Anvisierter Gegner ist ein gültiges Ziel: gleich auf ihn
+    if (locked !== null && options.some((f) => f.id === locked)) return void doPlay(i, locked);
     if (options.length === 1) return void doPlay(i, options[0].id);
     selected = i;
     scene?.setTargets(options.map((f) => f.id));
@@ -246,13 +255,19 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     if (busy || st.over) return;
     if (selected !== null) {
       const card = st.hand[selected];
-      if (card && targetsFor(st, card).some((f) => f.id === id)) return void doPlay(selected, id);
+      if (card && targetsFor(st, card).some((f) => f.id === id)) {
+        // Wer ein Ziel wählt, visiert es gleich für die nächsten Karten an
+        lockOn(id);
+        return void doPlay(selected, id);
+      }
       return setInfo(card && CARDS[card].target === 'near' ? 'Der steht hinten. Diese Karte trifft nur vorne.' : 'Kein gültiges Ziel.');
     }
     const f = foeById(st, id);
-    if (!f) return;
+    if (!f || f.hp <= 0) return;
     const def = FOE_TACTICS[f.kind];
-    setInfo(`${def.name} (${f.hp}/${f.maxHp}${def.armor ? `, Rüstung ${def.armor}` : ''}): ${def.desc}`);
+    const fresh = locked !== id;
+    lockOn(id);
+    setInfo(`${fresh ? 'Anvisiert: ' : ''}${def.name} (${f.hp}/${f.maxHp}${def.armor ? `, Rüstung ${def.armor}` : ''}): ${def.desc}`);
   };
 
   // --- Abspielen ------------------------------------------------------------------------------
@@ -549,7 +564,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           'button',
           { class: 't-foe', type: 'button', 'data-kind': f.kind, onclick: () => tapFoe(f.id) },
           intentEl,
-          h('span', { class: 't-foe-name' }, FOE_TACTICS[f.kind].name, rowTag, block),
+          h('span', { class: 't-foe-name' }, h('span', { class: 't-lock', 'aria-label': 'anvisiert' }, svgEl(icon('aim', 12))), FOE_TACTICS[f.kind].name, rowTag, block),
           h('span', { class: 'bar foe' }, hp, hpText),
         );
         foeLayer.append(node);
@@ -579,6 +594,9 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
       }
       const targetable = selected !== null && st.hand[selected] ? targetsFor(st, st.hand[selected]).some((x) => x.id === f.id) : false;
       v.el.classList.toggle('targetable', targetable);
+      // Anvisierter Gegner gefallen: Markierung weg
+      if (locked === f.id && !f.alive) lockOn(null);
+      v.el.classList.toggle('locked', locked === f.id);
     }
   };
   const placeFoeOverlays = () => {

@@ -86,6 +86,8 @@ export class TacticsScene {
   private ro: ResizeObserver;
   private highlight = new Set<number>();
   private selected: number | null = null;
+  /** Anvisierter Gegner: Karten treffen ihn, bis man wechselt. */
+  private locked: number | null = null;
 
   constructor(
     private host: HTMLElement,
@@ -277,6 +279,11 @@ export class TacticsScene {
     }
   }
 
+  /** Anvisierten Gegner markieren (fester Kreis, auch ohne gewählte Karte). */
+  setLocked(id: number | null) {
+    this.locked = id;
+  }
+
   /** Mögliche Ziele hervorheben (null = keine). */
   setTargets(ids: number[] | null, selected: number | null = null) {
     this.highlight = new Set(ids ?? []);
@@ -426,10 +433,11 @@ export class TacticsScene {
         if (v.rig.pose === 'stagger' && v.fast <= 0 && len < 0.05) v.rig.pose = 'walk';
       }
       v.rig.update(t, dt, moving);
-      // Zielkreis: hervorgehoben = möglich, ausgewählt = kräftiger
+      // Zielkreis: hervorgehoben = möglich (pulsiert), ausgewählt oder anvisiert = kräftig
       const rm = v.ring.material as THREE.MeshBasicMaterial;
-      const on = v.alive && this.highlight.has(id);
-      rm.opacity = on ? (this.selected === id ? 0.95 : 0.55 + 0.3 * Math.sin(t * 6)) : 0;
+      const lockedHere = this.locked === id;
+      const on = v.alive && (this.highlight.has(id) || lockedHere);
+      rm.opacity = on ? (this.selected === id || lockedHere ? 0.95 : 0.55 + 0.3 * Math.sin(t * 6)) : 0;
       v.ring.visible = on;
       v.ring.position.set(v.pos.x, 0.035, v.pos.z);
       v.ring.rotation.z = t * 1.2;
