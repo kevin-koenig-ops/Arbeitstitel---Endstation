@@ -9,7 +9,7 @@
 import { ShapeUtils, Vector2 } from 'three';
 
 import { addBridge, type BridgeSpec } from './bridges';
-import { addProp, addShop, frontWall, isHallKind, type PropSpec, type ShopSpec, type Signs } from './landmarks';
+import { addCivic, addGraveyard, addProp, addShop, addSpire, frontWall, isHallKind, type CivicSpec, type GraveyardSpec, type PropSpec, type ShopSpec, type Signs } from './landmarks';
 import { BOARDED, BROKEN, DOOR_H, DOOR_W, DOORS, doorUV, GATE_M, gateUV, STRIP, stripUV, WINDOW_SETS, windowUV } from './windows';
 import { block, dist, emptyMesh, quad, tri, type MeshData, type P3, type Pt, type RGB } from './meshKit';
 
@@ -59,6 +59,10 @@ export interface HouseSpec {
   snow?: boolean;
   /** Echter Laden, Apotheke, Supermarkt …: Ladenfront und Schild. */
   shop?: ShopSpec;
+  /** Öffentliches Gebäude (Kirche, Polizei, Feuerwehr …): Eingang, Schild, Turm. */
+  civic?: CivicSpec;
+  /** Kirchturm aus den Kartendaten: bekommt eine spitze Haube mit Kreuz. */
+  spire?: { variant: number };
   /** Nächster Punkt an der Straße (Meter): dorthin zeigt die Haustür. */
   street?: Pt;
   /** Grundrisse der Häuser, die direkt anstoßen (dort gibt es keine Fenster). */
@@ -222,7 +226,7 @@ function lcg(seed: number) {
 const vOf = (h: number) => (h - GROUND_M) / FACADE_H;
 
 /** Alle Häuser zu Dreiecken (je Bild ein Topf, damit es nur wenige Zeichenaufrufe sind). */
-export function buildHouses(list: HouseSpec[], props: PropSpec[] = [], bridges: BridgeSpec[] = []): HouseMeshes {
+export function buildHouses(list: HouseSpec[], props: PropSpec[] = [], bridges: BridgeSpec[] = [], graveyards: GraveyardSpec[] = []): HouseMeshes {
   const meshes = { roofSnow: emptyMesh(), plain: emptyMesh(), win: emptyMesh() } as Record<MatKey, MeshData>;
   for (const f of FACADES) meshes[f] = emptyMesh();
   for (const k of ROOF_KINDS) meshes[roofKey(k)] = emptyMesh();
@@ -233,7 +237,10 @@ export function buildHouses(list: HouseSpec[], props: PropSpec[] = [], bridges: 
     if (ring.length < 3 || areaOf(ring) < 4) continue;
     buildOne(h, ring, meshes, shadow);
     if (h.shop) addShop(h.shop, ring, h.top, meshes.plain, signs);
+    if (h.civic) addCivic(h.civic, ring, h.top, meshes.plain, signs);
+    if (h.spire) addSpire(ring, h.top, meshes.plain, h.spire.variant);
   }
+  for (const g of graveyards) addGraveyard(g, meshes.plain);
   for (const p of props) addProp(p, meshes.plain, signs);
   for (const b of bridges) addBridge(b, meshes.plain);
   return { meshes, shadow, signs };
@@ -275,6 +282,7 @@ function buildOne(h: HouseSpec, ring: Pt[], M: Record<MatKey, MeshData>, shadow:
   // Fenster und Haustür (nicht bei Ruinen und nicht an großen Hallen mit Ladenfront)
   if (h.state !== 'ruin' && !(h.shop && isHallKind(h.shop.kind) && !h.facade)) {
     if (h.facade === 'halle') hallOpenings(h, ring, M.win, rnd);
+    else if (h.civic?.kind === 'church' || h.spire) churchWindows(h, ring, M.plain);
     else openings(h, ring, M.win, M.plain, rnd);
   }
 
@@ -350,7 +358,7 @@ function gableRoof(h: HouseSpec, ring: Pt[], area: number, M: Record<MatKey, Mes
     tri(wallMesh, at(end * hl, -hw, h.top), at(end * hl, hw, h.top), at(end * hl, 0, ridge), [0, vOf(h.top)], [u1, vOf(h.top)], [u1 / 2, vOf(ridge)], h.tint);
     // Kleines Dachbodenfenster im Giebel, wenn Platz ist und kein Nachbar davor steht
     const set = h.facade ? WINDOW_SETS[h.facade] : undefined;
-    if (set && !h.shed && h.state !== 'ruin' && pitch >= 2.4) {
+    if (set && !h.shed && h.state !== 'ruin' && pitch >= 2.4 && h.civic?.kind !== 'church') {
       const w = set.w * 0.75;
       const wh = set.h * 0.75;
       const z0 = h.top + 0.35;
@@ -461,6 +469,44 @@ function blockedBy(h: HouseSpec, p: Pt): boolean {
  * Keine Fenster, wo ein Nachbarhaus anstößt; im Erdgeschoss eines Ladens zur Straße auch nicht.
  * Plattenbau: Fenster mitten in den Platten. Scheune (Holz): ein Geschoss, wenige Fenster.
  */
+/** Kirche: hohe, schmale Spitzbogenfenster mit Steinrahmen statt Wohnungsfenstern. */
+function churchWindows(h: HouseSpec, ring: Pt[], plain: MeshData) {
+  const n = ring.length;
+  let sa = 0;
+  for (let i = 0; i < n; i++) sa += ring[i][0] * ring[(i + 1) % n][1] - ring[(i + 1) % n][0] * ring[i][1];
+  const ccw = sa > 0;
+  const glass: RGB = [0.2, 0.25, 0.32];
+  const frame: RGB = [0.62, 0.59, 0.53];
+  const z0 = h.spire ? Math.max(3, h.top - 6) : 2.0;
+  const z1 = h.spire ? h.top - 1.5 : Math.min(h.top - 1.0, z0 + 5.2);
+  if (z1 - z0 < 1.5) return;
+  for (let i = 0; i < n; i++) {
+    const a = ring[i];
+    const b = ring[(i + 1) % n];
+    const len = dist(a, b);
+    if (len < 3.5) continue;
+    const e: Pt = [(b[0] - a[0]) / len, (b[1] - a[1]) / len];
+    const nn: Pt = ccw ? [e[1], -e[0]] : [-e[1], e[0]];
+    const count = h.spire ? 1 : Math.max(1, Math.floor(len / 4.2));
+    for (let k = 0; k < count; k++) {
+      const t = (len * (k + 0.5)) / count;
+      const at = (dt: number, off: number): Pt => [a[0] + e[0] * (t + dt) + nn[0] * off, a[1] + e[1] * (t + dt) + nn[1] * off];
+      const w = h.spire ? 0.5 : 0.65;
+      for (const [ww, off, col] of [
+        [w + 0.18, 0.04, frame],
+        [w, 0.06, glass],
+      ] as [number, number, RGB][]) {
+        const p0 = at(-ww, off);
+        const p1 = at(ww, off);
+        const top = at(0, off);
+        quad(plain, [p0[0], p0[1], z0], [p1[0], p1[1], z0], [p1[0], p1[1], z1], [p0[0], p0[1], z1], [0, 0], [0, 0], [0, 0], [0, 0], col);
+        // Spitzbogen oben
+        tri(plain, [p0[0], p0[1], z1], [p1[0], p1[1], z1], [top[0], top[1], z1 + ww * 1.3], [0, 0], [0, 0], [0, 0], col);
+      }
+    }
+  }
+}
+
 function openings(h: HouseSpec, ring: Pt[], win: MeshData, plain: MeshData, rnd: () => number) {
   const small = !h.facade || !!h.shed;
   const barn = h.facade === 'holz';

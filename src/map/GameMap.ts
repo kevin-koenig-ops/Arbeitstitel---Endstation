@@ -828,7 +828,7 @@ export class GameMap {
         houseMeshes: !!this.trees,
       });
       this.trees?.setTrees(res.trees, center);
-      this.trees?.setHouses(res.houses, center, res.props, res.bridges);
+      this.trees?.setHouses(res.houses, center, res.props, res.bridges, res.graveyards);
       (this.map.getSource('decor') as GeoJSONSource | undefined)?.setData({
         type: 'FeatureCollection',
         features: res.parts.map((p) => ({
@@ -906,6 +906,7 @@ export class GameMap {
       greens: [...polys(landuse, ['park', 'cemetery', 'village_green', 'garden', 'allotments']), ...(real ? polys(query('park'), ['park']) : [])],
       meadows: polys(landcover, ['grass', 'meadow', 'scrub']),
       residential: polys(landuse, ['residential']),
+      cemeteries: polys(landuse, ['cemetery']),
       industrial: polys(landuse, ['industrial', 'commercial', 'retail', 'garages']),
       rocks: polys(landcover, ['rock']),
       water: polys(query('water')),

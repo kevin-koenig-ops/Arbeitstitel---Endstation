@@ -182,3 +182,43 @@ describe('Kartendetails', () => {
     expect(joinBridges([a, { ...a }])).toHaveLength(1);
   });
 });
+
+describe('Bekannte Bauwerke (nur Optik)', () => {
+  const pois = feats
+    .filter((f) => f.properties._layer === 'poi')
+    .map((f) => {
+      const [lon, lat] = f.geometry.coordinates as [number, number];
+      return { lon, lat, cls: String(f.properties.class), subclass: String(f.properties.subclass) };
+    });
+  const full: DecorInput = { ...input, pois, cemeteries: polys('landuse', ['cemetery']) };
+
+  it('Kirche, Feuerwehr, Polizei und Rathaus bekommen ihr eigenes Aussehen', () => {
+    const res = generateDecor(full, center, 700, { houseMeshes: true });
+    const kinds = res.houses.map((h) => h.civic?.kind).filter(Boolean);
+    expect(kinds).toEqual(expect.arrayContaining(['church', 'fire', 'police', 'townhall', 'school']));
+    // Der Turm neben der Kirche (eigenes Gebäude in den Kartendaten) bekommt die spitze Haube
+    expect(res.houses.some((h) => h.spire)).toBe(true);
+    expect(res.houses.find((h) => h.civic?.kind === 'church')!.civic!.tower).toBe(false);
+    const m = buildHouses(res.houses, res.props, res.bridges, res.graveyards);
+    expect(Object.keys(m.signs)).toEqual(expect.arrayContaining(['POLIZEI|#1f4f9a|#ffffff', 'FEUERWEHR|#c8312a|#ffffff', 'RATHAUS|#f1e6cf|#3a2a1a', '@clock']));
+  });
+
+  it('Friedhof: Mauer und Grabreihen, aber nichts in der Kirche', () => {
+    const res = generateDecor(full, center, 700, { houseMeshes: true });
+    expect(res.graveyards.length).toBe(1);
+    const g = res.graveyards[0];
+    expect(g.keepOut.length).toBeGreaterThan(0);
+    const m = buildHouses([], [], [], res.graveyards);
+    // Mauer plus einige hundert Gräber (je Grab mindestens ein Quader aus 30 Ecken)
+    expect(m.meshes.plain.pos.length / 3).toBeGreaterThan(30 * 150);
+  });
+
+  it('Kirche ohne eigenen Turm in den Kartendaten: das Spiel baut einen', () => {
+    const lonely = { ...full, buildings: full.buildings.filter((b) => (b.height ?? 0) < 25) };
+    const res = generateDecor(lonely, center, 700, { houseMeshes: true });
+    const church = res.houses.find((h) => h.civic?.kind === 'church')!;
+    expect(church.civic!.tower).toBe(true);
+    const m = buildHouses([church]);
+    expect(Object.keys(m.signs)).toContain('@clock');
+  });
+});

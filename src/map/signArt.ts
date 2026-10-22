@@ -52,6 +52,54 @@ export function drawSign(key: string): HTMLCanvasElement {
     grime(g, 256, 256, hash(key));
     return c;
   }
+  if (key === '@clock') {
+    c.width = c.height = 256;
+    const g = c.getContext('2d')!;
+    g.beginPath();
+    g.arc(128, 128, 122, 0, Math.PI * 2);
+    g.fillStyle = '#2b2620';
+    g.fill();
+    g.beginPath();
+    g.arc(128, 128, 108, 0, Math.PI * 2);
+    g.fillStyle = '#efe8d6';
+    g.fill();
+    g.fillStyle = '#2b2620';
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      g.fillRect(128 + Math.sin(a) * 88 - 5, 128 - Math.cos(a) * 88 - 5, 10, 10);
+    }
+    // Stehengeblieben, irgendwann vor sieben Jahren
+    g.strokeStyle = '#2b2620';
+    g.lineCap = 'round';
+    g.lineWidth = 12;
+    g.beginPath();
+    g.moveTo(128, 128);
+    g.lineTo(128 + Math.sin(-1.1) * 52, 128 - Math.cos(-1.1) * 52);
+    g.stroke();
+    g.lineWidth = 8;
+    g.beginPath();
+    g.moveTo(128, 128);
+    g.lineTo(128 + Math.sin(2.4) * 80, 128 - Math.cos(2.4) * 80);
+    g.stroke();
+    grime(g, 256, 256, hash(key));
+    return c;
+  }
+  if (key === '@hosp') {
+    c.width = c.height = 256;
+    const g = c.getContext('2d')!;
+    g.fillStyle = '#1f4f9a';
+    g.fillRect(0, 0, 256, 256);
+    g.strokeStyle = '#ffffff';
+    g.lineWidth = 10;
+    g.strokeRect(14, 14, 228, 228);
+    g.fillStyle = '#ffffff';
+    g.font = `800 170px ${FONT}`;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText('H', 128, 138);
+    grime(g, 256, 256, hash(key));
+    return c;
+  }
   if (key === '@H') {
     c.width = c.height = 256;
     const g = c.getContext('2d')!;

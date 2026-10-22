@@ -9,7 +9,7 @@ import { rngFrom, type Rng } from '../core/rng';
 import type { LatLon } from '../core/types';
 import { joinBridges, type BridgeKind, type BridgeSpec } from './bridges';
 import type { FacadeKind, HouseSpec, RoofKind } from './houseMesh';
-import { isHallKind, isShopKind, landmarkOf, type LandmarkKind, type PropKind, type PropSpec, type ShopKind } from './landmarks';
+import { civicOf, isHallKind, isShopKind, landmarkOf, type CivicKind, type GraveyardSpec, type LandmarkKind, type PropKind, type PropSpec, type ShopKind } from './landmarks';
 
 type Pt = [number, number];
 type Ring = Pt[];
@@ -48,6 +48,8 @@ export interface DecorInput {
   roads: RawLine[];
   /** Echte Orte (Läden, Tankstellen, Haltestellen, Brunnen) für die Wahrzeichen. */
   pois?: { lon: number; lat: number; cls?: string; subclass?: string }[];
+  /** Friedhöfe: Mauer und Grabreihen (nur Optik). */
+  cemeteries?: RawPolygon[];
 }
 
 /** Ein Baum, Busch oder Stein für die 3D-Ebene (map/treeLayer.ts). */
@@ -87,6 +89,8 @@ export interface DecorResult {
   props: PropSpec[];
   /** Nur mit houseMeshes: Brücken als 3D-Modell. */
   bridges: BridgeSpec[];
+  /** Nur mit houseMeshes: Friedhöfe (Mauer, Grabsteine). */
+  graveyards: GraveyardSpec[];
   counts: { buildings: number; trees: number; cars: number; street: number; gardens: number; forest: number; landmarks: number };
 }
 
@@ -366,6 +370,32 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
   // Kirchen, Schulen, Rathäuser …: bleiben gemauert (nie Scheune, Halle oder Plattenbau)
   const civic: Pt[] = [];
   if (opts.houseMeshes) for (const q of input.pois ?? []) if (q.cls && CIVIC.includes(q.cls)) civic.push(P.toM([q.lon, q.lat]));
+  // … und bekommen ihr eigenes Aussehen (Turm, Tore, Schild)
+  type CivicPoi = { p: Pt; kind: CivicKind; sign: string; key: string; used: boolean };
+  const civicPois: CivicPoi[] = [];
+  if (opts.houseMeshes)
+    for (const q of input.pois ?? []) {
+      const def = civicOf(q.cls, q.subclass);
+      if (!def) continue;
+      const p = P.toM([q.lon, q.lat]);
+      if (!near(p, 60)) continue;
+      civicPois.push({ p, kind: def.kind, sign: def.sign, key: `${q.lon.toFixed(5)}:${q.lat.toFixed(5)}`, used: false });
+    }
+  /** Das öffentliche Gebäude zu diesem Grundriss (Punkt drin oder höchstens 8 m daneben). */
+  const civicFor = (ring: Ring): CivicPoi | null => {
+    let best: CivicPoi | null = null;
+    let bestD = 8;
+    for (const q of civicPois) {
+      if (q.used) continue;
+      if (inRing(q.p, ring)) return q;
+      for (let i = 0; i < ring.length - 1; i++) {
+        const d = distToSeg(q.p, ring[i], ring[i + 1]);
+        if (d < bestD) (bestD = d), (best = q);
+      }
+    }
+    return best;
+  };
+  const meta = new Map<HouseSpec, { h0: number; area: number; c: Pt }>();
   /** Der Laden in diesem Gebäude (Punkt drin oder höchstens 8 m daneben). */
   const shopFor = (ring: Ring, c: Pt, rad: number): Poi | null => {
     let best: Poi | null = null;
@@ -412,6 +442,25 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
       if (poi) poi.used = true;
       const hs = houseSpec(ring, key, poi ? 'intact' : state, h0, minH * k, poi ? Math.max(3.4, h0 * 0.9) : wallTop, wall, simple, area, poi ? 'home' : civic.some((q) => inRing(q, ring)) ? 'civic' : zoneOf(c));
       if (poi) dressShop(hs, poi.kind as ShopKind, poi.sign, poi.p, rngFrom('laden', poi.key)(), area, h0);
+      const cv = !poi && minH === 0 ? civicFor(ring) : null;
+      if (cv) {
+        cv.used = true;
+        hs.state = 'intact';
+        hs.plinth = true;
+        // Kirchen: Die Höhe aus der Karte zählt das hohe Dach mit, die Wände sind niedriger
+        hs.top = cv.kind === 'church' ? Math.max(6, Math.min(11, h0 * 0.6)) : Math.max(hs.top, Math.min(h0, 14) * 0.9);
+        if (cv.kind === 'church') hs.slope = Math.max(hs.slope, 1.1);
+        hs.civic = { kind: cv.kind, sign: cv.sign, toward: cv.p, variant: Math.floor(rngFrom('amt', cv.key)() * 3), ridge: hs.top, tower: false };
+        // Kirche: glatte helle Steinwand ohne Wohnungsfenster (die hohen Fenster setzt houseMesh.ts)
+        if (cv.kind === 'church') {
+          hs.facade = null;
+          hs.tint = [0.84, 0.8, 0.72];
+          hs.shed = undefined;
+          hs.chimney = false;
+          if (hs.roofKind !== 'schiefer' && hs.roofKind !== 'ziegel') hs.roofKind = 'schiefer';
+        }
+      }
+      meta.set(hs, { h0, area, c });
       if (snowRoofs) {
         hs.snow = true;
         hs.flatColor = [0.86, 0.88, 0.9];
@@ -570,6 +619,7 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
     // Haustür zur Straße
     if (road) hs.street = road.pt;
     if (hs.shop && road) hs.shop.toward = road.pt;
+    if (hs.civic && road) hs.civic.toward = road.pt;
     // Anstoßende Nachbarn: dort keine Fenster
     const b = bbox(hs.ring);
     const near = bGrid.around(c, Math.max(b.x1 - b.x0, b.y1 - b.y0) / 2 + 2).filter((r) => {
@@ -579,6 +629,100 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
     });
     if (near.length) hs.neighbors = near;
   }
+  // Kartenkacheln schneiden große Grundrisse in Stücke. Stücke, die mit einem öffentlichen Gebäude
+  // gleich hoch sind und es überlappen, sehen aus wie das Gebäude selbst (sonst hätte die halbe
+  // Kirche Wohnungsfenster).
+  for (const hs of houseSpecs) {
+    if (!hs.civic || hs.civic.part) continue;
+    const mi = meta.get(hs)!;
+    const b = bbox(hs.ring);
+    for (const o of houseSpecs) {
+      if (o === hs || o.civic || o.shop || o.spire) continue;
+      const m = meta.get(o);
+      if (!m || Math.abs(m.h0 - mi.h0) > Math.max(1.5, mi.h0 * 0.25)) continue;
+      const ob = bbox(o.ring);
+      const ix = Math.min(b.x1, ob.x1) - Math.max(b.x0, ob.x0);
+      const iy = Math.min(b.y1, ob.y1) - Math.max(b.y0, ob.y0);
+      if (ix <= 0 || iy <= 0) continue;
+      const own = (ob.x1 - ob.x0) * (ob.y1 - ob.y0) || 1;
+      if ((ix * iy) / own < 0.3) continue;
+      o.civic = { ...hs.civic, part: true };
+      o.state = hs.state;
+      o.facade = hs.facade;
+      o.tint = hs.tint;
+      o.top = hs.top;
+      o.slope = hs.slope;
+      o.roofKind = hs.roofKind;
+      o.chimney = false;
+      o.shed = undefined;
+    }
+  }
+
+  // Kirchen: Hat die Karte schon einen eigenen Turm daneben (schmal und hoch), bekommt der eine
+  // spitze Haube. Sonst baut das Spiel einen Turm an die Giebelseite zur Straße.
+  for (const hs of houseSpecs) {
+    if (!hs.civic) continue;
+    const mi = meta.get(hs)!;
+    // Firsthöhe: halbe Breite (quer zur längsten Seite) mal Dachneigung
+    let best = 0;
+    let ang = 0;
+    for (let i = 0; i < hs.ring.length - 1; i++) {
+      const l = Math.hypot(hs.ring[i + 1][0] - hs.ring[i][0], hs.ring[i + 1][1] - hs.ring[i][1]);
+      if (l > best) (best = l), (ang = Math.atan2(hs.ring[i + 1][1] - hs.ring[i][1], hs.ring[i + 1][0] - hs.ring[i][0]));
+    }
+    const qs = hs.ring.map(([x, y]) => -x * Math.sin(ang) + y * Math.cos(ang));
+    const width = Math.max(...qs) - Math.min(...qs);
+    hs.civic.ridge = hs.roof === 'pitched' ? hs.top + (width / 2) * hs.slope : hs.top;
+    if (hs.civic.kind !== 'church' || hs.civic.part) continue;
+    const tower = houseSpecs.find((o) => {
+      if (o === hs || o.shop || o.civic) return false;
+      const m = meta.get(o);
+      return !!m && m.area <= 110 && m.h0 >= Math.max(14, mi.h0 * 1.3) && Math.hypot(m.c[0] - mi.c[0], m.c[1] - mi.c[1]) < 30;
+    });
+    if (tower) {
+      tower.spire = { variant: hs.civic.variant };
+      tower.roof = 'flat';
+      tower.state = 'intact';
+      tower.chimney = false;
+      tower.facade = null;
+      tower.tint = hs.tint;
+      hs.civic.tower = false;
+    } else hs.civic.tower = true;
+  }
+
+  // Friedhöfe: Mauer mit Tor zur Straße, Reihen von Grabsteinen (nur Optik)
+  const graveyards: GraveyardSpec[] = [];
+  if (opts.houseMeshes)
+    for (const poly of input.cemeteries ?? []) {
+      if (!roughlyNear(poly.rings)) continue;
+      const ring = poly.rings[0].map(P.toM);
+      if (Math.abs(ringArea(ring)) < 150) continue;
+      const c = centroid(ring);
+      const key = `${poly.rings[0][0][0].toFixed(5)}:${poly.rings[0][0][1].toFixed(5)}`;
+      const road = nearestRoad(c, 150);
+      let gate: Pt | null = null;
+      if (road) {
+        let bd = Infinity;
+        for (let i = 0; i < ring.length - 1; i++) {
+          const a = ring[i];
+          const b = ring[i + 1];
+          const dx = b[0] - a[0];
+          const dy = b[1] - a[1];
+          const l2 = dx * dx + dy * dy || 1;
+          const t = Math.max(0.1, Math.min(0.9, ((road.pt[0] - a[0]) * dx + (road.pt[1] - a[1]) * dy) / l2));
+          const q: Pt = [a[0] + t * dx, a[1] + t * dy];
+          const d = Math.hypot(q[0] - road.pt[0], q[1] - road.pt[1]);
+          if (d < bd) (bd = d), (gate = q);
+        }
+      }
+      const b = bbox(ring);
+      const keepOut = bGrid.around(c, Math.max(b.x1 - b.x0, b.y1 - b.y0) / 2 + 5).filter((r) => {
+        const o = bbox(r);
+        return o.x0 < b.x1 && o.x1 > b.x0 && o.y0 < b.y1 && o.y1 > b.y0;
+      });
+      graveyards.push({ ring: ring.slice(0, -1), gate, keepOut, seed: rngFrom('friedhof', key)(), maxR: radiusM });
+    }
+
   const props: PropSpec[] = [];
   for (const q of propPois) {
     const variant = Math.floor(rngFrom('laden', q.key)() * 3);
@@ -973,7 +1117,7 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
 
   const landmarks = houseSpecs.filter((h) => h.shop).length + props.length;
   const bridges = joinBridges(bridgeParts);
-  return { parts, trees: specs, houses: houseSpecs, props, bridges, counts: { buildings, trees: trees.length, cars, street, gardens, forest, landmarks } };
+  return { parts, trees: specs, houses: houseSpecs, props, bridges, graveyards, counts: { buildings, trees: trees.length, cars, street, gardens, forest, landmarks } };
 }
 
 /** Lage eines Hauses: Wohngebiet, Gewerbe, draußen, oder ein öffentliches Gebäude. */

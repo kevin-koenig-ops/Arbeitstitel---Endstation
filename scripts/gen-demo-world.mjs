@@ -145,6 +145,10 @@ special(190, 82, 13, 16, 0.2, 9, { class: 'doctors', subclass: 'doctors' });
 special(-255, -14, 12, 12, 0.2, 7, { class: 'bakery', subclass: 'bakery' });
 special(160, -205, 42, 20, 0.3, 10, { class: 'school', subclass: 'school' });
 special(-470, -95, 18, 12, 0.25, 6, { class: 'car', subclass: 'car_repair' });
+// Öffentliche Gebäude (nur Optik: Rathaus, Polizei, Feuerwehr)
+special(-185, 80, 18, 13, 0.1, 11, { class: 'town_hall', subclass: 'town_hall' });
+special(240, 120, 16, 12, 0.35, 8, { class: 'police', subclass: 'police' });
+special(-62, 64, 22, 15, 0.12, 7, { class: 'fire_station', subclass: 'fire_station' });
 
 const pois = [
   [{ class: 'bus', subclass: 'bus_stop' }, [-300, -62]],
