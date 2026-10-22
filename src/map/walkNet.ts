@@ -210,6 +210,8 @@ export class WalkNet {
   private zones: { x: number; y: number; r: number }[] = [];
   /** Zonen, in denen man gerade steht: aus denen darf man hinaus. */
   private skipZones = new Set<number>();
+  /** Wegabschnitte, die gerade durch ein Sperrgebiet führen (gilt während einer Wegsuche). */
+  private closedSegs = new Set<number>();
   private season: Season;
   private speed: Record<Exclude<TerrainKind, 'blocked'>, number>;
 
@@ -312,6 +314,17 @@ export class WalkNet {
     return this.segs.length;
   }
 
+  /** Knotenpaar -> Abschnitt (für gesperrte Abschnitte). */
+  private segOf = new Map<number, number>();
+  private pairKey(a: number, b: number) {
+    return a < b ? a * 1_000_003 + b : b * 1_000_003 + a;
+  }
+  private closedEdge(a: number, b: number) {
+    if (!this.closedSegs.size) return false;
+    const s = this.segOf.get(this.pairKey(a, b));
+    return s !== undefined && this.closedSegs.has(s);
+  }
+
   private link(a: number, b: number) {
     const pa = this.nodes[a];
     const pb = this.nodes[b];
@@ -319,6 +332,7 @@ export class WalkNet {
     this.adj[a].push([b, d]);
     this.adj[b].push([a, d]);
     const s = this.segs.length;
+    this.segOf.set(this.pairKey(a, b), s);
     this.segs.push([a, b]);
     this.segGrid.add(Math.min(pa.x, pb.x), Math.min(pa.y, pb.y), Math.max(pa.x, pb.x), Math.max(pa.y, pb.y), s);
   }
@@ -336,6 +350,7 @@ export class WalkNet {
     let best: Hit | null = null;
     for (let r = CELL; ; r *= 2) {
       for (const s of this.segGrid.around(p.x, p.y, Math.min(r, maxM))) {
+        if (this.closedSegs.has(s)) continue;
         const a = this.nodes[this.segs[s][0]];
         const b = this.nodes[this.segs[s][1]];
         const dx = b.x - a.x;
@@ -467,6 +482,7 @@ export class WalkNet {
       const edges: [number, number][] = u === S ? [[a0, lenA * A.t], [a1, lenA * (1 - A.t)]] : this.adj[u];
       const extra: [number, number][] = u !== S && endEdges.has(u) ? [[E, endEdges.get(u)!]] : [];
       for (const [v, w] of edges.concat(extra)) {
+        if (u !== S && v !== E && this.closedEdge(u, v)) continue;
         const ng = gu + w;
         if (ng < (g.get(v) ?? Infinity)) {
           g.set(v, ng);
@@ -498,6 +514,7 @@ export class WalkNet {
       const du = dist.get(u)!;
       const edges: [number, number][] = u === S ? [[a0, lenA * A.t], [a1, lenA * (1 - A.t)]] : this.adj[u];
       for (const [v, w] of edges) {
+        if (u !== S && this.closedEdge(u, v)) continue;
         const nd = du + w;
         if (nd < (dist.get(v) ?? Infinity)) {
           dist.set(v, nd);
@@ -542,15 +559,51 @@ export class WalkNet {
     this.zones.forEach((z, i) => {
       if ((F.x - z.x) ** 2 + (F.y - z.y) ** 2 <= z.r * z.r) this.skipZones.add(i);
     });
+    this.closeSegments();
     try {
+      let T = this.toXY(toLL);
+      let intoZone = false;
+      // Ziel mitten im Sperrgebiet: bis an den Rand, auf der Seite, von der man kommt
+      this.zones.forEach((z, i) => {
+        if (this.skipZones.has(i) || (T.x - z.x) ** 2 + (T.y - z.y) ** 2 > z.r * z.r) return;
+        const d = Math.hypot(F.x - z.x, F.y - z.y) || 1;
+        T = { x: z.x + ((F.x - z.x) / d) * (z.r + 4), y: z.y + ((F.y - z.y) / d) * (z.r + 4) };
+        intoZone = true;
+      });
+      const mark = (r: Route | null) => (r && intoZone ? { ...r, snapped: true } : r);
       if (gait === 'quiet') {
-        const q = this.quietRoute(F, this.toXY(toLL));
-        if (q) return q;
+        const q = this.gridRoute(F, T, (t) => this.quietCost(t));
+        if (q) return mark(q);
       }
-      return this.fastRoute(F, this.toXY(toLL));
+      const r = this.fastRoute(F, T);
+      // Liegt ein Sperrgebiet im Weg, findet die Suche über das Gelände einen Bogen drumherum
+      if ((!r || r.snapped) && this.zones.length > this.skipZones.size) {
+        const g = this.gridRoute(F, T, (t) => (t === 'blocked' ? Infinity : 1 / this.speed[t]));
+        if (g) return mark(g);
+      }
+      return mark(r);
     } finally {
       this.skipZones.clear();
+      this.closedSegs.clear();
     }
+  }
+
+  /** Wegabschnitte, die (teilweise) in einem Sperrgebiet liegen, für diese Wegsuche sperren. */
+  private closeSegments() {
+    this.closedSegs.clear();
+    this.zones.forEach((z, i) => {
+      if (this.skipZones.has(i)) return;
+      for (const sIdx of this.segGrid.around(z.x, z.y, z.r)) {
+        const a = this.nodes[this.segs[sIdx][0]];
+        const b = this.nodes[this.segs[sIdx][1]];
+        // Kürzester Abstand der Zonenmitte zum Abschnitt
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const l2 = dx * dx + dy * dy;
+        const t = l2 ? Math.max(0, Math.min(1, ((z.x - a.x) * dx + (z.y - a.y) * dy) / l2)) : 0;
+        if (Math.hypot(a.x + dx * t - z.x, a.y + dy * t - z.y) <= z.r) this.closedSegs.add(sIdx);
+      }
+    });
   }
 
   private fastRoute(F: P, T: P): Route | null {
@@ -609,11 +662,11 @@ export class WalkNet {
   }
 
   /**
-   * Leise Strecke: Suche auf einem Raster über das Gelände. Jede Zelle kostet Zeit mal
-   * „wie gut sieht man mich hier“. Straßen und offene Wiesen sind teuer, Wald, Gärten und
+   * Suche auf einem Raster über das Gelände. Für die leise Strecke kostet jede Zelle Zeit mal
+   * „wie gut sieht man mich hier“: Straßen und offene Wiesen sind teuer, Wald, Gärten und
    * (im Sommer) Korn billig. Danach wird die Zickzack-Linie geglättet.
    */
-  private quietRoute(F: P, T: P): Route | null {
+  private gridRoute(F: P, T: P, costOf: (t: Terrain) => number): Route | null {
     const dist = Math.hypot(T.x - F.x, T.y - F.y);
     if (dist < 3) return null;
     const margin = 60 + dist * 0.3;
@@ -621,7 +674,7 @@ export class WalkNet {
     const y0 = Math.min(F.y, T.y) - margin;
     const w = Math.max(F.x, T.x) + margin - x0;
     const hgt = Math.max(F.y, T.y) + margin - y0;
-    const cell = Math.max(5, Math.sqrt((w * hgt) / 45000));
+    const cell = Math.max(5, Math.sqrt((w * hgt) / 20000));
     const nx = Math.ceil(w / cell);
     const ny = Math.ceil(hgt / cell);
     const n = nx * ny;
@@ -637,7 +690,7 @@ export class WalkNet {
     const E = idx(T);
     // Das Ziel selbst ist ein Haus oder Wasser: dann bringt die schnelle Strecke dich so nah wie möglich
     if (kindOf(E) === 'blocked') return null;
-    const minCost = Math.min(...(['road', 'built', 'open', 'field', 'forest', 'wetland'] as Terrain[]).map((t) => this.quietCost(t)));
+    const minCost = Math.min(...(['road', 'built', 'open', 'field', 'forest', 'wetland'] as Terrain[]).map((t) => costOf(t)));
     const g = new Float64Array(n).fill(Infinity);
     const from = new Int32Array(n).fill(-1);
     const done = new Uint8Array(n);
@@ -671,7 +724,7 @@ export class WalkNet {
         // Über Bäche und Flüsse nur auf einem Weg (Brücke)
         if ((tu !== 'road' || tv !== 'road') && this.crossesWater(center(u), center(v))) continue;
         const len = cell * (dx && dy ? Math.SQRT2 : 1);
-        const ng = g[u] + len * (this.quietCost(tv) + this.quietCost(tu)) * 0.5;
+        const ng = g[u] + len * (costOf(tv) + costOf(tu)) * 0.5;
         if (ng < g[v]) {
           g[v] = ng;
           from[v] = u;
@@ -687,7 +740,7 @@ export class WalkNet {
     // Glätten: so weit geradeaus, wie die Linie nicht durch teureres Gelände führt
     const worst = (a: number, b: number) => {
       let m = 0;
-      for (let k = a; k <= b; k++) m = Math.max(m, this.quietCost(this.terrainXY(raw[k])));
+      for (let k = a; k <= b; k++) m = Math.max(m, costOf(this.terrainXY(raw[k])));
       return m;
     };
     const lineOk = (a: P, b: P, limit: number) => {
@@ -695,7 +748,7 @@ export class WalkNet {
       const k = Math.max(1, Math.ceil(len / 4));
       for (let i = 1; i < k; i++) {
         const q = { x: a.x + ((b.x - a.x) * i) / k, y: a.y + ((b.y - a.y) * i) / k };
-        if (this.quietCost(this.terrainXY(q)) > limit + 1e-9) return false;
+        if (costOf(this.terrainXY(q)) > limit + 1e-9) return false;
       }
       return !this.crossesWater(a, b) || (this.terrainXY(a) === 'road' && this.terrainXY(b) === 'road');
     };

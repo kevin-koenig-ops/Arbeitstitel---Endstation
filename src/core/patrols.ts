@@ -5,14 +5,15 @@
 // und wo seine Strecke beginnt. Die Strecke selbst (entlang der Wege) rechnet die Karte
 // aus, ebenfalls nur aus dem Startwert. Alle Spieler sehen also dieselben Trupps.
 //
-// Die Kennung enthält die Gegend: "t:<gegend>:<x>:<y>:<runde>" oder bei einer Horde
-// "t:h:<ereignis>:<nr>". Daraus lässt sich die Gruppe jederzeit neu berechnen.
+// Die Kennung ist "t:<x>:<y>:<runde>" (Zelle und Runde), bei einer Horde
+// "t:h:<ereignis>:<nr>:<runde>". Die Gegend steht bewusst nicht darin: Wechselt sie,
+// bleibt ein Trupp derselbe (und ein besiegter bleibt besiegt).
 
 import { PATROL, REGIONS, WORLD_EVENT } from './content';
 import { fromTile, offsetM, toTile, distanceM } from './geo';
 import { pickWeighted, rngFrom } from './rng';
 import type { FoeKind, LatLon, RegionId, WorldEvent } from './types';
-import { eventCenter } from './worldEvents';
+import { eventCenter, resolveEvent } from './worldEvents';
 
 const MIN = 60_000;
 const WINDOW_MS = PATROL.windowMin * MIN;
@@ -32,28 +33,24 @@ export interface PatrolPlan {
   horde?: boolean;
 }
 
-const REGION_CODE: Record<RegionId, string> = { city: 'c', town: 't', village: 'v', wild: 'w', mountain: 'm', coast: 'k', desert: 'd', snow: 's' };
-const CODE_REGION = Object.fromEntries(Object.entries(REGION_CODE).map(([k, v]) => [v, k as RegionId])) as Record<string, RegionId>;
-
-/** Wer zu diesem Trupp gehört (nachts manchmal der Bleiche Wächter allein). */
-export function patrolGroup(seed: string, id: string, night: boolean): FoeKind[] {
-  const r = rngFrom(seed, 'trupp-gruppe', id);
+/** Wer zu diesem Trupp gehört: passend zur Gegend, nachts manchmal der Bleiche Wächter allein. */
+export function patrolGroup(seed: string, id: string, night: boolean, region: RegionId): FoeKind[] {
   if (id.startsWith('t:h:')) {
     // Horde: drei zusammen, oft mit einem Heuler, der weitere herbeiruft
-    const roll = r();
+    const roll = rngFrom(seed, 'trupp-gruppe', id)();
     return roll < 0.4 ? ['walker', 'walker', 'screamer'] : roll < 0.7 ? ['walker', 'walker', 'walker'] : ['crawler', 'walker', 'walker'];
   }
-  const region = CODE_REGION[id.split(':')[1]] ?? 'village';
-  if (night && r() < PATROL.watcherChance) return ['watcher'];
-  return [...pickWeighted(r, REGIONS[region].groups)];
+  // Eigener Zufall für den Wächter: Tag und Nacht ändern sonst die ganze Gruppe
+  if (night && rngFrom(seed, 'trupp-waechter', id)() < PATROL.watcherChance) return ['watcher'];
+  return [...pickWeighted(rngFrom(seed, 'trupp-gruppe', id), REGIONS[region].groups)];
 }
 
-function plan(seed: string, id: string, anchor: LatLon, from: number, night: boolean, horde = false): PatrolPlan {
+function plan(seed: string, id: string, anchor: LatLon, from: number, night: boolean, region: RegionId, horde = false): PatrolPlan {
   const r = rngFrom(seed, 'trupp-plan', id);
   return {
     id,
     anchor,
-    group: patrolGroup(seed, id, night),
+    group: patrolGroup(seed, id, night, region),
     speed: PATROL.speed[0] + r() * (PATROL.speed[1] - PATROL.speed[0]),
     lengthM: Math.round(PATROL.lengthM[0] + r() * (PATROL.lengthM[1] - PATROL.lengthM[0])),
     from,
@@ -62,7 +59,10 @@ function plan(seed: string, id: string, anchor: LatLon, from: number, night: boo
   };
 }
 
-/** Der Trupp einer Zelle in einer Runde, oder null. */
+/**
+ * Der Trupp einer Zelle in einer Runde, oder null. Ob es ihn gibt, hängt von der Gegend ab
+ * (in der Stadt mehr), wo er läuft aber nicht: Der Zufall dafür ist für alle Gegenden gleich.
+ */
 function cellPatrol(seed: string, region: RegionId, x: number, y: number, win: number, night: boolean): PatrolPlan | null {
   const r = rngFrom(seed, 'trupp', x, y, win);
   const chance = REGIONS[region].patrolChance + (night ? PATROL.nightExtra : 0);
@@ -70,7 +70,19 @@ function cellPatrol(seed: string, region: RegionId, x: number, y: number, win: n
   const anchor = fromTile(x + 0.15 + r() * 0.7, y + 0.15 + r() * 0.7, PATROL.zoom);
   // Nicht alle starten zur vollen halben Stunde
   const from = win * WINDOW_MS + Math.floor(r() * 5) * MIN;
-  return plan(seed, `t:${REGION_CODE[region]}:${x}:${y}:${win}`, anchor, from, night);
+  return plan(seed, `t:${x}:${y}:${win}`, anchor, from, night, region);
+}
+
+/** Ein Trupp einer Horde (k-ter, Runde win). */
+function hordePatrol(seed: string, ev: WorldEvent, k: number, win: number, night: boolean): PatrolPlan {
+  const id = `t:h:${ev.id}:${k}:${win}`;
+  const r = rngFrom(seed, 'horde', id);
+  const a = r() * Math.PI * 2;
+  const d = Math.sqrt(r()) * ev.radiusM * 0.8;
+  const c = eventCenter(ev, ev.from);
+  const p = plan(seed, id, offsetM(c, Math.sin(a) * d, Math.cos(a) * d), Math.max(ev.from, win * WINDOW_MS), night, 'town', true);
+  p.until = Math.min(ev.until, (win + 1) * WINDOW_MS);
+  return p;
 }
 
 /**
@@ -92,32 +104,36 @@ export function patrolsAround(seed: string, center: LatLon, radiusM: number, now
   // Horden: mehrere Trupps in der Zone, jede halbe Stunde neu verteilt
   for (const ev of events) {
     if (ev.kind !== 'horde' || now < ev.from || now >= ev.until) continue;
-    const c = eventCenter(ev, now);
-    if (distanceM(center, c) > radiusM + ev.radiusM) continue;
+    if (distanceM(center, eventCenter(ev, now)) > radiusM + ev.radiusM) continue;
     for (let k = 0; k < WORLD_EVENT.hordePatrols; k++) {
-      const id = `t:h:${ev.id}:${k}:${win}`;
-      const r = rngFrom(seed, 'horde', id);
-      const a = r() * Math.PI * 2;
-      const d = Math.sqrt(r()) * ev.radiusM * 0.8;
-      const p = plan(seed, id, offsetM(c, Math.sin(a) * d, Math.cos(a) * d), Math.max(ev.from, win * WINDOW_MS), night, true);
-      p.until = Math.min(ev.until, (win + 1) * WINDOW_MS);
+      const p = hordePatrol(seed, ev, k, win, night);
       if (now < p.until) out.push(p);
     }
   }
   return out;
 }
 
-/** Läuft dieser Trupp gerade (zum Prüfen einer Kampf-Aktion)? */
-export function patrolActive(id: string, now: number): boolean {
-  const m = /^t:[a-z]:(-?\d+):(-?\d+):(-?\d+)$/.exec(id);
+/**
+ * Einen Trupp aus seiner Kennung neu berechnen und prüfen, ob es ihn gerade gibt.
+ * region: die Gegend, die das Gerät meldet (prüft später der Server mit eigenen Kartendaten).
+ * Gibt null zurück bei erfundenen, abgelaufenen oder nicht passend geschriebenen Kennungen.
+ */
+export function resolvePatrol(seed: string, id: string, now: number, night: boolean, region: RegionId): PatrolPlan | null {
+  const slack = 5 * MIN;
+  const m = /^t:(-?\d+):(-?\d+):(-?\d+)$/.exec(id);
   if (m) {
-    const from = Number(m[3]) * WINDOW_MS;
-    return now >= from && now < from + (PATROL.lifeMin + 5) * MIN;
+    const p = cellPatrol(seed, region, Number(m[1]), Number(m[2]), Number(m[3]), night);
+    if (!p || p.id !== id || now < p.from || now >= p.until + slack) return null;
+    return p;
   }
-  const h = /^t:h:x:-?\d+:-?\d+:-?\d+:\d+:(-?\d+)$/.exec(id);
+  const h = /^t:h:(x:-?\d+:-?\d+:-?\d+:\d+):(\d+):(-?\d+)$/.exec(id);
   if (h) {
-    const from = Number(h[1]) * WINDOW_MS;
-    return now >= from - 5 * MIN && now < from + (PATROL.windowMin + 10) * MIN;
+    const ev = resolveEvent(seed, h[1]);
+    const k = Number(h[2]);
+    if (!ev || ev.kind !== 'horde' || k >= WORLD_EVENT.hordePatrols) return null;
+    const p = hordePatrol(seed, ev, k, Number(h[3]), night);
+    if (p.id !== id || now < p.from || now >= p.until + slack) return null;
+    return p;
   }
-  return false;
+  return null;
 }

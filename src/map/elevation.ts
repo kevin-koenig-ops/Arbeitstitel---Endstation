@@ -16,7 +16,7 @@ function loadTile(x: number, y: number): Promise<Uint8ClampedArray | null> {
     p = (async () => {
       try {
         const res = await fetch(URL(x, y));
-        if (!res.ok) return null;
+        if (!res.ok) throw new Error(String(res.status));
         const bmp = await createImageBitmap(await res.blob());
         const c = document.createElement('canvas');
         c.width = bmp.width;
@@ -25,6 +25,8 @@ function loadTile(x: number, y: number): Promise<Uint8ClampedArray | null> {
         ctx.drawImage(bmp, 0, 0);
         return ctx.getImageData(0, 0, c.width, c.height).data;
       } catch {
+        // Fehlgeschlagen (z. B. offline): in einer Minute nochmal versuchen
+        setTimeout(() => tiles.delete(key), 60_000);
         return null;
       }
     })();

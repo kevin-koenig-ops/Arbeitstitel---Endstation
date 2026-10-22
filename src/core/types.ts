@@ -656,7 +656,7 @@ export type Action =
   /** Abseits der Wege unterwegs (Meter seit der letzten Meldung). Im Wald kann dir etwas begegnen. */
   | { type: 'roam'; at: LatLon; accuracyM: number; meters: number; terrain: 'forest' }
   /** Kampf mit einem Trupp auf der Karte: du greifst aus dem Versteck an (surprise) oder er hat dich entdeckt (spotted). */
-  | { type: 'patrolFight'; patrol: string; at: LatLon; accuracyM: number; opening: Opening }
+  | { type: 'patrolFight'; patrol: string; at: LatLon; accuracyM: number; opening: Opening; region: RegionId }
   /** Nur im Testmodus (Simulation): sofort ein Kampf gegen diese Gegner. Der Server nimmt das später nicht an. */
   | { type: 'testFight'; at: LatLon; group: FoeKind[] }
   /** Ertrag einer Anlage (Regentonne, Hochbeet) abholen. */

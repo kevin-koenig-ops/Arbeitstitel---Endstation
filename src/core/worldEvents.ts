@@ -14,20 +14,33 @@ const HOUR = 3_600_000;
 const WINDOW_MS = WORLD_EVENT.windowH * HOUR;
 const KIND_WEIGHTS = Object.entries(WORLD_EVENTS).map(([k, d]) => [k as WorldEventKind, d.weight] as const);
 
-/** Das Ereignis einer Gegend in einer Runde (oder null). */
-export function eventIn(seed: string, x: number, y: number, win: number, blocked?: (p: LatLon) => boolean): WorldEvent | null {
+/** Alle möglichen Fassungen des Ereignisses einer Gegend in einer Runde (eine pro möglicher Mitte). */
+function eventCandidates(seed: string, x: number, y: number, win: number): WorldEvent[] {
   const r = rngFrom(seed, 'ereignis', x, y, win);
-  if (r() >= WORLD_EVENT.chance) return null;
+  if (r() >= WORLD_EVENT.chance) return [];
   const kind = pickWeighted(r, KIND_WEIGHTS);
   const def = WORLD_EVENTS[kind];
   const radiusM = Math.round(def.radiusM[0] + r() * (def.radiusM[1] - def.radiusM[0]));
   // Beginn irgendwann in der ersten Stunde der Runde
   const from = win * WINDOW_MS + Math.floor(r() * 60) * 60_000;
   const until = from + Math.round(def.durationMin[0] + r() * (def.durationMin[1] - def.durationMin[0])) * 60_000;
+  const out: WorldEvent[] = [];
   for (let k = 0; k < WORLD_EVENT.candidates; k++) {
     const center = fromTile(x + 0.2 + r() * 0.6, y + 0.2 + r() * 0.6, WORLD_EVENT.zoom);
-    if (blocked?.(center)) continue;
-    return { id: `x:${x}:${y}:${win}`, kind, center, radiusM, from, until };
+    out.push({ id: `x:${x}:${y}:${win}:${k}`, kind, center, radiusM, from, until });
+  }
+  return out;
+}
+
+/**
+ * Das Ereignis einer Gegend in einer Runde (oder null): die erste mögliche Mitte, die nicht
+ * an einem heiklen Ort liegt. dropBlocked: strengere Prüfung für Hilfsabwürfe (nie in Gärten,
+ * auf Höfen oder Privatgrund). Die Nummer der Mitte steht in der Kennung.
+ */
+export function eventIn(seed: string, x: number, y: number, win: number, blocked?: (p: LatLon) => boolean, dropBlocked?: (p: LatLon) => boolean): WorldEvent | null {
+  for (const ev of eventCandidates(seed, x, y, win)) {
+    const bad = ev.kind === 'drop' ? (dropBlocked ?? blocked) : blocked;
+    if (!bad?.(ev.center)) return ev;
   }
   return null;
 }
@@ -44,7 +57,15 @@ export function eventCenter(ev: WorldEvent, now: number): LatLon {
 }
 
 /** Alle Ereignisse, die gerade laufen (oder bald beginnen: soon in ms), im Umkreis. */
-export function eventsAround(seed: string, center: LatLon, radiusM: number, now: number, blocked?: (p: LatLon) => boolean, soon = 0): WorldEvent[] {
+export function eventsAround(
+  seed: string,
+  center: LatLon,
+  radiusM: number,
+  now: number,
+  blocked?: (p: LatLon) => boolean,
+  soon = 0,
+  dropBlocked?: (p: LatLon) => boolean,
+): WorldEvent[] {
   const t = toTile(center, WORLD_EVENT.zoom);
   const cellM = (40075016 * Math.cos((center.lat * Math.PI) / 180)) / 2 ** WORLD_EVENT.zoom;
   const span = Math.ceil(radiusM / cellM) + 1;
@@ -53,7 +74,7 @@ export function eventsAround(seed: string, center: LatLon, radiusM: number, now:
   for (let x = Math.floor(t.x) - span; x <= Math.floor(t.x) + span; x++)
     for (let y = Math.floor(t.y) - span; y <= Math.floor(t.y) + span; y++)
       for (const w of [win - 1, win, win + 1]) {
-        const ev = eventIn(seed, x, y, w, blocked);
+        const ev = eventIn(seed, x, y, w, blocked, dropBlocked);
         if (!ev || ev.until <= now || ev.from > now + soon) continue;
         if (distanceM(center, eventCenter(ev, now)) - ev.radiusM > radiusM) continue;
         out.push(ev);
@@ -66,11 +87,11 @@ export function zonesAt(seed: string, p: LatLon, now: number, blocked?: (p: LatL
   return eventsAround(seed, p, 0, now, blocked).filter((ev) => ev.radiusM > 0 && distanceM(p, eventCenter(ev, now)) <= ev.radiusM);
 }
 
-/** Ein Ereignis aus seiner Kennung neu berechnen. */
-export function resolveEvent(seed: string, id: string, blocked?: (p: LatLon) => boolean): WorldEvent | null {
-  const m = /^x:(-?\d+):(-?\d+):(-?\d+)$/.exec(id);
+/** Ein Ereignis aus seiner Kennung neu berechnen (die Nummer der Mitte steht darin). */
+export function resolveEvent(seed: string, id: string): WorldEvent | null {
+  const m = /^x:(-?\d+):(-?\d+):(-?\d+):(\d+)$/.exec(id);
   if (!m) return null;
-  const ev = eventIn(seed, Number(m[1]), Number(m[2]), Number(m[3]), blocked);
+  const ev = eventCandidates(seed, Number(m[1]), Number(m[2]), Number(m[3]))[Number(m[4])];
   return ev && ev.id === id ? ev : null;
 }
 
@@ -80,9 +101,9 @@ export function dropSpot(ev: WorldEvent): Spot {
 }
 
 /** Die Kiste eines Hilfsabwurfs prüfen: gibt es sie, und liegt sie gerade noch da? */
-export function resolveDropSpot(seed: string, id: string, now: number, blocked?: (p: LatLon) => boolean): Spot | null {
+export function resolveDropSpot(seed: string, id: string, now: number): Spot | null {
   if (!id.startsWith('e:')) return null;
-  const ev = resolveEvent(seed, id.slice(2), blocked);
+  const ev = resolveEvent(seed, id.slice(2));
   if (!ev || ev.kind !== 'drop' || now < ev.from || now >= ev.until) return null;
   return dropSpot(ev);
 }

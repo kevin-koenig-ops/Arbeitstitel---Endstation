@@ -1414,6 +1414,17 @@ export const PATROL = {
   sneakFactor: 0.75,
   /** So nah musst du für einen Überraschungsangriff sein (Meter). */
   surpriseM: 30,
+  /** Hat er dich entdeckt: so nah darf man auf „Kämpfen“ tippen (Meter). */
+  fightM: 45,
+  /** So weit weg (Meter, ein paar Sekunden lang) hast du ihn abgehängt. */
+  escapeM: 70,
+  /** So schnell verfolgt er dich (m/s, langsamer als zu Fuß). */
+  chaseSpeed: 0.95,
+  /** So lange folgt er dir, wenn er dich entdeckt hat (Sekunden), und so lange einer Spur im Schnee. */
+  huntS: 90,
+  trackHuntS: 120,
+  /** Für die Regeln: so weit darf man vom Startpunkt seiner Strecke entfernt sein (Meter, zur Länge dazu). */
+  reachSlackM: 350,
   /** Nach einer Begegnung so lange Ruhe (Minuten). */
   cooldownMin: 3,
   /** Rund ums Zuhause sucht dich kein Trupp (Meter). */
@@ -1485,8 +1496,8 @@ export const WORLD_EVENT = {
   chance: 0.35,
   /** So viele mögliche Mitten (die erste, die nicht an einem heiklen Ort liegt, gilt). */
   candidates: 5,
-  /** Bis zu dieser Entfernung erfährt man davon (Meter). */
-  newsM: 2500,
+  /** Bis zu dieser Entfernung erfährt man davon (Meter; weiter weg fehlen oft noch die Kartendaten). */
+  newsM: 1200,
   /** So viele Trupps sind in einer Horde unterwegs. */
   hordePatrols: 4,
 };

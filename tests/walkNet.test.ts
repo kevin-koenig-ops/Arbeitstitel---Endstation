@@ -150,6 +150,9 @@ describe('Wegenetz: schnell oder leise', () => {
     expect(z.terrainAt(ll(0, 0))).toBe('blocked');
     const around = z.route(ll(0, -150), ll(0, 150))!;
     expect(around.path.every((p) => distanceM(p, ll(0, 0)) > 55)).toBe(true);
+    // Ziel auf der Straße mitten im Sperrgebiet: so nah wie möglich, aber nicht hinein
+    const into = z.route(ll(0, -150), ll(0, 0))!;
+    expect(into.path.every((p) => distanceM(p, ll(0, 0)) > 55)).toBe(true);
     const out = z.route(ll(0, 0), ll(0, -150))!;
     expect(distanceM(out.end, ll(0, -150))).toBeLessThan(1);
   });

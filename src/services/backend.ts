@@ -132,7 +132,11 @@ export class LocalBackend implements GameBackend {
   }
 
   eventsNear(center: LatLon, radiusM: number, soonMs = 0) {
-    return eventsAround(this.worldSeed, center, radiusM, this.clock(), this.placeFilter ?? undefined, soonMs);
+    const a = this.placeFilter;
+    const b = this.specialFilter;
+    // Hilfsabwürfe wie besondere Orte: nie an heiklen Orten, nie in Gärten, auf Höfen oder Privatgrund
+    const drop = a || b ? (p: LatLon) => !!(a?.(p) || b?.(p)) : undefined;
+    return eventsAround(this.worldSeed, center, radiusM, this.clock(), a ?? undefined, soonMs, drop);
   }
 
   patrolsNear(center: LatLon, radiusM: number, region: RegionId, night: boolean, events: WorldEvent[]) {

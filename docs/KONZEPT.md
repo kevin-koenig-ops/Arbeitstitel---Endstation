@@ -326,7 +326,7 @@ Das Gelände ist ein Werkzeug, nicht nur Kulisse: Straßen sind schnell, aber ma
 
 Welche Kreaturen wo häufiger sind, folgt der Lore (Wandler in Wäldern und Dörfern, Heuler in Städten, Kriecher in Ruinen und Gräben, Borkenmänner in alten Wäldern). **Kälte** (Frost, Schnee, Winternacht ohne Wetterdaten): ohne Wärme 3 in der ersten Kampfrunde eine Karte weniger (Mütze und Regenjacke geben zusammen 2). **Hitze** (ab 28 °C oder Wüste am Tag): ohne Wasser in der ersten Runde 1 Kraft weniger.
 
-**Weltereignisse:** Pro Gegend (~1,5 km) und Runde (3 Stunden) passiert manchmal etwas für ein bis drei Stunden, für alle Spieler gleich. Man erfährt es per Funk (bis 2,5 km), oben rechts steht das nächste.
+**Weltereignisse:** Pro Gegend (~1,5 km) und Runde (3 Stunden) passiert manchmal etwas für ein bis drei Stunden, für alle Spieler gleich. Man erfährt es per Funk (bis gut 1 km), oben rechts steht das nächste.
 - **Staubsturm:** zieht langsam weiter. Im Staub schlafen Keime: Durchsuchen nur mit Staubmaske oder Gasmaske. Dafür sehen dich die Trupps kaum.
 - **Horde:** mehrere Trupps zu dritt in der Zone.
 - **Sperrgebiet:** Landstreifer brennen eine Fiebergrube aus. Absperrband, Fundstellen darin sind tabu, beim Laufen per Tippen kommt man nicht hinein (hinaus schon).

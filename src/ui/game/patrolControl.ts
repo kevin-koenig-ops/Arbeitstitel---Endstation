@@ -59,14 +59,16 @@ export interface PatrolHost {
   busy: () => boolean;
   /** Von oben (Hügel) siehst du Trupps weiter (1 = normal). */
   viewBonus: () => number;
+  /** Liegt Schnee (Spuren verraten dich)? */
+  snowy: () => boolean;
   onSpotted: (p: LivePatrol) => void;
   onTrack: (p: LivePatrol) => void;
-  onLost: (p: LivePatrol) => void;
+  /** Kein Trupp folgt dir mehr. quiet: ohne Meldung (z. B. du bist zu Hause angekommen). */
+  onLost: (p: LivePatrol, quiet: boolean) => void;
   onHidden: (hidden: boolean) => void;
 }
 
 const TICK_MS = 200;
-const CHASE_SPEED = 0.95;
 
 export class PatrolControl {
   private live = new Map<string, LivePatrol>();
@@ -74,31 +76,33 @@ export class PatrolControl {
   private lastPlanAt = -Infinity;
   private lastPathTry = 0;
   private shownAny = true;
+  /** Verfolgt dich gerade jemand? */
+  get chased() {
+    return this.chasers.size > 0;
+  }
   private lastPlanPos: LatLon | null = null;
   private lastT = performance.now();
   private lastPos: LatLon | null = null;
   private stillSince = performance.now();
   private hidden = false;
   private trail: { p: LatLon; t: number }[] = [];
-  /** GPS: Trupp, der dich entdeckt hat und dir folgt. */
-  private chaser: string | null = null;
-  private farSince = 0;
+  /** Trupps, die dich entdeckt haben und dir folgen: Kennung -> seit wann weit genug weg (0 = nah). */
+  private chasers = new Map<string, number>();
+  private ticks = 0;
+  private terrainAt: { pos: LatLon; terrain: TerrainKind } | null = null;
+  /** Nur zum Testen: die Lage beim letzten Schritt. */
+  private dbg: unknown = null;
 
   constructor(private host: PatrolHost) {
     this.timer = window.setInterval(() => this.tick(), TICK_MS);
     // Nur zum Testen: von außen ansehen
     try {
-      if (localStorage.getItem('endstation.debug'))
-        (window as unknown as { __patrols?: unknown }).__patrols = () =>
-          [...this.live.values()].map((p) => ({
-            id: p.plan.id,
-            d: Math.round(p.distM),
-            path: !!p.path,
-            aw: p.awareness,
-            shown: p.shown,
-            group: p.plan.group,
-            pos: p.pos,
-          }));
+      if (localStorage.getItem('endstation.debug')) {
+        const w = window as unknown as { __patrols?: unknown; __dbgCalm?: unknown };
+        w.__patrols = () =>
+          [...this.live.values()].map((p) => ({ id: p.plan.id, d: Math.round(p.distM), path: !!p.path, aw: p.awareness, shown: p.shown, group: p.plan.group, pos: p.pos }));
+        w.__dbgCalm = () => this.dbg;
+      }
     } catch {
       /* egal */
     }
@@ -125,15 +129,29 @@ export class PatrolControl {
       p.huntUntil = 0;
       p.spotted = false;
     }
-    if (this.chaser === id) this.chaser = null;
+    this.chasers.delete(id);
+  }
+
+  /** Verfolgung beenden und Bescheid geben. */
+  private drop(p: LivePatrol, quiet: boolean) {
+    this.release(p.plan.id);
+    this.host.onLost(p, quiet);
   }
 
   /** Die Lage am Spieler: Gelände und ob man gesehen wird. */
   exposure(): Exposure {
     const f = this.host.fix();
     const s = this.host.app.backend.current();
-    const net = f ? this.host.net(f.pos) : null;
-    const terrain: TerrainKind = f && net?.wayCount ? net.terrainAt(f.pos) : 'open';
+    let terrain: TerrainKind = 'open';
+    if (f) {
+      // Das Gelände nur neu bestimmen, wenn man sich bewegt hat
+      if (this.terrainAt && distanceM(this.terrainAt.pos, f.pos) < 1) terrain = this.terrainAt.terrain;
+      else {
+        const net = this.host.net(f.pos);
+        terrain = net?.wayCount ? net.terrainAt(f.pos) : 'open';
+        this.terrainAt = { pos: f.pos, terrain };
+      }
+    }
     return {
       terrain: terrain === 'blocked' ? 'built' : terrain,
       hidden: this.hidden,
@@ -228,13 +246,25 @@ export class PatrolControl {
           distM: Infinity,
         };
         this.live.set(plan.id, p);
+      } else {
+        // Gruppe kann sich ändern (nachts kommt der Bleiche Wächter); die Strecke bleibt
+        const same = p.plan.anchor.lat === plan.anchor.lat && p.plan.anchor.lon === plan.anchor.lon && p.plan.lengthM === plan.lengthM;
+        p.plan = plan;
+        if (!same) {
+          p.path = null;
+          p.netTried = null;
+        }
       }
       if (!p.path && p.netTried !== net) {
         p.netTried = net;
         p.path = this.makePath(plan, net);
       }
     }
-    for (const [id, p] of this.live) if (!keep.has(id) && p.huntUntil < now) this.live.delete(id);
+    for (const [id, p] of this.live) {
+      if (keep.has(id) || p.huntUntil >= now) continue;
+      if (this.chasers.has(id)) this.drop(p, true);
+      this.live.delete(id);
+    }
   }
 
   private tick() {
@@ -284,33 +314,32 @@ export class PatrolControl {
     }
     const exp = { ...exp0, hidden: this.hidden };
     const cond = this.conditions();
+    const snowy = this.host.snowy();
 
-    // Wer sucht dich gerade überhaupt? Nicht beim Zuhause, nicht erschöpft, nicht direkt nach einer Begegnung.
+    // Wer sucht dich gerade überhaupt? Ein Fenster oder Kampf ist offen: alles hält kurz an.
+    // Beim Zuhause, erschöpft oder direkt nach einer Begegnung: niemand sucht dich, Verfolger geben auf.
     const home = this.host.home();
-    const calm = this.host.busy() || !!s.combat || currentHealth(s, now) < MIN_HEALTH_TO_FIGHT || now - s.wildAt < PATROL.cooldownMin * 60_000 || (!!home && distanceM(home, here) < PATROL.homeSafeM);
-
-    if (localStorage.getItem('endstation.debug'))
-      (window as unknown as { __dbgCalm?: unknown }).__dbgCalm = () => ({
-        calm,
-        busy: this.host.busy(),
-        combat: !!s.combat,
-        hp: currentHealth(s, now),
-        wild: now - s.wildAt,
-        home: home && distanceM(home, here),
-        exp,
-        cond,
-      });
+    const paused = this.host.busy() || !!s.combat;
+    const calm = paused || currentHealth(s, now) < MIN_HEALTH_TO_FIGHT || now - s.wildAt < PATROL.cooldownMin * 60_000 || (!!home && distanceM(home, here) < PATROL.homeSafeM);
+    if (calm && !paused) for (const id of [...this.chasers.keys()]) {
+      const c = this.live.get(id);
+      if (c) this.drop(c, true);
+      else this.chasers.delete(id);
+    }
+    this.dbg = { calm, paused, exp, cond };
     const showM = PATROL.showM * REGIONS[cond.region].view * this.host.viewBonus() * (cond.phase === 'night' ? 0.65 : 1) * (cond.sky === 'fog' || cond.dust ? 0.55 : 1);
     const views: PatrolView[] = [];
     for (const p of this.live.values()) {
       if (s.patrols[p.plan.id] || now >= p.plan.until + (p.huntUntil > now ? 60_000 : 0)) continue;
       const path = this.onPath(p, now);
       const hunting = p.huntUntil > now;
-      if (hunting && !calm) {
+      if (paused) {
+        // steht still, solange ein Fenster offen ist
+      } else if (hunting && !calm) {
         // Verfolgung: geradewegs auf dich zu
         const from = p.free ?? p.pos;
         const d = distanceM(from, here);
-        const step = Math.min(d, CHASE_SPEED * dt);
+        const step = Math.min(d, PATROL.chaseSpeed * dt);
         const b = (bearingDeg(from, here) * Math.PI) / 180;
         p.free = d > 1 ? offsetM(from, Math.sin(b) * step, Math.cos(b) * step) : from;
         p.pos = p.free;
@@ -345,15 +374,14 @@ export class PatrolControl {
           p.awareness = Math.min(1, p.awareness + (dt / PATROL.noticeS) * closeness * (inCone ? 1 : 0.8));
         } else p.awareness = Math.max(0, p.awareness - dt * 0.35);
         // Im Schnee: frische Spuren verraten dich
-        if (season === 'winter' && !hunting && !p.spotted && this.trail.some((q) => distanceM(q.p, p.pos) < 8)) {
-          p.huntUntil = now + 120_000;
+        if (snowy && !hunting && !p.spotted && this.trail.some((q) => distanceM(q.p, p.pos) < 8)) {
+          p.huntUntil = now + PATROL.trackHuntS * 1000;
           this.host.onTrack(p);
         }
         if (p.awareness >= 1 && !p.spotted) {
           p.spotted = true;
-          p.huntUntil = now + 90_000;
-          this.chaser = p.plan.id;
-          this.farSince = 0;
+          p.huntUntil = now + PATROL.huntS * 1000;
+          this.chasers.set(p.plan.id, 0);
           this.host.onSpotted(p);
         }
       } else if (!hunting) p.awareness = Math.max(0, p.awareness - dt * 0.35);
@@ -374,23 +402,25 @@ export class PatrolControl {
         });
     }
 
-    // GPS: weit genug weggegangen? Dann hast du ihn abgehängt.
-    if (this.chaser) {
-      const c = this.live.get(this.chaser);
-      if (!c || calm) this.chaser = null;
-      else if (c.distM > 70) {
-        if (!this.farSince) this.farSince = t;
-        else if (t - this.farSince > 8000) {
-          this.chaser = null;
-          c.huntUntil = 0;
-          c.spotted = false;
-          c.awareness = 0;
-          this.host.onLost(c);
+    // Weit genug weggegangen, oder er gibt auf? Dann hast du ihn abgehängt.
+    if (!paused)
+      for (const [id, farSince] of [...this.chasers]) {
+        const c = this.live.get(id);
+        if (!c) {
+          this.chasers.delete(id);
+          continue;
         }
-      } else this.farSince = 0;
+        if (c.huntUntil <= now) this.drop(c, false);
+        else if (c.distM > PATROL.escapeM) {
+          if (!farSince) this.chasers.set(id, t);
+          else if (t - farSince > 8000) this.drop(c, false);
+        } else if (farSince) this.chasers.set(id, 0);
+      }
+    // Karte: etwa zweimal pro Sekunde reicht; nichts zu sehen und vorher auch nicht: gar nicht (spart Akku)
+    this.ticks++;
+    if ((views.length || this.shownAny) && (this.ticks % 2 === 0 || views.some((v) => v.alert > 0))) {
+      gm.setPatrols(views);
+      this.shownAny = views.length > 0;
     }
-    // Nichts zu sehen und vorher auch nicht: die Karte nicht neu zeichnen lassen (spart Akku)
-    if (views.length || this.shownAny) gm.setPatrols(views);
-    this.shownAny = views.length > 0;
   }
 }

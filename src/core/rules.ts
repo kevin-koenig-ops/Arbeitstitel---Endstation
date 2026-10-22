@@ -61,6 +61,8 @@ import {
   WILD,
   WORKBENCH_LEVELS,
   PATROL,
+  REGIONS,
+  TACTICS,
   gearSum,
 } from './content';
 import { ExploredView, revealAround, SECTOR_LEVELS, sectorOf } from './explore';
@@ -113,6 +115,7 @@ import type {
   ActionResult,
   Cache,
   Combat,
+  RegionId,
   LatLon,
   Character,
   EnemyId,
@@ -135,7 +138,7 @@ import type {
   WeaponId,
 } from './types';
 import { gridSpotAlive, resolveGridSpot, resolveSpecialSpot } from './world';
-import { patrolActive, patrolGroup } from './patrols';
+import { resolvePatrol } from './patrols';
 import { resolveDropSpot, zonesAt } from './worldEvents';
 import { GOALS } from './progress';
 
@@ -568,12 +571,16 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
         events.push({ type: 'combatStarted', enemy: state.combat.enemy });
         break;
       }
-      if (state.combat || !patrolActive(action.patrol, ctx.now) || state.patrols[action.patrol]) return reject('nothing');
-      if (action.accuracyM > 120) return reject('too_far');
+      const night = dayPhase(action.at, ctx.now) === 'night';
+      const region: RegionId = action.region in REGIONS ? action.region : 'village';
+      // Den Trupp aus seiner Kennung neu berechnen: erfundene oder abgelaufene gibt es nicht
+      const plan = resolvePatrol(ctx.worldSeed, action.patrol, ctx.now, night, region);
+      if (state.combat || !plan || state.patrols[action.patrol]) return reject('nothing');
+      // Man muss in der Nähe seiner Strecke sein (Strecke, Weg zum nächsten Pfad, Verfolgung)
+      if (action.accuracyM > 120 || distanceM(action.at, plan.anchor) > plan.lengthM + PATROL.reachSlackM) return reject('too_far');
       if (state.health < MIN_HEALTH_TO_FIGHT) return reject('exhausted');
       if (ctx.now - state.wildAt < PATROL.cooldownMin * 60_000) return reject('cooldown');
-      const night = dayPhase(action.at, ctx.now) === 'night';
-      const group = patrolGroup(ctx.worldSeed, action.patrol, night);
+      const group = plan.group;
       const window = Math.floor(ctx.now / 60_000);
       const spot: Spot = { id: `w:${action.patrol}`, kind: 'hide', source: 'grid', pos: action.at, name: group.length > 2 ? 'Horde' : 'Trupp' };
       const enemy: EnemyId = group.find((k): k is EnemyId => k !== 'screamer') ?? 'walker';
@@ -630,7 +637,8 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       }
       state.weapons = state.weapons.filter((x) => x.dur > 0);
       if (action.outcome === 'won') {
-        const kills = Math.max(1, Math.min(6, Math.floor(action.kills)));
+        // Mehr als die Gruppe (und was ein Heuler herbeiruft) kann man nicht erledigen
+      const kills = Math.max(1, Math.min(c.patrol ? c.group.length + TACTICS.maxHowls : 6, Math.floor(action.kills)));
         state.health = Math.max(1, health);
         if (state.health < MAX_HEALTH) state.healthAt = ctx.now;
         state.stats.kills += kills;
@@ -1416,7 +1424,7 @@ function dropSome(state: PlayerState, r: () => number): Partial<Inventory> {
  */
 function verifySpot(spot: Spot, ctx: RuleContext): Spot | null {
   if (spot.source === 'special' && spot.id.startsWith('e:')) {
-    const drop = resolveDropSpot(ctx.worldSeed, spot.id, ctx.now, ctx.blocked);
+    const drop = resolveDropSpot(ctx.worldSeed, spot.id, ctx.now);
     if (!drop || distanceM(drop.pos, spot.pos) > 1) return null;
     return drop;
   }

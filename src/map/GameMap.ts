@@ -406,7 +406,11 @@ export class GameMap {
   }
 
   /** Straßen, Wege, Häuser, Wasser, Ortsflächen und Wald rund um einen Punkt (für das Wegenetz). */
-  walkInput(center: LatLon, radiusM: number, extra: Pick<WalkInput, 'noGo' | 'season' | 'wade'> = {}): WalkInput {
+  /**
+   * patrol: Wege für die Strecken der Trupps. Ohne große Straßen (Bundes- und Hauptstraßen),
+   * ohne Zufahrten und Parkplatzwege, und nie über Friedhöfe, Schulhöfe und andere heikle Orte.
+   */
+  walkInput(center: LatLon, radiusM: number, extra: Pick<WalkInput, 'noGo' | 'season' | 'wade'> = {}, opts: { patrol?: boolean } = {}): WalkInput {
     const real = this.opts.mode === 'real';
     const out: WalkInput = { center, ways: [], buildings: [], water: [], built: [], forest: [], fields: [], wetland: [], ...extra };
     let feats: (layer: string) => { geometry: GeoJSON.Geometry; properties: Record<string, unknown> | null }[];
@@ -436,11 +440,18 @@ export class GameMap {
       }
     };
     try {
+      const sens = opts.patrol ? this.sensitiveCheck() : null;
       for (const f of feats('transportation')) {
-        if (NOT_WALKABLE.includes(String(f.properties?.class ?? ''))) continue;
+        const cls = String(f.properties?.class ?? '');
+        if (NOT_WALKABLE.includes(cls)) continue;
+        if (opts.patrol && ['trunk', 'primary', 'service'].includes(cls)) continue;
         const g = f.geometry;
         const list = g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : [];
-        for (const c of list) if (c.length > 1 && near(c)) out.ways.push(c as [number, number][]);
+        for (const c of list) {
+          if (c.length < 2 || !near(c)) continue;
+          if (sens && c.some(([lon, lat]) => sens({ lat, lon }, false))) continue;
+          out.ways.push(c as [number, number][]);
+        }
       }
       polys('building', null, out.buildings);
       polys('water', null, out.water);
@@ -491,7 +502,7 @@ export class GameMap {
       seen.add(p.id);
       let m = this.patrolMarkers.get(p.id);
       if (!m) {
-        const el = h('button', { class: 'patrol', type: 'button' }, h('span', { class: 'patrol-badge' }, svgEl(icon(p.group.includes('watcher') ? 'eye' : 'patrol', 18)), h('b', null, String(p.group.length))), h('span', { class: 'patrol-alert', 'aria-hidden': 'true' }));
+        const el = h('button', { class: 'patrol', type: 'button', 'data-id': p.id }, h('span', { class: 'patrol-badge' }, svgEl(icon(p.group.includes('watcher') ? 'eye' : 'patrol', 18)), h('b', null, String(p.group.length))), h('span', { class: 'patrol-alert', 'aria-hidden': 'true' }));
         el.addEventListener('click', (ev) => {
           ev.stopPropagation();
           this.lastMarkerTap = Date.now();

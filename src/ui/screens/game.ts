@@ -427,6 +427,7 @@ export function gameScreen(app: App): Screen {
     const sensitive = gm.sensitiveCheck();
     app.backend.setPlaceFilter((p) => sensitive(p, true));
     app.backend.setSpecialFilter(gm.builtCheck());
+    filtersReady = true;
     const list = await app.backend.spotsNear(fix.pos, VIEW_RADIUS_M, gm.poiCandidates());
     if (destroyed || !gm) return;
     // Hilfsabwürfe: eine Kiste, solange das Ereignis läuft
@@ -631,19 +632,22 @@ export function gameScreen(app: App): Screen {
   let net: WalkNet | null = null;
   let netAt = 0;
   let netZones = '';
+  /** Neue Kartendaten sind da: Wegenetz beim nächsten Mal neu bauen. */
+  let netDirty = false;
   let routeOff: boolean[] = [];
   let snapHintAt = -Infinity;
   /** Wegenetz rund um p, bei Bedarf neu aus den geladenen Kartendaten gebaut. */
   const walkNet = (p: LatLon, needM = 0): WalkNet | null => {
     if (!gm) return null;
     const now = performance.now();
-    const stale = !net || netZones !== zoneSig || distanceM(net.center, p) + needM > 450 || now - netAt > (net.wayCount ? 20000 : 3000);
+    const stale = !net || netZones !== zoneSig || netDirty || distanceM(net.center, p) + needM > 450 || (!net.wayCount && now - netAt > 3000);
     if (stale) {
       try {
         const s = app.backend.current();
         const t = app.backend.now();
         const noGo = worldEvents.filter((e) => e.kind === 'quarantine' && t >= e.from && t < e.until).map((e) => ({ center: eventCenter(e, t), radiusM: e.radiusM }));
         netZones = zoneSig;
+        netDirty = false;
         net = new WalkNet(gm.walkInput(p, Math.max(700, needM + 300), { noGo, season: seasonOf(app.settings.get()), wade: !!s && Object.values(s.gear.worn).some((g) => g && GEAR[g].wade) }));
         netAt = now;
       } catch {
@@ -664,7 +668,7 @@ export function gameScreen(app: App): Screen {
     const now = performance.now();
     if (!pNet || pNet.key !== key || (!pNet.net.wayCount && now - pNet.at > 3000)) {
       try {
-        pNet = { key, net: new WalkNet(gm.walkInput({ lat: gy * 0.005, lon: gx * 0.008 }, 1100)), at: now };
+        pNet = { key, net: new WalkNet(gm.walkInput({ lat: gy * 0.005, lon: gx * 0.008 }, 1100, {}, { patrol: true })), at: now };
       } catch {
         return null;
       }
@@ -737,6 +741,7 @@ export function gameScreen(app: App): Screen {
 
   // --- Gegend, Weltereignisse, Trupps ---------------------------------------------------
   let worldEvents: WorldEvent[] = [];
+  let filtersReady = false;
   /** Nur im Testmodus: von Hand ausgelöste Ereignisse (nur Anzeige, die Regeln kennen sie nicht). */
   let testEvents: WorldEvent[] = [];
   let zoneSig = '';
@@ -752,12 +757,17 @@ export function gameScreen(app: App): Screen {
   let hiddenHintShown = false;
 
   /** Art der Gegend aus den Kartendaten (alle 150 m neu), dazu die Höhe für die Aussicht. */
+  let regionRetryAt = 0;
   const updateRegion = (f: Fix) => {
     if (!gm || (regionAt && distanceM(regionAt, f.pos) < 150)) return;
+    if (!regionAt && performance.now() < regionRetryAt) return;
     regionAt = f.pos;
     const stats = gm.regionStats(f.pos, 600);
-    // Noch keine Kartendaten geladen: beim nächsten Mal nochmal
-    if (stats.houses + stats.forest + stats.farm + stats.water === 0) regionAt = null;
+    // Nichts erkannt (Daten fehlen noch, oder freies Land): in 10 Sekunden nochmal
+    if (stats.houses + stats.forest + stats.farm + stats.water === 0) {
+      regionAt = null;
+      regionRetryAt = performance.now() + 10_000;
+    }
     const apply = (relief: { relief: number; above: number } | null) => {
       if (destroyed) return;
       stats.relief = relief?.relief ?? null;
@@ -784,6 +794,8 @@ export function gameScreen(app: App): Screen {
 
   /** Weltereignisse in der Gegend: neu einlesen, Funkmeldung bei neuen, Zonen zeichnen. */
   const refreshEvents = (f: Fix, force = false) => {
+    // Erst wenn die Karte weiß, wo heikle Orte sind (sonst läge ein Abwurf vielleicht auf einem Friedhof)
+    if (!filtersReady) return;
     const t = performance.now();
     if (!force && eventsAt && distanceM(eventsAt, f.pos) < 150 && t - eventsTime < 30_000) return;
     eventsAt = f.pos;
@@ -850,7 +862,13 @@ export function gameScreen(app: App): Screen {
   const startPatrolFight = async (id: string, opening: Opening) => {
     const f = fix;
     if (!f) return;
-    const res = await app.backend.dispatch({ type: 'patrolFight', patrol: id, at: f.pos, accuracyM: f.accuracyM, opening });
+    if (id.includes(':test')) {
+      hideBanner('patrol');
+      patrols?.release(id);
+      app.toast('Testereignis: nur Anzeige, diese Gegner kämpfen nicht.');
+      return;
+    }
+    const res = await app.backend.dispatch({ type: 'patrolFight', patrol: id, at: f.pos, accuracyM: f.accuracyM, opening, region: currentRegion() });
     const ev = res.events[0];
     hideBanner('patrol');
     if (ev.type === 'rejected') {
@@ -888,8 +906,53 @@ export function gameScreen(app: App): Screen {
     showBanner(
       'patrol',
       'Entdeckt!',
-      `Ein ${p.plan.horde ? 'Teil der Horde' : 'Trupp'} (${patrolLabel(p.plan.group)}) hat dich gesehen und kommt auf dich zu. Bleib stehen und kämpfe, oder geh weg, bis du 70 m Abstand hast.`,
-      [['Kämpfen', () => void startPatrolFight(p.plan.id, 'spotted')]],
+      `${p.plan.horde ? 'Ein Teil der Horde' : 'Ein Trupp'} (${patrolLabel(p.plan.group)}) hat dich gesehen und kommt auf dich zu. Bleib stehen und kämpfe, oder geh weg, bis du ${PATROL.escapeM} m Abstand hast.`,
+      [
+        [
+          'Kämpfen',
+          () => {
+            if (!standing()) app.toast('Bleib erst stehen. Gekämpft wird nur im Stehen.', 'warn');
+            else void startPatrolFight(p.plan.id, 'spotted');
+          },
+        ],
+      ],
+    );
+  };
+
+  /** Mit GPS: Stehst du gerade (seit ein paar Sekunden)? Gekämpft wird nur im Stehen. */
+  const standing = () => provider?.kind === 'sim' || performance.now() - gpsMovedAt > 4000;
+
+  /** Kampf beginnen: beim Laufen per Tippen sofort, mit GPS nur im Stehen und nach Bestätigung. */
+  const confirmPatrolFight = (id: string, opening: Opening) => {
+    if (provider?.kind === 'sim') {
+      if (opening === 'surprise') app.toast('Überraschungsangriff!', 'good');
+      void startPatrolFight(id, opening);
+      return;
+    }
+    if (!standing()) {
+      app.toast('Bleib erst stehen. Gekämpft wird nur im Stehen.', 'warn');
+      return;
+    }
+    const p = patrols?.get(id);
+    if (!p) return;
+    showBanner(
+      'patrol',
+      opening === 'surprise' ? 'Überraschungsangriff?' : 'Kämpfen?',
+      `${p.plan.horde ? 'Teil der Horde' : 'Trupp'}: ${patrolLabel(p.plan.group)}, ${formatDistance(p.distM)} entfernt.${opening === 'surprise' ? ' Er hat dich noch nicht bemerkt: Die Gegner setzen die erste Runde aus.' : ''} Bleib stehen, solange der Kampf läuft.`,
+      [
+        [
+          opening === 'surprise' ? 'Angreifen' : 'Kämpfen',
+          () => {
+            const q = patrols?.get(id);
+            if (!standing()) app.toast('Bleib erst stehen. Gekämpft wird nur im Stehen.', 'warn');
+            else if (opening === 'surprise' && q && (q.awareness >= 0.5 || q.distM > PATROL.surpriseM)) {
+              hideBanner('patrol');
+              app.toast('Zu spät, er hat dich bemerkt oder ist zu weit weg.', 'warn');
+            } else void startPatrolFight(id, opening);
+          },
+        ],
+        ['Lieber nicht', () => hideBanner('patrol')],
+      ],
     );
   };
 
@@ -898,13 +961,12 @@ export function gameScreen(app: App): Screen {
     if (!p || !fix || !patrols) return;
     const names = patrolLabel(p.plan.group);
     if (p.spotted) {
-      if (p.distM <= 45) void startPatrolFight(id, 'spotted');
-      else app.toast(`Der Trupp (${names}) hat dich entdeckt und folgt dir. Kämpfen oder Abstand gewinnen (70 m).`, 'warn');
+      if (p.distM <= PATROL.fightM) confirmPatrolFight(id, 'spotted');
+      else app.toast(`Der Trupp (${names}) hat dich entdeckt und folgt dir. Kämpfen oder Abstand gewinnen (${PATROL.escapeM} m).`, 'warn');
       return;
     }
     if (p.distM <= PATROL.surpriseM && p.awareness < 0.5) {
-      app.toast('Überraschungsangriff!', 'good');
-      void startPatrolFight(id, 'surprise');
+      confirmPatrolFight(id, 'surprise');
       return;
     }
     const cond = patrols.conditions();
@@ -1025,10 +1087,17 @@ export function gameScreen(app: App): Screen {
 
   // --- Standort ------------------------------------------------------------------
   let heavyAt = 0;
+  // Mit GPS: wann zuletzt ein Stück gegangen (für „Kampf nur im Stehen“)
+  let gpsMovePos: LatLon | null = null;
+  let gpsMovedAt = 0;
   let heavyTimer = 0;
   const onFix = (f: Fix) => {
     const first = !fix;
     fix = f;
+    if (!f.simulated && (!gpsMovePos || distanceM(gpsMovePos, f.pos) > 6)) {
+      gpsMovePos = f.pos;
+      gpsMovedAt = performance.now();
+    }
     const s = app.backend.current();
     if (!gm || !s) return;
     hideBanner('gps');
@@ -1365,7 +1434,7 @@ export function gameScreen(app: App): Screen {
               const now = app.backend.now();
               const r = (WORLD_EVENTS[k].radiusM[0] + WORLD_EVENTS[k].radiusM[1]) / 2;
               const center = offsetM(fix.pos, 0, k === 'drop' ? 60 : r * 0.6);
-              testEvents.push({ id: `x:-1:-${testEvents.length + 1}:${Math.floor(now / (WORLD_EVENT.windowH * 3_600_000))}`, kind: k, center, radiusM: k === 'drop' ? 0 : r, from: now, until: now + 20 * 60_000 });
+              testEvents.push({ id: `x:test:${testEvents.length + 1}`, kind: k, center, radiusM: k === 'drop' ? 0 : r, from: now, until: now + 20 * 60_000 });
               closeOverlay();
               refreshEvents(fix, true);
             }),
@@ -1449,7 +1518,10 @@ export function gameScreen(app: App): Screen {
         onFollowChange: (f) => locateBtn.classList.toggle('lost', !f),
         onCameraMove: updateFog,
         onDataChanged: () => {
-          if (mapMode === 'real') void refreshSpots(true);
+          if (mapMode === 'real') {
+            netDirty = true;
+            void refreshSpots(true);
+          }
         },
         onError: (msg) =>
           showBanner('map', 'Karte nicht verfügbar', msg, [
@@ -1509,11 +1581,17 @@ export function gameScreen(app: App): Screen {
         home: () => getBasePlace()?.pos ?? null,
         busy: () => !!overlay,
         viewBonus: () => viewBonus,
+        snowy: () => {
+          const st = app.settings.get();
+          const a = currentAmbience();
+          return a.weather === 'snow' || currentRegion() === 'snow' || (seasonOf(st) === 'winter' && (st.testSeason === 'winter' || (a.tempC !== null && a.tempC <= 1)));
+        },
         onSpotted,
         onTrack: () => app.toast('Ein Trupp hat deine Spur im Schnee gefunden und folgt ihr!', 'warn'),
-        onLost: () => {
+        onLost: (_p, quiet) => {
+          if (patrols?.chased) return;
           hideBanner('patrol');
-          app.toast('Abgehängt. Der Trupp hat aufgegeben.', 'good');
+          if (!quiet) app.toast('Abgehängt. Der Trupp hat aufgegeben.', 'good');
         },
         onHidden,
       });
