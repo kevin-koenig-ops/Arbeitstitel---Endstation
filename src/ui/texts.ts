@@ -31,6 +31,7 @@ export const REJECT_TEXT: Record<RejectReason, string> = {
   no_radio: 'Dafür brauchst du zu Hause ein Funkgerät.',
   radio_quiet: 'Auf Kanal 4 rauscht es nur. Später nochmal reinhören.',
   no_stove: 'Dafür brauchst du zu Hause einen Holzofen.',
+  no_gear: 'Das hast du noch nicht gefunden.',
 };
 
 /** Fundstellen in der Mehrzahl, für Hinweise wie "Zu finden in: Autos, Packstationen". */

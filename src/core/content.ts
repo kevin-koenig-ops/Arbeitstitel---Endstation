@@ -1,7 +1,7 @@
 // Spielinhalte als reine Daten. Neue Fundorte, Gegenstände oder Ausbauten
 // kommen hier dazu, ohne dass sich die Logik ändern muss.
 
-import type { BackgroundId, CollectibleId, EnemyId, FoeKind, Inventory, KramId, Material, Quality, Resource, SetId, SpotKind, Survival, Weapon, WeaponId } from './types';
+import type { GearId, GearSlot, BackgroundId, CollectibleId, EnemyId, FoeKind, Inventory, KramId, Material, Quality, Resource, SetId, SpotKind, Survival, Weapon, WeaponId } from './types';
 
 export const SURVIVAL_ORDER: Survival[] = ['food', 'water', 'medicine'];
 /** Rohstoffe, grob von häufig nach selten. */
@@ -1012,6 +1012,72 @@ export const WEAPONS: Record<WeaponId, WeaponDef> = {
 };
 
 export const START_WEAPONS: Weapon[] = [{ kind: 'crowbar', dur: WEAPONS.crowbar.dur }];
+
+// --- Ausrüstung am Körper ---------------------------------------------------------------
+// Jedes Teil gibt es einmal. Gefunden wird es beim Durchsuchen, passend zum Ort.
+// Wirkt schon: Abwehr (zu Beginn jedes Kampfs). Kommt später: Wärme (Winterwetter),
+// Atemschutz (Rote Zonen), Rucksack-Fächer (Rucksack mit festen Fächern).
+
+export const GEAR_SLOT_ORDER: GearSlot[] = ['head', 'face', 'body', 'hands', 'legs', 'feet', 'back'];
+export const GEAR_SLOTS: Record<GearSlot, { name: string }> = {
+  head: { name: 'Kopf' },
+  face: { name: 'Gesicht' },
+  body: { name: 'Körper' },
+  hands: { name: 'Hände' },
+  legs: { name: 'Beine' },
+  feet: { name: 'Füße' },
+  back: { name: 'Rücken' },
+};
+
+export interface GearDef {
+  name: string;
+  slot: GearSlot;
+  desc: string;
+  /** Abwehr zu Beginn jedes Kampfs (fängt die ersten Treffer ab). */
+  armor?: number;
+  /** Wärme gegen Kälte (zählt, sobald es Kälte gibt). */
+  warmth?: number;
+  /** Atemschutz: 1 = kurz, 2 = lange (für Rote Zonen, kommt später). */
+  filter?: number;
+  /** Fächer im Rucksack (zählt mit dem Rucksack-Limit). */
+  packSlots?: number;
+  /** Wo man es finden kann. */
+  findAt: SpotKind[];
+}
+
+export const GEAR: Record<GearId, GearDef> = {
+  beanie: { name: 'Wollmütze', slot: 'head', desc: 'Kratzt ein bisschen, hält aber warm.', warmth: 1, findAt: ['market', 'backpack', 'camp', 'parcel'] },
+  bikeHelmet: { name: 'Fahrradhelm', slot: 'head', desc: 'Leicht, mit dem Aufkleber eines Sportvereins.', armor: 1, findAt: ['shed', 'car', 'stop'] },
+  hardHat: { name: 'Bauhelm', slot: 'head', desc: 'Gelb, verkratzt, schwer. Hält einiges aus.', armor: 2, findAt: ['hardware', 'container'] },
+  dustMask: { name: 'Staubmaske', slot: 'face', desc: 'Gegen Staub. Gegen das Weinen hilft sie nur kurz.', filter: 1, findAt: ['pharmacy', 'hardware', 'shed'] },
+  safetyGoggles: { name: 'Schutzbrille', slot: 'face', desc: 'Schützt die Augen vor Splittern und Schnäbeln.', armor: 1, findAt: ['hardware', 'container', 'fuel'] },
+  gasMask: { name: 'Gasmaske', slot: 'face', desc: 'Mit frischem Filter. Damit traut man sich nach unten.', filter: 2, findAt: ['bunker', 'convoy', 'heli'] },
+  rainJacket: { name: 'Regenjacke', slot: 'body', desc: 'Raschelt bei jedem Schritt, aber du bleibst trocken.', warmth: 1, findAt: ['backpack', 'car', 'market'] },
+  workJacket: { name: 'Arbeitsjacke', slot: 'body', desc: 'Dicker Stoff, viele Taschen, Ölflecken.', armor: 1, warmth: 1, findAt: ['hardware', 'container', 'fuel'] },
+  protectiveVest: { name: 'Schutzweste', slot: 'body', desc: 'Aus einem liegengebliebenen Einsatzwagen. Schwer, aber sie hält.', armor: 2, findAt: ['convoy', 'heli', 'bunker'] },
+  gardenGloves: { name: 'Gartenhandschuhe', slot: 'hands', desc: 'Grün mit Blümchen. Gut zum Wühlen.', findAt: ['shed', 'market'] },
+  workGloves: { name: 'Arbeitshandschuhe', slot: 'hands', desc: 'Leder an den Fingern. Da rutscht nichts.', armor: 1, findAt: ['hardware', 'container', 'car'] },
+  jeans: { name: 'Jeans', slot: 'legs', desc: 'Ausgeblichen, aber robust.', findAt: ['backpack', 'parcel', 'market'] },
+  workTrousers: { name: 'Arbeitshose', slot: 'legs', desc: 'Mit Knieschonern. Man kniet ja oft.', warmth: 1, findAt: ['hardware', 'container'] },
+  rainTrousers: { name: 'Regenhose', slot: 'legs', desc: 'Über die Hose gezogen, bei Nebel und Regen Gold wert.', warmth: 1, findAt: ['camp', 'backpack', 'shed'] },
+  sneakers: { name: 'Turnschuhe', slot: 'feet', desc: 'Leise und leicht. Bei Regen nasse Füße.', findAt: ['backpack', 'parcel', 'market'] },
+  workBoots: { name: 'Arbeitsstiefel', slot: 'feet', desc: 'Stahlkappen. Treten tut damit richtig weh.', armor: 1, findAt: ['hardware', 'container', 'convoy'] },
+  rubberBoots: { name: 'Gummistiefel', slot: 'feet', desc: 'Für Gräben, Bäche und Sumpf.', warmth: 1, findAt: ['shed', 'well', 'market'] },
+  oldBackpack: { name: 'Alter Rucksack', slot: 'back', desc: 'Der, mit dem alles anfing. Ein Riemen ist geflickt.', packSlots: 12, findAt: [] },
+  hikingPack: { name: 'Wanderrucksack', slot: 'back', desc: 'Mit Hüftgurt. Da passt deutlich mehr rein.', packSlots: 16, findAt: ['camp', 'car', 'backpack'] },
+  armyPack: { name: 'Bundeswehr-Rucksack', slot: 'back', desc: 'Riesig, oliv, unverwüstlich.', packSlots: 20, findAt: ['convoy', 'bunker', 'airdrop'] },
+};
+export const GEAR_ORDER = Object.keys(GEAR) as GearId[];
+
+/** Damit fängt jedes Spiel an (und angezogen). */
+export const START_GEAR: GearId[] = ['beanie', 'rainJacket', 'jeans', 'sneakers', 'oldBackpack'];
+/** Chance auf ein neues Teil beim Durchsuchen, je nach Art der Fundstelle. */
+export const GEAR_CHANCE = { poi: 0.12, grid: 0.04, special: 0.35 };
+
+/** Abwehr zu Kampfbeginn aus allem, was du trägst. */
+export function gearArmor(worn: Partial<Record<GearSlot, GearId>>): number {
+  return Object.values(worn).reduce((a, g) => a + (g ? (GEAR[g].armor ?? 0) : 0), 0);
+}
 
 // --- Kampf: kurze Taktik mit Karten (Runde für Runde) ------------------------------
 

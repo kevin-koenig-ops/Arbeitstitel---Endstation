@@ -1,6 +1,6 @@
 // Untere Karte für eine Fundstelle: Infos, Durchsuchen, Fundbeleg.
 
-import { BACKGROUNDS, CACHE, CART, CHAIN, COLLECTIBLES, COOK, DIG, ENEMIES, FIRST_FIND_FACTOR, HINT_NAMES, isMaterial, KRAM, LOOT_QUALITY, MEMENTOS, MIN_HEALTH_TO_FIGHT, NIGHT_HINT, RARITY, RESOURCE_ORDER, RESOURCES, SETS, SET_ORDER, SPECIAL_HINT, SPOT_KINDS, SPOT_STORIES, TIER, TRACK_LINES } from '../../core/content';
+import { BACKGROUNDS, CACHE, CART, CHAIN, COLLECTIBLES, COOK, DIG, ENEMIES, FIRST_FIND_FACTOR, GEAR, HINT_NAMES, isMaterial, KRAM, LOOT_QUALITY, MEMENTOS, MIN_HEALTH_TO_FIGHT, NIGHT_HINT, RARITY, RESOURCE_ORDER, RESOURCES, SETS, SET_ORDER, SPECIAL_HINT, SPOT_KINDS, SPOT_STORIES, TIER, TRACK_LINES } from '../../core/content';
 import { hashString } from '../../core/rng';
 import { dayPhase } from '../../core/sun';
 import { bearingDeg, distanceM, formatDistance } from '../../core/geo';
@@ -320,6 +320,7 @@ export class SpotSheet {
           ? h('p', { class: 'receipt-note' }, 'Rohstoffe und Kram kommen in den Rucksack. Zu Hause packst du aus.')
           : null,
         ev.blueprint ? h('p', { class: 'receipt-blueprint' }, svgEl(icon('blueprint', 18)), `Bauplan gefunden: ${blueprintName(ev.blueprint)}`) : null,
+        ev.gear ? h('p', { class: 'receipt-blueprint' }, svgEl(icon('cloth', 18)), `Ausrüstung gefunden: ${GEAR[ev.gear].name}. Anziehen im Charakterfenster (Rucksack-Knopf).`) : null,
         ev.site ? h('p', { class: 'receipt-blueprint site' }, svgEl(icon('map', 18)), `Lageplan gefunden: ${SITES[ev.site].name}! Ein neuer Ort für dein Zuhause.`) : null,
         ev.clue ? this.clueNote(ev.clue) : null,
         digBox,

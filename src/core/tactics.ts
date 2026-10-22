@@ -134,7 +134,7 @@ export function intentOf(f: TFoe): Intent {
 }
 
 /** mood: Wandler bei Nebel, Regen und nachts zäher, in praller Sonne träge (±2 Gesundheit). */
-export function createTactics(o: { seed: string; group: FoeKind[]; weapons: Weapon[]; medicine: number; health: number; maxHealth: number; mood?: 'strong' | 'weak' | null }): TacticsState {
+export function createTactics(o: { seed: string; group: FoeKind[]; weapons: Weapon[]; medicine: number; health: number; maxHealth: number; mood?: 'strong' | 'weak' | null; armor?: number }): TacticsState {
   const st: TacticsState = {
     rng: hashString(o.seed) >>> 0,
     turn: 0,
@@ -168,6 +168,8 @@ export function createTactics(o: { seed: string; group: FoeKind[]; weapons: Weap
     st.foes.push(f);
   }
   startTurn(st, []);
+  // Ausrüstung (Helm, Weste …): Abwehr in der ersten Runde
+  st.block += Math.max(0, o.armor ?? 0);
   return st;
 }
 

@@ -15,7 +15,7 @@ import {
 } from '../src/core/building';
 import { emptyInventory, MATERIAL_ORDER } from '../src/core/content';
 import { FURNITURE } from '../src/core/furniture';
-import { activePlot, applyAction, comfortTier, createPlayer, knowsBlueprint, placementProblem, plotIndexOf } from '../src/core/rules';
+import { activePlot, applyAction, comfortTier, createPlayer, knowsBlueprint, placementProblem, plotIndexOf, SCHEMA_VERSION } from '../src/core/rules';
 import { migrate } from '../src/core/save';
 import type { Action, Character, PlayerState, Spot } from '../src/core/types';
 
@@ -230,7 +230,7 @@ describe('Migration', () => {
       base: { items: [{ uid: 1, kind: 'sofa', x: 0, y: 0, rot: 0 }, { uid: 2, kind: 'plant', x: 2, y: 0, rot: 0 }], rubble: [], nextUid: 3 },
     };
     const s = migrate(JSON.parse(JSON.stringify(old)))!;
-    expect(s.schema).toBe(12);
+    expect(s.schema).toBe(SCHEMA_VERSION);
     expect(s.base).toEqual({ active: null, plots: {}, found: {} });
     // Sofa: 2 Holz, 4 Stoff, 1 Schraube; Pflanze: 1 Stein, 1 Wasser; 5 Material: 3 Holz, 2 Metall
     expect(s.inventory).toEqual({ ...emptyInventory(), wood: 5, metal: 2, cloth: 3, springs: 2, screws: 1, stone: 1, water: 1 });
@@ -254,7 +254,7 @@ describe('Migration', () => {
     };
     const v6 = { ...now, schema: 6, base: { active: 'depot', plots: { depot: oldPlot }, found: {} } };
     const s = migrate(JSON.parse(JSON.stringify(v6)))!;
-    expect(s.schema).toBe(12);
+    expect(s.schema).toBe(SCHEMA_VERSION);
     const p = s.base.plots.depot!;
     expect(p.walls).toEqual({ 'h32,33': { k: 'plankWall' }, 'v34,31': { k: 'plankWall', o: 'door' } });
     expect(p.floors).toEqual({ '32,33': 'plankFloor' });

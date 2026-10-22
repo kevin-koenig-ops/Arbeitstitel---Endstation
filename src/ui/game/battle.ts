@@ -7,7 +7,7 @@
 // Die Regeln stehen in core/tactics.ts; hier wird nur angezeigt und abgespielt.
 
 import { WORLD_SEED } from '../../config';
-import { CARDS, FOE_TACTICS, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, TACTICS, WEAPONS, type CardId } from '../../core/content';
+import { CARDS, FOE_TACTICS, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, TACTICS, WEAPONS, type CardId, gearArmor } from '../../core/content';
 import { aliveFoes, createTactics, endTurn, flee, foeById, playCard, targetsFor, type Intent, type TacticsState, type TEvent } from '../../core/tactics';
 import { bestWeapon, currentHealth } from '../../core/rules';
 import type { DayPhase } from '../../core/sun';
@@ -93,6 +93,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     health: currentHealth(s0, now0),
     maxHealth: MAX_HEALTH,
     mood,
+    armor: gearArmor(s0.gear.worn),
   });
   const firstFight = s0.stats.kills === 0;
   const fast = reducedMotion();

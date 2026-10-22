@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { cellFree, type PlotIndex } from '../src/core/building';
 import { emptyInventory, KRAM, SETS, WORKBENCH_LEVELS } from '../src/core/content';
 import { gridSpotsAround } from '../src/core/world';
-import { activePlot, applyAction, checkSets, createPlayer, dismantleMs, packCount, placementProblem, plotIndexOf, readyParts } from '../src/core/rules';
+import { activePlot, applyAction, checkSets, createPlayer, dismantleMs, packCount, placementProblem, plotIndexOf, readyParts, SCHEMA_VERSION } from '../src/core/rules';
 import { migrate } from '../src/core/save';
 import type { Action, Character, PlayerState } from '../src/core/types';
 
@@ -183,7 +183,7 @@ describe('Umzug auf Version 8', () => {
       },
     };
     const s = migrate(JSON.parse(JSON.stringify({ ...old, lastActiveAt: T0 })))!;
-    expect(s.schema).toBe(12);
+    expect(s.schema).toBe(SCHEMA_VERSION);
     expect('bus' in s).toBe(false);
     // Regenfass: Kosten zurück (3 Metall, 2 Kunststoff) und 3 Wasser Ertrag
     expect(s.inventory.water).toBe(3);

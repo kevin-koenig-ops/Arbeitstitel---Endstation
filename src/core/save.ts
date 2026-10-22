@@ -5,12 +5,16 @@
 import { cellIndex, PLOT, SECTION, sectionObstacles, START_SECTIONS, type SiteId } from './building';
 import { COLLECTIBLES, KRAM, MAX_HEALTH, RESOURCE_ORDER, START_WEAPONS } from './content';
 import { FURNITURE, type FurnitureId } from './furniture';
-import { checkSets, SCHEMA_VERSION } from './rules';
+import { checkSets, SCHEMA_VERSION, startGear } from './rules';
 import type { PlayerState } from './types';
 
 type Raw = Record<string, unknown> & { schema?: number };
 
 const MIGRATIONS: Record<number, (s: Raw) => void> = {
+  // Version 12 -> 13: Ausrüstung am Körper. Alle bekommen die Startausrüstung, angezogen.
+  12: (s) => {
+    s.gear = startGear(Number(s.lastActiveAt) || 0);
+  },
   // Version 11 -> 12: neue Bauteile wie bei Fallout (Gummi, Federn, Kupfer …), anfangs 0
   11: (s) => {
     const inv = (s.inventory ?? {}) as Record<string, number>;

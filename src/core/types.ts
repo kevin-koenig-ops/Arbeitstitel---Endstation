@@ -450,6 +450,38 @@ export interface BaseState {
 
 
 /** Kompletter Spielstand eines Spielers. Wird lokal gespeichert, später auf dem Server. */
+/** Plätze am Körper für Ausrüstung (die Waffe hat ihren eigenen Platz). */
+export type GearSlot = 'head' | 'face' | 'body' | 'hands' | 'legs' | 'feet' | 'back';
+
+export type GearId =
+  | 'beanie'
+  | 'bikeHelmet'
+  | 'hardHat'
+  | 'dustMask'
+  | 'safetyGoggles'
+  | 'gasMask'
+  | 'rainJacket'
+  | 'workJacket'
+  | 'protectiveVest'
+  | 'gardenGloves'
+  | 'workGloves'
+  | 'jeans'
+  | 'workTrousers'
+  | 'rainTrousers'
+  | 'sneakers'
+  | 'workBoots'
+  | 'rubberBoots'
+  | 'oldBackpack'
+  | 'hikingPack'
+  | 'armyPack';
+
+export interface GearState {
+  /** Gefundene Ausrüstung: id -> Fundzeitpunkt (jedes Teil gibt es einmal). */
+  owned: Partial<Record<GearId, number>>;
+  /** Was du gerade trägst: Platz -> Teil. */
+  worn: Partial<Record<GearSlot, GearId>>;
+}
+
 export interface PlayerState {
   schema: number;
   playerId: string;
@@ -481,6 +513,8 @@ export interface PlayerState {
   /** Bis zu diesem Zeitpunkt ist die Erholung eingerechnet. */
   healthAt: number;
   weapons: Weapon[];
+  /** Kleidung und Ausrüstung am Körper (Kopf, Gesicht, Oberkörper, Hände, Beine, Füße, Rücken). */
+  gear: GearState;
   /** Laufender Kampf oder null. Bleibt beim Neuladen erhalten. */
   combat: Combat | null;
   /** Aufgedeckte Zellen, als Bitfelder pro Block (siehe core/explore.ts). */
@@ -599,6 +633,10 @@ export type Action =
   | { type: 'battleResult'; outcome: 'won' | 'lost' | 'fled'; health: number; kills: number; usedMedicine: number; wear?: Partial<Record<WeaponId, number>> }
   | { type: 'craft'; weapon: WeaponId }
   | { type: 'heal' }
+  /** Ein Teil anziehen (ersetzt, was an diesem Platz war). */
+  | { type: 'equip'; gear: GearId }
+  /** Einen Platz frei machen. */
+  | { type: 'unequip'; slot: GearSlot }
   | { type: 'explore'; at: LatLon; accuracyM: number }
   // Basis: bewusst ohne Position, damit der Ort des Zuhauses privat bleibt
   | { type: 'chooseSite'; site: SiteId }
@@ -655,10 +693,11 @@ export type RejectReason =
   | 'not_done'
   | 'no_radio'
   | 'radio_quiet'
-  | 'no_stove';
+  | 'no_stove'
+  | 'no_gear';
 
 export type GameEvent =
-  | { type: 'loot'; spotId: string; items: Partial<Inventory>; kram?: KramId; collectible?: CollectibleId; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: BlueprintId; site?: SiteId; quality?: Quality; first?: boolean; canDig?: boolean; cart?: boolean; fed?: boolean; clue?: string; newKind?: boolean; discovery?: boolean; tier?: number }
+  | { type: 'loot'; spotId: string; items: Partial<Inventory>; kram?: KramId; collectible?: CollectibleId; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: BlueprintId; gear?: GearId; site?: SiteId; quality?: Quality; first?: boolean; canDig?: boolean; cart?: boolean; fed?: boolean; clue?: string; newKind?: boolean; discovery?: boolean; tier?: number }
   | { type: 'siteChosen'; site: SiteId; first: boolean }
   | { type: 'reclaimed'; section: string; cost: Partial<Inventory> }
   | { type: 'obstacleCleared'; id: string; kind: ObstacleKind; reward: Partial<Inventory> }
@@ -680,6 +719,7 @@ export type GameEvent =
   | { type: 'fled'; weaponBroke?: WeaponId }
   | { type: 'crafted'; weapon: WeaponId }
   | { type: 'healed'; amount: number }
+  | { type: 'equipped'; slot: GearSlot; gear: GearId | null }
   | { type: 'dismantleQueued'; kram: KramId; endsAt: number }
   | { type: 'unpacked'; items: Partial<Inventory>; kram: KramBag }
   | { type: 'setCompleted'; set: SetId; items: Partial<Inventory>; blueprint?: BlueprintId }

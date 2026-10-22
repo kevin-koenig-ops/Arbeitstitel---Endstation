@@ -53,6 +53,10 @@ import {
   SPOT_KINDS,
   START_INVENTORY,
   START_WEAPONS,
+  START_GEAR,
+  GEAR,
+  GEAR_CHANCE,
+  GEAR_ORDER,
   WEAPONS,
   WILD,
   WORKBENCH_LEVELS,
@@ -101,6 +105,8 @@ import { gridSpotsAround } from './world';
 import { dayPhase } from './sun';
 import { hashString, pickWeighted, randInt, rngFrom } from './rng';
 import type {
+  GearId,
+  GearState,
   Action,
   ActionResult,
   Cache,
@@ -128,7 +134,17 @@ import type {
 import { gridSpotAlive, resolveGridSpot, resolveSpecialSpot } from './world';
 import { GOALS } from './progress';
 
-export const SCHEMA_VERSION = 12;
+export const SCHEMA_VERSION = 13;
+
+/** Startausrüstung: alles gefunden und angezogen. */
+export function startGear(now: number): GearState {
+  const gear: GearState = { owned: {}, worn: {} };
+  for (const id of START_GEAR) {
+    gear.owned[id] = now;
+    gear.worn[GEAR[id].slot] = id;
+  }
+  return gear;
+}
 const HOUR = 3600_000;
 /** Millisekunden pro Gesundheitspunkt (die Stufe des Zuhauses macht es schneller). */
 export function regenMs(state: PlayerState): number {
@@ -156,6 +172,7 @@ export function createPlayer(playerId: string, character: Character, now: number
     health: MAX_HEALTH,
     healthAt: now,
     weapons: START_WEAPONS.map((w) => ({ ...w })),
+    gear: startGear(now),
     combat: null,
     explored: {},
     sectors: {},
@@ -629,6 +646,21 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       state.weapons.push({ kind: action.weapon, dur: def.dur });
       state.stats.crafted += 1;
       events.push({ type: 'crafted', weapon: action.weapon });
+      break;
+    }
+
+    case 'equip': {
+      const def = GEAR[action.gear];
+      if (!def || !state.gear.owned[action.gear]) return reject('no_gear');
+      state.gear.worn[def.slot] = action.gear;
+      events.push({ type: 'equipped', slot: def.slot, gear: action.gear });
+      break;
+    }
+
+    case 'unequip': {
+      if (!state.gear.worn[action.slot]) return { state: prev, events: [] };
+      delete state.gear.worn[action.slot];
+      events.push({ type: 'equipped', slot: action.slot, gear: null });
       break;
     }
 
@@ -1161,6 +1193,15 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, o: { guarded
     state.blueprints[blueprint] = ctx.now;
   }
 
+  // Ausrüstung (eigener Zufall, damit sich die übrige Beute nicht verschiebt)
+  let gear: GearId | undefined;
+  const rg = rngFrom(ctx.worldSeed, state.playerId, 'ausruestung', spot.id, guardWindow(spot, ctx.now));
+  const gearCands = GEAR_ORDER.filter((id) => GEAR[id].findAt.includes(spot.kind) && !state.gear.owned[id]);
+  if (gearCands.length && rg() < GEAR_CHANCE[spot.source]) {
+    gear = gearCands[Math.floor(rg() * gearCands.length)];
+    state.gear.owned[gear] = ctx.now;
+  }
+
   // Lageplan für einen neuen Schauplatz (erst, wenn man schon irgendwo wohnt)
   let site: SiteId | undefined;
   if (state.base.active) {
@@ -1220,6 +1261,7 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, o: { guarded
     perk,
     night,
     blueprint,
+    gear,
     site,
     quality: o.quality,
     first: first || undefined,

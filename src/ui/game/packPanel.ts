@@ -1,10 +1,15 @@
-// Charakterfenster: links Ausrüstung (Gesundheit, Waffen), in der Mitte die Figur,
+// Charakterfenster: links Ausrüstung (Gesundheit, Plätze am Körper, Waffe), in der Mitte die Figur,
 // rechts der Rucksack als Fächer. Dazu das Fundbuch (Orte, Sammelstücke, Sets, Erinnerungen).
 
 import {
   PLACE_WHERE,
   SPECIAL_KINDS,
   CARDS,
+  GEAR,
+  GEAR_ORDER,
+  GEAR_SLOT_ORDER,
+  GEAR_SLOTS,
+  gearArmor,
   COLLECTIBLE_ORDER,
   COLLECTIBLES,
   HEAL_AMOUNT,
@@ -27,7 +32,7 @@ import {
 import { deckFor } from '../../core/tactics';
 import { blueprintName } from '../../core/building';
 import { bestWeapon, collectiblePlaced, currentHealth, dayNumber, kramCount, packCount } from '../../core/rules';
-import type { CollectibleId, KramId, PlayerState, SpotKind } from '../../core/types';
+import type { CollectibleId, GearId, GearSlot, KramId, PlayerState, SpotKind } from '../../core/types';
 import type { App } from '../app';
 import { clear, h, svgEl } from '../dom';
 import { icon, resIcon, spotIcon } from '../icons';
@@ -94,17 +99,48 @@ export function openPackPanel(app: App, host: HTMLElement, onClose: () => void, 
     return h('div', { class: 'char' }, gearColumn(s, now), figureColumn(s, now), packColumn(s));
   };
 
-  /** Links: Gesundheit, Waffen, Karten. */
+  /** Links: Gesundheit und Ausrüstung als Plätze (Kopf bis Füße, Rücken, Waffe). */
+  let gearSel: GearSlot | 'weapon' = 'weapon';
   const gearColumn = (s: PlayerState, now: number) => {
     const hp = currentHealth(s, now);
     const best = bestWeapon(s);
     const hpSegs = h('span', { class: 'hp-bar me-hp' });
     for (let i = 0; i < MAX_HEALTH; i++) hpSegs.append(h('span', { class: i < hp ? 'on' : '' }));
-    const missing = WEAPON_ORDER.filter((w) => !s.weapons.some((x) => x.kind === w));
+    const armor = gearArmor(s.gear.worn);
+    const detail = h('div', { class: 'gear-detail' });
+    const grid = h('div', { class: 'gear-grid', role: 'listbox', 'aria-label': 'Ausrüstungsplätze' });
+    const slotIcon: Record<GearSlot | 'weapon', string> = { head: 'gHead', face: 'gFace', body: 'cloth', hands: 'gHands', legs: 'gLegs', feet: 'gFeet', back: 'backpack', weapon: 'crowbar' };
+    const paint = () => {
+      clear(grid);
+      for (const slot of [...GEAR_SLOT_ORDER, 'weapon'] as (GearSlot | 'weapon')[]) {
+        const worn = slot === 'weapon' ? (best ? WEAPONS[best.kind].name : null) : s.gear.worn[slot] ? GEAR[s.gear.worn[slot]!].name : null;
+        grid.append(
+          h(
+            'button',
+            {
+              class: 'gear-slot' + (worn ? '' : ' empty') + (gearSel === slot ? ' sel' : ''),
+              type: 'button',
+              role: 'option',
+              'aria-selected': String(gearSel === slot),
+              onclick: () => {
+                gearSel = slot;
+                paint();
+              },
+            },
+            svgEl(icon(slotIcon[slot], 22)),
+            h('small', null, slot === 'weapon' ? 'Waffe' : GEAR_SLOTS[slot].name),
+            h('b', null, worn ?? 'leer'),
+          ),
+        );
+      }
+      clear(detail);
+      detail.append(...(gearSel === 'weapon' ? weaponDetail(s) : slotDetail(s, gearSel)));
+    };
+    paint();
     return h(
       'section',
       { class: 'char-col char-gear', 'aria-label': 'Ausrüstung' },
-      h('h3', { class: 'char-head' }, 'Ausrüstung'),
+      h('h3', { class: 'char-head' }, 'Ausrüstung', armor ? h('small', null, svgEl(icon('shield', 13)), ` Abwehr +${armor} im Kampf`) : null),
       h(
         'div',
         { class: 'char-health' },
@@ -131,6 +167,60 @@ export function openPackPanel(app: App, host: HTMLElement, onClose: () => void, 
             )
           : h('small', null, 'Du bist fit.'),
       ),
+      grid,
+      detail,
+    );
+  };
+
+  /** Was ein Teil kann. Was erst später zählt, steht grau mit „bald“ dabei. */
+  const gearEffects = (id: GearId) => {
+    const d = GEAR[id];
+    const out: HTMLElement[] = [];
+    if (d.armor) out.push(h('span', { class: 'gear-eff' }, svgEl(icon('shield', 12)), `Abwehr +${d.armor}`));
+    if (d.warmth) out.push(h('span', { class: 'gear-eff later' }, `Wärme +${d.warmth}`, h('small', null, 'bald')));
+    if (d.filter) out.push(h('span', { class: 'gear-eff later' }, d.filter > 1 ? 'Atemschutz, lange' : 'Atemschutz, kurz', h('small', null, 'bald')));
+    if (d.packSlots) out.push(h('span', { class: 'gear-eff later' }, `${d.packSlots} Fächer`, h('small', null, 'bald')));
+    return out.length ? h('span', { class: 'gear-effs' }, out) : null;
+  };
+
+  const slotDetail = (s: PlayerState, slot: GearSlot): HTMLElement[] => {
+    const have = GEAR_ORDER.filter((id) => GEAR[id].slot === slot && s.gear.owned[id]);
+    const worn = s.gear.worn[slot];
+    const dispatch = async (a: Parameters<typeof app.backend.dispatch>[0]) => {
+      const res = await app.backend.dispatch(a);
+      const ev = res.events[0];
+      if (ev?.type === 'rejected') app.toast(REJECT_TEXT[ev.reason], 'warn');
+      onChanged();
+      render();
+    };
+    const missing = GEAR_ORDER.filter((id) => GEAR[id].slot === slot && !s.gear.owned[id]).length;
+    return [
+      h('b', { class: 'gear-detail-head' }, GEAR_SLOTS[slot].name),
+      have.length
+        ? h(
+            'ul',
+            { class: 'gear-opts' },
+            have.map((id) =>
+              h(
+                'li',
+                { class: 'gear-opt' + (worn === id ? ' on' : '') },
+                h('span', { class: 'gear-opt-text' }, h('b', null, GEAR[id].name), h('small', null, GEAR[id].desc), gearEffects(id)),
+                worn === id
+                  ? h('button', { class: 'btn ghost small', type: 'button', onclick: () => void dispatch({ type: 'unequip', slot }) }, 'Ablegen')
+                  : h('button', { class: 'btn small', type: 'button', onclick: () => void dispatch({ type: 'equip', gear: id }) }, 'Anziehen'),
+              ),
+            ),
+          )
+        : h('p', { class: 'char-note' }, 'Noch nichts gefunden.'),
+      missing ? h('p', { class: 'char-note' }, `Noch ${missing} ${missing === 1 ? 'Teil' : 'Teile'} für diesen Platz zu finden, beim Durchsuchen passender Orte.`) : null,
+    ].filter(Boolean) as HTMLElement[];
+  };
+
+  const weaponDetail = (s: PlayerState): HTMLElement[] => {
+    const best = bestWeapon(s);
+    const missing = WEAPON_ORDER.filter((w) => !s.weapons.some((x) => x.kind === w));
+    return [
+      h('b', { class: 'gear-detail-head' }, 'Waffe'),
       s.weapons.length
         ? h(
             'ul',
@@ -148,7 +238,7 @@ export function openPackPanel(app: App, host: HTMLElement, onClose: () => void, 
         : h('p', { class: 'char-note' }, 'Keine Waffe. Du kämpfst mit Fäusten, Tritten und Steinen.'),
       h('p', { class: 'char-note' }, svgEl(icon('sword', 14)), ' Im Kampf: ', cardLine(deckFor(s.weapons, s.inventory.medicine))),
       missing.length ? h('p', { class: 'char-note' }, svgEl(icon('wrench', 14)), ` Am Werktisch zu Hause: ${missing.map((w) => WEAPONS[w].name).join(', ')}`) : null,
-    );
+    ].filter(Boolean) as HTMLElement[];
   };
 
   /** Mitte: deine Figur in 3D (zum Drehen), mit der Waffe in der Hand. */
