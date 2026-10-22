@@ -61,6 +61,8 @@ export async function loadTextures(): Promise<void> {
 }
 
 const PR = 2; // Pixeldichte der Muster
+const WATER_SIZE = 128;
+const TAU = Math.PI * 2;
 
 type Painter = (ctx: CanvasRenderingContext2D, s: number) => void;
 
@@ -388,29 +390,12 @@ const PAINTERS: Record<string, [number, Painter]> = {
       }
     },
   ],
-  // Wasser: blaugrün, sanfte Wellen und Lichtpunkte
+  // Wasser: blaugrün, sanfte Wellen und Lichtpunkte (bewegt sich, siehe waterFrames)
   'pat-water': [
-    128,
+    WATER_SIZE,
     (ctx, s) => {
-      ctx.fillStyle = '#577f87';
-      ctx.fillRect(0, 0, s, s);
-      const r = rngFrom('wasser-v2');
-      blotches(ctx, s, r, 14, 14, 44, ['rgba(110, 150, 156, 0.3)', 'rgba(60, 96, 104, 0.3)']);
-      ctx.lineCap = 'round';
-      for (let i = 0; i < 22; i++) {
-        const x = r() * s;
-        const y = r() * s;
-        const w = 6 + r() * 12;
-        ctx.strokeStyle = r() < 0.6 ? 'rgba(170, 206, 206, 0.45)' : 'rgba(40, 70, 78, 0.35)';
-        ctx.lineWidth = 1 + r() * 0.6;
-        wrap(s, (dx, dy) => {
-          ctx.beginPath();
-          ctx.moveTo(x + dx, y + dy);
-          ctx.quadraticCurveTo(x + dx + w / 2, y + dy - 2.2, x + dx + w, y + dy);
-          ctx.stroke();
-        });
-      }
-      specks(ctx, s, r, 18, ['rgba(236, 246, 240, 0.7)'], [0.8, 1.4], true);
+      paintWaterBase(ctx, s);
+      paintWaterMotion(ctx, s, 0);
     },
   ],
   // Alte Äcker-Vorlage (bleibt für ältere Stile)
@@ -438,6 +423,86 @@ const PAINTERS: Record<string, [number, Painter]> = {
     },
   ],
 };
+
+// --- Wasser ------------------------------------------------------------------------------
+
+/** Was sich nicht bewegt: Grundfarbe und weiche Flecken. */
+function paintWaterBase(ctx: CanvasRenderingContext2D, s: number) {
+  ctx.fillStyle = '#577f87';
+  ctx.fillRect(0, 0, s, s);
+  blotches(ctx, s, rngFrom('wasser-v2'), 14, 14, 44, ['rgba(110, 150, 156, 0.3)', 'rgba(60, 96, 104, 0.3)']);
+}
+
+/**
+ * Was sich bewegt, zum Zeitpunkt t (0 bis 1, danach geht es nahtlos von vorne los):
+ * Wellen schaukeln auf der Stelle hin und her, Lichtpunkte glitzern auf und verlöschen.
+ * Jede Welle schwingt 1- oder 2-mal pro Kreislauf, deshalb passt das Ende an den Anfang.
+ */
+function paintWaterMotion(ctx: CanvasRenderingContext2D, s: number, t: number) {
+  const r = rngFrom('wasser-wellen');
+  ctx.lineCap = 'round';
+  for (let i = 0; i < 24; i++) {
+    const x = r() * s;
+    const y = r() * s;
+    const w = 6 + r() * 12;
+    const light = r() < 0.6;
+    const width = 1 + r() * 0.6;
+    const a = TAU * ((r() < 0.5 ? 1 : 2) * t + r());
+    const amp = 1.5 + r() * 2.5;
+    const ox = Math.sin(a) * amp;
+    const oy = Math.cos(a) * amp * 0.35;
+    // Wellen werden kurz heller und wieder schwächer, wie Licht auf bewegtem Wasser
+    const fade = 0.55 + 0.45 * Math.sin(a + 1.3);
+    ctx.strokeStyle = light ? `rgba(170, 206, 206, ${(0.5 * fade).toFixed(3)})` : `rgba(40, 70, 78, ${(0.38 * fade).toFixed(3)})`;
+    ctx.lineWidth = width;
+    wrap(s, (dx, dy) => {
+      ctx.beginPath();
+      ctx.moveTo(x + ox + dx, y + oy + dy);
+      ctx.quadraticCurveTo(x + ox + dx + w / 2, y + oy + dy - 2.2, x + ox + dx + w, y + oy + dy);
+      ctx.stroke();
+    });
+  }
+  for (let i = 0; i < 22; i++) {
+    const x = r() * s;
+    const y = r() * s;
+    const size = 0.8 + r() * 0.7;
+    const glint = Math.max(0, Math.sin(TAU * ((r() < 0.5 ? 1 : 2) * t + r())));
+    const alpha = 0.85 * glint * glint;
+    if (alpha < 0.03) continue;
+    ctx.fillStyle = `rgba(240, 248, 242, ${alpha.toFixed(3)})`;
+    wrap(s, (dx, dy) => {
+      ctx.beginPath();
+      ctx.arc(x + dx, y + dy, (size / 2) * (0.6 + 0.4 * glint), 0, TAU);
+      ctx.fill();
+    });
+  }
+}
+
+/**
+ * Bilder für das bewegte Wasser (gleich groß wie das Muster 'pat-water').
+ * null, wenn es ein gemaltes Wasserbild gibt: das bleibt dann ruhig.
+ */
+export function waterFrames(n: number): ImageData[] | null {
+  if (loaded.has('pat-water')) return null;
+  const px = WATER_SIZE * PR;
+  const base = document.createElement('canvas');
+  base.width = base.height = px;
+  const bctx = base.getContext('2d')!;
+  bctx.scale(PR, PR);
+  paintWaterBase(bctx, WATER_SIZE);
+  const c = document.createElement('canvas');
+  c.width = c.height = px;
+  const ctx = c.getContext('2d', { willReadFrequently: true })!;
+  const frames: ImageData[] = [];
+  for (let f = 0; f < n; f++) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(base, 0, 0);
+    ctx.scale(PR, PR);
+    paintWaterMotion(ctx, WATER_SIZE, f / n);
+    frames.push(ctx.getImageData(0, 0, px, px));
+  }
+  return frames;
+}
 
 /** Für map.on('styleimagemissing'): liefert ein Muster, falls wir es kennen. */
 export function patternImage(id: string): { data: ImageData; pixelRatio: number } | null {

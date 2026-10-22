@@ -201,6 +201,8 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   el.dataset.control = control;
 
   const scene = new BaseScene(stage);
+  // Zum Testen: die Szene von außen erreichbar machen (nur mit Debug-Schalter)
+  if (localStorage.getItem('endstation.debug')) (window as unknown as { __baseScene?: BaseScene }).__baseScene = scene;
   scene.setPhase(opts.phase());
   scene.setWeather(opts.weather());
   el.dataset.phase = opts.phase();

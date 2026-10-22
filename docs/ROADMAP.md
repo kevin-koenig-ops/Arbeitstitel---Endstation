@@ -244,3 +244,4 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - **Schönere Karte:** 12 gemalte Untergründe von Kevin (Wiese, Waldboden, Rasen, Grundboden, Hof, Schutt, Sand, Fels, Sumpf, drei Sorten Acker), auch im Zuhause auf und um das Grundstück; freundlichere Farben, Ufer an Seen und Bächen. Bäume als echte 3D-Modelle (Laub, Nadel, Birke, tot, im Herbst bunt), dazu Büsche, Unterholz und Steine; kein Baum mehr im Wasser. Auf der echten Karte sieht man Hügel und Täler als Schattierung
 - **Pilzstellen:** nur im Wald, wandern wie die anderen Fundstellen, im Herbst am meisten, im Winter kaum. Geben Nahrung, selten Heilkräuter, nie bewacht
 - **Testmodus:** Die Figur läuft nicht mehr durch Flüsse, Bäche und Seen
+- **Lebendiges Wasser:** Auf der Karte schaukeln Wellen und glitzern Lichtpunkte (nur wenn Wasser im Bild ist und die App vorne liegt, spart Akku). Der See im Zuhause hat ziehende Wellenkämme, spiegelt den Himmel und funkelt in der Sonne

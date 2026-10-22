@@ -9,6 +9,7 @@ import { h, svgEl } from '../ui/dom';
 import { icon, spotIcon } from '../ui/icons';
 import { generateDecor, type DecorInput, type RawLine, type RawPolygon } from './decor';
 import { FogOfWar } from './fogOfWar';
+import { WaterAnimation } from './waterAnim';
 import demoWorld from './demoWorld.json';
 import { loadTextures, patternImage } from './patterns';
 import { buildStyle, DECOR_MINZOOM, loadRealSource } from './style';
@@ -98,6 +99,7 @@ export class GameMap {
   private decorTimer = 0;
   /** 3D-Bäume (three.js), wird nach dem Laden nachgeladen. Bis dahin Klötzchen-Bäume. */
   private trees: TreeLayer | null = null;
+  private water: WaterAnimation | null = null;
 
   constructor(
     private container: HTMLElement,
@@ -162,16 +164,33 @@ export class GameMap {
       if (e.sourceId === dataSource && (e.tile || e.isSourceLoaded)) this.tilesDirty = true;
     });
 
+    // Nach dem Bewegen oder wenn neue Kacheln da sind: kurz warten, dann Bescheid geben.
+    // Nicht bei jedem 'idle': das bewegte Wasser zeichnet die Karte ständig neu.
+    let dataDirty = true;
     let idleTimer = 0;
-    this.map.on('idle', () => {
+    this.map.on('sourcedata', (e) => {
+      if (e.sourceId === dataSource && (e.tile || e.isSourceLoaded)) dataDirty = true;
+    });
+    this.map.on('moveend', () => (dataDirty = true));
+    this.map.on('movestart', () => {
       clearTimeout(idleTimer);
-      idleTimer = window.setTimeout(() => this.opts.onDataChanged(), 250);
+      idleTimer = 0;
+    });
+    this.map.on('idle', () => {
+      if (dataDirty && !idleTimer) {
+        idleTimer = window.setTimeout(() => {
+          idleTimer = 0;
+          dataDirty = false;
+          this.opts.onDataChanged();
+        }, 250);
+      }
       this.scheduleDecor();
     });
 
     await new Promise<void>((resolve) => this.map.once('load', () => resolve()));
     this.loaded = true;
     this.fog = new FogOfWar(this.map);
+    this.water = new WaterAnimation(this.map);
     if (this.pendingRange) this.setRange(this.pendingRange.c, this.pendingRange.r);
     if (this.pendingCaches) this.setCaches(this.pendingCaches);
     void this.initTrees();
@@ -767,6 +786,7 @@ export class GameMap {
   destroy() {
     clearTimeout(this.decorTimer);
     this.fog?.destroy();
+    this.water?.destroy();
     this.markers.forEach((m) => m.marker.remove());
     this.markers.clear();
     this.map?.remove();

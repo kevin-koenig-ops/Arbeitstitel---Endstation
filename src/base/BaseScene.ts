@@ -30,6 +30,7 @@ import { groundMaterial, groundUV, PLOT_TEX, TINT, type GroundTex } from './grou
 import { buildFurniture, type LightSpec } from './models';
 import { findPath, nearestWalkable, walkable } from './path';
 import { buildFloor, buildObstacle, buildRoof, buildRoofTrim, buildWall, CUT_H, WALL_H } from './structures';
+import { setWaterLight, setWaterTime } from './water';
 
 const HALF = PLOT / 2;
 const MAX_POINT_LIGHTS = 8;
@@ -675,6 +676,8 @@ export class BaseScene {
     this.renderer.toneMappingExposure = p.exposure;
     this.charLight.intensity = this.phase === 'night' ? 3.2 : this.phase === 'dusk' ? 1.2 : 0;
     this.haze.color.set(w === 'fog' ? (this.phase === 'night' ? '#23262c' : '#7d7a72') : w === 'snow' && this.phase !== 'night' ? '#8a8c90' : p.haze);
+    // Der See spiegelt den Himmel: nachts und bei trübem Wetter weniger
+    setWaterLight(this.sunDir, this.sun.color, this.hemi.color, (this.phase === 'night' ? 0.35 : this.phase === 'dusk' ? 0.7 : 1) * (0.5 + 0.5 * sunF));
   }
 
   private updateWeather(dt: number) {
@@ -1254,6 +1257,7 @@ export class BaseScene {
   // --- Schleife ------------------------------------------------------------------------------
 
   private frame(t: number, dt: number) {
+    setWaterTime(t);
     if (this.viewShiftX !== this.viewShiftXTarget) {
       const d = this.viewShiftXTarget - this.viewShiftX;
       this.viewShiftX = Math.abs(d) < 0.001 ? this.viewShiftXTarget : this.viewShiftX + d * Math.min(1, dt * 9);

@@ -8,6 +8,7 @@ import { Assembler, bake, GLOW, LIT } from './bake';
 import { groundMaterial, groundUV, OUTER_TEX, TINT } from './groundTextures';
 import { add, blob, box, cone, cyl, mat, METAL, WOOD, WOOD_DARK } from './models';
 import { buildBush, buildCarWreck, buildTree } from './structures';
+import { waterMaterial } from './water';
 
 type G = THREE.Group;
 const HALF = PLOT / 2;
@@ -340,7 +341,7 @@ function farm(g: G, r: () => number) {
 
 function lake(g: G, r: () => number, extras: THREE.Object3D[]) {
   const shoreZ = -HALF - 5;
-  const water = new THREE.Mesh(new THREE.PlaneGeometry(260, 140), new THREE.MeshStandardMaterial({ color: '#2f4a52', roughness: 0.22, metalness: 0.15, flatShading: true }));
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(260, 140), waterMaterial());
   water.rotation.x = -Math.PI / 2;
   water.position.set(0, -0.12, shoreZ - 70);
   water.receiveShadow = true;
