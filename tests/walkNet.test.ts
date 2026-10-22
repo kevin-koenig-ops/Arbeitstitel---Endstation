@@ -180,4 +180,33 @@ describe('Wegenetz: Strecken der Trupps', () => {
     for (const p of p1) expect(nearWay(p)).toBeLessThan(2);
     expect(net.patrolPath(ll(2000, 2000), 300, mk(1))).toBeNull();
   });
+
+  it('läuft nie durch ein Haus, auch nicht über eine Ecke', () => {
+    // Haus von 40 bis 60: von hinten (Garten im Osten) quer zur Straße im Westen
+    const crosses = (path: LatLon[]) => {
+      const q = (p: LatLon) => ({ x: (p.lon - C.lon) * 111320 * Math.cos((C.lat * Math.PI) / 180), y: (p.lat - C.lat) * 111320 });
+      for (let i = 1; i < path.length; i++) {
+        const a = q(path[i - 1]);
+        const b = q(path[i]);
+        for (let k = 0; k <= 200; k++) {
+          const x = a.x + ((b.x - a.x) * k) / 200;
+          const y = a.y + ((b.y - a.y) * k) / 200;
+          if (x > 40.3 && x < 59.7 && y > 40.3 && y < 59.7) return true;
+        }
+      }
+      return false;
+    };
+    for (const [from, to] of [
+      [ll(70, 50), ll(20, 50)],
+      [ll(70, 50), ll(1, 50)],
+      [ll(65, 65), ll(35, 35)],
+      [ll(70, 45), ll(30, 58)],
+    ] as [LatLon, LatLon][]) {
+      for (const gait of ['fast', 'quiet'] as const) {
+        const r = net.route(from, to, gait);
+        expect(r).not.toBeNull();
+        expect(crosses(r!.path)).toBe(false);
+      }
+    }
+  });
 });

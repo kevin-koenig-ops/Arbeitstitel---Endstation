@@ -292,6 +292,37 @@ export class WalkNet {
   }
 
   /** Kreuzt die Strecke a→b einen Fluss oder Bach? */
+  /**
+   * Geht die gerade Strecke a→b durch ein Haus? Genau gerechnet (Schnitt mit den Wänden),
+   * nicht nur an Stichproben, damit die Figur auch keine Hausecke abschneidet.
+   * Ein Haus, in dem man gerade steht (GPS ungenau), zählt nicht.
+   */
+  private crossesHouse(a: P, b: P): boolean {
+    if (!this.houses.length) return false;
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const n = Math.max(1, Math.ceil(len / 8));
+    const seen = new Set<number>();
+    const minX = Math.min(a.x, b.x);
+    const maxX = Math.max(a.x, b.x);
+    const minY = Math.min(a.y, b.y);
+    const maxY = Math.max(a.y, b.y);
+    for (let i = 0; i <= n; i++) {
+      const x = a.x + ((b.x - a.x) * i) / n;
+      const y = a.y + ((b.y - a.y) * i) / n;
+      for (const k of this.houseGrid.at(x, y)) {
+        if (seen.has(k)) continue;
+        seen.add(k);
+        const h = this.houses[k];
+        if (maxX < h.x0 || minX > h.x1 || maxY < h.y0 || minY > h.y1) continue;
+        if (inArea(a.x, a.y, h)) continue;
+        if (inArea(b.x, b.y, h)) return true;
+        const ring = h.rings[0];
+        for (let j = 1; j < ring.length; j++) if (segmentHit(a, b, ring[j - 1], ring[j]) !== null) return true;
+      }
+    }
+    return false;
+  }
+
   private crossesWater(a: P, b: P): boolean {
     if (!this.wlines.length) return false;
     const seen = new Set<number>();
@@ -451,7 +482,7 @@ export class WalkNet {
 
   /** Quer durchs Gelände von a nach b: Zeit (Meter geteilt durch Tempo), oder Infinity, wenn Ort, Haus oder Wasser im Weg ist. */
   private freeLeg(a: P, b: P): { cost: number; pts: P[]; speeds: number[] } {
-    if (this.crossesWater(a, b)) return { cost: Infinity, pts: [a], speeds: [] };
+    if (this.crossesWater(a, b) || this.crossesHouse(a, b)) return { cost: Infinity, pts: [a], speeds: [] };
     const len = Math.hypot(b.x - a.x, b.y - a.y);
     const n = Math.max(1, Math.ceil(len / 6));
     const pts: P[] = [a];
@@ -603,8 +634,8 @@ export class WalkNet {
         if (q) return mark(q);
       }
       const r = this.fastRoute(F, T);
-      // Liegt ein Sperrgebiet im Weg, findet die Suche über das Gelände einen Bogen drumherum
-      if ((!r || r.snapped) && this.zones.length > this.skipZones.size) {
+      // Steht ein Haus oder ein Sperrgebiet im Weg, findet die Suche über das Gelände einen Bogen drumherum
+      if (!r || r.snapped) {
         const g = this.gridRoute(F, T, (t) => (t === 'blocked' ? Infinity : 1 / this.speed[t]));
         if (g) return mark(g);
       }
@@ -645,8 +676,10 @@ export class WalkNet {
       if (leg.cost < Infinity) cands.push({ cost: leg.cost, pts: leg.pts, speeds: leg.speeds, off: leg.speeds.map((v) => v !== road), snapped: false });
     }
     // 2. Über die Wege
-    const A = this.nearest(F, 400);
+    let A = this.nearest(F, 400);
     const B = this.nearest(T, 400);
+    // Zum ersten Weg nur, wenn kein Haus dazwischen steht (sonst sucht das Raster einen Weg herum)
+    if (A && A.d > 1 && this.crossesHouse(F, { x: A.x, y: A.y })) A = null;
     if (A && B) {
       const way = this.viaWays(A, B);
       if (way) {
@@ -713,6 +746,15 @@ export class WalkNet {
       return KINDS[terr[i]];
     };
     const idx = (p: P) => Math.max(0, Math.min(ny - 1, Math.floor((p.y - y0) / cell))) * nx + Math.max(0, Math.min(nx - 1, Math.floor((p.x - x0) / cell)));
+    // Zellen mit Häusern in der Nähe (nur dort lohnt der genaue Test)
+    const houseNear = new Int8Array(n).fill(-1);
+    const nearHouse = (i: number) => {
+      if (houseNear[i] < 0) {
+        const c = center(i);
+        houseNear[i] = this.houseGrid.around(c.x, c.y, cell).size ? 1 : 0;
+      }
+      return houseNear[i] === 1;
+    };
     const S = idx(F);
     const E = idx(T);
     // Das Ziel selbst ist ein Haus oder Wasser: dann bringt die schnelle Strecke dich so nah wie möglich
@@ -748,6 +790,8 @@ export class WalkNet {
         if (done[v]) continue;
         const tv = kindOf(v);
         if (tv === 'blocked' && v !== E) continue;
+        // Diagonal an einer Hausecke vorbei oder durch ein kleines Haus zwischen zwei Zellen
+        if (nearHouse(u) && this.crossesHouse(center(u), center(v))) continue;
         // Über Bäche und Flüsse nur auf einem Weg (Brücke)
         if ((tu !== 'road' || tv !== 'road') && this.crossesWater(center(u), center(v))) continue;
         const len = cell * (dx && dy ? Math.SQRT2 : 1);
@@ -777,6 +821,7 @@ export class WalkNet {
         const q = { x: a.x + ((b.x - a.x) * i) / k, y: a.y + ((b.y - a.y) * i) / k };
         if (costOf(this.terrainXY(q)) > limit + 1e-9) return false;
       }
+      if (this.crossesHouse(a, b)) return false;
       return !this.crossesWater(a, b) || (this.terrainXY(a) === 'road' && this.terrainXY(b) === 'road');
     };
     const pts: P[] = [raw[0]];
