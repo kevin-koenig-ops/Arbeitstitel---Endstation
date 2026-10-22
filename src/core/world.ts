@@ -50,6 +50,8 @@ function gridSpotsInCell(seed: string, x: number, y: number, turn: number): Spot
       source: 'grid',
       pos: fromTile(fx, fy, GRID_ZOOM),
       name: pick(r, SPOT_KINDS[kind].names),
+      // Hochsitze und Jagdhütten stehen draußen, nie im Ort (das prüft die Karte)
+      ...(kind === 'hide' ? { biome: 'wild' as const } : {}),
     });
   }
   // Pilzstelle: eigener Würfel (ändert die übrigen Fundstellen nicht). Liegt nur im Wald,

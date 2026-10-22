@@ -1,6 +1,7 @@
 // Strich-Icons (24×24). Farbe kommt über currentColor aus dem CSS.
 
 import type { Resource, SpotKind } from '../core/types';
+import { colorIcon } from './colorIcons';
 
 const P: Record<string, string> = {
   // Ressourcen
@@ -157,5 +158,6 @@ export function icon(name: string, size = 22): string {
   return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 }
 
-export const resIcon = (r: Resource, size?: number) => icon(r, size);
+/** Rohstoffe, Essen, Wasser, Medizin: farbig im Sticker-Look (ui/colorIcons.ts). */
+export const resIcon = (r: Resource, size?: number) => colorIcon(r, size) ?? icon(r, size);
 export const spotIcon = (k: SpotKind, size?: number) => icon(k, size);

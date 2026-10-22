@@ -875,7 +875,7 @@ export class GameMap {
    * Bebaut? (Wohn-, Gewerbe-, Industriegebiet oder nah an Häusern.) Besondere Orte liegen
    * nur draußen im Offenen, also nie in Gärten oder auf Höfen, und sind immer erreichbar.
    */
-  builtCheck(): (p: LatLon) => boolean {
+  builtCheck(padM = 25): (p: LatLon) => boolean {
     const BUILT = ['residential', 'commercial', 'industrial', 'retail', 'garages', 'railway'];
     const areas: { ring: [number, number][]; x0: number; y0: number; x1: number; y1: number }[] = [];
     const houses: { x0: number; y0: number; x1: number; y1: number }[] = [];
@@ -916,7 +916,7 @@ export class GameMap {
       return c;
     };
     return (p: LatLon) => {
-      const pad = 25 / 111320;
+      const pad = padM / 111320;
       const padX = pad / Math.cos((p.lat * Math.PI) / 180);
       if (houses.some((b) => p.lon > b.x0 - padX && p.lon < b.x1 + padX && p.lat > b.y0 - pad && p.lat < b.y1 + pad)) return true;
       return areas.some((a) => p.lon > a.x0 && p.lon < a.x1 && p.lat > a.y0 && p.lat < a.y1 && inside(p, a.ring));

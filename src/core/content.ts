@@ -100,6 +100,9 @@ export const SIGHT = {
   smallKinds: ['mushrooms', 'backpack', 'barrel', 'parcel', 'hide'] as readonly SpotKind[],
 };
 
+/** Hochsitze, Jagdhütten und Unterstände: so weit weg von Häusern und Siedlungen (Meter). */
+export const WILD_SPOT_MIN_M = 150;
+
 export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
   // --- überall verteilt (Grid) ---
   car: {

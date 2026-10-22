@@ -354,8 +354,8 @@ export interface Spot {
   source: 'grid' | 'poi' | 'special';
   pos: LatLon;
   name: string;
-  /** Liegt nur in diesem Gelände (sonst blendet die Karte die Fundstelle aus). */
-  biome?: 'forest';
+  /** Liegt nur in diesem Gelände, sonst blendet die Karte die Fundstelle aus (wild: weit weg von Siedlungen). */
+  biome?: 'forest' | 'wild';
 }
 
 export type BackgroundId = 'rescue' | 'workshop' | 'farm' | 'courier';

@@ -1,7 +1,7 @@
 // Der Spielbildschirm: Karte, Standort, Fundstellen, HUD und Overlays.
 
 import { FALLBACK_START, IS_PREVIEW, VIEW_RADIUS_M } from '../../config';
-import { CACHE, ENEMIES, FOE_TACTICS, GEAR, HINT_NAMES, MAX_HEALTH, PATROL, REGIONS, RESOURCE_ORDER, RESOURCES, SIGHT, SPECIAL, SPECIAL_HINT, SURVIVAL_ORDER, TIER, WORLD_EVENT, WORLD_EVENTS } from '../../core/content';
+import { CACHE, ENEMIES, FOE_TACTICS, GEAR, HINT_NAMES, MAX_HEALTH, PATROL, REGIONS, RESOURCE_ORDER, RESOURCES, SIGHT, SPECIAL, SPECIAL_HINT, SURVIVAL_ORDER, TIER, WILD_SPOT_MIN_M, WORLD_EVENT, WORLD_EVENTS } from '../../core/content';
 import { ExploredView, SECTOR_LEVELS, sectorOf } from '../../core/explore';
 import { bearingDeg, distanceM, formatDistance, offsetM } from '../../core/geo';
 import { rankOf } from '../../core/progress';
@@ -436,9 +436,10 @@ export function gameScreen(app: App): Screen {
     for (const d of drops) if (distanceM(fix.pos, d.pos) <= VIEW_RADIUS_M) list.push(d);
     // Besondere Orte weiter weg: für die Hinweise am Horizont
     specials = [...app.backend.specialsNear(fix.pos, SPECIAL.hintM), ...drops];
-    // Pilzstellen nur im Wald
+    // Pilzstellen nur im Wald, Hochsitze und Jagdhütten nur weit draußen
     const forest = gm.forestCheck();
-    spots = new Map(list.filter((s) => !sensitive(s.pos, s.source === 'grid') && (s.biome !== 'forest' || forest(s.pos))).map((s) => [s.id, s]));
+    const nearTown = gm.builtCheck(WILD_SPOT_MIN_M);
+    spots = new Map(list.filter((s) => !sensitive(s.pos, s.source === 'grid') && (s.biome !== 'forest' || forest(s.pos)) && (s.biome !== 'wild' || !nearTown(s.pos))).map((s) => [s.id, s]));
     updateSpots();
   };
 
