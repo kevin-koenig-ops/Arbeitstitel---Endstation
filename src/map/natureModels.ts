@@ -9,6 +9,8 @@ import url from '../assets/models/natur.glb?url';
 export interface ModelPart {
   geo: THREE.BufferGeometry;
   mat: THREE.Material;
+  /** Laub (wird je Baum eingefärbt), Rinde (bleibt wie sie ist) oder anderes */
+  role: 'leaf' | 'bark' | 'other';
 }
 
 /** Name im Modell (rock_1, fern, mushroom_2, …) → Teile, je Material eins. */
@@ -29,16 +31,22 @@ function toFloat(attr: THREE.BufferAttribute | THREE.InterleavedBufferAttribute)
 }
 
 /**
- * Farn und Gras haben Normalen für besondere Shader; mit einfachem Licht werden sie fleckig
- * dunkel. Deshalb Normalen fast senkrecht nach oben: hell wie der Boden darunter.
+ * Blätter haben Normalen für besondere Shader; mit einfachem Licht werden sie fleckig dunkel.
+ * Farn und Gras: Normalen fast senkrecht nach oben (hell wie der Boden darunter).
+ * Baumkronen: Normalen wie bei einer Kugel um die Krone (oben hell, unten dunkler).
  */
-function foliageNormals(name: string, geo: THREE.BufferGeometry) {
-  if (name !== 'fern' && name !== 'grass') return;
+function foliageNormals(name: string, role: ModelPart['role'], geo: THREE.BufferGeometry) {
+  const kind = name === 'fern' || name === 'grass' ? 'up' : name.startsWith('tree_') && role === 'leaf' ? 'ball' : null;
+  if (!kind) return;
   const pos = geo.getAttribute('position');
   const nrm = geo.getAttribute('normal') as THREE.BufferAttribute;
+  geo.computeBoundingBox();
+  const c = geo.boundingBox!.getCenter(new THREE.Vector3());
   const v = new THREE.Vector3();
   for (let i = 0; i < pos.count; i++) {
-    v.set(pos.getX(i) * 0.25, 1, pos.getZ(i) * 0.25).normalize();
+    if (kind === 'up') v.set(pos.getX(i) * 0.25, 1, pos.getZ(i) * 0.25);
+    else v.set(pos.getX(i) - c.x, pos.getY(i) - c.y, pos.getZ(i) - c.z).normalize().add(new THREE.Vector3(0, 0.4, 0));
+    v.normalize();
     nrm.setXYZ(i, v.x, v.y, v.z);
   }
   nrm.needsUpdate = true;
@@ -74,8 +82,9 @@ export async function loadNatureModels(): Promise<NatureModels> {
       if (mesh.geometry.index) geo.setIndex(mesh.geometry.index.clone());
       // Knoten-Verschiebung und -Größe gleich in die Ecken einrechnen
       geo.applyMatrix4(mesh.matrixWorld);
-      foliageNormals(root.name, geo);
       const src = (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material) as THREE.MeshStandardMaterial;
+      const role: ModelPart['role'] = /Bark/.test(src.name) ? 'bark' : /Lea/.test(src.name) ? 'leaf' : 'other';
+      foliageNormals(root.name, role, geo);
       let mat = mats.get(src);
       if (!mat) {
         // Einfaches Licht wie bei den anderen Bäumen; Blätter mit ausgeschnittenen Rändern
@@ -83,7 +92,7 @@ export async function loadNatureModels(): Promise<NatureModels> {
         mat = new THREE.MeshLambertMaterial({ map: src.map, alphaTest: src.alphaTest > 0 ? src.alphaTest : 0, side: THREE.DoubleSide, color: new THREE.Color(1.3, 1.3, 1.3) });
         mats.set(src, mat);
       }
-      parts.push({ geo, mat });
+      parts.push({ geo, mat, role });
       mesh.geometry.dispose();
     });
     out.set(root.name, parts);

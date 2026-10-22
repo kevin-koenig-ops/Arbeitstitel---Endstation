@@ -81,7 +81,21 @@ const MODELS: Partial<Record<TreeKind, string[]>> = {
   fern: ['fern'],
   grass: ['grass'],
   mushroom: ['mushroom_1', 'mushroom_2'],
+  // Test: Bäume aus dem Paket, nur nah um die Mitte (weiter weg die einfachen Formen)
+  leaf: [1, 2, 3, 4, 5].map((i) => `tree_leaf_${i}`),
+  pine: [1, 2, 3, 4, 5].map((i) => `tree_pine_${i}`),
+  dead: [1, 2, 3, 4, 5].map((i) => `tree_dead_${i}`),
 };
+/** Bäume als Modell nur in diesem Umkreis (Meter), sonst wird es fürs Handy zu viel. */
+const TREE_MODEL_RADIUS = 180;
+const TREE_KINDS: readonly TreeKind[] = ['leaf', 'pine', 'dead'];
+
+/** Form für Bäume ohne feste Form: aus dem Ort berechnet, also immer dieselbe. */
+function variantOf(t: TreeSpec, n: number): number {
+  if (t.v !== undefined) return Math.min(n - 1, t.v);
+  const h = Math.sin(t.lon * 12.9898 + t.lat * 78.233) * 43758.5453;
+  return Math.floor((h - Math.floor(h)) * n);
+}
 
 /** Wie stark die Farbe aus den Daten das Modell tönt (0 = gar nicht, 1 = ganz). */
 const TINT: Partial<Record<string, number>> = { rock_1: 0.25, rock_2: 0.25, rock_3: 0.25 };
@@ -194,14 +208,20 @@ export class TreeLayer implements CustomLayerInterface {
       const list = trees.filter((t) => t.kind === kind);
       if (!list.length) continue;
       const names = MODELS[kind];
-      if (this.models && this.useModels && names) {
-        // Fertige Modelle: je Form eigene Instanzen
+      let rest = list;
+      if (this.models && this.useModels && names && names.every((n) => this.models!.has(n))) {
+        // Fertige Modelle: je Form eigene Instanzen. Bäume nur nah, der Rest bleibt einfach.
+        const isTree = TREE_KINDS.includes(kind);
+        const dist2 = (t: TreeSpec) => ((t.lon - center.lon) * kx) ** 2 + ((t.lat - center.lat) * ky) ** 2;
+        const near = isTree ? list.filter((t) => dist2(t) <= TREE_MODEL_RADIUS ** 2) : list;
+        rest = isTree ? list.filter((t) => dist2(t) > TREE_MODEL_RADIUS ** 2) : [];
         names.forEach((name, v) => {
           const parts = this.models!.get(name);
-          const sub = list.filter((t) => Math.min(names.length - 1, t.v ?? 0) === v);
+          const sub = near.filter((t) => variantOf(t, names.length) === v);
           if (!parts || !sub.length) return;
-          const tint = TINT[name] ?? 1;
           for (const part of parts) {
+            // Laub bekommt die Farbe des Baums (auch Herbstlaub), Rinde bleibt wie sie ist
+            const tint = part.role === 'leaf' && isTree ? 1 : part.role === 'bark' ? 0 : (TINT[name] ?? 1);
             const mesh = new THREE.InstancedMesh(part.geo, part.mat, sub.length);
             sub.forEach((t, i) => {
               mesh.setMatrixAt(i, place(t, SINK[kind]));
@@ -212,7 +232,7 @@ export class TreeLayer implements CustomLayerInterface {
             this.group.add(mesh);
           }
         });
-        continue;
+        if (!rest.length) continue;
       }
       let parts = this.geos.get(kind);
       if (!parts) {
@@ -220,8 +240,8 @@ export class TreeLayer implements CustomLayerInterface {
         this.geos.set(kind, parts);
       }
       for (const part of parts) {
-        const mesh = new THREE.InstancedMesh(part.geo, this.material(part.color), list.length);
-        list.forEach((t, i) => {
+        const mesh = new THREE.InstancedMesh(part.geo, this.material(part.color), rest.length);
+        rest.forEach((t, i) => {
           mesh.setMatrixAt(i, place(t));
           if (!part.color) mesh.setColorAt(i, color.set(t.color));
         });

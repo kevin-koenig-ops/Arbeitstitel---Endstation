@@ -5,12 +5,13 @@
 import { NodeIO, getBounds } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { dedup, prune, unweld, weld, mergeDocuments, textureCompress, quantize, meshopt, reorder } from '@gltf-transform/functions';
-import { MeshoptEncoder } from 'meshoptimizer';
+import { MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
 import path from 'node:path';
 
 const [, , dir, out] = process.argv;
 await MeshoptEncoder.ready;
+await MeshoptSimplifier.ready;
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder });
 
 // Name im Spiel, Datei, Zielgröße: w = Breite (größere von x/z) oder h = Höhe, in Metern
@@ -22,7 +23,87 @@ const MODELS = [
   ['grass', 'Grass_Wispy_Tall', { h: 1.0 }],
   ['mushroom_1', 'Mushroom_Common', { w: 0.9 }],
   ['mushroom_2', 'Mushroom_Laetiporus', { w: 1.0 }],
+  // Bäume (Test): stark vereinfacht, nur nah um die Figur
+  ...[1, 2, 3, 4, 5].map((i) => [`tree_leaf_${i}`, `CommonTree_${i}`, { h: 8.5, tree: true }]),
+  ...[1, 2, 3, 4, 5].map((i) => [`tree_pine_${i}`, `Pine_${i}`, { h: 10, tree: true }]),
+  ...[1, 2, 3, 4, 5].map((i) => [`tree_dead_${i}`, `DeadTree_${i}`, { h: 7.5, tree: true }]),
 ];
+
+/** Ziel-Dreiecke je Baum: Holz wird vereinfacht, beim Laub bleibt nur jede x-te Blattkarte (dafür größer). */
+const TREE_BARK_TRIS = 260;
+const TREE_LEAF_TRIS = 360;
+
+/** Holz: mit meshoptimizer auf wenige Dreiecke bringen. */
+function simplifyBark(prim) {
+  const pos = prim.getAttribute('POSITION');
+  const idx = prim.getIndices();
+  const indices = new Uint32Array(idx.getArray());
+  const positions = new Float32Array(pos.getCount() * 3);
+  for (let i = 0; i < pos.getCount(); i++) positions.set(pos.getElement(i, [0, 0, 0]), i * 3);
+  const target = Math.min(indices.length, TREE_BARK_TRIS * 3);
+  const [out] = MeshoptSimplifier.simplify(indices, positions, 3, target, 0.08, ['LockBorder']);
+  let res = out;
+  if (res.length > target * 1.5) res = MeshoptSimplifier.simplifySloppy(indices, positions, 3, null, target, 0.2)[0];
+  idx.setArray(new Uint32Array(res));
+}
+
+/** Laub: Blattkarten sind einzelne Inseln aus Dreiecken. Nur jede k-te behalten und vergrößern. */
+function thinLeaves(prim) {
+  const pos = prim.getAttribute('POSITION');
+  const idx = prim.getIndices();
+  const ind = idx.getArray();
+  const parent = new Int32Array(pos.getCount()).map((_, i) => i);
+  const find = (a) => (parent[a] === a ? a : (parent[a] = find(parent[a])));
+  for (let t = 0; t < ind.length; t += 3) {
+    const a = find(ind[t]);
+    parent[find(ind[t + 1])] = a;
+    parent[find(ind[t + 2])] = a;
+  }
+  const groups = new Map();
+  for (let t = 0; t < ind.length; t += 3) {
+    const g = find(ind[t]);
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(t);
+  }
+  const list = [...groups.values()];
+  const tris = ind.length / 3;
+  const k = Math.max(1, Math.round(tris / TREE_LEAF_TRIS));
+  const grow = Math.min(2.2, Math.sqrt(k) * 0.95);
+  const keep = [];
+  const moved = new Set();
+  list.forEach((tri, gi) => {
+    if (gi % k) return;
+    // Mitte der Karte, dann alle Ecken davon weg strecken
+    const vs = [...new Set(tri.flatMap((t) => [ind[t], ind[t + 1], ind[t + 2]]))];
+    const c = [0, 0, 0];
+    for (const v of vs) {
+      const p = pos.getElement(v, [0, 0, 0]);
+      for (let a = 0; a < 3; a++) c[a] += p[a] / vs.length;
+    }
+    for (const v of vs) {
+      if (moved.has(v)) continue;
+      moved.add(v);
+      const p = pos.getElement(v, [0, 0, 0]);
+      pos.setElement(v, p.map((x, a) => c[a] + (x - c[a]) * grow));
+    }
+    for (const t of tri) keep.push(ind[t], ind[t + 1], ind[t + 2]);
+  });
+  idx.setArray(new Uint32Array(keep));
+}
+
+/** Laubbild grau machen (die Farbe kommt im Spiel je Baum dazu, so bleibt das Herbstlaub). */
+async function greyLeaves(tex) {
+  const { data, info } = await sharp(Buffer.from(tex.getImage())).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  let sum = 0, n = 0;
+  const lum = (i) => (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) / 255;
+  for (let i = 0; i < data.length; i += 4) if (data[i + 3] > 100) { sum += lum(i); n++; }
+  const mean = sum / Math.max(1, n);
+  for (let i = 0; i < data.length; i += 4) {
+    const g = Math.round(255 * Math.max(0.45, Math.min(1, 0.86 + (lum(i) - mean) * 1.3)));
+    data[i] = data[i + 1] = data[i + 2] = g;
+  }
+  tex.setImage(await sharp(data, { raw: info }).png().toBuffer()).setMimeType('image/png');
+}
 
 /** Grenzen aus den wirklich benutzten Ecken (die gespeicherten Min/Max-Werte stimmen nicht immer). */
 function realBounds(scene) {
@@ -58,6 +139,19 @@ for (const [key, file, size] of MODELS) {
   const doc = await io.read(path.join(dir, file + '.gltf'));
   // Unbenutzte Ecken entfernen (manche Dateien haben welche weit außerhalb, das verfälscht die Größe)
   await doc.transform(unweld(), weld());
+  if (size.tree) {
+    for (const mesh of doc.getRoot().listMeshes()) {
+      for (const prim of mesh.listPrimitives()) {
+        const name = prim.getMaterial()?.getName() ?? '';
+        if (/Bark/.test(name)) simplifyBark(prim);
+        else if (/Lea/.test(name)) thinLeaves(prim);
+      }
+    }
+    for (const tex of doc.getRoot().listTextures()) if (/Leaves_NormalTree_C|Leaf_Pine_C/.test(tex.getURI()) && !tex.getExtras().grey) {
+      await greyLeaves(tex);
+      tex.setExtras({ grey: true });
+    }
+  }
   const scene = doc.getRoot().getDefaultScene() ?? doc.getRoot().listScenes()[0];
   const b = realBounds(scene);
   const sx = b.max[0] - b.min[0];
@@ -143,8 +237,9 @@ await target.transform(
   dedup(),
   prune(),
   // Blätter verlustfrei (sonst wirft WebP die ausgebreitete Farbe unter den durchsichtigen Pixeln weg), dafür kleiner
-  textureCompress({ encoder: sharp, targetFormat: 'webp', lossless: true, pattern: /Leaves|Flowers/ }),
+  textureCompress({ encoder: sharp, targetFormat: 'webp', lossless: true, pattern: /Lea|Flowers/ }),
   textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [512, 512], quality: 82, pattern: /Rocks|Grass|Mushrooms/ }),
+  textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [256, 256], quality: 80, pattern: /Bark/ }),
   reorder({ encoder: MeshoptEncoder }),
   quantize(),
   meshopt({ encoder: MeshoptEncoder, level: 'medium' }),

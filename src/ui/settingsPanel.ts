@@ -172,7 +172,7 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
       { class: 'set-group' },
       h('h2', null, 'Zum Ausprobieren'),
       h('p', { class: 'note' }, 'Tageszeit und Wetter erzwingen, um die Stimmungen zu sehen. Ändert nur die Optik, nicht Beute oder Gegner.'),
-      h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-nature' }, 'Neue Natur-Grafik', h('small', null, 'Steine, Farn, trockenes Gras und Pilze als fertige Modelle (nah herangezoomt zu sehen). Aus: die alten, einfachen Steine, zum Vergleichen.')), natureToggle),
+      h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-nature' }, 'Neue Natur-Grafik (Test)', h('small', null, 'Bäume nah um dich, Steine, Farn, trockenes Gras und Pilze als fertige Modelle. Aus: die alten, einfachen Formen, zum Vergleichen.')), natureToggle),
       h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-phase' }, 'Tageszeit'), phaseSelect),
       h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-wx' }, 'Wetter'), weatherSelect),
     ),
