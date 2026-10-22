@@ -2,7 +2,7 @@
 
 Alle geplanten Features an einer Stelle: erst was für Version 1.0 noch fehlt, dann die Versionen danach, zum Schluss was schon erledigt ist. Dieselbe Planung steht übersichtlich im [Konzeptplan](https://claude.ai/artifact/3VZUUmEiEVBDWWdwN9EpCT). Alle Mechaniken mit Stand und der Weg zu 1.0 in neun Paketen: [Überblick aller Mechaniken](https://claude.ai/artifact/4pbh9xnuaXMgxENYvjNULE). Neue Ideen kommen in die passende Version oder unter „Ideen für irgendwann“.
 
-**Seit 22.10.:** Die Reihenfolge von einfach zu komplex (8 Stufen, mit Aufwand und offenen Entscheidungen) steht im Überblick-Dokument im Tab „Roadmap“. Ganz vorne steht seit dem 22.10. **Stufe 0: Bauen und Gegner zuerst**: Bauen ist das Herzstück, deshalb kommen zuerst etwa 150 Baupläne mit viel Deko, besseres Einrichten (Deko auf Möbel, Bilder an die Wand) und alle 11 Gegner. Diese Datei sammelt weiter die Details und was erledigt ist.
+**Seit 22.10.:** Die Reihenfolge von einfach zu komplex (8 Stufen, mit Aufwand und offenen Entscheidungen) steht im Überblick-Dokument im Tab „Roadmap“. Ganz vorne steht seit dem 22.10. **Stufe 0: Optik, Bauen und Gegner zuerst**: erst die Optik fertig (Texturen fürs Zuhause von Kevin, lebendiges Wasser, ein einheitlicher Look für Möbel, Figur und Gegner, schlanke Fenster), dann das Bauen als Herzstück (besser einrichten, etwa 150 Baupläne mit viel Deko) und alle 11 Gegner. Diese Datei sammelt weiter die Details und was erledigt ist.
 
 ## Version 1.0: was noch fehlt
 
