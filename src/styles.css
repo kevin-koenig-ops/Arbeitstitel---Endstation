@@ -1686,6 +1686,7 @@ button.base-res { align-items: center; padding: 3px 6px 3px 4px; border: 1px sol
 .patrol[data-horde="1"] .patrol-badge { box-shadow: 0 0 0 2px #ef6a4c, 0 0 14px rgba(239, 106, 76, 0.55); }
 .patrol-alert { position: absolute; left: 50%; top: -12px; transform: translateX(-50%); min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; display: none; place-items: center; font: 900 14px/20px var(--font-ui); text-align: center; }
 .patrol[data-state="alert"] .patrol-alert { display: block; background: #ffb22e; color: var(--ink); }
+.patrol[data-state="calm"] .patrol-badge { opacity: 0.6; box-shadow: 0 0 0 2px #8a8578, 0 4px 10px rgba(0, 0, 0, 0.45); }
 .patrol[data-state="hunt"] .patrol-alert { display: block; background: #e0442a; color: #fff; animation: patrol-pulse 0.8s ease-in-out infinite; }
 @keyframes patrol-pulse { 50% { transform: translateX(-50%) scale(1.2); } }
 

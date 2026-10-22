@@ -371,6 +371,33 @@ export class WalkNet {
     return false;
   }
 
+  /**
+   * Sichtlinie: Wie weit sieht man von from aus in Richtung bearing (Grad), bis ein Haus im
+   * Weg ist? Höchstens maxM. (Für die Sichtkegel der Trupps: Häuser werfen Sichtschatten.)
+   */
+  sightLimit(fromLL: LatLon, bearing: number, maxM: number): number {
+    const a = this.toXY(fromLL);
+    const rad = (bearing * Math.PI) / 180;
+    const b = { x: a.x + Math.sin(rad) * maxM, y: a.y + Math.cos(rad) * maxM };
+    let best = 1;
+    const seen = new Set<number>();
+    const n = Math.max(1, Math.ceil(maxM / (CELL / 2)));
+    for (let i = 0; i <= n; i++) {
+      const x = a.x + ((b.x - a.x) * i) / n;
+      const y = a.y + ((b.y - a.y) * i) / n;
+      for (const k of this.houseGrid.at(x, y)) {
+        if (seen.has(k)) continue;
+        seen.add(k);
+        const ring = this.houses[k].rings[0];
+        for (let j = 1; j < ring.length; j++) {
+          const t = segmentHit(a, b, ring[j - 1], ring[j]);
+          if (t !== null && t < best) best = t;
+        }
+      }
+    }
+    return best * maxM;
+  }
+
   private nearHouse(p: P) {
     for (const i of this.nearHouseGrid.at(p.x, p.y)) {
       const a = this.houses[i];
@@ -829,6 +856,19 @@ export class WalkNet {
     }
     return pts.length > 1 ? pts.map((p) => this.toLatLon(p)) : null;
   }
+}
+
+/** Wo trifft die Strecke ab die Strecke cd (Anteil entlang ab, 0–1), oder null. */
+function segmentHit(a: P, b: P, c: P, d: P): number | null {
+  const rx = b.x - a.x;
+  const ry = b.y - a.y;
+  const sx = d.x - c.x;
+  const sy = d.y - c.y;
+  const den = rx * sy - ry * sx;
+  if (Math.abs(den) < 1e-9) return null;
+  const t = ((c.x - a.x) * sy - (c.y - a.y) * sx) / den;
+  const u = ((c.x - a.x) * ry - (c.y - a.y) * rx) / den;
+  return t >= 0 && t <= 1 && u >= 0 && u <= 1 ? t : null;
 }
 
 /** Schneiden sich die Strecken ab und cd? */

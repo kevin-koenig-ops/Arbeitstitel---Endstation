@@ -212,11 +212,21 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
       type: 'fill',
       source: 'patrols',
       paint: {
-        'fill-color': ['case', ['>', ['get', 'a'], 0.5], '#e0442a', ['>', ['get', 'a'], 0.05], '#ff9a3a', '#ffe6a8'],
-        'fill-opacity': ['case', ['>', ['get', 'a'], 0.05], 0.42, 0.32],
+        // grau: er lässt dich gerade in Ruhe (Zuhause in der Nähe, erschöpft, gerade gekämpft)
+        'fill-color': ['case', ['==', ['get', 'c'], 1], '#c9c6bd', ['>', ['get', 'a'], 0.5], '#e0442a', ['>', ['get', 'a'], 0.05], '#ff9a3a', '#ffe6a8'],
+        'fill-opacity': ['case', ['==', ['get', 'c'], 1], 0.16, ['>', ['get', 'a'], 0.05], 0.42, 0.32],
       },
     },
-    { id: 'patrol-cone-edge', type: 'line', source: 'patrols', paint: { 'line-color': ['case', ['>', ['get', 'a'], 0.05], '#e0442a', '#fff1cc'], 'line-width': 2, 'line-opacity': 0.9 } },
+    {
+      id: 'patrol-cone-edge',
+      type: 'line',
+      source: 'patrols',
+      paint: {
+        'line-color': ['case', ['==', ['get', 'c'], 1], '#c9c6bd', ['>', ['get', 'a'], 0.05], '#e0442a', '#fff1cc'],
+        'line-width': 2,
+        'line-opacity': ['case', ['==', ['get', 'c'], 1], 0.45, 0.9],
+      },
+    },
 
     // Suchkreise von Verstecken: wie mit Kreide auf den Boden gemalt
     { id: 'cache-fill', type: 'fill', source: 'caches', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': '#e8dec8', 'fill-opacity': 0.07 } },

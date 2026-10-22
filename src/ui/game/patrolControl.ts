@@ -92,6 +92,13 @@ export class PatrolControl {
   private terrainAt: { pos: LatLon; terrain: TerrainKind } | null = null;
   /** Nur zum Testen: die Lage beim letzten Schritt. */
   private dbg: unknown = null;
+  /** Warum dich gerade niemand sucht (oder null). */
+  private calmWhy: 'home' | 'tired' | 'cooldown' | null = null;
+
+  /** Warum dich die Trupps gerade in Ruhe lassen: Zuhause in der Nähe, erschöpft, gerade gekämpft. */
+  get calmReason() {
+    return this.calmWhy;
+  }
 
   constructor(private host: PatrolHost) {
     this.timer = window.setInterval(() => this.tick(), TICK_MS);
@@ -320,7 +327,12 @@ export class PatrolControl {
     // Beim Zuhause, erschöpft oder direkt nach einer Begegnung: niemand sucht dich, Verfolger geben auf.
     const home = this.host.home();
     const paused = this.host.busy() || !!s.combat;
-    const calm = paused || currentHealth(s, now) < MIN_HEALTH_TO_FIGHT || now - s.wildAt < PATROL.cooldownMin * 60_000 || (!!home && distanceM(home, here) < PATROL.homeSafeM);
+    this.calmWhy =
+      !!home && distanceM(home, here) < PATROL.homeSafeM ? 'home' : currentHealth(s, now) < MIN_HEALTH_TO_FIGHT ? 'tired' : now - s.wildAt < PATROL.cooldownMin * 60_000 ? 'cooldown' : null;
+    const calm = paused || !!this.calmWhy;
+    // Häuser werfen Sichtschatten (Wegenetz mit allen Häusern der Gegend)
+    const los = this.host.patrolNet(here);
+    const sightTo = (from: LatLon, bearing: number, maxM: number) => (los?.wayCount ? los.sightLimit(from, bearing, maxM) : maxM);
     if (calm && !paused) for (const id of [...this.chasers.keys()]) {
       const c = this.live.get(id);
       if (c) this.drop(c, true);
@@ -367,7 +379,8 @@ export class PatrolControl {
       if (!calm && d < 90) {
         const toMe = bearingDeg(p.pos, here);
         const diff = Math.abs(((((toMe - p.heading) % 360) + 540) % 360) - 180);
-        const inCone = diff <= PATROL.coneDeg && d <= sight;
+        // Im Blickfeld, nah genug und kein Haus dazwischen
+        const inCone = diff <= PATROL.coneDeg && d <= sight && sightTo(p.pos, toMe, d) >= d - 1;
         const heard = d <= hear;
         if (inCone || heard) {
           const closeness = 1.6 - Math.min(1, d / Math.max(sight, hear, 1));
@@ -388,7 +401,10 @@ export class PatrolControl {
 
       const show = d <= showM || hunting || p.spotted;
       p.shown = show;
-      if (show)
+      if (show) {
+        // Sichtkegel als Fächer aus Strahlen, die an Häusern enden
+        const rays: number[] = [];
+        for (let i = 0; i <= 16; i++) rays.push(sightTo(p.pos, p.heading - PATROL.coneDeg + (2 * PATROL.coneDeg * i) / 16, sight));
         views.push({
           id: p.plan.id,
           pos: p.pos,
@@ -396,10 +412,13 @@ export class PatrolControl {
           group: p.plan.group,
           sightM: sight,
           coneDeg: PATROL.coneDeg,
+          rays,
           alert: p.spotted ? 1 : p.awareness,
           hunting: hunting || p.spotted,
           horde: p.plan.horde,
+          calm: !!this.calmWhy,
         });
+      }
     }
 
     // Weit genug weggegangen, oder er gibt auf? Dann hast du ihn abgehängt.

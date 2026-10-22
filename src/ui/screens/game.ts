@@ -969,12 +969,22 @@ export function gameScreen(app: App): Screen {
       confirmPatrolFight(id, 'surprise');
       return;
     }
+    // Lässt er dich gerade in Ruhe? Dann sag warum (grauer Sichtkegel)
+    const why = patrols.calmReason;
+    if (why) {
+      app.toast(
+        `${p.plan.horde ? 'Horde' : 'Trupp'}: ${names}. Gerade lässt er dich in Ruhe: ${
+          why === 'home' ? `rund um dein Zuhause (${PATROL.homeSafeM} m) bist du sicher` : why === 'tired' ? 'du bist erschöpft, ruh dich erst aus' : 'du hattest eben erst einen Kampf, ein paar Minuten ist Ruhe'
+        }.`,
+      );
+      return;
+    }
     const cond = patrols.conditions();
     const exp = patrols.exposure();
     const sight = Math.round(sightRangeM(p.plan.group, cond, exp));
     const hear = Math.round(hearRangeM(p.plan.group, cond, exp));
     app.toast(
-      `${p.plan.horde ? 'Horde' : 'Trupp'}: ${names}, ${formatDistance(p.distM)} entfernt. Im Blickfeld sieht er dich auf etwa ${sight} m, hören tut er dich auf ${hear} m. Schleich dich von hinten an (näher als ${PATROL.surpriseM} m) und tipp ihn an: Überraschungsangriff, die Gegner setzen die erste Runde aus.`,
+      `${p.plan.horde ? 'Horde' : 'Trupp'}: ${names}, ${formatDistance(p.distM)} entfernt. Im Blickfeld sieht er dich auf etwa ${sight} m (nicht durch Häuser), hören tut er dich auf ${hear} m. Schleich dich von hinten an (näher als ${PATROL.surpriseM} m) und tipp ihn an: Überraschungsangriff, die Gegner setzen die erste Runde aus.`,
     );
   };
 

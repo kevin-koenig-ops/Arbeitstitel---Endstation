@@ -158,6 +158,15 @@ describe('Wegenetz: schnell oder leise', () => {
   });
 });
 
+describe('Wegenetz: Sichtlinien', () => {
+  it('Häuser werfen Sichtschatten', () => {
+    // Haus von (40,40) bis (60,60): von (50,0) nach Norden ist es nach 40 m im Weg
+    expect(net.sightLimit(ll(50, 0), 0, 100)).toBeCloseTo(40, 0);
+    // Nach Süden ist frei
+    expect(net.sightLimit(ll(50, 0), 180, 100)).toBeCloseTo(100, 0);
+  });
+});
+
 describe('Wegenetz: Strecken der Trupps', () => {
   it('folgen den Wegen und sind bei gleichem Zufall gleich', () => {
     const mk = (seed: number) => {
