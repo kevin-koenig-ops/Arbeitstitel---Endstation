@@ -596,18 +596,39 @@ export function gameScreen(app: App): Screen {
     }
     let got = false;
     let last = 0;
+    // Solange du die Karte anfasst (schieben, zoomen, drehen) und kurz danach: nicht drehen.
+    // Sonst unterbricht jede Kompass-Drehung deine Bewegung und die Karte fühlt sich klebrig an.
+    let touchedAt = 0;
+    const touched = () => (touchedAt = performance.now());
+    const canvas = gm.map.getCanvasContainer();
+    canvas.addEventListener('touchstart', touched, { passive: true });
+    canvas.addEventListener('touchmove', touched, { passive: true });
+    canvas.addEventListener('pointerdown', touched);
+    canvas.addEventListener('wheel', touched, { passive: true });
+    const m = gm.map;
+    const userActive = () => m.dragPan.isActive() || m.touchZoomRotate.isActive() || m.scrollZoom.isActive() || m.dragRotate.isActive() || m.touchPitch.isActive();
     const onOri = (e: DeviceOrientationEvent & { webkitCompassHeading?: number }) => {
       const heading = e.webkitCompassHeading ?? (e.absolute && e.alpha !== null ? 360 - e.alpha : null);
       if (heading === null || heading === undefined || !gm) return;
       got = true;
       const t = performance.now();
-      if (t - last < 120) return;
+      if (userActive()) touchedAt = t;
+      if (t - touchedAt < 900 || t - last < 120) return;
+      // Kleines Zittern der Nadel nicht weitergeben
+      const diff = Math.abs(((((heading - gm.bearing) % 360) + 540) % 360) - 180);
+      if (diff < 2) return;
       last = t;
       gm.map.easeTo({ bearing: heading, duration: 150 });
     };
     const evName = 'ondeviceorientationabsolute' in window ? 'deviceorientationabsolute' : 'deviceorientation';
     window.addEventListener(evName, onOri as EventListener);
-    headingOff = () => window.removeEventListener(evName, onOri as EventListener);
+    headingOff = () => {
+      window.removeEventListener(evName, onOri as EventListener);
+      canvas.removeEventListener('touchstart', touched);
+      canvas.removeEventListener('touchmove', touched);
+      canvas.removeEventListener('pointerdown', touched);
+      canvas.removeEventListener('wheel', touched);
+    };
     compassMode = 'heading';
     renderNeedle();
     window.setTimeout(() => {
