@@ -65,6 +65,11 @@ const PLAYER = { x: -2.8, z: 0.5 };
 const ROW = { nearX: -0.6, gap: 1.75, farGap: 1.9, farZ: -1.3 };
 /** Kamera: von vorn auf die Straße, leicht erhöht. */
 const CAM = { x: 0.6, y: 3.4, back: 11.5, lookY: 1.1, lookZ: -0.2, fov: 34, fovTall: 52, off: 0.075 };
+/**
+ * Versuch: Schulterblick. Die Kamera steht hinter deiner Figur und schaut die Straße entlang,
+ * die Gegner stehen dir gegenüber. Einschalten unter Einstellungen → Grafik → Kampfansicht.
+ */
+const SHOULDER_CAM = { x: PLAYER.x - 3.5, y: 2.2, z: PLAYER.z + 0.8, lookX: PLAYER.x + 6, lookY: 0.95, lookZ: PLAYER.z + 1.7, fov: 42, fovTall: 66, mid: 1.3, nearX: 3.8, nearGap: 3.1, farX: 7.8 };
 
 export class TacticsScene {
   readonly renderer: THREE.WebGLRenderer;
@@ -83,6 +88,8 @@ export class TacticsScene {
   private dodge = 0;
   private shield: THREE.Mesh;
   private shieldT = 0;
+  /** Kampfansicht: von der Seite (Standard) oder über die Schulter. */
+  private readonly shoulder: boolean;
   private ro: ResizeObserver;
   private highlight = new Set<number>();
   private selected: number | null = null;
@@ -94,7 +101,9 @@ export class TacticsScene {
     look: Character['look'],
     weapon: WeaponId | null,
     phase: DayPhase,
+    view: 'side' | 'shoulder' = 'side',
   ) {
+    this.shoulder = view === 'shoulder';
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(Math.min(1.75, window.devicePixelRatio || 1));
     this.renderer.shadowMap.enabled = true;
@@ -146,8 +155,7 @@ export class TacticsScene {
     this.shield.visible = false;
     this.scene.add(this.shield);
 
-    this.camera.position.set(CAM.x, CAM.y, CAM.back);
-    this.camera.lookAt(CAM.x, CAM.lookY, CAM.lookZ);
+    this.placeCamera(0);
 
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(host);
@@ -245,6 +253,23 @@ export class TacticsScene {
   private slotPos(list: ShownFoe[], f: ShownFoe): THREE.Vector3 {
     const near = list.filter((x) => x.alive && x.row === 'near').sort((a, b) => a.id - b.id);
     const far = list.filter((x) => x.alive && x.row === 'far').sort((a, b) => a.id - b.id);
+    if (this.shoulder) {
+      // Schulterblick: vorne nebeneinander vor dir, hinten weiter weg, leicht versetzt
+      const c = SHOULDER_CAM;
+      const isNear = f.row === 'near';
+      const row = isNear ? near : far;
+      const i = Math.max(0, row.findIndex((x) => x.id === f.id));
+      const n = Math.max(1, row.length);
+      // Seitlicher Platz, so wie er vorne im Bild erscheint. Hinten um eine halbe Lücke
+      // versetzt, damit man zwischen den vorderen hindurch die hinteren sieht.
+      let side = (i - (n - 1) / 2) * c.nearGap;
+      if (!isNear && (near.length + n) % 2 === 0) side += c.nearGap / 2;
+      const z = PLAYER.z + c.mid + side;
+      if (isNear) return new THREE.Vector3(PLAYER.x + c.nearX + (i % 2) * 0.35, 0, z);
+      // hinten: auf derselben Sichtlinie von der Kamera aus, nur weiter weg
+      const k = (c.farX - (c.x - PLAYER.x)) / (c.nearX - (c.x - PLAYER.x));
+      return new THREE.Vector3(PLAYER.x + c.farX + (i % 2) * 0.35, 0, c.z + (z - c.z) * k);
+    }
     if (f.row === 'near') {
       const i = Math.max(0, near.findIndex((x) => x.id === f.id));
       return new THREE.Vector3(ROW.nearX + i * ROW.gap, 0, (i % 2) * 0.5);
@@ -446,8 +471,7 @@ export class TacticsScene {
     // Kamera mit etwas Wackeln
     const sh = this.shake;
     this.shake = Math.max(0, this.shake - dt * 2.5);
-    this.camera.position.set(CAM.x + (Math.random() - 0.5) * sh * 0.35, CAM.y + (Math.random() - 0.5) * sh * 0.25, CAM.back);
-    this.camera.lookAt(CAM.x, CAM.lookY, CAM.lookZ);
+    this.placeCamera(sh);
 
     // Würfe
     for (const s of this.shots) {
@@ -523,8 +547,22 @@ export class TacticsScene {
   }
 
   /** Nur zum Ausprobieren: Kamera einstellen. */
-  tuneCamera(p: Partial<typeof CAM>) {
-    Object.assign(CAM, p);
+  /** Kamera setzen, mit etwas Wackeln (sh). */
+  private placeCamera(sh: number) {
+    const jx = (Math.random() - 0.5) * sh * 0.35;
+    const jy = (Math.random() - 0.5) * sh * 0.25;
+    if (this.shoulder) {
+      const c = SHOULDER_CAM;
+      this.camera.position.set(c.x, c.y + jy, c.z + jx);
+      this.camera.lookAt(c.lookX, c.lookY, c.lookZ);
+      return;
+    }
+    this.camera.position.set(CAM.x + jx, CAM.y + jy, CAM.back);
+    this.camera.lookAt(CAM.x, CAM.lookY, CAM.lookZ);
+  }
+
+  tuneCamera(p: Partial<typeof CAM & typeof SHOULDER_CAM>) {
+    Object.assign(this.shoulder ? SHOULDER_CAM : CAM, p);
     this.resize();
   }
 
@@ -535,7 +573,8 @@ export class TacticsScene {
     this.renderer.setSize(w, h);
     this.camera.aspect = w / h;
     // Hochkant: etwas mehr Blickwinkel, damit alle drei Plätze ins Bild passen
-    this.camera.fov = w / h < 0.8 ? CAM.fovTall : CAM.fov;
+    const tall = w / h < 0.8;
+    this.camera.fov = this.shoulder ? (tall ? SHOULDER_CAM.fovTall : SHOULDER_CAM.fov) : tall ? CAM.fovTall : CAM.fov;
     // Die Karten unten verdecken einen Teil: das Bild etwas nach oben schieben, damit Figur und Gegner frei stehen
     this.camera.setViewOffset(w, h, 0, h * CAM.off, w, h);
     this.camera.updateProjectionMatrix();

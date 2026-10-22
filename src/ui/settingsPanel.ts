@@ -177,7 +177,20 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
         ),
       ],
     ],
-    ['graphics', 'Grafik', [row(lbl('set-water', 'Bewegtes Wasser', 'Wellen und Glitzern auf der Karte und am See. Aus spart etwas Akku.'), waterToggle)]],
+    [
+      'graphics',
+      'Grafik',
+      [
+        row(lbl('set-water', 'Bewegtes Wasser', 'Wellen und Glitzern auf der Karte und am See. Aus spart etwas Akku.'), waterToggle),
+        row(
+          h('div', { class: 'set-label', id: 'lbl-bview' }, 'Kampfansicht', h('small', null, 'Von der Seite oder über die Schulter deiner Figur. Die Schulteransicht ist noch ein Versuch.')),
+          segmented('battleView', 'lbl-bview', [
+            ['side', 'Seite'],
+            ['shoulder', 'Schulter'],
+          ]),
+        ),
+      ],
+    ],
     [
       'test',
       'Testen',

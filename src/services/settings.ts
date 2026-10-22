@@ -46,13 +46,15 @@ export interface Settings {
   waterMotion: boolean;
   /** Laufen per Tippen: schnell über die Straßen oder leise durch Deckung. */
   gait: 'fast' | 'quiet';
+  /** Kampfansicht: von der Seite oder über die Schulter (Versuch). */
+  battleView: 'side' | 'shoulder';
   /** Letzter bekannter Standort, nur auf diesem Gerät gespeichert. */
   lastPos?: LatLon;
 }
 
 const KEY = 'endstation.settings';
 
-const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', testSeason: 'auto', control: 'tap', lootGames: 'on', fullscreen: true, language: 'de', waterMotion: true, gait: 'fast' } as const;
+const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', testSeason: 'auto', control: 'tap', lootGames: 'on', fullscreen: true, language: 'de', waterMotion: true, gait: 'fast', battleView: 'side' } as const;
 const DEFAULTS: Settings = IS_PREVIEW ? { ...COMMON, map: 'demo', location: 'sim' } : { ...COMMON, map: 'real', location: 'gps' };
 
 export class SettingsStore {

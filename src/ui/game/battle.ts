@@ -790,7 +790,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
   void import('../../base/CombatScene')
     .then((mod) => {
       if (!el.isConnected) return;
-      scene = new mod.TacticsScene(stage, s0.character.look, weapon, phase);
+      scene = new mod.TacticsScene(stage, s0.character.look, weapon, phase, app.settings.get().battleView);
       scene.setFoes(shownList(), shownList().map((f) => f.id));
       try {
         if (localStorage.getItem('endstation.debug')) {
