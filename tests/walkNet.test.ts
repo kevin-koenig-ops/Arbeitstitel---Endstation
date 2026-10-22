@@ -210,3 +210,33 @@ describe('Wegenetz: Strecken der Trupps', () => {
     }
   });
 });
+
+describe('Wegenetz: schnell über weite Strecken', () => {
+  // Eine Straße im Bogen: erst nach Osten, dann nach Norden. Dazwischen offene Wiese.
+  const far = new WalkNet({
+    center: C,
+    ways: [[at(0, 0), at(500, 0), at(500, 500)]],
+    buildings: [],
+    water: [],
+    built: [],
+    forest: [],
+  });
+  const offLen = (r: NonNullable<ReturnType<WalkNet['route']>>) => {
+    let m = 0;
+    for (let i = 1; i < r.path.length; i++) if (r.offroad[i - 1]) m += distanceM(r.path[i - 1], r.path[i]);
+    return m;
+  };
+
+  it('nimmt die Straße bis zum nächsten Punkt am Ziel und geht erst dann quer', () => {
+    const r = far.route(ll(0, 0), ll(470, 480), 'fast')!;
+    expect(r.snapped).toBe(false);
+    expect(distanceM(r.end, ll(470, 480))).toBeLessThan(1);
+    // Nur das letzte kurze Stück quer, nicht diagonal über die ganze Wiese
+    expect(offLen(r)).toBeLessThan(45);
+  });
+
+  it('kurze Abkürzungen quer bleiben erlaubt', () => {
+    const r = far.route(ll(480, 20), ll(470, 40), 'fast')!;
+    expect(offLen(r)).toBeLessThan(40);
+  });
+});

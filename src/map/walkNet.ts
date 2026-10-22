@@ -57,6 +57,13 @@ export const SPEED: Record<Exclude<TerrainKind, 'blocked'>, number> = {
 };
 /** So nah an einer Linie gilt man als „auf dem Weg“. */
 export const ON_WAY_M = 7;
+/**
+ * Schnell laufen: Querfeldein zählt bei der Wahl der Strecke so viel teurer (Kevin, 22.10.):
+ * lieber über Straßen bis zum nächsten Punkt am Ziel, erst dann quer. Kurze Abkürzungen bleiben erlaubt.
+ */
+const OFFROAD_PENALTY = 2.5;
+/** Bis zu dieser Länge gilt ein Stück quer als kurze Abkürzung (ohne Aufschlag). */
+const SHORTCUT_M = 40;
 /** So nah an Häusern gilt man als im Ort (Gärten, Höfe, Einfahrten). */
 const NEAR_HOUSE_M = 16;
 
@@ -590,9 +597,9 @@ export class WalkNet {
     }
     near.sort((a, b) => a.d - b.d);
     let best: { cost: number; i: number; leg: { cost: number; pts: P[]; speeds: number[] } } | null = null;
-    for (const { i } of near.slice(0, 40)) {
+    for (const { i, d } of near.slice(0, 40)) {
       const leg = this.freeLeg(this.nodes[i], T);
-      const cost = dist.get(i)! + leg.cost;
+      const cost = dist.get(i)! + leg.cost * (d > SHORTCUT_M ? OFFROAD_PENALTY : 1);
       if (leg.cost < Infinity && (!best || cost < best.cost)) best = { cost, i, leg };
     }
     if (!best) return null;
@@ -670,10 +677,11 @@ export class WalkNet {
     const cands: Cand[] = [];
     const reachable = tTer !== 'blocked';
     const road = this.speed.road;
-    // 1. Direkt quer durchs Gelände
+    const pen = (a: P, b: P) => (Math.hypot(b.x - a.x, b.y - a.y) > SHORTCUT_M ? OFFROAD_PENALTY : 1);
+    // 1. Direkt quer durchs Gelände (bei langen Strecken mit Aufschlag, Straßen gehen vor)
     if (reachable) {
       const leg = this.freeLeg(F, T);
-      if (leg.cost < Infinity) cands.push({ cost: leg.cost, pts: leg.pts, speeds: leg.speeds, off: leg.speeds.map((v) => v !== road), snapped: false });
+      if (leg.cost < Infinity) cands.push({ cost: leg.cost * pen(F, T), pts: leg.pts, speeds: leg.speeds, off: leg.speeds.map((v) => v !== road), snapped: false });
     }
     // 2. Über die Wege
     let A = this.nearest(F, 400);
@@ -697,14 +705,14 @@ export class WalkNet {
             pts.push(...leg.pts.slice(1));
             speeds.push(...leg.speeds);
             off.push(...leg.speeds.map((v) => v !== road));
-            cost += leg.cost;
+            cost += leg.cost * pen({ x: B.x, y: B.y }, T);
           } else snapped = B.d > ON_WAY_M;
         }
         cands.push({ cost, pts, speeds, off, snapped });
       }
     }
     // 3. Über die Wege so nah wie möglich heran, dann quer zum Ziel (z. B. ein Wrack draußen auf dem Feld)
-    if (reachable && A && !cands.some((c) => !c.snapped && c.pts.length > 2)) {
+    if (reachable && A) {
       const ex = this.viaExit(A, T);
       if (ex) {
         const pts: P[] = [F, ...ex.pts];

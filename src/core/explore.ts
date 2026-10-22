@@ -72,6 +72,33 @@ export class ExploredView {
     return (b[i >> 3] & (1 << (i & 7))) !== 0;
   }
 
+  /**
+   * Aufgedeckte Zellen im Rechteck, zusammengefasst zu Blöcken der Seitenlänge group
+   * (Ecke links oben je Block). Geht nur die gespeicherten Blöcke durch, nicht jede Zelle.
+   */
+  cellsIn(x0: number, y0: number, x1: number, y1: number, group = 1): [number, number][] {
+    const out: [number, number][] = [];
+    const seen = new Set<string>();
+    for (let cy = Math.floor(y0 / CHUNK_SIDE); cy <= Math.floor(y1 / CHUNK_SIDE); cy++)
+      for (let cx = Math.floor(x0 / CHUNK_SIDE); cx <= Math.floor(x1 / CHUNK_SIDE); cx++) {
+        const b = this.chunk(cx, cy);
+        if (!b) continue;
+        for (let i = 0; i < CHUNK_SIDE * CHUNK_SIDE; i++) {
+          if (!(b[i >> 3] & (1 << (i & 7)))) continue;
+          const x = cx * CHUNK_SIDE + (i % CHUNK_SIDE);
+          const y = cy * CHUNK_SIDE + Math.floor(i / CHUNK_SIDE);
+          if (x < x0 || x > x1 || y < y0 || y > y1) continue;
+          const gx = Math.floor(x / group) * group;
+          const gy = Math.floor(y / group) * group;
+          const k = `${gx}|${gy}`;
+          if (seen.has(k)) continue;
+          seen.add(k);
+          out.push([gx, gy]);
+        }
+      }
+    return out;
+  }
+
   /** Anteil aufgedeckter Zellen im Sektor (0..1). */
   sectorProgress(sx: number, sy: number): number {
     let n = 0;

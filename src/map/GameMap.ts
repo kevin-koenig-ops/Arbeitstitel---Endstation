@@ -726,7 +726,8 @@ export class GameMap {
 
   setFollow(on: boolean, p?: LatLon) {
     this.follow = on;
-    if (on && p) this.map.easeTo({ center: ll(p), zoom: Math.max(this.map.getZoom(), 17.5), pitch: 52, duration: 700 });
+    // Zentrieren: schön nah an die Figur heran (wie beim Start), dann folgt die Karte ihr
+    if (on && p) this.map.easeTo({ center: ll(p), zoom: PLAY_ZOOM, pitch: Math.max(this.map.getPitch(), 52), duration: 800 });
   }
 
   project(p: LatLon) {
