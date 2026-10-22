@@ -1678,7 +1678,7 @@ button.base-res { align-items: center; padding: 3px 6px 3px 4px; border: 1px sol
 .event-chip[data-inside="true"] { border-color: #ef6a4c; box-shadow: 0 0 0 1px rgba(239, 106, 76, 0.4); }
 
 /* Trupp auf der Karte: dunkles Schild mit Anzahl, darüber ? (aufmerksam) oder ! (entdeckt) */
-.patrol { position: relative; width: 44px; height: 46px; padding: 0; border: 0; background: none; cursor: pointer; color: #f1e2c8; }
+.patrol { position: relative; width: 44px; height: 46px; padding: 0; border: 0; background: none; cursor: pointer; color: #f1e2c8; transition: opacity 0.3s; }
 .patrol-badge { position: absolute; left: 4px; bottom: 6px; display: inline-flex; align-items: center; gap: 2px; height: 28px; padding: 0 7px 0 5px; border-radius: 14px; background: rgba(40, 22, 18, 0.92); box-shadow: 0 0 0 2px #b8402b, 0 4px 10px rgba(0, 0, 0, 0.45); font: 800 13px/1 var(--font-ui); }
 .patrol-badge b { font-variant-numeric: tabular-nums; }
 .patrol::after { content: ''; position: absolute; left: 50%; bottom: 0; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: #b8402b; box-shadow: 0 0 0 2px rgba(18, 17, 15, 0.8); }
@@ -1686,7 +1686,6 @@ button.base-res { align-items: center; padding: 3px 6px 3px 4px; border: 1px sol
 .patrol[data-horde="1"] .patrol-badge { box-shadow: 0 0 0 2px #ef6a4c, 0 0 14px rgba(239, 106, 76, 0.55); }
 .patrol-alert { position: absolute; left: 50%; top: -12px; transform: translateX(-50%); min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; display: none; place-items: center; font: 900 14px/20px var(--font-ui); text-align: center; }
 .patrol[data-state="alert"] .patrol-alert { display: block; background: #ffb22e; color: var(--ink); }
-.patrol[data-state="calm"] .patrol-badge { opacity: 0.6; box-shadow: 0 0 0 2px #8a8578, 0 4px 10px rgba(0, 0, 0, 0.45); }
 .patrol[data-state="hunt"] .patrol-alert { display: block; background: #e0442a; color: #fff; animation: patrol-pulse 0.8s ease-in-out infinite; }
 @keyframes patrol-pulse { 50% { transform: translateX(-50%) scale(1.2); } }
 

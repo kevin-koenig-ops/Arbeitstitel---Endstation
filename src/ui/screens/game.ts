@@ -969,7 +969,7 @@ export function gameScreen(app: App): Screen {
       confirmPatrolFight(id, 'surprise');
       return;
     }
-    // Lässt er dich gerade in Ruhe? Dann sag warum (grauer Sichtkegel)
+    // Lässt er dich gerade in Ruhe (blendet eben aus)? Dann sag warum
     const why = patrols.calmReason;
     if (why) {
       app.toast(

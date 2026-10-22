@@ -38,6 +38,11 @@ export interface LivePatrol {
   spotted: boolean;
   /** Ist gerade auf der Karte zu sehen. */
   shown: boolean;
+  /** Sichtbarkeit beim Ein- und Ausblenden (0–1). */
+  fade: number;
+  /** Strecke führt nah am Zuhause vorbei: dieser Trupp ist für dich nicht da. Geprüft für: */
+  homeKey: string;
+  nearHome: boolean;
   distM: number;
 }
 
@@ -69,6 +74,10 @@ export interface PatrolHost {
 }
 
 const TICK_MS = 200;
+/** Nach einer Ruhephase so lange (ms), bevor die Trupps wieder auf dich achten. */
+const GRACE_MS = 3000;
+/** So schnell blenden Trupps ein und aus (pro Sekunde). */
+const FADE_PER_S = 1.4;
 
 export class PatrolControl {
   private live = new Map<string, LivePatrol>();
@@ -94,6 +103,8 @@ export class PatrolControl {
   private dbg: unknown = null;
   /** Warum dich gerade niemand sucht (oder null). */
   private calmWhy: 'home' | 'tired' | 'cooldown' | null = null;
+  /** Seit wann die Trupps wieder nach dir suchen (nach einer Ruhephase). */
+  private activeSince = 0;
 
   /** Warum dich die Trupps gerade in Ruhe lassen: Zuhause in der Nähe, erschöpft, gerade gekämpft. */
   get calmReason() {
@@ -194,6 +205,18 @@ export class PatrolControl {
     return total > 5 ? { pts, cum, total } : null;
   }
 
+  /** Führt die Strecke (oder der Standplatz) nah am Zuhause vorbei? */
+  private isNearHome(p: LivePatrol, home: LatLon | null): boolean {
+    if (!home) return false;
+    const key = `${home.lat},${home.lon},${p.path ? p.path.total : 0}`;
+    if (p.homeKey !== key) {
+      p.homeKey = key;
+      const pts = p.path ? p.path.pts : [p.plan.anchor];
+      p.nearHome = pts.some((q) => distanceM(q, home) < PATROL.homeFreeM);
+    }
+    return p.nearHome;
+  }
+
   private pointAt(path: NonNullable<LivePatrol['path']>, s: number): LatLon {
     const d = Math.max(0, Math.min(path.total, s));
     let i = 1;
@@ -250,6 +273,9 @@ export class PatrolControl {
           free: null,
           spotted: false,
           shown: false,
+          fade: 0,
+          homeKey: '',
+          nearHome: false,
           distM: Infinity,
         };
         this.live.set(plan.id, p);
@@ -330,6 +356,10 @@ export class PatrolControl {
     this.calmWhy =
       !!home && distanceM(home, here) < PATROL.homeSafeM ? 'home' : currentHealth(s, now) < MIN_HEALTH_TO_FIGHT ? 'tired' : now - s.wildAt < PATROL.cooldownMin * 60_000 ? 'cooldown' : null;
     const calm = paused || !!this.calmWhy;
+    // Nach einer Ruhephase tauchen die Trupps wieder auf: kurz Zeit lassen, bevor sie auf dich achten
+    if (this.calmWhy) this.activeSince = Infinity;
+    else if (this.activeSince === Infinity) this.activeSince = t;
+    const grace = t - this.activeSince < GRACE_MS;
     // Häuser werfen Sichtschatten (Wegenetz mit allen Häusern der Gegend)
     const los = this.host.patrolNet(here);
     const sightTo = (from: LatLon, bearing: number, maxM: number) => (los?.wayCount ? los.sightLimit(from, bearing, maxM) : maxM);
@@ -343,6 +373,8 @@ export class PatrolControl {
     const views: PatrolView[] = [];
     for (const p of this.live.values()) {
       if (s.patrols[p.plan.id] || now >= p.plan.until + (p.huntUntil > now ? 60_000 : 0)) continue;
+      // Rund ums Zuhause ist keiner unterwegs
+      if (this.isNearHome(p, home)) continue;
       const path = this.onPath(p, now);
       const hunting = p.huntUntil > now;
       if (paused) {
@@ -376,7 +408,7 @@ export class PatrolControl {
       const sight = sightRangeM(p.plan.group, cond, exp) * (hunting ? 1.6 : 1);
       const hear = hearRangeM(p.plan.group, cond, exp);
 
-      if (!calm && d < 90) {
+      if (!calm && !grace && d < 90) {
         const toMe = bearingDeg(p.pos, here);
         const diff = Math.abs(((((toMe - p.heading) % 360) + 540) % 360) - 180);
         // Im Blickfeld, nah genug und kein Haus dazwischen
@@ -399,9 +431,11 @@ export class PatrolControl {
         }
       } else if (!hunting) p.awareness = Math.max(0, p.awareness - dt * 0.35);
 
-      const show = d <= showM || hunting || p.spotted;
+      // Wer dich gerade in Ruhe lässt (Zuhause, erschöpft, eben gekämpft), ist gar nicht zu sehen
+      const show = !this.calmWhy && (d <= showM || hunting || p.spotted);
       p.shown = show;
-      if (show) {
+      p.fade = show ? Math.min(1, p.fade + dt * FADE_PER_S) : Math.max(0, p.fade - dt * FADE_PER_S);
+      if (p.fade > 0) {
         // Sichtkegel als Fächer aus Strahlen, die an Häusern enden
         const rays: number[] = [];
         for (let i = 0; i <= 16; i++) rays.push(sightTo(p.pos, p.heading - PATROL.coneDeg + (2 * PATROL.coneDeg * i) / 16, sight));
@@ -416,7 +450,7 @@ export class PatrolControl {
           alert: p.spotted ? 1 : p.awareness,
           hunting: hunting || p.spotted,
           horde: p.plan.horde,
-          calm: !!this.calmWhy,
+          fade: p.fade,
         });
       }
     }
@@ -437,7 +471,7 @@ export class PatrolControl {
       }
     // Karte: etwa zweimal pro Sekunde reicht; nichts zu sehen und vorher auch nicht: gar nicht (spart Akku)
     this.ticks++;
-    if ((views.length || this.shownAny) && (this.ticks % 2 === 0 || views.some((v) => v.alert > 0))) {
+    if ((views.length || this.shownAny) && (this.ticks % 2 === 0 || views.some((v) => v.alert > 0 || (v.fade ?? 1) < 1))) {
       gm.setPatrols(views);
       this.shownAny = views.length > 0;
     }

@@ -51,8 +51,8 @@ export interface PatrolView {
   coneDeg: number;
   /** Sichtweite je Strahl (gleichmäßig über den Kegel verteilt), kürzer, wo ein Haus im Weg ist. */
   rays?: number[];
-  /** Er lässt dich gerade in Ruhe (Zuhause in der Nähe, erschöpft, gerade gekämpft). */
-  calm?: boolean;
+  /** Sichtbarkeit beim Ein- und Ausblenden (0–1, ohne Angabe 1). */
+  fade?: number;
   /** Wie kurz er davor ist, dich zu entdecken (0–1). */
   alert: number;
   /** Folgt deiner Spur im Schnee oder hat dich entdeckt. */
@@ -499,7 +499,7 @@ export class GameMap {
         ring.push(ll(offsetM(p.pos, Math.sin(a) * r, Math.cos(a) * r)));
       }
       ring.push(ll(p.pos));
-      cones.push({ type: 'Feature', properties: { a: p.alert, c: p.calm ? 1 : 0, id: p.id }, geometry: { type: 'Polygon', coordinates: [ring] } });
+      cones.push({ type: 'Feature', properties: { a: p.alert, f: p.fade ?? 1, id: p.id }, geometry: { type: 'Polygon', coordinates: [ring] } });
     }
     (this.map.getSource('patrols') as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: cones });
     const seen = new Set<string>();
@@ -516,7 +516,8 @@ export class GameMap {
         m = { marker: new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(ll(p.pos)).addTo(this.map), el, sig: '' };
         this.patrolMarkers.set(p.id, m);
       } else m.marker.setLngLat(ll(p.pos));
-      const state = p.calm ? 'calm' : p.hunting || p.alert >= 1 ? 'hunt' : p.alert > 0.05 ? 'alert' : 'idle';
+      m.el.style.opacity = String(p.fade ?? 1);
+      const state = p.hunting || p.alert >= 1 ? 'hunt' : p.alert > 0.05 ? 'alert' : 'idle';
       const sig = state + (p.horde ? 'h' : '') + p.group.join(',');
       if (m.sig !== sig) {
         m.sig = sig;

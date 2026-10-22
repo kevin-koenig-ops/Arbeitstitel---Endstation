@@ -80,8 +80,9 @@ export class FogOfWar {
 
     // Nebel über alles
     ctx.globalCompositeOperation = 'source-over';
-    // Heller Nebel wie Wolken: Unbekanntes liegt im Dunst, nicht im Dunkeln
-    ctx.fillStyle = 'rgba(214, 214, 204, 0.7)';
+    // Heller Nebel wie Wolken: Unbekanntes liegt im Dunst, nicht im Dunkeln. Dicht genug, dass
+    // man nur ahnt, was darunter liegt (Fundstellen leuchten trotzdem durch).
+    ctx.fillStyle = 'rgba(208, 208, 198, 0.88)';
     ctx.fillRect(0, 0, w, h);
     if (this.texture) {
       ctx.fillStyle = this.texture;

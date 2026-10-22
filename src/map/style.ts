@@ -212,9 +212,9 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
       type: 'fill',
       source: 'patrols',
       paint: {
-        // grau: er lässt dich gerade in Ruhe (Zuhause in der Nähe, erschöpft, gerade gekämpft)
-        'fill-color': ['case', ['==', ['get', 'c'], 1], '#c9c6bd', ['>', ['get', 'a'], 0.5], '#e0442a', ['>', ['get', 'a'], 0.05], '#ff9a3a', '#ffe6a8'],
-        'fill-opacity': ['case', ['==', ['get', 'c'], 1], 0.16, ['>', ['get', 'a'], 0.05], 0.42, 0.32],
+        // f: beim Ein- und Ausblenden
+        'fill-color': ['case', ['>', ['get', 'a'], 0.5], '#e0442a', ['>', ['get', 'a'], 0.05], '#ff9a3a', '#ffe6a8'],
+        'fill-opacity': ['*', ['coalesce', ['get', 'f'], 1], ['case', ['>', ['get', 'a'], 0.05], 0.42, 0.32]],
       },
     },
     {
@@ -222,9 +222,9 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
       type: 'line',
       source: 'patrols',
       paint: {
-        'line-color': ['case', ['==', ['get', 'c'], 1], '#c9c6bd', ['>', ['get', 'a'], 0.05], '#e0442a', '#fff1cc'],
+        'line-color': ['case', ['>', ['get', 'a'], 0.05], '#e0442a', '#fff1cc'],
         'line-width': 2,
-        'line-opacity': ['case', ['==', ['get', 'c'], 1], 0.45, 0.9],
+        'line-opacity': ['*', ['coalesce', ['get', 'f'], 1], 0.9],
       },
     },
 

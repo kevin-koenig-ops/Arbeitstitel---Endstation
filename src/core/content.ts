@@ -1429,6 +1429,8 @@ export const PATROL = {
   cooldownMin: 3,
   /** Rund ums Zuhause sucht dich kein Trupp (Meter). */
   homeSafeM: 150,
+  /** So nah kommt kein Trupp an dein Zuhause heran (Meter): Wer dort entlangliefe, taucht gar nicht erst auf. */
+  homeFreeM: 350,
   /** Nachts sind mehr Trupps unterwegs. */
   nightExtra: 0.15,
   /** Nachts zieht manchmal der Bleiche Wächter allein umher. */
