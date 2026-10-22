@@ -262,8 +262,10 @@ export class TacticsScene {
       const n = Math.max(1, row.length);
       // Seitlicher Platz, so wie er vorne im Bild erscheint. Hinten um eine halbe Lücke
       // versetzt, damit man zwischen den vorderen hindurch die hinteren sieht.
-      let side = (i - (n - 1) / 2) * c.nearGap;
-      if (!isNear && (near.length + n) % 2 === 0) side += c.nearGap / 2;
+      // bei großen Gruppen enger zusammen, damit alle ins Bild passen
+      const gap = c.nearGap * Math.min(1, 3 / Math.max(near.length, far.length, 1));
+      let side = (i - (n - 1) / 2) * gap;
+      if (!isNear && (near.length + n) % 2 === 0) side += gap / 2;
       const z = PLAYER.z + c.mid + side;
       if (isNear) return new THREE.Vector3(PLAYER.x + c.nearX + (i % 2) * 0.35, 0, z);
       // hinten: auf derselben Sichtlinie von der Kamera aus, nur weiter weg
