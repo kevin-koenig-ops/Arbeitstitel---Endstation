@@ -77,7 +77,7 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
     { id: 'ground', type: 'background', paint: { 'background-pattern': 'pat-ground' } },
 
     // Flächen: gemalte Texturen je Untergrund (map/patterns.ts)
-    { id: 'landuse-residential', type: 'fill', ...from('landuse', cls('residential', 'suburb', 'neighbourhood')), paint: { 'fill-pattern': 'pat-yard', 'fill-opacity': 0.9 } },
+    { id: 'landuse-residential', type: 'fill', ...from('landuse', cls('residential', 'suburb', 'neighbourhood')), paint: { 'fill-pattern': 'pat-gardens', 'fill-opacity': 0.9 } },
     { id: 'landuse-industrial', type: 'fill', ...from('landuse', cls('industrial', 'commercial', 'retail', 'railway', 'garages', 'quarry')), paint: { 'fill-pattern': 'pat-rubble', 'fill-opacity': 0.95 } },
     {
       id: 'landcover-farm',
@@ -114,7 +114,7 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
 
     // Weiche Übergänge: ein breiter, ganz unscharfer Streifen in der Mittelfarbe der Textur
     // liegt auf jeder Kante und blendet in die Nachbarfläche über (etwa 8 m breit).
-    soft('residential', from('landuse', cls('residential', 'suburb', 'neighbourhood')), '#827a5d'),
+    soft('residential', from('landuse', cls('residential', 'suburb', 'neighbourhood')), '#767859'),
     soft('industrial', from('landuse', cls('industrial', 'commercial', 'retail', 'railway', 'garages', 'quarry')), '#7b6e5c'),
     soft('farm', from('landcover', cls('farmland')), ['match', ['%', ['to-number', ['coalesce', ['id'], 0]], 3], 0, '#5d4b32', 1, '#544b31', '#736141'] as ExpressionSpecification),
     soft(

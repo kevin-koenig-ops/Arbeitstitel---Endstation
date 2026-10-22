@@ -8,13 +8,13 @@ import ackerGruen from '../assets/textures/acker-gruen.webp';
 import ackerKorn from '../assets/textures/acker-korn.webp';
 import fels from '../assets/textures/fels.webp';
 import grundboden from '../assets/textures/grundboden.webp';
-import hof from '../assets/textures/hof.webp';
 import rasen from '../assets/textures/rasen.webp';
 import sand from '../assets/textures/sand.webp';
 import schutt from '../assets/textures/schutt.webp';
 import sumpf from '../assets/textures/sumpf.webp';
 import waldboden from '../assets/textures/waldboden.webp';
-import wiese from '../assets/textures/wiese.webp';
+import vorgaerten from '../assets/textures/vorgaerten.webp';
+import wiese from '../assets/textures/wiese-sommer.webp';
 
 /**
  * Gemalte Texturen (512 × 512, nahtlos gemacht mit scripts/textur-nahtlos.py; Originale in kunst/texturen). Ersetzen das gezeichnete Muster gleichen Namens.
@@ -24,8 +24,8 @@ const IMAGES: Record<string, { url: string; pr: number }> = {
   'pat-ground': { url: grundboden, pr: 2 },
   'pat-meadow': { url: wiese, pr: 2 },
   'pat-grass': { url: rasen, pr: 2 },
-  // Hof: Steinplatten sollen nicht riesig wirken, deshalb kleiner
-  'pat-yard': { url: hof, pr: 5 },
+  // Wohngebiet: Vorgärten mit Büschen, Beeten und Kieswegen
+  'pat-gardens': { url: vorgaerten, pr: 2.5 },
   'pat-forest-floor': { url: waldboden, pr: 3.5 },
   'pat-rubble': { url: schutt, pr: 3 },
   'pat-sand': { url: sand, pr: 2 },
@@ -37,7 +37,7 @@ const IMAGES: Record<string, { url: string; pr: number }> = {
   'pat-farm-c': { url: ackerKorn, pr: 2.5 },
   'pat-farm': { url: ackerErde, pr: 2.5 },
 };
-const loaded = new Map<string, { data: ImageData; pixelRatio: number; url: string }>();
+const loaded = new Map<string, { data: ImageData; pixelRatio: number; url: string; mean: string }>();
 
 /** Alle Bilder im Texturen-Ordner, auch die je Jahreszeit (sobald Kevin sie liefert). */
 const ALL_FILES = import.meta.glob('../assets/textures/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
@@ -77,7 +77,8 @@ export async function loadTextures(season?: Season): Promise<string[]> {
         c.height = img.naturalHeight;
         const ctx = c.getContext('2d')!;
         ctx.drawImage(img, 0, 0);
-        loaded.set(id, { data: ctx.getImageData(0, 0, c.width, c.height), pixelRatio: pr, url: want });
+        const data = ctx.getImageData(0, 0, c.width, c.height);
+        loaded.set(id, { data, pixelRatio: pr, url: want, mean: meanColor(data) });
         if (cur) changed.push(id);
       } catch (err) {
         console.warn('[Textur]', id, err);
@@ -85,6 +86,28 @@ export async function loadTextures(season?: Season): Promise<string[]> {
     }),
   );
   return changed;
+}
+
+/** Mittlere Farbe eines Bilds als #rrggbb (für die weichen Ränder der Flächen). */
+function meanColor(d: ImageData): string {
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  let n = 0;
+  // jeden 7. Bildpunkt reicht
+  for (let i = 0; i < d.data.length; i += 28) {
+    r += d.data[i];
+    g += d.data[i + 1];
+    b += d.data[i + 2];
+    n++;
+  }
+  const hex = (v: number) => Math.round(v / n).toString(16).padStart(2, '0');
+  return `#${hex(r)}${hex(g)}${hex(b)}`;
+}
+
+/** Mittlere Farbe des geladenen Bilds zu einem Muster (fehlt es, undefined). */
+export function textureColor(id: string): string | undefined {
+  return loaded.get(id)?.mean;
 }
 
 const PR = 2; // Pixeldichte der Muster
@@ -367,8 +390,8 @@ const PAINTERS: Record<string, [number, Painter]> = {
       blades(ctx, s, r, 200, ['rgba(140, 140, 80, 0.75)', 'rgba(96, 104, 58, 0.75)', 'rgba(170, 150, 96, 0.6)'], 5);
     },
   ],
-  // Wohngebiet: Höfe, Kies und kleine Rasenflächen
-  'pat-yard': [
+  // Wohngebiet (Ersatz, falls das Bild der Vorgärten nicht lädt): Höfe, Kies, Rasen
+  'pat-gardens': [
     160,
     (ctx, s) => {
       ctx.fillStyle = '#8b856b';

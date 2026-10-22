@@ -10,7 +10,7 @@ import hof from '../assets/textures/hof.webp';
 import rasen from '../assets/textures/rasen.webp';
 import schutt from '../assets/textures/schutt.webp';
 import waldboden from '../assets/textures/waldboden.webp';
-import wiese from '../assets/textures/wiese.webp';
+import wiese from '../assets/textures/wiese-sommer.webp';
 
 export type GroundTex = 'grundboden' | 'hof' | 'rasen' | 'schutt' | 'wiese' | 'waldboden';
 

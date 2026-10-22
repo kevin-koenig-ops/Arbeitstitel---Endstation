@@ -11,7 +11,7 @@ import { generateDecor, type DecorInput, type RawLine, type RawPolygon } from '.
 import { FogOfWar } from './fogOfWar';
 import { WaterAnimation } from './waterAnim';
 import demoWorld from './demoWorld.json';
-import { loadTextures, patternImage } from './patterns';
+import { loadTextures, patternImage, textureColor } from './patterns';
 import { seasonMonth, type Season } from '../services/settings';
 import { buildStyle, DECOR_MINZOOM, loadRealSource } from './style';
 import type { WalkInput } from './walkNet';
@@ -212,6 +212,7 @@ export class GameMap {
     this.fog = new FogOfWar(this.map);
     this.water = new WaterAnimation(this.map, this.opts.waterMotion);
     this.applySnow();
+    this.applySoftColors();
     if (this.pendingRange) this.setRange(this.pendingRange.c, this.pendingRange.r);
     if (this.pendingCaches) this.setCaches(this.pendingCaches);
     void this.initTrees();
@@ -821,6 +822,39 @@ export class GameMap {
       this.map.removeImage(id);
       this.map.addImage(id, img.data, { pixelRatio: img.pixelRatio });
     }
+    this.applySoftColors();
+  }
+
+  /**
+   * Die weichen Ränder der Flächen bekommen die mittlere Farbe des Bodenbilds,
+   * damit die Übergänge auch zu den Bildern der Jahreszeit passen.
+   */
+  private applySoftColors() {
+    const c = textureColor;
+    const set = (layer: string, color: unknown) => {
+      if (this.map.getLayer(layer)) this.map.setPaintProperty(layer, 'line-color', color);
+    };
+    const one = (layer: string, pat: string) => {
+      const col = c(pat);
+      if (col) set(layer, col);
+    };
+    one('soft-residential', 'pat-gardens');
+    one('soft-industrial', 'pat-rubble');
+    one('soft-green', 'pat-grass');
+    one('soft-sand', 'pat-sand');
+    one('soft-rock', 'pat-rock');
+    one('soft-wetland', 'pat-wetland');
+    const grass = c('pat-grass');
+    const meadow = c('pat-meadow');
+    if (grass && meadow) {
+      set('soft-grass', ['match', ['coalesce', ['get', 'subclass'], ''], ['park', 'garden', 'village_green', 'recreation_ground', 'golf_course', 'flowerbed'], grass, meadow]);
+    }
+    const fa = c('pat-farm-a');
+    const fb = c('pat-farm-b');
+    const fc = c('pat-farm-c');
+    if (fa && fb && fc) set('soft-farm', ['match', ['%', ['to-number', ['coalesce', ['id'], 0]], 3], 0, fa, 1, fb, fc]);
+    const floor = c('pat-forest-floor');
+    if (floor) set('soft-wood', ['step', ['zoom'], '#4f5a33', DECOR_MINZOOM, floor]);
   }
 
   /** Im Winter liegt eine dünne Schneeschicht über allem Boden (bis es eigene Winterbilder gibt). */

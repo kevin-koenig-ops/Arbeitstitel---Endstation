@@ -2,7 +2,7 @@
 # Zwei Durchgänge: erst links/rechts, dann oben/unten (je mit halb verschobener Kopie).
 #
 # Aufruf (braucht Python mit Pillow und numpy):
-#   python3 scripts/textur-nahtlos.py kunst/texturen/wiese.jpg src/assets/textures/wiese.webp
+#   python3 scripts/textur-nahtlos.py kunst/texturen/wiese-sommer.jpg src/assets/textures/wiese-sommer.webp
 #   [Größe=512] [Übergang=0.14] [Helligkeit=1.0] [Sättigung=1.0] [Kontrast=1.0]
 # Daneben entsteht <name>_check.png (3 × 3 gekachelt) zum Prüfen der Ränder; nicht einchecken.
 import sys
@@ -17,12 +17,29 @@ sat = float(sys.argv[6]) if len(sys.argv) > 6 else 1.0
 contrast = float(sys.argv[7]) if len(sys.argv) > 7 else 1.0
 
 im = Image.open(src).convert('RGB')
-# Gemini-Zeichen o. Ä. am Rand: ein paar Prozent abschneiden, dann quadratisch
 w, h = im.size
-c = int(min(w, h) * 0.02)
-im = im.crop((c, c, w - c, h - c))
-n = min(im.size)
-im = im.crop((0, 0, n, n)).resize((1024, 1024), Image.LANCZOS)
+
+def repeats_2x2(img):
+    """Ist das Bild schon 2 × 2 gekachelt (Gemini macht das oft)? Dann wiederholt es sich nach der halben Breite."""
+    g = np.asarray(img.convert('L').resize((512, 512))).astype(np.float32)
+    g -= g.mean()
+    F = np.fft.fft2(g)
+    ac = np.real(np.fft.ifft2(F * np.conj(F))) / max(1e-6, float((g * g).sum()))
+    return min(ac[256, 0], ac[0, 256]) > 0.5
+
+if w == h and repeats_2x2(im):
+    # Eine Wiederholung aus der Mitte nehmen (ohne Ränder, dort sitzen oft Wasserzeichen).
+    # Ihre Kanten passen schon fast, der Übergang muss nur wenig glätten.
+    q = w // 2
+    im = im.crop((q // 2, q // 2, q // 2 + q, q // 2 + q)).resize((1024, 1024), Image.LANCZOS)
+    band = min(band, 0.08)
+    print('2 × 2 gekachelt erkannt: nehme ein Viertel aus der Mitte')
+else:
+    # Gemini-Zeichen o. Ä. am Rand: ein paar Prozent abschneiden, dann quadratisch
+    c = int(min(w, h) * 0.02)
+    im = im.crop((c, c, w - c, h - c))
+    n = min(im.size)
+    im = im.crop((0, 0, n, n)).resize((1024, 1024), Image.LANCZOS)
 a = np.asarray(im).astype(np.float32)
 N = a.shape[0]
 
