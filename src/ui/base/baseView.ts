@@ -566,8 +566,14 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
         : left && plot().items.length < 2
           ? 'Tipp: Räum Schutt und Gestrüpp weg, dann ist Platz.'
           : 'Tippe ein Teil an, dann stellst du es auf.';
-    append(panelBody, [tabs, list, h('p', { class: 'drawer-hint' }, hint)]);
+    append(panelBody, [tabs, list, tipLine(hint)]);
   };
+
+  /** Hinweis unter der Liste: „Tipp:“ hervorgehoben, mit Glühbirne. */
+  const tipLine = (text: string) =>
+    text.startsWith('Tipp: ')
+      ? h('p', { class: 'drawer-hint tip' }, h('b', null, 'Tipp:'), ` ${text.slice(6)} `, svgEl(icon('bulb', 17)))
+      : h('p', { class: 'drawer-hint' }, text);
 
   const startPlace = (k: FurnitureId) => {
     const s = st();

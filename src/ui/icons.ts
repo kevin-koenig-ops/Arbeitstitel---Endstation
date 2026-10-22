@@ -136,6 +136,7 @@ const P: Record<string, string> = {
   chalk: '<path d="M4 20l6-14 4 9 2-4 4 9"/><path d="M3 20.5h18"/>',
   radioSet: '<rect x="3" y="9" width="18" height="11" rx="1.5"/><path d="M7 9L17 3.5"/><circle cx="8.5" cy="14.5" r="2.5"/><path d="M14 13h4M14 16h4"/>',
   stew: '<path d="M4 11h16v2.5a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M2.5 11h19M9 7.5c0-1.5 1.5-1.5 1.5-3M13.5 7.5c0-1.5 1.5-1.5 1.5-3"/>',
+  bulb: '<path d="M9 17.5h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.4 1.1 2.2v1.5h5V16c0-.8.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/>',
   star: '<path d="M12 3l2.6 5.5 6 .7-4.4 4.1 1.2 5.9L12 16.3 6.6 19.2l1.2-5.9-4.4-4.1 6-.7z"/>',
   flag: '<path d="M5 21V4M5 4.5h11l-2 3.5 2 3.5H5"/>',
   // Erinnerungsstücke (Bildchen auf dem Polaroid im Fundbeleg)
