@@ -760,7 +760,7 @@ export class GameMap {
         houseMeshes: !!this.trees,
       });
       this.trees?.setTrees(res.trees, center);
-      this.trees?.setHouses(res.houses, center);
+      this.trees?.setHouses(res.houses, center, res.props);
       (this.map.getSource('decor') as GeoJSONSource | undefined)?.setData({
         type: 'FeatureCollection',
         features: res.parts.map((p) => ({
@@ -839,6 +839,7 @@ export class GameMap {
       water: polys(query('water')),
       waterways: lines(query('waterway')),
       roads: lines(query('transportation')),
+      pois: this.poiCandidates().map((c) => ({ lon: c.pos.lon, lat: c.pos.lat, cls: c.cls, subclass: c.subclass })),
     };
   }
 

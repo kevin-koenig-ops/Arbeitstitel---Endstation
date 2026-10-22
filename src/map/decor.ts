@@ -8,6 +8,7 @@
 import { rngFrom, type Rng } from '../core/rng';
 import type { LatLon } from '../core/types';
 import type { FacadeKind, HouseSpec } from './houseMesh';
+import { isHallKind, isShopKind, landmarkOf, type LandmarkKind, type PropKind, type PropSpec, type ShopKind } from './landmarks';
 
 type Pt = [number, number];
 type Ring = Pt[];
@@ -40,6 +41,8 @@ export interface DecorInput {
   /** Bäche und Flüsse als Linien: Ufer bleibt frei */
   waterways?: RawLine[];
   roads: RawLine[];
+  /** Echte Orte (Läden, Tankstellen, Haltestellen, Brunnen) für die Wahrzeichen. */
+  pois?: { lon: number; lat: number; cls?: string; subclass?: string }[];
 }
 
 /** Ein Baum, Busch oder Stein für die 3D-Ebene (map/treeLayer.ts). */
@@ -75,7 +78,9 @@ export interface DecorResult {
   trees: TreeSpec[];
   /** Nur mit houseMeshes: die Häuser für die 3D-Ebene (Meter um die Mitte). */
   houses: HouseSpec[];
-  counts: { buildings: number; trees: number; cars: number; street: number; gardens: number; forest: number };
+  /** Nur mit houseMeshes: freistehende Wahrzeichen (Tankstelle, Haltestelle, Brunnen). */
+  props: PropSpec[];
+  counts: { buildings: number; trees: number; cars: number; street: number; gardens: number; forest: number; landmarks: number };
 }
 
 // --- Farben --------------------------------------------------------------------------
@@ -293,6 +298,34 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
   const bGrid = new Grid<Ring>(40);
   const houseSpecs: HouseSpec[] = [];
   const snowRoofs = opts.month !== undefined && (opts.month === 12 || opts.month <= 2);
+  // Echte Orte: Läden kommen an ihr Gebäude, Tankstellen, Haltestellen und Brunnen frei dazu
+  type Poi = { p: Pt; kind: LandmarkKind; sign: string; key: string; used: boolean };
+  const shopPois = new Grid<Poi>(40);
+  const propPois: Poi[] = [];
+  if (opts.houseMeshes)
+    for (const q of input.pois ?? []) {
+      const def = landmarkOf(q.cls, q.subclass);
+      if (!def) continue;
+      const p = P.toM([q.lon, q.lat]);
+      if (!near(p, 30)) continue;
+      const poi: Poi = { p, kind: def.kind, sign: def.sign, key: `${q.lon.toFixed(5)}:${q.lat.toFixed(5)}`, used: false };
+      if (isShopKind(def.kind)) shopPois.addBox({ x0: p[0], y0: p[1], x1: p[0], y1: p[1] }, poi);
+      else propPois.push(poi);
+    }
+  /** Der Laden in diesem Gebäude (Punkt drin oder höchstens 8 m daneben). */
+  const shopFor = (ring: Ring, c: Pt, rad: number): Poi | null => {
+    let best: Poi | null = null;
+    let bestD = 8;
+    for (const q of shopPois.around(c, rad + 12)) {
+      if (q.used) continue;
+      if (inRing(q.p, ring)) return q;
+      for (let i = 0; i < ring.length - 1; i++) {
+        const d = distToSeg(q.p, ring[i], ring[i + 1]);
+        if (d < bestD) (bestD = d), (best = q);
+      }
+    }
+    return best;
+  };
   /** Wohnhäuser (für Gärten): Mitte, ungefährer Radius, Schlüssel für den Zufall. */
   const houses: { c: Pt; rad: number; key: string }[] = [];
   let buildings = 0;
@@ -321,14 +354,17 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
     const simple = ring.length <= 9 && inRing(c, ring);
     if (minH === 0 && simple && area >= 30 && area <= 280 && state !== 'ruin') houses.push({ c, rad: Math.sqrt(area / Math.PI), key });
     if (opts.houseMeshes) {
-      const hs = houseSpec(ring, key, state, h0, minH * k, wallTop, wall, simple, area);
+      const poi = minH === 0 ? shopFor(ring, c, Math.sqrt(area)) : null;
+      if (poi) poi.used = true;
+      const hs = houseSpec(ring, key, poi ? 'intact' : state, h0, minH * k, poi ? Math.max(3.4, h0 * 0.9) : wallTop, wall, simple, area);
+      if (poi) dressShop(hs, poi.kind as ShopKind, poi.sign, poi.p, rngFrom('laden', poi.key)(), area, h0);
       if (snowRoofs) {
         hs.snow = true;
         hs.flatColor = [0.86, 0.88, 0.9];
       }
       houseSpecs.push(hs);
       // Schutt um Ruinen bleibt als Klötze
-      if (state === 'ruin') {
+      if (state === 'ruin' && !poi) {
         const piles = 2 + Math.floor(r() * 4);
         for (let i = 0; i < piles; i++) {
           const v = ring[Math.floor(r() * (ring.length - 1))];
@@ -456,6 +492,50 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
   };
 
   const offPath = (p: Pt) => roadGrid.near(p).every(([a, b]) => distToSeg(p, a, b) >= 4);
+
+  // Wahrzeichen: Ladenfront zur nächsten Straße, Tankstellen und Haltestellen an die Straße
+  const nearestRoad = (p: Pt, maxD: number) => {
+    let best: { pt: Pt; ang: number; d: number } | null = null;
+    for (const [a, b] of roadGrid.around(p, maxD)) {
+      const dx = b[0] - a[0];
+      const dy = b[1] - a[1];
+      const l2 = dx * dx + dy * dy;
+      if (!l2) continue;
+      const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2));
+      const pt: Pt = [a[0] + t * dx, a[1] + t * dy];
+      const d = Math.hypot(p[0] - pt[0], p[1] - pt[1]);
+      if (d <= maxD && (!best || d < best.d)) best = { pt, ang: Math.atan2(dy, dx), d };
+    }
+    return best;
+  };
+  for (const hs of houseSpecs) {
+    if (!hs.shop) continue;
+    const road = nearestRoad(centroid(hs.ring), 60);
+    if (road) hs.shop.toward = road.pt;
+  }
+  const props: PropSpec[] = [];
+  for (const q of propPois) {
+    const variant = Math.floor(rngFrom('laden', q.key)() * 3);
+    const road = nearestRoad(q.p, 45);
+    let p: Pt = q.p;
+    let ang = 0;
+    let side = 1;
+    if (road) {
+      ang = road.ang;
+      // Auf welcher Seite der Straße liegt der Ort?
+      const cross = Math.cos(ang) * (q.p[1] - road.pt[1]) - Math.sin(ang) * (q.p[0] - road.pt[0]);
+      side = cross >= 0 ? 1 : -1;
+      const off = q.kind === 'fuel' ? Math.max(9, road.d) : q.kind === 'stop' ? 2.6 : road.d;
+      p = [road.pt[0] - Math.sin(ang) * side * off, road.pt[1] + Math.cos(ang) * side * off];
+    }
+    if (q.kind === 'stop' && props.some((o) => o.kind === 'stop' && Math.hypot(o.p[0] - p[0], o.p[1] - p[1]) < 12)) continue;
+    // Nicht in ein Haus stellen
+    if (bGrid.around(p, 4).some((ring) => inRing(p, ring))) {
+      if (q.kind !== 'fuel') continue;
+      p = q.p;
+    }
+    props.push({ kind: q.kind as PropKind, p, ang, side, variant });
+  }
   scatter(input.forests, 10, 0.9, 'w', 'forest', offPath);
   scatter(input.greens, 22, 0.45, 'g', 'green', freeSpot);
   scatter(input.meadows, 42, 0.22, 'm', 'meadow', freeSpot);
@@ -825,7 +905,8 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
     }
   }
 
-  return { parts, trees: specs, houses: houseSpecs, counts: { buildings, trees: trees.length, cars, street, gardens, forest } };
+  const landmarks = houseSpecs.filter((h) => h.shop).length + props.length;
+  return { parts, trees: specs, houses: houseSpecs, props, counts: { buildings, trees: trees.length, cars, street, gardens, forest, landmarks } };
 }
 
 /** Ein Haus für die 3D-Ebene: Fassade, Stockwerke, Dach. Zufall je Haus, immer gleich. */
@@ -855,4 +936,27 @@ function houseSpec(ring: Ring, key: string, state: 'intact' | 'burnt' | 'ruin', 
     plinth: state !== 'ruin',
     seed: r(),
   };
+}
+
+/** Ladenbau: Halle (Supermarkt, Baumarkt, Werkstatt) oder Laden im Erdgeschoss eines Hauses. */
+const HALL_TINTS: [number, number, number][] = [
+  [0.8, 0.78, 0.74],
+  [0.72, 0.74, 0.76],
+  [0.82, 0.8, 0.7],
+];
+function dressShop(hs: HouseSpec, kind: ShopKind, sign: string, toward: Pt, rnd: number, area: number, h0: number) {
+  const variant = Math.floor(rnd * 3);
+  hs.shop = { kind, sign, toward, variant };
+  hs.state = 'intact';
+  hs.plinth = true;
+  if (isHallKind(kind) && area > 150) {
+    hs.facade = null;
+    hs.tint = HALL_TINTS[variant];
+    hs.roof = 'flat';
+    hs.chimney = false;
+    hs.top = Math.max(5.2, Math.min(9, h0 * 0.85));
+  } else if (!hs.facade && area >= 30) {
+    hs.facade = 'putz';
+    hs.tint = [1, 1, 1];
+  }
 }

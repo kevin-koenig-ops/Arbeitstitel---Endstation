@@ -7,8 +7,10 @@
 
 import { ShapeUtils, Vector2 } from 'three';
 
-export type Pt = [number, number];
-type RGB = [number, number, number];
+import { addProp, addShop, type PropSpec, type ShopSpec, type Signs } from './landmarks';
+import { dist, emptyMesh, quad, tri, type MeshData, type P3, type Pt, type RGB } from './meshKit';
+
+export type { Pt };
 
 export type FacadeKind = 'putz' | 'klinker' | 'fachwerk';
 export const FACADES: readonly FacadeKind[] = ['putz', 'klinker', 'fachwerk'];
@@ -38,6 +40,8 @@ export interface HouseSpec {
   seed: number;
   /** Winter: Schnee auf den Dächern. */
   snow?: boolean;
+  /** Echter Laden, Apotheke, Supermarkt …: Ladenfront und Schild. */
+  shop?: ShopSpec;
 }
 
 /** Ein Fassadenbild ist zwei Fenster breit und zwei Stockwerke hoch. */
@@ -58,37 +62,15 @@ const RUBBLE: RGB = [0.36, 0.33, 0.3];
 const SNOW_TINT: RGB = [0.55, 0.54, 0.54];
 
 export type MatKey = FacadeKind | 'roof' | 'roofSnow' | 'plain';
-export interface MeshData {
-  pos: number[];
-  uv: number[];
-  col: number[];
-}
+export type { MeshData };
 export interface HouseMeshes {
   meshes: Record<MatKey, MeshData>;
   /** Weicher Schatten am Boden (nur Lage, ein Farbton). */
   shadow: number[];
+  /** Schilder: je Bild ein Topf (Schlüssel siehe map/landmarks.ts). */
+  signs: Signs;
 }
 
-/** Ein Punkt im Raum: x Osten, y Norden, h Höhe. */
-type P3 = [number, number, number];
-type UV = [number, number];
-
-function emptyMesh(): MeshData {
-  return { pos: [], uv: [], col: [] };
-}
-
-function tri(m: MeshData, a: P3, b: P3, c: P3, ua: UV, ub: UV, uc: UV, col: RGB) {
-  for (const p of [a, b, c]) m.pos.push(p[0], p[2], -p[1]);
-  m.uv.push(ua[0], ua[1], ub[0], ub[1], uc[0], uc[1]);
-  for (let i = 0; i < 3; i++) m.col.push(col[0], col[1], col[2]);
-}
-
-function quad(m: MeshData, a: P3, b: P3, c: P3, d: P3, ua: UV, ub: UV, uc: UV, ud: UV, col: RGB) {
-  tri(m, a, b, c, ua, ub, uc, col);
-  tri(m, a, c, d, ua, uc, ud, col);
-}
-
-const dist = (a: Pt, b: Pt) => Math.hypot(b[0] - a[0], b[1] - a[1]);
 
 function areaOf(r: Pt[]): number {
   let a = 0;
@@ -228,15 +210,18 @@ function wallU(len: number): [number, number] {
 const vOf = (h: number) => (h - GROUND_M) / FACADE_H;
 
 /** Alle Häuser zu Dreiecken (je Bild ein Topf, damit es nur wenige Zeichenaufrufe sind). */
-export function buildHouses(list: HouseSpec[]): HouseMeshes {
+export function buildHouses(list: HouseSpec[], props: PropSpec[] = []): HouseMeshes {
   const meshes: Record<MatKey, MeshData> = { putz: emptyMesh(), klinker: emptyMesh(), fachwerk: emptyMesh(), roof: emptyMesh(), roofSnow: emptyMesh(), plain: emptyMesh() };
   const shadow: number[] = [];
+  const signs: Signs = {};
   for (const h of list) {
     const ring = cleanRing(h.ring);
     if (ring.length < 3 || areaOf(ring) < 4) continue;
     buildOne(h, ring, meshes, shadow);
+    if (h.shop) addShop(h.shop, ring, h.top, meshes.plain, signs);
   }
-  return { meshes, shadow };
+  for (const p of props) addProp(p, meshes.plain, signs);
+  return { meshes, shadow, signs };
 }
 
 function buildOne(h: HouseSpec, ring: Pt[], M: Record<MatKey, MeshData>, shadow: number[]) {

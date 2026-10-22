@@ -12,6 +12,8 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { LatLon } from '../core/types';
 import type { TreeKind, TreeSpec } from './decor';
 import { buildHouses, type HouseSpec, type MatKey } from './houseMesh';
+import type { PropSpec } from './landmarks';
+import { drawSign } from './signArt';
 import texPutz from '../assets/textures/haus-putz.webp';
 import texKlinker from '../assets/textures/haus-klinker.webp';
 import texFachwerk from '../assets/textures/haus-fachwerk.webp';
@@ -100,7 +102,8 @@ export class TreeLayer implements CustomLayerInterface {
   private origin: maplibregl.MercatorCoordinate | null = null;
   private meterScale = 1;
   private pending: { trees: TreeSpec[]; center: LatLon } | null = null;
-  private pendingHouses: { houses: HouseSpec[]; center: LatLon } | null = null;
+  private pendingHouses: { houses: HouseSpec[]; center: LatLon; props: PropSpec[] } | null = null;
+  private signMats = new Map<string, THREE.Material>();
   private houses = new THREE.Group();
   private houseMats = new Map<MatKey | 'shadow', THREE.Material>();
   private textures: THREE.Texture[] = [];
@@ -125,19 +128,19 @@ export class TreeLayer implements CustomLayerInterface {
     this.renderer = new THREE.WebGLRenderer({ canvas: map.getCanvas(), context: gl, antialias: true });
     this.renderer.autoClear = false;
     if (this.pending) this.setTrees(this.pending.trees, this.pending.center);
-    if (this.pendingHouses) this.setHouses(this.pendingHouses.houses, this.pendingHouses.center);
+    if (this.pendingHouses) this.setHouses(this.pendingHouses.houses, this.pendingHouses.center, this.pendingHouses.props);
   }
 
   /** Alle Häuser neu setzen (nach jedem Neuaufbau der Details, gleiche Mitte wie die Bäume). */
-  setHouses(houses: HouseSpec[], center: LatLon) {
-    this.pendingHouses = { houses, center };
+  setHouses(houses: HouseSpec[], center: LatLon, props: PropSpec[] = []) {
+    this.pendingHouses = { houses, center, props };
     if (!this.map) return;
     for (const child of [...this.houses.children]) {
       this.houses.remove(child);
       (child as THREE.Mesh).geometry.dispose();
     }
     this.setOrigin(center);
-    const { meshes, shadow } = buildHouses(houses);
+    const { meshes, shadow, signs } = buildHouses(houses, props);
     for (const [key, m] of Object.entries(meshes) as [MatKey, (typeof meshes)[MatKey]][]) {
       if (!m.pos.length) continue;
       const geo = new THREE.BufferGeometry();
@@ -145,6 +148,14 @@ export class TreeLayer implements CustomLayerInterface {
       geo.setAttribute('uv', new THREE.Float32BufferAttribute(m.uv, 2));
       geo.setAttribute('color', new THREE.Float32BufferAttribute(m.col.map(toLinear), 3));
       this.houses.add(new THREE.Mesh(geo, this.houseMaterial(key)));
+    }
+    // Schilder: je Bild ein Mesh, das Bild malt signArt.ts
+    for (const [key, m] of Object.entries(signs)) {
+      if (!m.pos.length) continue;
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(m.pos, 3));
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(m.uv, 2));
+      this.houses.add(new THREE.Mesh(geo, this.signMaterial(key)));
     }
     if (shadow.length) {
       const geo = new THREE.BufferGeometry();
@@ -177,6 +188,19 @@ export class TreeLayer implements CustomLayerInterface {
       if (key === 'roofSnow') (mat as THREE.MeshLambertMaterial).emissive.set('#a2a4a5');
     }
     this.houseMats.set(key, mat);
+    return mat;
+  }
+
+  private signMaterial(key: string) {
+    let mat = this.signMats.get(key);
+    if (mat) return mat;
+    const tex = new THREE.CanvasTexture(drawSign(key));
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = Math.min(8, this.renderer?.capabilities.getMaxAnisotropy() ?? 1);
+    this.textures.push(tex);
+    // Schilder leuchten ein wenig, damit man sie auch im Schatten lesen kann
+    mat = new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide, emissive: '#3a3630', alphaTest: 0.5, flatShading: true });
+    this.signMats.set(key, mat);
     return mat;
   }
 
@@ -268,6 +292,7 @@ export class TreeLayer implements CustomLayerInterface {
     for (const mat of this.mats.values()) mat.dispose();
     for (const child of this.houses.children) (child as THREE.Mesh).geometry.dispose();
     for (const mat of this.houseMats.values()) mat.dispose();
+    for (const mat of this.signMats.values()) mat.dispose();
     for (const t of this.textures) t.dispose();
     this.shadowGeo.dispose();
     this.shadowMat.dispose();
