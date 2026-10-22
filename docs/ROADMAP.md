@@ -96,12 +96,11 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 
 ## Als Nächstes (Stand 22.10. spät)
 
-1. **Charakter-Level mit Aufnähern** (Plan steht im Doc, Reiter „Level & Freischalten“; erst nach Kevins Okay bauen)
-2. Lange Wege bei schnellem Laufen über Straßen, erst zum Schluss querfeldein
-3. Zentrieren-Knopf zoomt nah ran
-4. Nebel auch beim Herauszoomen, schöneres Aussehen
-5. 3D-Modelle für bekannte Bauwerke (Kirche, Friedhof, Polizei, Feuerwehr …), nur Optik
-6. Danach: eine Woche nichts Neues, draußen testen, Akku und Tempo, Einstieg schleifen
+1. **Charakter-Level mit Aufnähern** (Plan steht im Doc, Reiter „Level & Freischalten“; entschieden: Aufnäher, Werktisch ab Stufe 2, Freischalten zu Hause an der Pinnwand)
+2. **Kartenplan:** rund 60 bis 80 Karten für Version 1.0, ausgewogen nach dem Vorbild von Slay the Spire (in Arbeit)
+3. Danach: eine Woche nichts Neues, draußen testen, Akku und Tempo, Einstieg schleifen
+
+Erledigt am 22.10. spät: lange Wege über Straßen, Zentrieren zoomt nah ran, Nebel beim Herauszoomen mit gemalter Textur, bekannte Bauwerke in 3D (Kirche mit Turm, Friedhof, Polizei, Feuerwehr, Rathaus, Schule, Kita, Krankenhaus, Bücherei, Museum, Bahnhof, Post), neues Startbild.
 
 ## Ideen für irgendwann
 
