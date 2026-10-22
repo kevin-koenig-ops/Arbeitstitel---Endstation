@@ -1,4 +1,5 @@
 // Kern-Datentypen des Spiels.
+import type { CardId, CardRarity } from './content';
 import type { FurnitureId } from './furniture';
 import type { BlueprintId, FloorId, ObstacleKind, OpeningId, RoofId, SiteId, WallId } from './building';
 export type { FurnitureId, SiteId };
@@ -362,11 +363,21 @@ export type BackgroundId = 'rescue' | 'workshop' | 'farm' | 'courier';
 
 // --- Kampf ---------------------------------------------------------------------
 export type EnemyId = 'walker' | 'crawler' | 'brute' | 'watcher';
-export type WeaponId = 'crowbar' | 'bat' | 'crossbow';
+export type WeaponId = 'crowbar' | 'bat' | 'crossbow' | 'shovel' | 'axe' | 'golfclub' | 'slingshot' | 'nailgun';
 /** Wie gut ein Geschicklichkeits-Moment lief (Mini-Spiel beim Durchsuchen). Kommt vom Client, wirkt nur begrenzt. */
 export type Quality = 'miss' | 'good' | 'perfect';
 /** Gegner im Kampf (der Heuler kommt nur im Kampf vor, nie als Wache). */
 export type FoeKind = EnemyId | 'screamer';
+
+/** Eintrag im Sammelbuch. */
+export interface BookEntry {
+  /** So oft gefunden (bei Fähigkeiten: daraus die Stufe). */
+  n: number;
+  /** Zuerst gefunden. */
+  at: number;
+  /** Eine leuchtende Fassung gefunden. */
+  shiny?: boolean;
+}
 
 export interface Weapon {
   kind: WeaponId;
@@ -528,6 +539,18 @@ export interface PlayerState {
   pack: Partial<Inventory>;
   /** Kram im Rucksack. */
   packKram: KramBag;
+  /** Einmal-Karten im Rucksack (Brandflasche, Granate …): höchstens 3 je Sorte kommen in den Kampf mit. */
+  packCards: Partial<Record<CardId, number>>;
+  /** Einmal-Karten im Lager zu Hause. */
+  stash: Partial<Record<CardId, number>>;
+  /** Sammelbuch: alles, was du an Sammelkarten je gefunden hast (Karten-id oder „w:<Waffe>“). */
+  book: Record<string, BookEntry>;
+  /** Sichtungen, die du schon aufgehoben hast: id -> Zeitpunkt (alte fallen raus). */
+  sightings: Record<string, number>;
+  /** Glück mit Netz: Sichtungen seit dem letzten seltenen bzw. legendären Fund. */
+  pity: { rare: number; legendary: number };
+  /** Wann „Letztes Gefecht“ zuletzt gerettet hat (einmal am Tag). */
+  lastStandAt?: number;
   /** Gefundene Sammelstücke: id -> Fundzeitpunkt. */
   collectibles: Partial<Record<CollectibleId, number>>;
   /** Vollständige Sets: id -> Zeitpunkt (Belohnung gab es dann). */
@@ -666,7 +689,9 @@ export type Action =
   | { type: 'unpack' }
   | { type: 'engage'; spot: Spot; at: LatLon; accuracyM: number }
   /** Ergebnis eines Echtzeitkampfs (Kampf 2.0). Später prüft der Server es anhand der Eingaben nach. */
-  | { type: 'battleResult'; outcome: 'won' | 'lost' | 'fled'; health: number; kills: number; usedMedicine: number; wear?: Partial<Record<WeaponId, number>> }
+  | { type: 'battleResult'; outcome: 'won' | 'lost' | 'fled'; health: number; kills: number; usedMedicine: number; wear?: Partial<Record<WeaponId, number>>; used?: Partial<Record<CardId, number>>; lastStand?: boolean }
+  | { type: 'craftCard'; card: CardId }
+  | { type: 'claimSighting'; id: string; candidate: number; at: LatLon; accuracyM: number }
   | { type: 'craft'; weapon: WeaponId }
   | { type: 'heal' }
   /** Ein Teil anziehen (ersetzt, was an diesem Platz war). */
@@ -732,10 +757,12 @@ export type RejectReason =
   | 'no_stove'
   | 'no_gear'
   | 'zone_closed'
-  | 'need_filter';
+  | 'need_filter'
+  | 'gone'
+  | 'already';
 
 export type GameEvent =
-  | { type: 'loot'; spotId: string; items: Partial<Inventory>; kram?: KramId; collectible?: CollectibleId; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: BlueprintId; gear?: GearId; site?: SiteId; quality?: Quality; first?: boolean; canDig?: boolean; cart?: boolean; fed?: boolean; clue?: string; newKind?: boolean; discovery?: boolean; tier?: number }
+  | { type: 'loot'; spotId: string; items: Partial<Inventory>; card?: CardId; weapon?: WeaponId; kram?: KramId; collectible?: CollectibleId; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: BlueprintId; gear?: GearId; site?: SiteId; quality?: Quality; first?: boolean; canDig?: boolean; cart?: boolean; fed?: boolean; clue?: string; newKind?: boolean; discovery?: boolean; tier?: number }
   | { type: 'siteChosen'; site: SiteId; first: boolean }
   | { type: 'reclaimed'; section: string; cost: Partial<Inventory> }
   | { type: 'obstacleCleared'; id: string; kind: ObstacleKind; reward: Partial<Inventory> }
@@ -754,13 +781,14 @@ export type GameEvent =
   | { type: 'wild'; group: FoeKind[] }
   | { type: 'patrol'; group: FoeKind[]; opening: Opening }
   | { type: 'combatWon'; enemy: EnemyId; kills?: number; weaponBroke?: WeaponId }
-  | { type: 'combatLost'; enemy: EnemyId; dropped: Partial<Inventory>; droppedKram: KramBag; weaponBroke?: WeaponId }
+  | { type: 'combatLost'; enemy: EnemyId; dropped: Partial<Inventory>; droppedKram: KramBag; droppedCards?: Partial<Record<CardId, number>>; weaponBroke?: WeaponId }
   | { type: 'fled'; weaponBroke?: WeaponId }
-  | { type: 'crafted'; weapon: WeaponId }
+  | { type: 'crafted'; weapon?: WeaponId; card?: CardId }
+  | { type: 'sightingClaimed'; id: string; card?: CardId; weapon?: WeaponId; repaired?: boolean; rarity: CardRarity; shiny: boolean; level?: number; levelUp?: boolean; pity?: boolean }
   | { type: 'healed'; amount: number }
   | { type: 'equipped'; slot: GearSlot; gear: GearId | null }
   | { type: 'dismantleQueued'; kram: KramId; endsAt: number }
-  | { type: 'unpacked'; items: Partial<Inventory>; kram: KramBag }
+  | { type: 'unpacked'; items: Partial<Inventory>; kram: KramBag; cards?: Partial<Record<CardId, number>> }
   | { type: 'setCompleted'; set: SetId; items: Partial<Inventory>; blueprint?: BlueprintId }
   | { type: 'collected'; items: Partial<Inventory>; count: number }
   | { type: 'workbenchUpgraded'; level: number }

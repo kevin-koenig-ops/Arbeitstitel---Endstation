@@ -506,7 +506,7 @@ function cardLine(cards: CardId[]): string {
 // --- Ausrüstungsblatt -------------------------------------------------------------------
 
 const SLOT_ICON: Record<GearSlot | 'weapon', string> = { head: 'gHead', face: 'gFace', body: 'cloth', hands: 'gHands', legs: 'gLegs', feet: 'gFeet', back: 'backpack', weapon: 'crowbar' };
-const WEAPON_ICON: Record<WeaponId, string> = { crowbar: 'crowbar', bat: 'bat', crossbow: 'bolt' };
+export const WEAPON_ICON: Record<WeaponId, string> = { crowbar: 'crowbar', bat: 'bat', crossbow: 'bolt', shovel: 'shovel', axe: 'axe', golfclub: 'golfclub', slingshot: 'slingshot', nailgun: 'nailgun' };
 /** Plätze am Blatt: links Kopf bis Hand (Waffe), rechts Rücken bis Füße. */
 const SHEET_LEFT: (GearSlot | 'weapon')[] = ['head', 'face', 'body', 'weapon'];
 const SHEET_RIGHT: (GearSlot | 'weapon')[] = ['back', 'hands', 'legs', 'feet'];

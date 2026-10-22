@@ -11,6 +11,14 @@ import type { PlayerState } from './types';
 type Raw = Record<string, unknown> & { schema?: number };
 
 const MIGRATIONS: Record<number, (s: Raw) => void> = {
+  // Version 15 -> 16: Sammelkarten (Rucksack, Lager, Sammelbuch) und Sichtungen. Alles leer.
+  15: (s) => {
+    s.packCards = {};
+    s.stash = {};
+    s.book = {};
+    s.sightings = {};
+    s.pity = { rare: 0, legendary: 0 };
+  },
   // Version 14 -> 15: Porträts statt Figur. Das ähnlichste Porträt zum bisherigen Aussehen.
   14: (s) => {
     const c = s.character as { look?: { hair: number; color: number; skin: number; portrait?: number } } | undefined;

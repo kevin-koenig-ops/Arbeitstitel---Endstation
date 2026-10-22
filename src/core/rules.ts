@@ -64,7 +64,14 @@ import {
   REGIONS,
   TACTICS,
   gearSum,
+  CARDS,
+  CARD_LOOT,
+  ONCE_CARRY,
+  skillLevel,
+  type CardId,
+  type CardRarity,
 } from './content';
+import { inSightingRange, rewardOfRarity, sightingById, SIGHT } from './sightings';
 import { ExploredView, revealAround, SECTOR_LEVELS, sectorOf } from './explore';
 import {
   applyPlan,
@@ -142,7 +149,7 @@ import { resolvePatrol } from './patrols';
 import { resolveDropSpot, zonesAt } from './worldEvents';
 import { GOALS } from './progress';
 
-export const SCHEMA_VERSION = 15;
+export const SCHEMA_VERSION = 16;
 
 /** Startausrüstung: alles gefunden und angezogen. */
 export function startGear(now: number): GearState {
@@ -197,6 +204,11 @@ export function createPlayer(playerId: string, character: Character, now: number
     places: {},
     discovered: {},
     patrols: {},
+    packCards: {},
+    stash: {},
+    book: {},
+    sightings: {},
+    pity: { rare: 0, legendary: 0 },
   };
 }
 
@@ -424,7 +436,62 @@ export function kramCount(bag: KramBag): number {
 
 /** Wie viel steckt im Rucksack (Rohstoffe + Kram)? */
 export function packCount(state: PlayerState): number {
+  // Karten zählen nicht: Die passen in jede Jackentasche
   return Object.values(state.pack).reduce((a, b) => a + (b ?? 0), 0) + kramCount(state.packKram);
+}
+
+/** Anzahl Karten in einem Stapel (Rucksack oder Lager). */
+export function cardCount(bag: Partial<Record<CardId, number>>): number {
+  return Object.values(bag).reduce((a, b) => a + (b ?? 0), 0);
+}
+
+/** Stufe einer Fähigkeit (0 = hast du nicht). */
+export function skillOf(state: PlayerState, id: CardId): number {
+  return CARDS[id].kind === 'skill' ? skillLevel(state.book[id]?.n ?? 0) : 0;
+}
+
+/** Was du für den Kampf mitbringst: Einmal-Karten aus dem Rucksack, Fähigkeiten mit Stufe. */
+export function cardKit(state: PlayerState, now: number): { once: Partial<Record<CardId, number>>; skills: Partial<Record<CardId, number>>; lastStand: boolean } {
+  const skills: Partial<Record<CardId, number>> = {};
+  for (const id of Object.keys(state.book) as CardId[]) {
+    const lvl = CARDS[id] ? skillOf(state, id) : 0;
+    if (lvl) skills[id] = lvl;
+  }
+  const once: Partial<Record<CardId, number>> = {};
+  for (const [id, n] of Object.entries(state.packCards) as [CardId, number][]) if (n > 0) once[id] = Math.min(ONCE_CARRY, n);
+  return { once, skills, lastStand: !state.lastStandAt || now - state.lastStandAt >= 24 * HOUR };
+}
+
+/** Ins Sammelbuch eintragen (Karte oder „w:Waffe“). Gibt die neue Anzahl zurück. */
+function addToBook(state: PlayerState, key: string, now: number, shiny = false): number {
+  const e = state.book[key] ?? { n: 0, at: now };
+  e.n += 1;
+  if (shiny) e.shiny = true;
+  state.book[key] = e;
+  return e.n;
+}
+
+/** Eine gefundene Waffe: neu dazu, oder (hast du sie schon) wieder ganz heil. */
+function gainWeapon(state: PlayerState, kind: WeaponId): boolean {
+  const have = state.weapons.find((w) => w.kind === kind && w.dur > 0);
+  if (have) {
+    have.dur = Math.max(have.dur, WEAPONS[kind].dur);
+    return true;
+  }
+  state.weapons.push({ kind, dur: WEAPONS[kind].dur });
+  return false;
+}
+
+/** Zu Hause: aus dem Lager wieder bis zu 3 je Sorte in den Rucksack packen. */
+function refillPackCards(state: PlayerState) {
+  for (const [id, n] of Object.entries(state.stash) as [CardId, number][]) {
+    const want = Math.max(0, ONCE_CARRY - (state.packCards[id] ?? 0));
+    const take = Math.min(want, n ?? 0);
+    if (!take) continue;
+    state.packCards[id] = (state.packCards[id] ?? 0) + take;
+    state.stash[id] = (n ?? 0) - take;
+    if (!state.stash[id]) delete state.stash[id];
+  }
 }
 
 /** Steht dieses Sammelstück schon irgendwo (an irgendeinem Schauplatz)? */
@@ -636,6 +703,15 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
         if (w.dur <= 0) weaponBroke = kind;
       }
       state.weapons = state.weapons.filter((x) => x.dur > 0);
+      // Ausgespielte Einmal-Karten sind weg (nie mehr, als im Rucksack waren)
+      for (const [id, n] of Object.entries(action.used ?? {}) as [CardId, number][]) {
+        if (!CARDS[id] || CARDS[id].kind !== 'once') continue;
+        const left = Math.max(0, (state.packCards[id] ?? 0) - Math.max(0, Math.floor(n)));
+        if (left) state.packCards[id] = left;
+        else delete state.packCards[id];
+      }
+      // Letztes Gefecht hat gerettet: heute nicht noch einmal
+      if (action.lastStand && skillOf(state, 'laststand') && cardKit(state, ctx.now).lastStand) state.lastStandAt = ctx.now;
       if (action.outcome === 'won') {
         // Mehr als die Gruppe (und was ein Heuler herbeiruft) kann man nicht erledigen
       const kills = Math.max(1, Math.min(c.patrol ? c.group.length + TACTICS.maxHowls : 6, Math.floor(action.kills)));
@@ -648,6 +724,7 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
           for (const [id, at] of Object.entries(state.patrols)) if (ctx.now - at > 2 * HOUR) delete state.patrols[id];
           const loot = patrolLoot(state, c, ctx, kills);
           if (c.group.includes('watcher')) watcherBonus(state, loot, ctx.now);
+          scavengerBonus(state, loot, c.spot);
           events.push(loot, ...checkSets(state, ctx.now));
           break;
         }
@@ -658,6 +735,7 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
           gain(state, items);
           const loot: Extract<GameEvent, { type: 'loot' }> = { type: 'loot', spotId: c.spot.id, items, bonus: false };
           if (c.group.includes('watcher')) watcherBonus(state, loot, ctx.now);
+          scavengerBonus(state, loot, c.spot);
           events.push(loot);
           break;
         }
@@ -671,6 +749,7 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
           loot.items[main] = (loot.items[main] ?? 0) + (kills - 1);
           gain(state, { [main]: kills - 1 });
         }
+        scavengerBonus(state, loot, c.spot);
         events.push(loot, ...checkSets(state, ctx.now));
       } else if (action.outcome === 'lost') {
         // Niedergeschlagen: alles aus dem Rucksack ist weg. Lager zu Hause, Waffen und
@@ -679,9 +758,11 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
         state.healthAt = ctx.now;
         const dropped = { ...state.pack };
         const droppedKram = { ...state.packKram };
+        const droppedCards = { ...state.packCards };
         state.pack = {};
         state.packKram = {};
-        events.push({ type: 'combatLost', enemy: c.enemy, dropped, droppedKram, weaponBroke });
+        state.packCards = {};
+        events.push({ type: 'combatLost', enemy: c.enemy, dropped, droppedKram, droppedCards, weaponBroke });
       } else {
         state.health = Math.max(1, health);
         if (state.health < MAX_HEALTH) state.healthAt = ctx.now;
@@ -699,6 +780,60 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       state.weapons.push({ kind: action.weapon, dur: def.dur });
       state.stats.crafted += 1;
       events.push({ type: 'crafted', weapon: action.weapon });
+      break;
+    }
+
+    case 'craftCard': {
+      // Einmal-Karten am Werktisch: Brandflasche, Rauchdose, Krähenfüße
+      const def = CARDS[action.card];
+      if (!def?.craft || def.kind !== 'once') return reject('locked');
+      if (!hasWorkbench(state)) return reject('no_workbench');
+      if (!canAfford(state.inventory, def.craft)) return reject('cost');
+      for (const r of RESOURCE_ORDER) state.inventory[r] -= def.craft[r] ?? 0;
+      state.stash[action.card] = (state.stash[action.card] ?? 0) + 1;
+      addToBook(state, action.card, ctx.now);
+      refillPackCards(state);
+      state.stats.crafted += 1;
+      events.push({ type: 'crafted', card: action.card });
+      break;
+    }
+
+    case 'claimSighting': {
+      const s = sightingById(ctx.worldSeed, action.id);
+      if (!s) return reject('not_found');
+      if (ctx.now < s.from || ctx.now >= s.until) return reject('gone');
+      if (state.sightings[s.id]) return reject('already');
+      if (!inSightingRange(s, action.candidate, action.at, action.accuracyM)) return reject('too_far');
+      // Glück mit Netz: lange nichts Seltenes? Dann jetzt (nur für dich, die anderen sehen dasselbe)
+      state.pity.rare += 1;
+      state.pity.legendary += 1;
+      let reward: { card?: CardId; weapon?: WeaponId } = { card: s.card, weapon: s.weapon };
+      let rarity: CardRarity = s.rarity;
+      let pity = false;
+      const want: CardRarity | null = state.pity.legendary >= SIGHT.pityLegendary && rarity !== 'legendary' ? 'legendary' : state.pity.rare >= SIGHT.pityRare && rarity === 'common' ? 'rare' : null;
+      if (want) {
+        const r = rngFrom(ctx.worldSeed, state.playerId, 'netz', s.id);
+        const up = rewardOfRarity(want, r);
+        reward = up.reward;
+        rarity = up.rarity;
+        pity = true;
+      }
+      if (rarity !== 'common') state.pity.rare = 0;
+      if (rarity === 'legendary') state.pity.legendary = 0;
+      state.sightings[s.id] = ctx.now;
+      for (const [id, at] of Object.entries(state.sightings)) if (ctx.now - at > 2 * HOUR) delete state.sightings[id];
+      if (reward.weapon) {
+        const repaired = gainWeapon(state, reward.weapon);
+        addToBook(state, `w:${reward.weapon}`, ctx.now, s.shiny);
+        events.push({ type: 'sightingClaimed', id: s.id, weapon: reward.weapon, repaired, rarity, shiny: s.shiny, pity });
+      } else if (reward.card) {
+        const card = reward.card;
+        const before = skillOf(state, card);
+        addToBook(state, card, ctx.now, s.shiny);
+        if (CARDS[card].kind === 'once') state.packCards[card] = (state.packCards[card] ?? 0) + 1;
+        const level = skillOf(state, card) || undefined;
+        events.push({ type: 'sightingClaimed', id: s.id, card, rarity, shiny: s.shiny, level, levelUp: !!level && level > before && before > 0, pity });
+      }
       break;
     }
 
@@ -1071,15 +1206,24 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
     }
 
     case 'unpack': {
-      if (!packCount(state)) return reject('nothing');
+      const extraCards = Object.values(state.packCards).some((n) => (n ?? 0) > ONCE_CARRY);
+      if (!packCount(state) && !extraCards) return reject('nothing');
       const items = { ...state.pack };
       const kram = { ...state.packKram };
+      const before = { ...state.packCards };
       for (const k of Object.keys(items) as Resource[]) state.inventory[k] += items[k] ?? 0;
       for (const [k, n] of Object.entries(kram) as [KramId, number][]) state.kram[k] = (state.kram[k] ?? 0) + n;
+      // Einmal-Karten ins Lager, dann gleich wieder bis zu 3 je Sorte einpacken
+      for (const [k, n] of Object.entries(before) as [CardId, number][]) state.stash[k] = (state.stash[k] ?? 0) + n;
       state.pack = {};
       state.packKram = {};
+      state.packCards = {};
+      refillPackCards(state);
+      // Gemeldet wird nur, was wirklich im Lager geblieben ist
+      const cards: Partial<Record<CardId, number>> = {};
+      for (const [k, n] of Object.entries(before) as [CardId, number][]) if (n - (state.packCards[k] ?? 0) > 0) cards[k] = n - (state.packCards[k] ?? 0);
       state.stats.unpacks += 1;
-      events.push({ type: 'unpacked', items, kram });
+      events.push({ type: 'unpacked', items, kram, cards: Object.keys(cards).length ? cards : undefined });
       break;
     }
   }
@@ -1145,6 +1289,15 @@ function startDig(state: PlayerState, spot: Spot, ctx: RuleContext) {
 
 /** Wer bewacht eine Fundstelle mit? (immer gleich für dieselbe Wache) */
 /** Besondere Beute vom Bleichen Wächter: Dinge aus den Kellern, beim ersten Mal sein Tagebuch. */
+/** Fähigkeit „Plündererin“: nach einem Sieg pro Stufe ein Stück mehr vom Haupt-Rohstoff. */
+function scavengerBonus(state: PlayerState, loot: Extract<GameEvent, { type: 'loot' }>, spot: Spot) {
+  const lvl = skillOf(state, 'scavenger');
+  if (!lvl) return;
+  const main = SPOT_KINDS[spot.kind]?.loot.find((l) => isMaterial(l.res))?.res ?? 'metal';
+  loot.items[main] = (loot.items[main] ?? 0) + lvl;
+  gain(state, { [main]: lvl });
+}
+
 function watcherBonus(state: PlayerState, loot: Extract<GameEvent, { type: 'loot' }>, now: number) {
   gain(state, WATCHER_LOOT.items);
   for (const [k, v] of Object.entries(WATCHER_LOOT.items) as [Resource, number][]) loot.items[k] = (loot.items[k] ?? 0) + v;
@@ -1255,6 +1408,24 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, o: { guarded
     state.gear.owned[gear] = ctx.now;
   }
 
+  // Sammelkarte oder gefundene Waffe (eigener Zufall). Bewachte Orte geben mehr her.
+  let card: CardId | undefined;
+  let foundWeapon: WeaponId | undefined;
+  const rk = rngFrom(ctx.worldSeed, state.playerId, 'karten', spot.id, guardWindow(spot, ctx.now));
+  for (const [what, p] of CARD_LOOT[spot.kind] ?? []) {
+    if (rk() >= p * (guarded ? 1.5 : 1)) continue;
+    if (what.startsWith('w:')) {
+      foundWeapon = what.slice(2) as WeaponId;
+      gainWeapon(state, foundWeapon);
+      addToBook(state, what, ctx.now);
+    } else {
+      card = what as CardId;
+      state.packCards[card] = (state.packCards[card] ?? 0) + 1;
+      addToBook(state, card, ctx.now);
+    }
+    break;
+  }
+
   // Lageplan für einen neuen Schauplatz (erst, wenn man schon irgendwo wohnt)
   let site: SiteId | undefined;
   if (state.base.active) {
@@ -1316,6 +1487,8 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, o: { guarded
     blueprint,
     gear,
     site,
+    card,
+    weapon: foundWeapon,
     quality: o.quality,
     first: first || undefined,
     canDig: !guarded || undefined,

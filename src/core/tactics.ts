@@ -6,11 +6,15 @@
 // (Angriff mit Schaden, Ausholen, Heulen …). Wer vorne steht, kann zuschlagen; wer hinten
 // steht, kommt erst nach vorne (außer dem Heuler, der bleibt hinten und ruft Verstärkung).
 // Der Bleiche Wächter (nur nachts) starrt dich an, weicht ins Dunkel zurück und springt dich an.
+// Dazu kommen Einmal-Karten (Brandflasche, Granate …, nach dem Ausspielen weg) und Fähigkeiten
+// (Konter, Rundumschlag …, mit Stufen I–III; manche wirken von selbst). Zustände der Gegner:
+// Brennt (Schaden jede Runde), Geblendet (nächster Angriff geht daneben), Verlangsamt (kommt nicht
+// nach vorn), Still (Heuler rufen niemanden).
 //
 // Alles hier ist rein und vorhersagbar: gleicher Startwert, gleiche Züge, gleiches Ergebnis.
 // Dadurch kann es später auch der Server nachrechnen.
 
-import { BASE_DECK, CARDS, FOE_TACTICS, TACTICS, WEAPON_CARDS, type CardId, type IntentKind } from './content';
+import { BASE_DECK, CARDS, cardStat, FOE_TACTICS, ONCE_CARRY, TACTICS, WEAPON_CARDS, type CardId, type CardStat, type IntentKind } from './content';
 import { hashString } from './rng';
 import type { FoeKind, Opening, Weapon, WeaponId } from './types';
 
@@ -33,6 +37,11 @@ export interface TFoe {
   stunned: boolean;
   /** Wie oft er schon geheult hat (Heuler rufen höchstens zweimal). */
   howls: number;
+  /** Zustände: Brennt (Runden), Geblendet (verfehlt so oft), Verlangsamt (Runden), Still (Runden). */
+  burn: number;
+  blind: number;
+  slow: number;
+  silence: number;
 }
 
 export interface TacticsState {
@@ -62,6 +71,30 @@ export interface TacticsState {
   weaponDur: Partial<Record<WeaponId, number>>;
   kills: number;
   over: null | 'won' | 'lost' | 'fled';
+  /** Konter: wer dich bis zu deiner nächsten Runde trifft, nimmt so viel Schaden. */
+  thorns: number;
+  /** Ein Hund kämpft mit (Rudelführer). */
+  ally: { rounds: number; dmg: number } | null;
+  /** Ausgespielte Einmal-Karten (die sind danach weg). */
+  used: Partial<Record<CardId, number>>;
+  /** Wie oft eine Karte diese Runde schon gespielt wurde (für „einmal pro Runde“). */
+  turnPlays: Partial<Record<CardId, number>>;
+  /** Stufe der Fähigkeiten (1–3). */
+  levels: Partial<Record<CardId, number>>;
+  /** Zweiter Atem: so viel Heilung, einmal pro Kampf (0 = hast du nicht). */
+  secondWind: number;
+  secondWindUsed: boolean;
+  /** Letztes Gefecht: heute noch verfügbar, und ob es in diesem Kampf ausgelöst hat. */
+  lastStand: boolean;
+  lastStandUsed: boolean;
+}
+
+/** Was du an Sammelkarten mitbringst: Einmal-Karten (Anzahl) und Fähigkeiten (Stufe). */
+export interface CardKit {
+  once?: Partial<Record<CardId, number>>;
+  skills?: Partial<Record<CardId, number>>;
+  /** Letztes Gefecht ist heute noch frei. */
+  lastStand?: boolean;
 }
 
 export type TEvent =
@@ -83,7 +116,17 @@ export type TEvent =
   | { type: 'summon'; by: number; id: number; kind: FoeKind }
   | { type: 'weaponBroke'; weapon: WeaponId }
   | { type: 'turn'; turn: number }
-  | { type: 'denied'; reason: 'energy' | 'target' | 'medicine' | 'full' };
+  | { type: 'burn'; id: number; dmg: number; kill: boolean }
+  | { type: 'status'; id: number; status: 'burn' | 'blind' | 'slow' | 'silence' | 'interrupt' }
+  | { type: 'miss'; id: number }
+  | { type: 'ally'; id: number; dmg: number; kill: boolean }
+  | { type: 'allyIn'; rounds: number }
+  | { type: 'thorns'; id: number; dmg: number; kill: boolean }
+  | { type: 'draw'; n: number }
+  | { type: 'gain'; amount: number }
+  | { type: 'secondWind'; amount: number }
+  | { type: 'lastStand' }
+  | { type: 'denied'; reason: 'energy' | 'target' | 'medicine' | 'full' | 'limit' };
 
 // --- Zufall --------------------------------------------------------------------------
 
@@ -105,18 +148,25 @@ function shuffle<T>(st: TacticsState, list: T[]): T[] {
 
 // --- Aufbau --------------------------------------------------------------------------
 
-/** Die Karten, die du mit deiner Ausrüstung hast. */
-export function deckFor(weapons: Weapon[], medicine: number): CardId[] {
+/** Die Karten, die du mit deiner Ausrüstung hast (dazu Einmal-Karten und Fähigkeiten). */
+export function deckFor(weapons: Weapon[], medicine: number, kit: CardKit = {}): CardId[] {
   const deck: CardId[] = [...BASE_DECK];
   const kinds = new Set(weapons.filter((w) => w.dur > 0).map((w) => w.kind));
   for (const k of kinds) deck.push(...WEAPON_CARDS[k]);
   for (let i = 0; i < Math.min(TACTICS.maxBandages, medicine); i++) deck.push('bandage');
+  for (const [id, n] of Object.entries(kit.once ?? {}) as [CardId, number][]) {
+    if (CARDS[id]?.kind !== 'once') continue;
+    for (let i = 0; i < Math.min(ONCE_CARRY, n); i++) deck.push(id);
+  }
+  for (const [id, lvl] of Object.entries(kit.skills ?? {}) as [CardId, number][]) {
+    if (CARDS[id]?.kind === 'skill' && !CARDS[id].passive && lvl > 0) deck.push(id);
+  }
   return deck;
 }
 
 function makeFoe(st: TacticsState, kind: FoeKind, row: 'near' | 'far'): TFoe {
   const def = FOE_TACTICS[kind];
-  const f: TFoe = { id: st.nextId++, kind, hp: def.hp, maxHp: def.hp, block: 0, row: def.stayBack ? 'far' : row, step: Math.floor(next(st) * def.pattern.length), intent: { kind: 'advance' }, stunned: false, howls: 0 };
+  const f: TFoe = { id: st.nextId++, kind, hp: def.hp, maxHp: def.hp, block: 0, row: def.stayBack ? 'far' : row, step: Math.floor(next(st) * def.pattern.length), intent: { kind: 'advance' }, stunned: false, howls: 0, burn: 0, blind: 0, slow: 0, silence: 0 };
   f.intent = intentOf(f);
   return f;
 }
@@ -152,7 +202,11 @@ export function createTactics(o: {
   opening?: Opening;
   cold?: boolean;
   thirst?: boolean;
+  /** Einmal-Karten und Fähigkeiten, die du mitbringst. */
+  kit?: CardKit;
 }): TacticsState {
+  const kit = o.kit ?? {};
+  const lvl = (id: CardId) => kit.skills?.[id] ?? 0;
   const st: TacticsState = {
     rng: hashString(o.seed) >>> 0,
     turn: 0,
@@ -174,9 +228,18 @@ export function createTactics(o: {
     weaponDur: {},
     kills: 0,
     over: null,
+    thorns: 0,
+    ally: null,
+    used: {},
+    turnPlays: {},
+    levels: { ...(kit.skills ?? {}) },
+    secondWind: lvl('secondwind') ? cardStat('secondwind', 'heal', lvl('secondwind')) : 0,
+    secondWindUsed: false,
+    lastStand: !!kit.lastStand && lvl('laststand') > 0,
+    lastStandUsed: false,
   };
   for (const w of o.weapons) if (w.dur > 0) st.weaponDur[w.kind] = Math.max(st.weaponDur[w.kind] ?? 0, w.dur);
-  st.draw = shuffle(st, deckFor(o.weapons, o.medicine));
+  st.draw = shuffle(st, deckFor(o.weapons, o.medicine, kit));
   let near = 0;
   for (const kind of o.group.slice(0, TACTICS.maxFoes)) {
     const row = !FOE_TACTICS[kind].stayBack && near < 2 ? 'near' : 'far';
@@ -195,6 +258,14 @@ export function createTactics(o: {
     }
     st.energy += 1;
   } else if (o.opening === 'spotted') st.energy = Math.max(1, st.energy - 1);
+  // Leise Sohlen: Wer dich nicht entdeckt hat, fängt eine Runde später an (ab Stufe II: 1 Kraft mehr)
+  if (lvl('sneak') && o.opening !== 'spotted') {
+    for (const f of st.foes) {
+      f.stunned = true;
+      f.intent = intentOf(f);
+    }
+    if (lvl('sneak') >= 2) st.energy += 1;
+  }
   if (o.thirst) st.energy = Math.max(1, st.energy - 1);
   if (o.cold && st.hand.length > 2) st.draw.push(st.hand.pop()!);
   return st;
@@ -208,12 +279,22 @@ export function foeById(st: TacticsState, id: number): TFoe | undefined {
   return st.foes.find((f) => f.id === id);
 }
 
-/** Darf diese Karte diesen Gegner treffen? (nah: nur Gegner vorne) */
+/** Darf diese Karte diesen Gegner treffen? (nah: nur vorne; fern: nur hinten) */
 export function canTarget(st: TacticsState, card: CardId, id: number): boolean {
   const f = foeById(st, id);
   if (!f || f.hp <= 0) return false;
   const t = CARDS[card].target;
-  return t === 'any' || (t === 'near' && f.row === 'near');
+  return t === 'any' || (t === 'near' && f.row === 'near') || (t === 'far' && f.row === 'far');
+}
+
+/** Wert einer Karte auf ihrer Stufe in diesem Kampf. */
+function stat(st: TacticsState, card: CardId, s: CardStat): number {
+  return cardStat(card, s, st.levels[card] ?? 1);
+}
+
+/** Wen eine Karte ohne Zielwahl trifft (alle vorne, hinten oder alle). */
+function areaFoes(st: TacticsState, area: 'near' | 'far' | 'all'): TFoe[] {
+  return aliveFoes(st).filter((f) => area === 'all' || f.row === area);
 }
 
 /** Ziele für eine Karte (leer bei Karten auf dich selbst). */
@@ -235,6 +316,8 @@ function drawCards(st: TacticsState, n: number) {
 function startTurn(st: TacticsState, events: TEvent[]) {
   st.turn += 1;
   st.block = 0;
+  st.thorns = 0;
+  st.turnPlays = {};
   st.energy = Math.max(1, TACTICS.energy - st.grabbed);
   st.grabbed = 0;
   drawCards(st, Math.max(2, TACTICS.hand - st.dazed));
@@ -264,7 +347,15 @@ function damageFoe(st: TacticsState, f: TFoe, raw: number, events: TEvent[]) {
 
 // --- Züge ----------------------------------------------------------------------------
 
-/** Eine Karte aus der Hand spielen (target: Gegner-id bei Angriffskarten). */
+/** Ausholen unterbrechen: Der Gegner fängt sein Muster von vorne an. */
+function interrupt(f: TFoe) {
+  const pattern = FOE_TACTICS[f.kind].pattern;
+  const p = pattern[f.step % pattern.length];
+  if (p.kind === 'windup' || p.kind === 'smash') f.step = 0;
+  f.intent = intentOf(f);
+}
+
+/** Eine Karte aus der Hand spielen (target: Gegner-id bei Karten mit Zielwahl). */
 export function playCard(st: TacticsState, handIndex: number, target?: number): TEvent[] {
   const events: TEvent[] = [];
   if (st.over) return events;
@@ -273,53 +364,79 @@ export function playCard(st: TacticsState, handIndex: number, target?: number): 
   const def = CARDS[card];
   if (st.energy < def.cost) return [{ type: 'denied', reason: 'energy' }];
   if (def.medicine && st.medicine < 1) return [{ type: 'denied', reason: 'medicine' }];
-  if (def.heal && st.hp >= st.maxHp) return [{ type: 'denied', reason: 'full' }];
+  if (def.heal && !def.gain && st.hp >= st.maxHp) return [{ type: 'denied', reason: 'full' }];
+  if (def.perTurn && (st.turnPlays[card] ?? 0) >= def.perTurn) return [{ type: 'denied', reason: 'limit' }];
   let foe: TFoe | undefined;
   if (def.target !== 'self') {
     const options = targetsFor(st, card);
     foe = target !== undefined && canTarget(st, card, target) ? foeById(st, target) : options.length === 1 ? options[0] : undefined;
     if (!foe) return [{ type: 'denied', reason: 'target' }];
   }
+  if (def.area && !areaFoes(st, def.area).length && !def.block && !def.heal) return [{ type: 'denied', reason: 'target' }];
   st.energy -= def.cost;
   st.hand.splice(handIndex, 1);
-  st.discard.push(card);
+  // Einmal-Karten sind danach weg, alles andere kommt auf den Ablagestapel
+  if (def.kind === 'once') st.used[card] = (st.used[card] ?? 0) + 1;
+  else st.discard.push(card);
+  st.turnPlays[card] = (st.turnPlays[card] ?? 0) + 1;
   events.push({ type: 'play', card, target: foe?.id });
 
-  if (foe && def.dmg) {
-    let raw = def.dmg;
-    if (def.target === 'any' && st.focus) {
+  const targets = def.area ? areaFoes(st, def.area) : foe ? [foe] : [];
+  let first = true;
+  for (const f of targets) {
+    let raw = stat(st, card, 'dmg');
+    if (first && def.target === 'any' && raw && st.focus) {
       raw += st.focus;
       st.focus = 0;
     }
-    damageFoe(st, foe, raw, events);
+    if (def.vs && f.kind === def.vs.kind) raw += def.vs.dmg;
+    if (raw > 0) damageFoe(st, f, raw, events);
+    applyEffects(def, f, events);
+    // Nagel: trifft noch einen zweiten
+    if (first && def.chain) {
+      const other = aliveFoes(st)
+        .filter((x) => x.id !== f.id)
+        .sort((x, y) => (x.row === y.row ? 0 : x.row === 'near' ? -1 : 1))[0];
+      if (other) damageFoe(st, other, stat(st, card, 'dmg'), events);
+    }
+    first = false;
   }
-  if (foe && foe.hp > 0 && def.push && foe.row === 'near') {
-    foe.row = 'far';
-    // Ausholen ist unterbrochen: er fängt sein Muster von vorne an
-    const p = FOE_TACTICS[foe.kind].pattern[foe.step % FOE_TACTICS[foe.kind].pattern.length];
-    if (p.kind === 'windup' || p.kind === 'smash') foe.step = 0;
-    foe.intent = intentOf(foe);
-    events.push({ type: 'push', id: foe.id });
+  const block = stat(st, card, 'block');
+  if (block) {
+    st.block += block;
+    events.push({ type: 'block', amount: block });
   }
-  if (foe && foe.hp > 0 && def.stun) {
-    foe.stunned = true;
-    foe.intent = intentOf(foe);
-    events.push({ type: 'stun', id: foe.id });
-  }
-  if (def.block) {
-    st.block += def.block;
-    events.push({ type: 'block', amount: def.block });
-  }
-  if (def.heal) {
-    st.medicine -= 1;
-    st.usedMedicine += 1;
-    const amount = Math.min(def.heal, st.maxHp - st.hp);
+  const heal = def.passive ? 0 : stat(st, card, 'heal');
+  if (heal) {
+    if (def.medicine) {
+      st.medicine -= 1;
+      st.usedMedicine += 1;
+    }
+    const amount = Math.min(heal, st.maxHp - st.hp);
     st.hp += amount;
-    events.push({ type: 'heal', amount });
+    if (amount) events.push({ type: 'heal', amount });
   }
-  if (def.focus) {
-    st.focus += def.focus;
-    events.push({ type: 'focus', amount: def.focus });
+  const gain = stat(st, card, 'gain');
+  if (gain) {
+    st.energy += gain;
+    events.push({ type: 'gain', amount: gain });
+  }
+  const draw = stat(st, card, 'draw');
+  if (draw) {
+    const before = st.hand.length;
+    drawCards(st, draw);
+    events.push({ type: 'draw', n: st.hand.length - before });
+  }
+  const focus = stat(st, card, 'focus');
+  if (focus) {
+    st.focus += focus;
+    events.push({ type: 'focus', amount: focus });
+  }
+  const thorns = stat(st, card, 'thorns');
+  if (thorns) st.thorns += thorns;
+  if (def.ally) {
+    st.ally = { rounds: def.ally.rounds, dmg: stat(st, card, 'allyDmg') };
+    events.push({ type: 'allyIn', rounds: def.ally.rounds });
   }
   if (def.weapon) {
     const w = def.weapon;
@@ -334,16 +451,77 @@ export function playCard(st: TacticsState, handIndex: number, target?: number): 
   return events;
 }
 
+/** Was eine Karte am Gegner bewirkt (außer Schaden). */
+function applyEffects(def: (typeof CARDS)[CardId], f: TFoe, events: TEvent[]) {
+  if (f.hp <= 0) return;
+  const pushIt = (def.push || (def.vs?.push && f.kind === def.vs.kind)) && f.row === 'near';
+  if (pushIt) {
+    f.row = 'far';
+    interrupt(f);
+    events.push({ type: 'push', id: f.id });
+  }
+  if (def.interrupt) {
+    interrupt(f);
+    events.push({ type: 'status', id: f.id, status: 'interrupt' });
+  }
+  if (def.stun) {
+    f.stunned = true;
+    f.intent = intentOf(f);
+    events.push({ type: 'stun', id: f.id });
+  }
+  if (def.burn) {
+    f.burn = Math.max(f.burn, def.burn);
+    events.push({ type: 'status', id: f.id, status: 'burn' });
+  }
+  if (def.blind) {
+    f.blind += def.blind;
+    events.push({ type: 'status', id: f.id, status: 'blind' });
+  }
+  if (def.slow) {
+    f.slow = Math.max(f.slow, def.slow);
+    events.push({ type: 'status', id: f.id, status: 'slow' });
+  }
+  if (def.silence) {
+    f.silence = Math.max(f.silence, def.silence);
+    events.push({ type: 'status', id: f.id, status: 'silence' });
+  }
+}
+
 /** Runde beenden: die Gegner handeln, dann beginnt deine nächste Runde. */
 export function endTurn(st: TacticsState): TEvent[] {
   const events: TEvent[] = [];
   if (st.over) return events;
   st.discard.push(...st.hand);
   st.hand = [];
+  // Der Hund (Rudelführer) beißt zu: den Schwächsten vorne, sonst irgendwen
+  if (st.ally) {
+    const t = [...aliveFoes(st)].sort((a, b) => (a.row === b.row ? a.hp - b.hp : a.row === 'near' ? -1 : 1))[0];
+    if (t) {
+      const before = st.kills;
+      damageFoe(st, t, st.ally.dmg, []);
+      events.push({ type: 'ally', id: t.id, dmg: st.ally.dmg, kill: st.kills > before });
+    }
+    st.ally.rounds -= 1;
+    if (st.ally.rounds <= 0) st.ally = null;
+  }
   // Vorne zuerst, dann hinten
   const order = [...aliveFoes(st)].sort((a, b) => (a.row === b.row ? 0 : a.row === 'near' ? -1 : 1));
   for (const f of order) {
     if (f.hp <= 0 || st.over) continue;
+    // Brennt: Schaden vor seinem Zug (Wandler brennen doppelt)
+    if (f.burn > 0) {
+      f.burn -= 1;
+      const dmg = Math.min(f.hp, f.kind === 'walker' ? 2 : 1);
+      f.hp -= dmg;
+      const kill = f.hp <= 0;
+      if (kill) st.kills += 1;
+      events.push({ type: 'burn', id: f.id, dmg, kill });
+      if (kill) continue;
+    }
+    const slowed = f.slow > 0;
+    if (f.slow > 0) f.slow -= 1;
+    const silenced = f.silence > 0;
+    if (f.silence > 0) f.silence -= 1;
     const intent = intentOf(f);
     f.block = 0;
     if (f.stunned) {
@@ -351,6 +529,10 @@ export function endTurn(st: TacticsState): TEvent[] {
       continue;
     }
     if (intent.kind === 'advance') {
+      if (slowed) {
+        events.push({ type: 'status', id: f.id, status: 'slow' });
+        continue;
+      }
       if (aliveFoes(st).filter((x) => x.row === 'near').length < 3) {
         f.row = 'near';
         events.push({ type: 'advance', id: f.id });
@@ -369,15 +551,40 @@ export function endTurn(st: TacticsState): TEvent[] {
           f.row = 'near';
           events.push({ type: 'pounce', id: f.id });
         }
+        // Geblendet: Der Angriff geht daneben
+        if (f.blind > 0) {
+          f.blind -= 1;
+          events.push({ type: 'miss', id: f.id });
+          break;
+        }
         const raw = intent.dmg ?? 0;
         const absorbed = Math.min(st.block, raw);
         st.block -= absorbed;
-        const dmg = raw - absorbed;
+        let dmg = raw - absorbed;
+        // Letztes Gefecht: ein tödlicher Treffer lässt dich mit 1 stehen
+        if (dmg >= st.hp && st.lastStand && !st.lastStandUsed) {
+          dmg = st.hp - 1;
+          st.lastStandUsed = true;
+          events.push({ type: 'lastStand' });
+        }
         st.hp = Math.max(0, st.hp - dmg);
         events.push({ type: 'hurt', by: f.id, dmg, absorbed });
+        // Konter: wer zuschlägt, nimmt Schaden
+        if (st.thorns > 0 && f.hp > 0) {
+          const before = st.kills;
+          damageFoe(st, f, st.thorns, []);
+          events.push({ type: 'thorns', id: f.id, dmg: st.thorns, kill: st.kills > before });
+        }
         if (intent.kind === 'grab') {
           st.grabbed = 1;
           events.push({ type: 'grabbed', by: f.id });
+        }
+        // Zweiter Atem: einmal pro Kampf, wenn es knapp wird
+        if (st.hp > 0 && st.hp < 3 && st.secondWind && !st.secondWindUsed) {
+          st.secondWindUsed = true;
+          const amount = Math.min(st.secondWind, st.maxHp - st.hp);
+          st.hp += amount;
+          events.push({ type: 'secondWind', amount });
         }
         if (st.hp <= 0) st.over = 'lost';
         break;
@@ -401,6 +608,10 @@ export function endTurn(st: TacticsState): TEvent[] {
         events.push({ type: 'fade', id: f.id });
         break;
       case 'howl':
+        if (silenced) {
+          events.push({ type: 'status', id: f.id, status: 'silence' });
+          break;
+        }
         if (aliveFoes(st).length < TACTICS.maxFoes && f.howls < TACTICS.maxHowls) {
           f.howls += 1;
           const nf = makeFoe(st, 'walker', 'far');
@@ -412,6 +623,7 @@ export function endTurn(st: TacticsState): TEvent[] {
         break;
     }
   }
+  if (!st.over && !aliveFoes(st).length) st.over = 'won';
   if (!st.over) startTurn(st, events);
   return events;
 }

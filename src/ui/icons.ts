@@ -159,6 +159,35 @@ const P: Record<string, string> = {
   paper: '<rect x="3.5" y="5" width="17" height="14" rx="1"/><path d="M6.5 8.5h11M6.5 12h5M6.5 15.5h5M13.5 12h4v3.5h-4z"/>',
   book: '<path d="M5 18V6.5a2 2 0 0 1 2-2h11V16H7a2 2 0 0 0-2 2 2 2 0 0 0 2 2h11"/><path d="M9 8.5h6"/>',
   warning: '<path d="M12 3.5l9.5 17h-19z"/><path d="M12 10v5M12 17.6v.3"/>',
+  // Sammelkarten: Einmal-Karten
+  molotov: '<path d="M9 11h6v8.5a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 19.5z"/><path d="M10.5 11V7.5h3V11M9 15h6"/><path d="M12 7.5C10.3 6.2 11 4 12.6 2.5c-.1 1.6 1.9 2.2 1 5"/>',
+  caltrops: '<path d="M12 4v7.5L5 17M12 11.5l7 5.5M12 11.5l-.6 8"/><path d="M4 20.5l2.5-1M17 20.5l2.5 1"/>',
+  firecracker: '<rect x="7" y="10" width="9" height="11" rx="1.5"/><path d="M7 14h9M11.5 10c0-2.5 1.5-4 4-4.5"/><path d="M18 2.5v2M20.5 4.5l-1.5 1M20.5 7.5h-2"/>',
+  lure: '<path d="M6 9h12v10.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19.5z"/><ellipse cx="12" cy="9" rx="6" ry="1.8"/><path d="M9 4.5c1 1 2 1 3 0s2-1 3 0M10 14.5h4"/>',
+  pepper: '<rect x="8" y="9" width="8" height="12" rx="1.5"/><path d="M10 9V6h4v3M14 7h2.5"/><path d="M19 5l1.8-1M19.5 7h2.2M19 9l1.8 1"/>',
+  dressing: '<circle cx="8.5" cy="13" r="5"/><circle cx="8.5" cy="13" r="1.6"/><path d="M8.5 8H20v10H8.5M14 11.5v3M12.5 13h3"/>',
+  adrenaline: '<path d="M14.5 4.5l5 5M17 7l-8.5 8.5-3-3L14 4M7 14l-3.5 3.5M3 21l2-2M10.5 9.5l1.5 1.5M13 7l1.5 1.5"/>',
+  flare: '<path d="M8 21l6.5-11"/><path d="M14.5 10c-2-1-2.3-3.6-.6-6.5.6 1.6 2.9 2.2 2.6 4.4-.2 1.4-1 2.2-2 2.1z"/><path d="M19 12.5h2M18 15.5l1.5 1"/>',
+  flashbang: '<rect x="8" y="10" width="8" height="11" rx="1"/><path d="M10 10V8h4v2M8 14h8"/><path d="M12 2.5v2.5M6.5 4.5l1.3 1.5M17.5 4.5l-1.3 1.5"/>',
+  grenade: '<ellipse cx="11" cy="15" rx="5.5" ry="6"/><path d="M9 9.3V7h4v2.3M13 7.5l4-2.5 1.2 1.8M5.5 15h11M11 9v12"/>',
+  // Sammelkarten: gefundene Waffen
+  shovel: '<path d="M4 20l7.5-7.5"/><path d="M2.8 18.8l2.4 2.4"/><path d="M10 11l3 3 6-2 2-7.5-7.5 2z"/>',
+  axe: '<path d="M5 21L15.5 7.5"/><path d="M12.5 5.5c2-3 5.5-3.5 8-1.8-.6 3.2-2.3 6.2-5.6 7.2z"/>',
+  golfclub: '<path d="M7 3l7.5 15"/><path d="M14.5 18l4.5.4-.6 2.6-5-.6z"/><circle cx="7" cy="20" r="1.4"/>',
+  slingshot: '<path d="M12 21v-8M12 13L7 4.5M12 13l5-8.5"/><path d="M7 4.5c1.5 3 8.5 3 10 0"/><circle cx="12" cy="7.3" r="1"/>',
+  nailgun: '<path d="M3.5 7.5h12.5l2.5 3.5H9.5v6.5h-4L6.5 11h-3z"/><path d="M18.5 11v2.5M20 15.5l1.5 1"/>',
+  // Sammelkarten: Fähigkeiten
+  counter: '<path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/><path d="M14.5 9.5l-3 3 3 3M11.5 12.5H8"/>',
+  steady: '<path d="M8 21v-6.5L5.5 9.8a1.3 1.3 0 0 1 2.2-1.3L9.5 11V4.8a1.2 1.2 0 0 1 2.4 0V10M12 10V3.8a1.2 1.2 0 0 1 2.4 0V10M14.5 10V5.3a1.2 1.2 0 0 1 2.4 0V14c0 3-1.5 5-3.5 7"/>',
+  breath: '<path d="M3 9h11a3 3 0 1 0-3-3M3 13h15a3 3 0 1 1-3 3M3 17h6"/>',
+  sweep: '<path d="M4 16.5a8 8 0 0 1 16 0"/><path d="M20 16.5l1.6-3.2M20 16.5l-3.4-.8"/><path d="M8 20h8"/>',
+  sneak: '<path d="M8 13c-1.8 0-3-1.8-3-4.5S6 4 7.8 4s3 2 3 4.5-1 4.5-2.8 4.5zM6 15.5h4l-.3 3.2a1.7 1.7 0 0 1-3.4 0z"/><path d="M16 9.5c1.8 0 3-1.8 3-4.5M15 12h4l-.3 3.2a1.7 1.7 0 0 1-3.4 0z" opacity=".55"/>',
+  scavenger: '<path d="M6 8h12l-1.2 12H7.2z"/><path d="M9 8V6a3 3 0 0 1 6 0v2M9.5 13.5l2 2 3.5-4"/>',
+  secondwind: '<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/><path d="M12 9.5v6M9.5 12L12 9.5l2.5 2.5"/>',
+  packleader: '<circle cx="12" cy="16" r="3.6"/><circle cx="6.3" cy="11" r="1.8"/><circle cx="17.7" cy="11" r="1.8"/><circle cx="9.4" cy="6.4" r="1.8"/><circle cx="14.6" cy="6.4" r="1.8"/>',
+  laststand: '<path d="M12 3c4 0 7 2.7 7 6.5 0 2.4-1.2 4-3 5V18H8v-3.5c-1.8-1-3-2.6-3-5C5 5.7 8 3 12 3z"/><circle cx="9.3" cy="10" r="1.4"/><circle cx="14.7" cy="10" r="1.4"/><path d="M10 21v-3M14 21v-3M12 21v-3"/>',
+  cards: '<rect x="3.5" y="6" width="11" height="15" rx="1.5"/><path d="M8 3.5l10.8 1.6a1.5 1.5 0 0 1 1.3 1.7l-1.9 13"/><path d="M7 11h4M7 14h4"/>',
+  radar: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12L18 6"/><circle cx="15.5" cy="14.5" r="1" fill="currentColor"/>',
 };
 
 export function icon(name: string, size = 22): string {

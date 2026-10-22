@@ -33,7 +33,7 @@ export interface CombatEnd {
   ambush?: boolean;
 }
 
-const CARD_ICON: Record<CardId, string> = {
+export const CARD_ICON: Record<CardId, string> = {
   punch: 'fist',
   throw: 'throwStone',
   dodge: 'shield',
@@ -44,6 +44,32 @@ const CARD_ICON: Record<CardId, string> = {
   bolt: 'bolt',
   aim: 'aim',
   bandage: 'medicine',
+  spade: 'shovel',
+  chop: 'axe',
+  drive: 'golfclub',
+  pellet: 'slingshot',
+  nail: 'nailgun',
+  molotov: 'molotov',
+  smoke: 'smoke',
+  caltrops: 'caltrops',
+  firecracker: 'firecracker',
+  lure: 'lure',
+  pepper: 'pepper',
+  dressing: 'dressing',
+  adrenaline: 'adrenaline',
+  flare: 'flare',
+  flashbang: 'flashbang',
+  grenade: 'grenade',
+  counter: 'counter',
+  steady: 'steady',
+  breath: 'breath',
+  sweep: 'sweep',
+  sneak: 'sneak',
+  scavenger: 'scavenger',
+  radio: 'radioSet',
+  secondwind: 'secondwind',
+  packleader: 'packleader',
+  laststand: 'laststand',
 };
 
 const INTENT: Record<Intent['kind'], { icon: string; label: string; tone: string }> = {

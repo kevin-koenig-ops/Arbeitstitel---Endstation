@@ -1041,6 +1041,10 @@ export interface WeaponDef {
   /** Nötige Stufe des Werktischs. */
   level: number;
   desc: string;
+  /** Nicht baubar, nur zu finden (Sammelwaffe): Seltenheit und wo. */
+  rarity?: CardRarity;
+  where?: string;
+  art?: string;
 }
 
 /** Ohne Waffe kämpft man mit den Fäusten. */
@@ -1052,7 +1056,15 @@ export const WEAPONS: Record<WeaponId, WeaponDef> = {
   crowbar: { name: 'Brechstange', dmg: 2, dur: 28, cost: { metal: 3 }, level: 1, desc: 'Öffnet Türen und Schädel.' },
   bat: { name: 'Nagelschläger', dmg: 3, dur: 32, cost: { wood: 3, metal: 2 }, level: 1, desc: 'Ein Baseballschläger mit ein paar Nägeln.' },
   crossbow: { name: 'Armbrust', dmg: 4, dur: 24, cost: { wood: 3, metal: 2, springs: 2, screws: 2, glue: 1 }, level: 2, desc: 'Leise und kräftig. Die Bolzen nutzen sich ab.' },
+  // Nur zu finden (Fundorte und Sichtungen)
+  shovel: { name: 'Spaten', dmg: 3, dur: 30, cost: {}, level: 0, rarity: 'common', where: 'Kleingärten, Baumärkte, Schuppen', art: 'spaten', desc: 'Gräbt und stößt Gegner zurück.' },
+  axe: { name: 'Axt', dmg: 5, dur: 26, cost: {}, level: 0, rarity: 'rare', where: 'Scheunen, Hofläden, Baumärkte', art: 'axt', desc: 'Schwer und langsam, aber wer getroffen wird, bleibt liegen.' },
+  golfclub: { name: 'Golfschläger', dmg: 3, dur: 24, cost: {}, level: 0, rarity: 'rare', where: 'Autos, Garagen, Sichtungen', art: 'golfschlaeger', desc: 'Reicht weit, trifft auch Gegner hinten.' },
+  slingshot: { name: 'Schleuder', dmg: 2, dur: 30, cost: {}, level: 0, rarity: 'rare', where: 'Kioske, Rucksäcke, Sichtungen', art: 'schleuder', desc: 'Kostet keine Kraft, einmal pro Runde.' },
+  nailgun: { name: 'Nagelpistole', dmg: 2, dur: 24, cost: {}, level: 0, rarity: 'epic', where: 'Baumärkte, Werkstätten', art: 'nagelpistole', desc: 'Trifft zwei Gegner mit einem Druck.' },
 };
+/** Waffen, die man nur findet (Sammelbuch). */
+export const FOUND_WEAPONS: WeaponId[] = ['shovel', 'axe', 'golfclub', 'slingshot', 'nailgun'];
 
 export const START_WEAPONS: Weapon[] = [{ kind: 'crowbar', dur: WEAPONS.crowbar.dur }];
 
@@ -1133,14 +1145,32 @@ export function gearSum(worn: Partial<Record<GearSlot, GearId>>, key: 'warmth' |
 // --- Kampf: kurze Taktik mit Karten (Runde für Runde) ------------------------------
 
 export type { FoeKind };
-export type CardId = 'punch' | 'throw' | 'dodge' | 'kick' | 'pry' | 'swing' | 'homerun' | 'bolt' | 'aim' | 'bandage';
+export type CardId =
+  // Grundkarten und Waffenkarten
+  | 'punch' | 'throw' | 'dodge' | 'kick' | 'pry' | 'swing' | 'homerun' | 'bolt' | 'aim' | 'bandage'
+  | 'spade' | 'chop' | 'drive' | 'pellet' | 'nail'
+  // Einmal-Karten (nach dem Ausspielen weg)
+  | 'molotov' | 'smoke' | 'caltrops' | 'firecracker' | 'lure' | 'pepper' | 'dressing' | 'adrenaline' | 'flare' | 'flashbang' | 'grenade'
+  // Fähigkeiten (dauerhaft, aus Sichtungen; mit Stufen)
+  | 'counter' | 'steady' | 'breath' | 'sweep' | 'sneak' | 'scavenger' | 'radio' | 'secondwind' | 'packleader' | 'laststand';
+
+/** Grundkarte, Waffenkarte, Einmal-Karte oder Fähigkeit. */
+export type CardKind = 'base' | 'weapon' | 'once' | 'skill';
+export type CardRarity = 'common' | 'rare' | 'epic' | 'legendary';
+export const RARITY_NAMES: Record<CardRarity, string> = { common: 'Gewöhnlich', rare: 'Selten', epic: 'Episch', legendary: 'Legendär' };
+
+/** Zahlen einer Karte, die mit der Stufe wachsen (Fähigkeiten I–III). */
+export type CardStat = 'dmg' | 'block' | 'heal' | 'focus' | 'draw' | 'thorns' | 'gain' | 'allyDmg';
 
 export interface CardDef {
   name: string;
+  kind: CardKind;
   /** Kostet so viel Kraft (pro Runde gibt es TACTICS.energy). */
   cost: number;
-  /** near: ein Gegner vorne; any: auch hinten; self: du selbst. */
-  target: 'near' | 'any' | 'self';
+  /** near: ein Gegner vorne; far: einer hinten; any: irgendeiner; self: du selbst (oder alle, siehe area). */
+  target: 'near' | 'far' | 'any' | 'self';
+  /** Trifft mehrere ohne Zielwahl: alle vorne, alle hinten oder alle. */
+  area?: 'near' | 'far' | 'all';
   dmg?: number;
   /** Fängt so viel Schaden ab (bis zu deiner nächsten Runde). */
   block?: number;
@@ -1151,30 +1181,136 @@ export interface CardDef {
   stun?: boolean;
   /** Der nächste Wurf oder Bolzen macht so viel mehr Schaden. */
   focus?: number;
+  /** Zustände: Brennt (Runden), Geblendet (verfehlt so oft), Verlangsamt (Runden), Still (Runden ohne Heulen). */
+  burn?: number;
+  blind?: number;
+  slow?: number;
+  silence?: number;
+  /** Unterbricht das Ausholen (wie ein Tritt, ohne Wegstoßen). */
+  interrupt?: boolean;
+  /** So viele Karten ziehen. */
+  draw?: number;
+  /** So viel Kraft dazu. */
+  gain?: number;
+  /** Wer dich bis zu deiner nächsten Runde trifft, nimmt so viel Schaden. */
+  thorns?: number;
+  /** Ein Hund kämpft mit: so viele Runden, so viel Schaden pro Runde. */
+  ally?: { rounds: number; dmg: number };
+  /** Extra gegen eine Gegnerart (z. B. Licht gegen den Bleichen Wächter). */
+  vs?: { kind: FoeKind; dmg: number; push?: boolean };
+  /** Trifft danach noch einen zweiten Gegner. */
+  chain?: boolean;
+  /** Höchstens so oft pro Runde. */
+  perTurn?: number;
+  /** Fähigkeit, die von selbst wirkt (kommt nicht ins Deck). */
+  passive?: boolean;
+  /** Pro Stufe über I wächst dieser Wert um so viel. */
+  scale?: Partial<Record<CardStat, number>>;
   /** Nutzt diese Waffe ab (1 pro Karte). */
   weapon?: WeaponId;
   /** Verbraucht 1 Medizin. */
   medicine?: boolean;
+  /** Sammelkarten: Seltenheit und wo man sie findet (Hinweis im Sammelbuch). */
+  rarity?: CardRarity;
+  where?: string;
+  /** Einmal-Karten am Werktisch bauen. */
+  craft?: Partial<Inventory>;
+  /** Dateiname des Kartenbilds (src/assets/cards/karte-<art>.webp), sobald es eins gibt. */
+  art?: string;
   desc: string;
 }
 
 export const CARDS: Record<CardId, CardDef> = {
-  punch: { name: 'Faustschlag', cost: 1, target: 'near', dmg: 2, desc: '2 Schaden an einem Gegner vorne.' },
-  throw: { name: 'Steinwurf', cost: 1, target: 'any', dmg: 1, desc: '1 Schaden, trifft auch Gegner hinten.' },
-  dodge: { name: 'Ausweichen', cost: 1, target: 'self', block: 3, desc: 'Fängt 3 Schaden ab, bis zu deiner nächsten Runde.' },
-  kick: { name: 'Tritt', cost: 1, target: 'near', dmg: 1, push: true, desc: '1 Schaden. Stößt den Gegner nach hinten und unterbricht sein Ausholen.' },
-  pry: { name: 'Hebelhieb', cost: 1, target: 'near', dmg: 3, weapon: 'crowbar', desc: '3 Schaden mit der Brechstange.' },
-  swing: { name: 'Schwinger', cost: 1, target: 'near', dmg: 4, weapon: 'bat', desc: '4 Schaden mit dem Nagelschläger.' },
-  homerun: { name: 'Volltreffer', cost: 2, target: 'near', dmg: 6, stun: true, weapon: 'bat', desc: '6 Schaden, der Gegner setzt eine Runde aus.' },
-  bolt: { name: 'Bolzen', cost: 1, target: 'any', dmg: 4, weapon: 'crossbow', desc: '4 Schaden, trifft auch Gegner hinten.' },
-  aim: { name: 'Zielen', cost: 0, target: 'self', focus: 3, desc: 'Der nächste Bolzen oder Wurf macht 3 mehr Schaden.' },
-  bandage: { name: 'Verbinden', cost: 1, target: 'self', heal: 3, medicine: true, desc: 'Heilt 3 Gesundheit, kostet 1 Medizin.' },
+  punch: { name: 'Faustschlag', kind: 'base', cost: 1, target: 'near', dmg: 2, desc: '2 Schaden an einem Gegner vorne.' },
+  throw: { name: 'Steinwurf', kind: 'base', cost: 1, target: 'any', dmg: 1, desc: '1 Schaden, trifft auch Gegner hinten.' },
+  dodge: { name: 'Ausweichen', kind: 'base', cost: 1, target: 'self', block: 3, desc: 'Fängt 3 Schaden ab, bis zu deiner nächsten Runde.' },
+  kick: { name: 'Tritt', kind: 'base', cost: 1, target: 'near', dmg: 1, push: true, desc: '1 Schaden. Stößt den Gegner nach hinten und unterbricht sein Ausholen.' },
+  bandage: { name: 'Verbinden', kind: 'base', cost: 1, target: 'self', heal: 3, medicine: true, desc: 'Heilt 3 Gesundheit, kostet 1 Medizin.' },
+  // Waffen
+  pry: { name: 'Hebelhieb', kind: 'weapon', cost: 1, target: 'near', dmg: 3, weapon: 'crowbar', desc: '3 Schaden mit der Brechstange.' },
+  swing: { name: 'Schwinger', kind: 'weapon', cost: 1, target: 'near', dmg: 4, weapon: 'bat', desc: '4 Schaden mit dem Nagelschläger.' },
+  homerun: { name: 'Volltreffer', kind: 'weapon', cost: 2, target: 'near', dmg: 6, stun: true, weapon: 'bat', desc: '6 Schaden, der Gegner setzt eine Runde aus.' },
+  bolt: { name: 'Bolzen', kind: 'weapon', cost: 1, target: 'any', dmg: 4, weapon: 'crossbow', desc: '4 Schaden, trifft auch Gegner hinten.' },
+  aim: { name: 'Zielen', kind: 'weapon', cost: 0, target: 'self', focus: 3, desc: 'Der nächste Bolzen oder Wurf macht 3 mehr Schaden.' },
+  spade: { name: 'Spatenstich', kind: 'weapon', cost: 1, target: 'near', dmg: 3, push: true, weapon: 'shovel', art: 'spaten', desc: '3 Schaden und stößt zurück.' },
+  chop: { name: 'Axthieb', kind: 'weapon', cost: 2, target: 'near', dmg: 5, weapon: 'axe', art: 'axt', desc: '5 Schaden mit der Axt.' },
+  drive: { name: 'Abschlag', kind: 'weapon', cost: 1, target: 'any', dmg: 3, weapon: 'golfclub', art: 'golfschlaeger', desc: '3 Schaden, trifft auch Gegner hinten.' },
+  pellet: { name: 'Stahlkugel', kind: 'weapon', cost: 0, target: 'any', dmg: 2, perTurn: 1, weapon: 'slingshot', art: 'schleuder', desc: '2 Schaden ohne Kraft, trifft auch hinten. Einmal pro Runde.' },
+  nail: { name: 'Nagel', kind: 'weapon', cost: 1, target: 'any', dmg: 2, chain: true, weapon: 'nailgun', art: 'nagelpistole', desc: '2 Schaden an einem Gegner und noch einem zweiten.' },
+  // Einmal-Karten
+  molotov: { name: 'Brandflasche', kind: 'once', cost: 1, target: 'self', area: 'near', dmg: 2, burn: 3, rarity: 'common', where: 'Werktisch, Tankstellen, Autos', craft: { glass: 1, oil: 1, cloth: 1 }, art: 'brandflasche', desc: 'Alle vorne: 2 Schaden und Brennt.' },
+  smoke: { name: 'Rauchdose', kind: 'once', cost: 1, target: 'self', area: 'all', blind: 1, rarity: 'common', where: 'Werktisch, Baumarkt', craft: { metal: 1, cloth: 1, phosphate: 1 }, art: 'rauchdose', desc: 'Alle Gegner sind Geblendet: Ihr nächster Angriff geht daneben.' },
+  caltrops: { name: 'Krähenfüße', kind: 'once', cost: 1, target: 'self', area: 'far', slow: 2, rarity: 'common', where: 'Werktisch, Werkstätten, Schuppen', craft: { metal: 2, screws: 1 }, art: 'kraehenfuesse', desc: 'Alle hinten sind Verlangsamt: 2 Runden kommen sie nicht nach vorn.' },
+  firecracker: { name: 'Böller', kind: 'once', cost: 1, target: 'self', area: 'all', interrupt: true, silence: 2, rarity: 'common', where: 'Kioske, Supermärkte', art: 'boeller', desc: 'Alle hören auf auszuholen, Heuler verstummen 2 Runden.' },
+  lure: { name: 'Köderdose', kind: 'once', cost: 0, target: 'far', slow: 2, rarity: 'common', where: 'Supermärkte, Hofläden', art: 'koederdose', desc: 'Ein Gegner hinten frisst und kommt 2 Runden nicht nach vorn.' },
+  pepper: { name: 'Pfefferspray', kind: 'once', cost: 1, target: 'near', dmg: 1, blind: 1, rarity: 'common', where: 'Drogerien, Apotheken', art: 'pfefferspray', desc: '1 Schaden, der Gegner ist Geblendet.' },
+  dressing: { name: 'Notverband', kind: 'once', cost: 0, target: 'self', heal: 4, rarity: 'rare', where: 'Notlazarett-Kisten, Apotheken', art: 'notverband', desc: 'Heilt 4, ohne Medizin.' },
+  adrenaline: { name: 'Adrenalinspritze', kind: 'once', cost: 0, target: 'self', gain: 2, heal: 2, rarity: 'rare', where: 'Arztpraxen, Notlazarett-Kisten', art: 'adrenalin', desc: '2 Kraft mehr und 2 Gesundheit.' },
+  flare: { name: 'Signalfackel', kind: 'once', cost: 0, target: 'any', blind: 1, vs: { kind: 'watcher', dmg: 2, push: true }, rarity: 'rare', where: 'Konvoi-Wracks, Haltestellen', art: 'signalfackel', desc: 'Ein Gegner ist Geblendet. Der Bleiche Wächter nimmt 2 Schaden und weicht zurück.' },
+  flashbang: { name: 'Blendgranate', kind: 'once', cost: 1, target: 'self', area: 'all', stun: true, rarity: 'epic', where: 'Konvoi-Wracks', art: 'blendgranate', desc: 'Alle Gegner setzen eine Runde aus.' },
+  grenade: { name: 'Granate', kind: 'once', cost: 2, target: 'self', area: 'all', dmg: 6, rarity: 'legendary', where: 'Konvoi-Wracks, Hilfsabwürfe', art: 'granate', desc: '6 Schaden an allen Gegnern.' },
+  // Fähigkeiten
+  counter: { name: 'Konter', kind: 'skill', cost: 1, target: 'self', block: 2, thorns: 2, scale: { block: 1, thorns: 1 }, rarity: 'common', where: 'Notizbücher', art: 'konter', desc: 'Fängt 2 ab. Wer dich bis zur nächsten Runde trifft, nimmt 2 Schaden.' },
+  steady: { name: 'Ruhige Hand', kind: 'skill', cost: 0, target: 'self', focus: 2, scale: { focus: 1 }, rarity: 'common', where: 'Notizbücher', art: 'ruhige-hand', desc: 'Der nächste Wurf oder Fernangriff macht 2 mehr Schaden.' },
+  breath: { name: 'Atem holen', kind: 'skill', cost: 0, target: 'self', draw: 2, scale: { draw: 1 }, rarity: 'common', where: 'Notizbücher', art: 'atem-holen', desc: 'Ziehe 2 Karten.' },
+  sweep: { name: 'Rundumschlag', kind: 'skill', cost: 2, target: 'self', area: 'near', dmg: 2, scale: { dmg: 1 }, rarity: 'rare', where: 'Notizbücher, Alpha-Wandler', art: 'rundumschlag', desc: '2 Schaden an allen vorne.' },
+  sneak: { name: 'Leise Sohlen', kind: 'skill', cost: 0, target: 'self', passive: true, rarity: 'rare', where: 'Notizbücher (nachts häufiger)', art: 'leise-sohlen', desc: 'Wirkt von selbst: Wer dich nicht entdeckt hat, fängt eine Runde später an. Ab Stufe II hast du in der ersten Runde 1 Kraft mehr.' },
+  scavenger: { name: 'Plündererin', kind: 'skill', cost: 0, target: 'self', passive: true, rarity: 'rare', where: 'Notizbücher, Händler', art: 'pluendererin', desc: 'Wirkt von selbst: Nach jedem Sieg ein Fund mehr (pro Stufe einer).' },
+  radio: { name: 'Funker', kind: 'skill', cost: 1, target: 'any', stun: true, silence: 9, rarity: 'epic', where: 'Notizbücher (an hohen Punkten häufiger)', art: 'funker', desc: 'Ein Gegner verliert seine Runde. Ein Heuler ruft in diesem Kampf keine Hilfe mehr.' },
+  secondwind: { name: 'Zweiter Atem', kind: 'skill', cost: 0, target: 'self', passive: true, heal: 4, scale: { heal: 2 }, rarity: 'epic', where: 'Alpha-Wandler', art: 'zweiter-atem', desc: 'Wirkt von selbst, einmal pro Kampf: Fällst du unter 3 Gesundheit, heilst du 4.' },
+  packleader: { name: 'Rudelführer', kind: 'skill', cost: 1, target: 'self', ally: { rounds: 3, dmg: 2 }, scale: { allyDmg: 1 }, rarity: 'legendary', where: 'Alpha-Wandler', art: 'rudelfuehrer', desc: 'Ein Hund kämpft 3 Runden mit und beißt jede Runde für 2 Schaden zu.' },
+  laststand: { name: 'Letztes Gefecht', kind: 'skill', cost: 0, target: 'self', passive: true, rarity: 'legendary', where: 'Alpha-Wandler', art: 'letztes-gefecht', desc: 'Wirkt von selbst, einmal am Tag: Ein tödlicher Treffer lässt dich mit 1 Gesundheit stehen.' },
+};
+
+/** Sammelkarten in der Reihenfolge des Sammelbuchs. */
+export const ONCE_CARDS: CardId[] = ['molotov', 'smoke', 'caltrops', 'firecracker', 'lure', 'pepper', 'dressing', 'adrenaline', 'flare', 'flashbang', 'grenade'];
+export const SKILL_CARDS: CardId[] = ['counter', 'steady', 'breath', 'sweep', 'sneak', 'scavenger', 'radio', 'secondwind', 'packleader', 'laststand'];
+/** Höchstens so viele Einmal-Karten je Sorte nimmt man in den Kampf mit. */
+export const ONCE_CARRY = 3;
+/** So viele gleiche Fähigkeiten braucht es insgesamt für Stufe II und III. */
+export const SKILL_LEVELS = [1, 4, 10];
+export const skillLevel = (copies: number): number => (copies >= SKILL_LEVELS[2] ? 3 : copies >= SKILL_LEVELS[1] ? 2 : copies >= 1 ? 1 : 0);
+
+/** Wert einer Karte auf ihrer Stufe (1 = Grundwert). */
+export function cardStat(id: CardId, stat: CardStat, level = 1): number {
+  const c = CARDS[id];
+  const base = stat === 'allyDmg' ? (c.ally?.dmg ?? 0) : ((c[stat] as number | undefined) ?? 0);
+  return base + Math.max(0, level - 1) * (c.scale?.[stat] ?? 0);
+}
+
+/**
+ * Sammelkarten und Waffen beim Durchsuchen: je Ortstyp, was es dort geben kann (mit Chance).
+ * Höchstens eins pro Suche. „w:…“ ist eine Waffe.
+ */
+export const CARD_LOOT: Partial<Record<SpotKind, [CardId | `w:${WeaponId}`, number][]>> = {
+  fuel: [['molotov', 0.22], ['flare', 0.03]],
+  car: [['molotov', 0.05], ['w:golfclub', 0.02], ['flare', 0.02]],
+  hardware: [['smoke', 0.1], ['caltrops', 0.1], ['w:shovel', 0.05], ['w:axe', 0.03], ['w:nailgun', 0.015]],
+  market: [['lure', 0.12], ['firecracker', 0.08], ['w:slingshot', 0.015]],
+  pharmacy: [['pepper', 0.1], ['dressing', 0.05], ['adrenaline', 0.025]],
+  shed: [['caltrops', 0.05], ['w:shovel', 0.05], ['w:axe', 0.02]],
+  backpack: [['firecracker', 0.04], ['dressing', 0.03], ['w:slingshot', 0.02]],
+  container: [['pepper', 0.03], ['lure', 0.03]],
+  stop: [['flare', 0.04], ['firecracker', 0.03]],
+  convoy: [['flare', 0.35], ['flashbang', 0.12], ['grenade', 0.04]],
+  heli: [['dressing', 0.2], ['adrenaline', 0.1], ['grenade', 0.03]],
+  bunker: [['flashbang', 0.15], ['grenade', 0.05], ['adrenaline', 0.1]],
+  airdrop: [['dressing', 0.25], ['adrenaline', 0.15], ['grenade', 0.05]],
 };
 
 /** Grund-Karten, die man immer hat. */
 export const BASE_DECK: CardId[] = ['punch', 'punch', 'punch', 'dodge', 'dodge', 'kick', 'throw', 'throw'];
 /** Zusätzliche Karten pro heiler Waffe. */
-export const WEAPON_CARDS: Record<WeaponId, CardId[]> = { crowbar: ['pry', 'pry', 'pry'], bat: ['swing', 'swing', 'homerun'], crossbow: ['bolt', 'bolt', 'aim'] };
+export const WEAPON_CARDS: Record<WeaponId, CardId[]> = {
+  crowbar: ['pry', 'pry', 'pry'],
+  bat: ['swing', 'swing', 'homerun'],
+  crossbow: ['bolt', 'bolt', 'aim'],
+  shovel: ['spade', 'spade', 'spade'],
+  axe: ['chop', 'chop'],
+  golfclub: ['drive', 'drive'],
+  slingshot: ['pellet', 'pellet', 'pellet'],
+  nailgun: ['nail', 'nail', 'nail'],
+};
 
 export const TACTICS = {
   /** Kraft pro Runde */

@@ -34,6 +34,8 @@ export const REJECT_TEXT: Record<RejectReason, string> = {
   no_gear: 'Das hast du noch nicht gefunden.',
   zone_closed: 'Sperrgebiet: Hier brennen Landstreifer eine Fiebergrube aus. Komm wieder, wenn der Rauch abgezogen ist.',
   need_filter: 'Staubsturm: Im Staub schlafen Keime. Ohne Staubmaske oder Gasmaske wühlst du hier nicht.',
+  gone: 'Zu spät, die Sichtung ist weg. Bald taucht woanders etwas auf.',
+  already: 'Das hast du schon eingesammelt.',
 };
 
 /** Fundstellen in der Mehrzahl, für Hinweise wie "Zu finden in: Autos, Packstationen". */
