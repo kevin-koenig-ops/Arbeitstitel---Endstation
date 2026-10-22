@@ -144,6 +144,8 @@ function pickW<T>(r: Rng, list: Weighted<T>): T {
   return list[list.length - 1][0];
 }
 const SOOT_TINT: [number, number, number] = [0.42, 0.38, 0.35];
+/** Verkohltes Dach (ausgebrannte Häuser). */
+const SOOT_ROOF: [number, number, number] = [0.46, 0.42, 0.4];
 // Überwiegend grün, ein paar kränkliche und herbstliche Kronen
 const LEAF = ['#5f7a3a', '#6b8540', '#58703a', '#7a8f45', '#64803c', '#708a42', '#8a8a3e', '#a8873a'];
 const CONIFER = ['#3f5a35', '#4a6638', '#365232'];
@@ -1000,7 +1002,8 @@ function houseSpec(ring: Ring, key: string, state: 'intact' | 'burnt' | 'ruin', 
   else if (facade && base === 0 && state !== 'ruin') top = 0.5 + Math.max(1, Math.round((wallTop - 0.5) / 2.9)) * 2.9;
   const tint = facade ? (state === 'burnt' ? SOOT_TINT : pick(r, FACADE_TINTS[facade])) : rgb(wall);
   const flatShape = base > 0 || !simple || area > 450 || facade === 'platte';
-  const roof = state !== 'intact' ? 'none' : flatShape ? 'flat' : shed ? (r() < 0.5 ? 'flat' : 'pitched') : 'pitched';
+  // Ruinen haben kein Dach mehr; ausgebrannte ein verkohltes mit Loch (sonst sieht es wie ein Fehler aus)
+  const roof = state === 'ruin' ? 'none' : flatShape ? 'flat' : shed ? (r() < 0.5 ? 'flat' : 'pitched') : 'pitched';
   const roofKind = zone === 'civic' ? (r() < 0.6 ? 'schiefer' : 'ziegel') : pickW(r, shed ? ROOFS_SHED : hall ? ROOFS_HALL : barn ? ROOFS_BARN : ROOFS_HOUSE);
   const flatKind = pickW(r, shed ? FLATS_SHED : hall ? FLATS_HALL : FLATS_HOUSE);
   return {
@@ -1011,7 +1014,7 @@ function houseSpec(ring: Ring, key: string, state: 'intact' | 'burnt' | 'ruin', 
     tint,
     state,
     roof,
-    roofTint: pick(r, ROOF_TINTS),
+    roofTint: state === 'burnt' ? SOOT_ROOF : pick(r, ROOF_TINTS),
     roofKind,
     flatKind,
     shed: shed || undefined,

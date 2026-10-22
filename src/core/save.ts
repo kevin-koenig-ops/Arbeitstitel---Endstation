@@ -3,7 +3,7 @@
 // Umzug vom Gerät in ein Konto).
 
 import { cellIndex, PLOT, SECTION, sectionObstacles, START_SECTIONS, type SiteId } from './building';
-import { COLLECTIBLES, KRAM, MAX_HEALTH, RESOURCE_ORDER, START_WEAPONS } from './content';
+import { COLLECTIBLES, KRAM, MAX_HEALTH, portraitIndex, RESOURCE_ORDER, START_WEAPONS } from './content';
 import { FURNITURE, type FurnitureId } from './furniture';
 import { checkSets, SCHEMA_VERSION, startGear } from './rules';
 import type { PlayerState } from './types';
@@ -11,6 +11,11 @@ import type { PlayerState } from './types';
 type Raw = Record<string, unknown> & { schema?: number };
 
 const MIGRATIONS: Record<number, (s: Raw) => void> = {
+  // Version 14 -> 15: Porträts statt Figur. Das ähnlichste Porträt zum bisherigen Aussehen.
+  14: (s) => {
+    const c = s.character as { look?: { hair: number; color: number; skin: number; portrait?: number } } | undefined;
+    if (c?.look) c.look.portrait = portraitIndex(c.look);
+  },
   // Version 13 -> 14: Trupps auf der Karte (besiegte merkt sich das Spiel für ihre Runde).
   13: (s) => {
     s.patrols = {};

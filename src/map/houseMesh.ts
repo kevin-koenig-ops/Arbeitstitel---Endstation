@@ -289,13 +289,14 @@ function buildOne(h: HouseSpec, ring: Pt[], M: Record<MatKey, MeshData>, shadow:
     }
   }
 
-  // Ohne Dach (ausgebrannt, Ruine): drinnen liegt Schutt
-  if (h.roof === 'none') {
+  // Ruinen (ohne Dach) und ausgebrannte Häuser (Loch im Dach): drinnen liegt Schutt
+  if (h.roof === 'none' || h.state === 'burnt') {
     for (const t of triangulate(ring)) {
       const [a, b, d] = t.map((i) => ring[i]);
       tri(M.plain, [a[0], a[1], h.base + 0.25], [b[0], b[1], h.base + 0.25], [d[0], d[1], h.base + 0.25], [0, 0], [0, 0], [0, 0], RUBBLE);
     }
-  } else {
+  }
+  if (h.roof !== 'none') {
     let done = false;
     if (h.roof === 'pitched') done = gableRoof(h, ring, area, M, rnd) || hipRoof(h, ring, c, M);
     if (!done) flatRoof(h, ring, M);
@@ -326,19 +327,19 @@ function gableRoof(h: HouseSpec, ring: Pt[], area: number, M: Record<MatKey, Mes
   const uA = (hl + o) * 2 / rm;
   const roofMesh = h.snow ? M.roofSnow : M[roofKey(kind)];
   const roofTint = h.snow ? SNOW_TINT : h.roofTint;
+  // Ausgebrannt: Dachflächen in Stücken, eins ist eingestürzt
+  const segs = h.state === 'burnt' ? Math.max(2, Math.round((box.L + 2 * o) / 4)) : 1;
+  const holeSide = rnd() < 0.5 ? -1 : 1;
+  const holeSeg = h.state === 'burnt' ? Math.floor(rnd() * segs) : -1;
   for (const side of [-1, 1]) {
-    quad(
-      roofMesh,
-      at(-hl - o, side * (hw + o), eave),
-      at(hl + o, side * (hw + o), eave),
-      at(hl + o, 0, ridge),
-      at(-hl - o, 0, ridge),
-      [0, 0],
-      [uA, 0],
-      [uA, slopeLen],
-      [0, slopeLen],
-      roofTint,
-    );
+    for (let k = 0; k < segs; k++) {
+      if (side === holeSide && k === holeSeg) continue;
+      const a0 = -hl - o + ((box.L + 2 * o) * k) / segs;
+      const a1 = -hl - o + ((box.L + 2 * o) * (k + 1)) / segs;
+      const u0 = (uA * k) / segs;
+      const u1 = (uA * (k + 1)) / segs;
+      quad(roofMesh, at(a0, side * (hw + o), eave), at(a1, side * (hw + o), eave), at(a1, 0, ridge), at(a0, 0, ridge), [u0, 0], [u1, 0], [u1, slopeLen], [u0, slopeLen], roofTint);
+    }
   }
   // Giebel: Dreiecke über den Stirnseiten, mit derselben Fassade
   const wallMesh = h.facade ? M[h.facade] : M.plain;
@@ -383,7 +384,10 @@ function hipRoof(h: HouseSpec, ring: Pt[], c: Pt, M: Record<MatKey, MeshData>): 
     const d = Math.hypot(x - c[0], y - c[1]) || 1;
     return [x + ((x - c[0]) / d) * OVERHANG, y + ((y - c[1]) / d) * OVERHANG];
   });
+  // Ausgebrannt: eine Dachfläche ist eingestürzt
+  const hole = h.state === 'burnt' ? Math.floor(h.seed * eaves.length) : -1;
   for (let i = 0; i < eaves.length; i++) {
+    if (i === hole) continue;
     const a = eaves[i];
     const b = eaves[(i + 1) % eaves.length];
     const ex = b[0] - a[0];

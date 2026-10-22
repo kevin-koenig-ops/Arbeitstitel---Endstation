@@ -6,16 +6,16 @@ import { offsetM, toTile } from '../core/geo';
 import type { LatLon } from '../core/types';
 
 const Z = 12;
-const URL = (x: number, y: number) => `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${Z}/${x}/${y}.png`;
+const URL = (z: number, x: number, y: number) => `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`;
 const tiles = new Map<string, Promise<Uint8ClampedArray | null>>();
 
-function loadTile(x: number, y: number): Promise<Uint8ClampedArray | null> {
-  const key = `${x}/${y}`;
+function loadTile(x: number, y: number, z = Z): Promise<Uint8ClampedArray | null> {
+  const key = `${z}/${x}/${y}`;
   let p = tiles.get(key);
   if (!p) {
     p = (async () => {
       try {
-        const res = await fetch(URL(x, y));
+        const res = await fetch(URL(z, x, y));
         if (!res.ok) throw new Error(String(res.status));
         const bmp = await createImageBitmap(await res.blob());
         const c = document.createElement('canvas');
@@ -37,12 +37,12 @@ function loadTile(x: number, y: number): Promise<Uint8ClampedArray | null> {
   return p;
 }
 
-/** Höhe in Metern an einem Punkt (oder null, wenn die Kachel fehlt). */
-export async function elevationAt(p: LatLon): Promise<number | null> {
-  const t = toTile(p, Z);
+/** Höhe in Metern an einem Punkt (oder null, wenn die Kachel fehlt). zoom 14 ist genauer (für die Anzeige). */
+export async function elevationAt(p: LatLon, zoom = Z): Promise<number | null> {
+  const t = toTile(p, zoom);
   const tx = Math.floor(t.x);
   const ty = Math.floor(t.y);
-  const data = await loadTile(tx, ty);
+  const data = await loadTile(tx, ty, zoom);
   if (!data) return null;
   const px = Math.min(255, Math.max(0, Math.floor((t.x - tx) * 256)));
   const py = Math.min(255, Math.max(0, Math.floor((t.y - ty) * 256)));

@@ -11,7 +11,7 @@ import { classifyRegion, hearRangeM, sightRangeM } from '../../core/terrain';
 import { dropSpot, eventCenter } from '../../core/worldEvents';
 import { PatrolControl, type LivePatrol } from '../game/patrolControl';
 import { currentRegion, setCurrentRegion } from '../game/worldState';
-import { reliefAround } from '../../map/elevation';
+import { elevationAt, reliefAround } from '../../map/elevation';
 import { DEMO, GameMap, type SpotView } from '../../map/GameMap';
 import { WalkNet } from '../../map/walkNet';
 import {
@@ -23,8 +23,7 @@ import {
   type LocationProvider,
 } from '../../services/location';
 import type { App, Screen } from '../app';
-import { avatarSvg } from '../avatar';
-import { faceEl, loadPortraits } from '../portrait';
+import { faceEl } from '../portrait';
 import { Joystick, useButton } from '../joystick';
 import { append, clear, h, svgEl } from '../dom';
 import { openPackPanel, type PackTab } from '../game/packPanel';
@@ -53,59 +52,19 @@ export function gameScreen(app: App): Screen {
     queueMicrotask(() => app.go('menu'));
     return { el: h('div', { class: 'screen' }) };
   }
-  const avatar = avatarSvg(state0.character.look, 64);
-  const whoFace = svgEl(avatar, 'who-face');
-  // 3D-Spielfigur auf der Karte (wird nachgeladen)
-  let figure: import('../../base/figureView').FigureView | null = null;
+  // Du auf der Karte: dein Porträt (statt einer 3D-Figur). Unterwegs wippt es leicht.
+  const myLook = state0.character.look;
+  const whoFace = faceEl(myLook, 64, 'who-face');
   let figPos: LatLon | null = null;
-  let heading = 180;
   let walkTimer = 0;
-  let figT = 0;
-  const applyFigureYaw = () => {
-    if (!figure || !gm) return;
-    const rel = ((heading - gm.bearing) * Math.PI) / 180;
-    figure.setYaw(Math.PI - rel);
-  };
   const updateFigure = (f: Fix) => {
-    if (!figure) return;
-    const now = performance.now();
-    if (!figPos) {
+    if (!gm) return;
+    if (!figPos) figPos = f.pos;
+    if (distanceM(figPos, f.pos) > 1.2) {
       figPos = f.pos;
-      figT = now;
-    }
-    const d = distanceM(figPos, f.pos);
-    if (d > 1.2) {
-      // Gangart nach Tempo: gehen, joggen, rennen
-      const speed = d / Math.max(0.05, (now - figT) / 1000);
-      heading = bearingDeg(figPos, f.pos);
-      figPos = f.pos;
-      figT = now;
-      figure.setMoving(Math.min(3, Math.max(0.6, speed / 1.7)));
+      gm.setPlayerWalking(true);
       clearTimeout(walkTimer);
-      walkTimer = window.setTimeout(() => figure?.setMoving(0), f.simulated ? 350 : 2500);
-    } else if (!f.simulated && now - figT > 2500) figT = now - 2500;
-    applyFigureYaw();
-  };
-  const loadFigure = async () => {
-    let fv: typeof import('../../base/figureView');
-    try {
-      fv = await import('../../base/figureView');
-    } catch {
-      return;
-    }
-    if (destroyed || !gm) return;
-    try {
-      const look = app.backend.current()!.character.look;
-      figure = new fv.FigureView({ mode: 'marker', width: 72, height: 96 });
-      figure.setLook(look);
-      gm.setPlayerFigure(figure.canvas, figure.anchorY(), 96, figure.figureHeightPx());
-      applyFigureYaw();
-      figure.start();
-      gm.map.on('rotate', applyFigureYaw);
-      await loadPortraits();
-      whoFace.replaceWith(faceEl(look, 64, 'who-face'));
-    } catch {
-      figure = null;
+      walkTimer = window.setTimeout(() => gm?.setPlayerWalking(false), f.simulated ? 350 : 2500);
     }
   };
 
@@ -125,7 +84,60 @@ export function gameScreen(app: App): Screen {
   // Kompass: Nadel zeigt nach Norden. Antippen: Karte nach Norden, nochmal: Karte dreht sich mit deiner Blickrichtung
   const needle = h('span', { class: 'compass-needle', 'aria-hidden': 'true' }, h('i', null, 'N'));
   const compassBtn = h('button', { class: 'iconbtn compass', type: 'button', 'aria-label': 'Kompass', onclick: () => toggleCompass() }, needle);
-  const envChip = h('button', { class: 'env-chip', type: 'button', onclick: () => app.toast(`${ambienceEffects(currentAmbience())} Gegend: ${REGIONS[currentRegion()].name}. ${REGIONS[currentRegion()].desc}`) });
+  // Höhe über dem Meer (aus den Höhendaten der Karte), klein unter dem Kompass
+  const altChip = h('button', {
+    class: 'alt-chip',
+    type: 'button',
+    hidden: true,
+    onclick: () => app.toast('Höhe über dem Meer, aus den Höhendaten der Karte (auf etwa 10 m genau). Die braunen Linien auf der Karte sind Höhenlinien: alle 5 m eine. Von oben siehst du weiter.'),
+  });
+  let altAt: LatLon | null = null;
+  const updateAltitude = (f: Fix) => {
+    if (mapMode !== 'real' || (altAt && distanceM(altAt, f.pos) < 15)) return;
+    altAt = f.pos;
+    void elevationAt(f.pos, 14).then((m) => {
+      if (destroyed || m === null) return;
+      altChip.hidden = false;
+      altChip.replaceChildren(svgEl(icon('mountain', 13)), `${Math.round(m)} m`);
+      altChip.setAttribute('aria-label', `Höhe: ${Math.round(m)} Meter über dem Meer`);
+    });
+  };
+  const envChip = h('button', { class: 'env-chip', type: 'button', onclick: () => app.toast(ambienceEffects(currentAmbience())) });
+  // Gegend: nur ein kleines Symbol; antippen zeigt, was hier leicht und was schwer ist
+  const regionTip = h('div', { class: 'region-tip', role: 'tooltip', hidden: true });
+  let regionTipTimer = 0;
+  const hideRegionTip = () => {
+    regionTip.hidden = true;
+    clearTimeout(regionTipTimer);
+  };
+  const regionBtn = h('button', {
+    class: 'region-chip',
+    type: 'button',
+    onclick: (e: Event) => {
+      e.stopPropagation();
+      if (!regionTip.hidden) return hideRegionTip();
+      const r = REGIONS[currentRegion()];
+      regionTip.replaceChildren(h('strong', null, r.name), h('span', null, r.desc));
+      regionTip.hidden = false;
+      clearTimeout(regionTipTimer);
+      regionTipTimer = window.setTimeout(hideRegionTip, 7000);
+    },
+  });
+  regionTip.addEventListener('click', hideRegionTip);
+  const regionWrap = h('span', { class: 'region-wrap' }, regionBtn, regionTip);
+  const REGION_ICON: Record<RegionId, string> = { city: 'rCity', town: 'rTown', village: 'rVillage', wild: 'rWild', mountain: 'mountain', coast: 'rCoast', desert: 'rDesert', snow: 'rSnow' };
+  const paintRegion = (changed: boolean) => {
+    const r = currentRegion();
+    regionBtn.replaceChildren(svgEl(icon(REGION_ICON[r], 16)));
+    regionBtn.setAttribute('aria-label', `Gegend: ${REGIONS[r].name}`);
+    regionBtn.title = REGIONS[r].name;
+    if (changed) {
+      // Neue Gegend: das Symbol leuchtet kurz auf, statt einer Einblendung
+      regionBtn.classList.remove('pulse');
+      void regionBtn.offsetWidth;
+      regionBtn.classList.add('pulse');
+    }
+  };
   const goals = goalChip(app, () => openProgress());
   // Versteck in der Nähe: kalt, warm, heiß (und dann ausgraben)
   const cacheChip = h('button', { class: 'env-chip cache-chip', type: 'button', hidden: true });
@@ -181,15 +193,18 @@ export function gameScreen(app: App): Screen {
         cacheChip,
         tierChip,
         sectorChip,
+        regionWrap,
         envChip,
         h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Menü', onclick: () => openPause() }, svgEl(icon('menu', 20))),
       ),
     ),
     compassBtn,
+    altChip,
     banners,
-    packBtn,
-    h('div', { class: 'hud-bottom' }, locChip, homeBtn, gaitBtn, locateBtn),
+    // Unten rechts: Rucksack als Hauptknopf in der Ecke, darüber Zentrieren
+    h('div', { class: 'hud-bottom' }, locChip, homeBtn, gaitBtn, h('div', { class: 'hud-br' }, locateBtn, packBtn)),
   );
+  paintRegion(false);
   const el = h('div', { class: 'screen game' }, mapEl, tilt, fog, tint, wfog, dust, bolt, hud, sheetHost, overlayHost);
 
   // --- Zustand -------------------------------------------------------------------
@@ -810,7 +825,7 @@ export function gameScreen(app: App): Screen {
       setCurrentRegion(r);
       if (regionAt && (!regionKnown || r !== before)) {
         regionKnown = true;
-        app.toast(`Gegend: ${REGIONS[r].name}. ${REGIONS[r].desc}`);
+        paintRegion(true);
       }
       const nb = relief && relief.above >= 25 ? 1.6 : 1;
       if (nb > viewBonus) app.toast('Aussicht: Von hier oben siehst du weiter, auch Trupps schon von Weitem.', 'good');
@@ -1146,7 +1161,7 @@ export function gameScreen(app: App): Screen {
     if (!gm || !s) return;
     hideBanner('gps');
     // Leicht und flüssig: Figur und Kamera
-    gm.setPlayer(f.pos, avatar);
+    gm.setPlayer(f.pos, () => faceEl(myLook, 42, 'player-face'));
     updateFigure(f);
     if (first) gm.centerOn(f.pos, false);
     else if (gm.follow) gm.centerOn(f.pos, !f.simulated);
@@ -1183,6 +1198,7 @@ export function gameScreen(app: App): Screen {
     if (provider instanceof SimulatedLocation && provider.moving && routeOff.length) gm.setRoute(provider.remaining, routeOff.slice(provider.leg));
     checkRoam(f);
     updateRegion(f);
+    updateAltitude(f);
     refreshEvents(f);
     void explore(f);
     if (first) renderSectorChip();
@@ -1247,7 +1263,27 @@ export function gameScreen(app: App): Screen {
                     : `${ENEMIES[end.enemy].name} erledigt`,
         );
       else if (end.outcome === 'fled') app.toast('Du hast dich zurückgezogen.');
+      else if (end.outcome === 'lost') respawnHome();
     });
+  };
+
+  /**
+   * Niedergeschlagen: Du kommst zu Hause wieder zu dir. Beim Laufen per Tippen stehst du
+   * danach wirklich dort; mit GPS geht das nicht, dann öffnet sich nur dein Zuhause.
+   */
+  const respawnHome = () => {
+    const home = getBasePlace();
+    if (provider instanceof SimulatedLocation) {
+      provider.halt();
+      gm?.setRoute(null);
+      gm?.setTarget(null);
+      if (home) {
+        provider.moveTo(home.pos);
+        gm?.centerOn(home.pos, false);
+      }
+    }
+    if (home) window.setTimeout(() => !destroyed && void openBase(), 400);
+    else app.toast('Du kommst wieder zu dir. Such dir bald ein Zuhause, dann wachst du dort auf.', 'warn');
   };
 
   const startFight = async (spot: Spot) => {
@@ -1557,9 +1593,18 @@ export function gameScreen(app: App): Screen {
         season: seasonOf(app.settings.get()),
         onTap: (p) => {
           sheet.close();
+          hideRegionTip();
           if (provider?.kind === 'sim' && !joy) walkTo(p);
         },
-        onSpotTap: (id) => sheet.open(id),
+        onSpotTap: (id) => {
+          // Unterwegs einen Ort angetippt: die Figur bleibt stehen (weiter geht es mit „Hinlaufen“)
+          if (provider instanceof SimulatedLocation && provider.moving) {
+            provider.halt();
+            gm?.setRoute(null);
+            gm?.setTarget(null);
+          }
+          sheet.open(id);
+        },
         onBaseTap: () => void openBase(),
         onCacheTap: (id) => showCacheHint(id),
         onPatrolTap: (id) => onPatrolTap(id),
@@ -1613,7 +1658,6 @@ export function gameScreen(app: App): Screen {
       provider.start(onFix, onLocError);
       setupJoystick();
       renderLocChip();
-      void loadFigure();
 
       patrols = new PatrolControl({
         app,
@@ -1659,7 +1703,6 @@ export function gameScreen(app: App): Screen {
       destroyed = true;
       particles?.destroy();
       ambience?.destroy();
-      figure?.dispose();
       clearTimeout(walkTimer);
       clearTimeout(heavyTimer);
       teardownJoystick();

@@ -142,7 +142,7 @@ import { resolvePatrol } from './patrols';
 import { resolveDropSpot, zonesAt } from './worldEvents';
 import { GOALS } from './progress';
 
-export const SCHEMA_VERSION = 14;
+export const SCHEMA_VERSION = 15;
 
 /** Startausrüstung: alles gefunden und angezogen. */
 export function startGear(now: number): GearState {
@@ -673,10 +673,15 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
         }
         events.push(loot, ...checkSets(state, ctx.now));
       } else if (action.outcome === 'lost') {
+        // Niedergeschlagen: alles aus dem Rucksack ist weg. Lager zu Hause, Waffen und
+        // Ausrüstung bleiben. Du kommst zu Hause wieder zu dir (das zeigt die Oberfläche).
         state.health = 0;
         state.healthAt = ctx.now;
-        const r = rngFrom(ctx.worldSeed, state.playerId, 'niederlage', c.spot.id, c.window);
-        events.push({ type: 'combatLost', enemy: c.enemy, dropped: dropSome(state, r), weaponBroke });
+        const dropped = { ...state.pack };
+        const droppedKram = { ...state.packKram };
+        state.pack = {};
+        state.packKram = {};
+        events.push({ type: 'combatLost', enemy: c.enemy, dropped, droppedKram, weaponBroke });
       } else {
         state.health = Math.max(1, health);
         if (state.health < MAX_HEALTH) state.healthAt = ctx.now;
@@ -1401,22 +1406,6 @@ function takeKram(bag: KramBag, kram: KramId) {
 }
 
 /** Bei einer Niederlage fällt etwas aus dem Rucksack. Nie viel, nie der Bus. */
-function dropSome(state: PlayerState, r: () => number): Partial<Inventory> {
-  // Nur aus dem Rucksack, nie aus dem Lager zu Hause. Ist er leer, ein wenig Proviant.
-  const dropped: Partial<Inventory> = {};
-  const inPack = RESOURCE_ORDER.filter((k) => (state.pack[k] ?? 0) > 0);
-  const have = inPack.length ? inPack : (['food', 'water'] as Resource[]).filter((k) => state.inventory[k] > 0);
-  const bag = inPack.length ? state.pack : state.inventory;
-  for (let i = 0; i < 2 && have.length; i++) {
-    const k = have.splice(Math.floor(r() * have.length), 1)[0];
-    const n = Math.min(bag[k] ?? 0, 1 + Math.floor(r() * 2));
-    bag[k] = (bag[k] ?? 0) - n;
-    if (bag === state.pack && !bag[k]) delete state.pack[k];
-    dropped[k] = n;
-  }
-  return dropped;
-}
-
 /**
  * Grid-Fundstellen lassen sich aus ihrer ID nachrechnen, also prüfen wir sie.
  * POI-Fundstellen kommen aus den Kartendaten; im Mehrspieler prüft sie der Server

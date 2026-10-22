@@ -206,6 +206,15 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
             ['shoulder', 'Schulter'],
           ]),
         ),
+        row(
+          h('div', { class: 'set-label', id: 'lbl-fps' }, 'Bildrate (FPS)', h('small', null, 'Bilder pro Sekunde. 30 schont Akku und hält das Handy kühl, 60 ist flüssig. 90 und Max nur, wenn dein Bildschirm das kann.')),
+          segmented('fpsCap', 'lbl-fps', [
+            [30, '30'],
+            [60, '60'],
+            [90, '90'],
+            [0, 'Max'],
+          ]),
+        ),
       ],
     ],
     [

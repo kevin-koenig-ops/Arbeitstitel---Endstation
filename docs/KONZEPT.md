@@ -160,7 +160,7 @@ Knobeln passt perfekt zu „draußen kurz, zu Hause die Tiefe“: Hinweise finde
 - **Anlagen mit Nutzen:** Regentonne (Wasser) und Hochbeet (Nahrung) füllen sich von selbst, der Sanitätsschrank macht alle 8 Stunden Medizin. Der Holzofen kocht Eintopf (2 Nahrung, 1 Wasser, 1 Holz): heilt ganz und macht 3 Stunden satt, das bringt 20 % mehr Beute. Das Funkgerät empfängt alle 20 Stunden einen Funkspruch auf Kanal 4, oft mit einem Hinweis auf ein Versteck.
 - **Was fehlt und wo:** Fehlen Rohstoffe für ein Teil, sagt das Zuhause, welche und wo man sie oft findet.
 - **Rucksack:** Was du unterwegs findest (Rohstoffe und Kram), steckt im Rucksack. Bisher ohne feste Grenze. **Entschieden (22.10.):** Der Rucksack bekommt Fächer, am Anfang 12; größere Rucksäcke baut man am Werktisch. Vorräte (Nahrung, Wasser, Medizin) brauchen kein Fach. Ist er voll, wählt man, was liegen bleibt (nichts geht verloren, ohne dass man es weiß). Der Rucksack hat drei Reiter: Rucksack, Fundbuch (Sammelstücke, Sets, Erinnerungsstücke) und Ausrüstung (Gesundheit, Waffen).
-- **Lager:** Zu Hause packst du aus, dann liegt alles sicher im Lager. Gebaut wird nur aus dem Lager. Eine Niederlage kostet höchstens etwas aus dem Rucksack, nie aus dem Lager.
+- **Lager:** Zu Hause packst du aus, dann liegt alles sicher im Lager. Gebaut wird nur aus dem Lager. Eine Niederlage kostet den ganzen Rucksack, nie das Lager.
 
 ## Das Zuhause (Basisbau, das Herzstück für abends)
 
@@ -293,7 +293,7 @@ Die Häuser stehen schon als einfache Klötze in echter Höhe auf der Karte. Ech
 - **Bleicher Wächter (nur nachts):** Jagt allein, bewacht nachts manchmal Fundstellen oder streift durchs Unterholz. Sein Blick lähmt (nächste Runde eine Karte und eine Kraft weniger), dann weicht er ins Dunkel zurück (hinten, nur Wurf und Bolzen treffen) und springt dich an (Ausweichen hilft). Beute: Dinge aus den Kellern (Medizin, Elektronik, eine Taschenlampe), beim ersten Sieg sein Kellertagebuch als besonderes Erinnerungsstück. Eigenes 3D-Modell (von Kevin), Bewegung per Code.
 - **Unterholz:** Abseits der Wege im Wald geht es langsamer, und manchmal kommt dir etwas entgegen (danach ein paar Minuten Ruhe, nie wenn du erschöpft bist). Erst im Testmodus, mit echtem GPS später.
 - **Testmodus:** Im Menü „Test: Angriff“ löst einen Kampf gegen Gegner nach Wahl aus. Dort läuft die Figur im Ort nur über Straßen und Wege; die geplante Strecke ist als Linie zu sehen (gepunktet quer durchs Gelände).
-- **Niederlage ist kein Drama:** Ein paar Sachen fallen aus dem Rucksack (nie aus dem Lager), die Gesundheit kommt von selbst zurück. **Fliehen geht immer** und kostet nichts.
+- **Niederlage (seit 22.10., Kevin):** Alles aus dem Rucksack ist weg (Rohstoffe und Kram), Lager, Waffen und Ausrüstung bleiben. Du kommst zu Hause wieder zu dir (beim Laufen per Tippen stehst du dort, mit GPS öffnet sich dein Zuhause). Die Gesundheit kommt von selbst zurück. **Fliehen geht immer** und kostet nichts. Deshalb lohnt es sich, Gutes öfter heimzubringen.
 - Die Kampfregeln stehen in `core/tactics.ts` und sind deterministisch: Ein Server kann einen Kampf später nachrechnen.
 
 Später: mehr Karten und Gegner, Gefahrenstufe pro Ausflug, Horden, die durch echte Straßen ziehen, Nester als Raids für mehrere Spieler.

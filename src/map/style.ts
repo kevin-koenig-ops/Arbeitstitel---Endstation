@@ -11,6 +11,7 @@ import type {
   SourceSpecification,
   StyleSpecification,
 } from 'maplibre-gl';
+import { contourTiles } from './contours';
 
 export const MAP_COLORS = {
   ground: '#8c8663',
@@ -28,6 +29,8 @@ export const MAP_COLORS = {
   buildingTop: '#7a7062',
   label: '#3a342b',
   labelHalo: '#f1e9d6',
+  /** Höhenlinien: Erdbraun wie auf Wanderkarten. */
+  contour: '#6b4a26',
 };
 
 type Mode = 'real' | 'demo';
@@ -325,7 +328,7 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
       source: 'dem',
       paint: {
         // Kräftig, sonst geht das Gelände unter den Texturen verloren
-        'hillshade-exaggeration': z([[10, 1], [15, 0.95], [18, 0.8], [20, 0.7]]),
+        'hillshade-exaggeration': z([[10, 1], [18, 1], [20, 0.9]]),
         'hillshade-shadow-color': 'rgba(28, 20, 10, 1)',
         'hillshade-highlight-color': 'rgba(255, 240, 200, 0.9)',
         'hillshade-accent-color': 'rgba(40, 30, 16, 0.5)',
@@ -333,11 +336,41 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
         'hillshade-illumination-anchor': 'map',
       },
     });
+    // Höhenlinien wie auf der Wanderkarte, die kräftigen mit Höhe in Metern
+    layers.splice(at < 0 ? layers.length : at + 1, 0, {
+      id: 'contour-lines',
+      type: 'line',
+      source: 'contours',
+      'source-layer': 'contours',
+      minzoom: 12,
+      layout: { 'line-join': 'round' },
+      paint: {
+        'line-color': C.contour,
+        'line-opacity': ['match', ['get', 'level'], 1, 0.55, 0.3],
+        'line-width': ['interpolate', ['exponential', 1.6], ['zoom'], 12, ['match', ['get', 'level'], 1, 0.8, 0.4], 18, ['match', ['get', 'level'], 1, 1.6, 0.9]],
+      },
+    }, {
+      id: 'contour-labels',
+      type: 'symbol',
+      source: 'contours',
+      'source-layer': 'contours',
+      minzoom: 13,
+      filter: ['>', ['get', 'level'], 0],
+      layout: {
+        'symbol-placement': 'line',
+        'symbol-spacing': 320,
+        'text-field': ['concat', ['number-format', ['get', 'ele'], {}], ' m'],
+        'text-font': ['Noto Sans Regular'],
+        'text-size': 11,
+      },
+      paint: { 'text-color': C.contour, 'text-opacity': 0.8, 'text-halo-color': C.labelHalo, 'text-halo-width': 1.2 },
+    });
   }
 
   const empty: SourceSpecification = { type: 'geojson', data: { type: 'FeatureCollection', features: [] } };
   const sources: Record<string, SourceSpecification> = { range: empty, decor: { ...empty }, glow: { ...empty }, caches: { ...empty }, route: { ...empty }, zones: { ...empty }, patrols: { ...empty } };
   if (mode === 'real' && real) sources.omt = real.source;
+  if (mode === 'real') sources.contours = { type: 'vector', tiles: [contourTiles(DEM_TILES)], maxzoom: 15 };
   if (mode === 'real') sources.dem = { type: 'raster-dem', tiles: [DEM_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: 15, attribution: 'Höhen: <a href="https://registry.opendata.aws/terrain-tiles/">Terrain Tiles</a>' };
 
   const style: StyleSpecification = {

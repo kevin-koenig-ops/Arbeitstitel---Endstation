@@ -433,7 +433,8 @@ export interface DigState {
 
 export interface Character {
   name: string;
-  look: { hair: number; color: number; skin: number };
+  /** Aussehen; portrait = gewähltes Porträt (Nummer in PORTRAITS). */
+  look: { hair: number; color: number; skin: number; portrait?: number };
   background: BackgroundId;
 }
 
@@ -753,7 +754,7 @@ export type GameEvent =
   | { type: 'wild'; group: FoeKind[] }
   | { type: 'patrol'; group: FoeKind[]; opening: Opening }
   | { type: 'combatWon'; enemy: EnemyId; kills?: number; weaponBroke?: WeaponId }
-  | { type: 'combatLost'; enemy: EnemyId; dropped: Partial<Inventory>; weaponBroke?: WeaponId }
+  | { type: 'combatLost'; enemy: EnemyId; dropped: Partial<Inventory>; droppedKram: KramBag; weaponBroke?: WeaponId }
   | { type: 'fled'; weaponBroke?: WeaponId }
   | { type: 'crafted'; weapon: WeaponId }
   | { type: 'healed'; amount: number }

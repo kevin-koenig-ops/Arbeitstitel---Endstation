@@ -7,14 +7,14 @@
 // Die Regeln stehen in core/tactics.ts; hier wird nur angezeigt und abgespielt.
 
 import { WORLD_SEED } from '../../config';
-import { CARDS, CLIMATE, FOE_TACTICS, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, TACTICS, WEAPONS, type CardId, gearArmor, gearSum } from '../../core/content';
+import { CARDS, CLIMATE, FOE_TACTICS, KRAM, KRAM_ORDER, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, TACTICS, WEAPONS, type CardId, gearArmor, gearSum } from '../../core/content';
 import { isCold, isHot } from '../../core/terrain';
 import { seasonOf } from '../../services/settings';
 import { currentRegion } from './worldState';
 import { aliveFoes, createTactics, endTurn, flee, foeById, playCard, targetsFor, type Intent, type TacticsState, type TEvent } from '../../core/tactics';
 import { bestWeapon, currentHealth } from '../../core/rules';
 import type { DayPhase } from '../../core/sun';
-import type { EnemyId, GameEvent, Inventory, Spot } from '../../core/types';
+import type { EnemyId, GameEvent, Inventory, KramBag, Spot } from '../../core/types';
 import type { App } from '../app';
 import { append, clear, h, reducedMotion, sleep, svgEl } from '../dom';
 import { icon, resIcon } from '../icons';
@@ -738,7 +738,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     const broke = res.events.map((e) => ('weaponBroke' in e ? e.weaponBroke : undefined)).find(Boolean);
     if (broke) app.toast(`${WEAPONS[broke].name} ist zerbrochen. Am Werktisch baust du eine neue.`, 'warn');
     if (outcome === 'lost' && lost?.type === 'combatLost') {
-      setTimeout(() => showLost(lost.dropped), 900);
+      setTimeout(() => showLost(lost.dropped, lost.droppedKram), 900);
       return;
     }
     setTimeout(
@@ -750,16 +750,23 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     );
   };
 
-  const showLost = (dropped: Partial<Inventory>) => {
+  const showLost = (dropped: Partial<Inventory>, droppedKram: KramBag) => {
     const list = RESOURCE_ORDER.filter((k) => dropped[k]);
+    const kram = KRAM_ORDER.filter((k) => droppedKram[k]);
+    const nothing = !list.length && !kram.length;
     el.append(
       h(
         'div',
         { class: 'battle-result' },
-        h('h2', null, 'Das war knapp.'),
-        h('p', null, list.length ? 'Auf der Flucht fallen dir ein paar Sachen aus dem Rucksack:' : 'Du hast nichts verloren.'),
-        list.length ? h('ul', { class: 'dropped' }, list.map((k) => h('li', null, svgEl(resIcon(k, 16)), `${dropped[k]} ${RESOURCES[k].name}`))) : null,
-        h('p', { class: 'note' }, 'Deine Gesundheit kommt von selbst zurück, schneller mit Medizin oder einem Eintopf. Tipp: Schau, was die Gegner vorhaben, und weich dem Wuchtschlag aus.'),
+        h('h2', null, 'Niedergeschlagen.'),
+        h('p', null, nothing ? 'Dein Rucksack war leer, du hast nichts verloren. Du kommst zu Hause wieder zu dir.' : 'Du kommst zu Hause wieder zu dir. Alles aus dem Rucksack ist weg:'),
+        nothing
+          ? null
+          : h('ul', { class: 'dropped' }, [
+              ...list.map((k) => h('li', null, svgEl(resIcon(k, 16)), `${dropped[k]} ${RESOURCES[k].name}`)),
+              ...kram.map((k) => h('li', null, `${droppedKram[k]} × ${KRAM[k].name}`)),
+            ]),
+        h('p', { class: 'note' }, 'Dein Lager zu Hause, deine Waffen und deine Ausrüstung hast du noch. Die Gesundheit kommt von selbst zurück, schneller mit Medizin oder einem Eintopf. Tipp: Bring Gutes öfter nach Hause, bevor du dich mit einem Trupp anlegst.'),
         h(
           'button',
           {
@@ -770,7 +777,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
               onEnd({ outcome: 'lost', spot, enemy: combat.enemy, dropped });
             },
           },
-          'Zurück zur Karte',
+          'Nach Hause',
         ),
       ),
     );

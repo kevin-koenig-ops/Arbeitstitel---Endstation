@@ -880,6 +880,34 @@ export const JACKET_COLORS = ['#7a5a3a', '#4f5d3a', '#3d4b5c', '#7d3b2c', '#8a80
 export const SKIN_TONES = ['#e2b896', '#c18f6a', '#8d5f42', '#5c3d2b'] as const;
 export const HAIR_COLOR = '#2a211a';
 
+/**
+ * Porträts zum Aussuchen (statt einer Figur). Die gemalten Bilder liegen in
+ * src/assets/portraits/portrait-<Nummer>.webp (ab 1). Fehlt ein Bild, zeigt das Spiel eine
+ * einfache Zeichnung aus `look`. `look` bestimmt auch die Figur im Zuhause und im Kampf.
+ */
+export const PORTRAITS: readonly { who: string; look: { hair: number; color: number; skin: number } }[] = [
+  { who: 'Frau, kurze dunkle Haare, olivgrüne Regenjacke', look: { hair: 0, color: 1, skin: 0 } },
+  { who: 'Mann mit Bart und Mütze, braune Arbeitsjacke', look: { hair: 3, color: 0, skin: 1 } },
+  { who: 'Junge Frau mit Zopf, roter Schal', look: { hair: 2, color: 3, skin: 3 } },
+  { who: 'Älterer Mann, graue Haare, Brille', look: { hair: 0, color: 4, skin: 1 } },
+  { who: 'Mann mit Locken, blauer Kapuzenpulli', look: { hair: 0, color: 2, skin: 3 } },
+  { who: 'Frau mit Dutt und Strickjacke', look: { hair: 2, color: 4, skin: 0 } },
+  { who: 'Frau mit Bob, grüner Parka', look: { hair: 1, color: 1, skin: 1 } },
+  { who: 'Mann mit Glatze und Dreitagebart, geflickte Jacke', look: { hair: 3, color: 4, skin: 2 } },
+];
+
+/** Welches Porträt gehört zu diesem Aussehen? (Alte Spielstände: das ähnlichste.) */
+export function portraitIndex(look: { hair: number; color: number; skin: number; portrait?: number }): number {
+  if (look.portrait !== undefined && look.portrait >= 0 && look.portrait < PORTRAITS.length) return look.portrait;
+  let best = 0;
+  let bestScore = -1;
+  PORTRAITS.forEach((p, i) => {
+    const score = (p.look.skin === look.skin ? 3 : 0) + (p.look.hair === look.hair ? 2 : 0) + (p.look.color === look.color ? 1 : 0);
+    if (score > bestScore) (best = i), (bestScore = score);
+  });
+  return best;
+}
+
 // --- Erinnerungsstücke (Sammelobjekte) ------------------------------------------
 
 export interface MementoDef {

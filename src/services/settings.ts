@@ -52,13 +52,15 @@ export interface Settings {
   music: 'loop' | 'sometimes' | 'off';
   /** Lautstärke der Musik, 0 bis 1. */
   musicVolume: number;
+  /** Höchstens so viele Bilder pro Sekunde (0 = so viele der Bildschirm kann). Weniger schont den Akku. */
+  fpsCap: 30 | 60 | 90 | 0;
   /** Letzter bekannter Standort, nur auf diesem Gerät gespeichert. */
   lastPos?: LatLon;
 }
 
 const KEY = 'endstation.settings';
 
-const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', testSeason: 'auto', control: 'tap', lootGames: 'on', fullscreen: true, language: 'de', waterMotion: true, gait: 'fast', battleView: 'side', music: 'loop', musicVolume: 0.8 } as const;
+const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', testSeason: 'auto', control: 'tap', lootGames: 'on', fullscreen: true, language: 'de', waterMotion: true, gait: 'fast', battleView: 'side', music: 'loop', musicVolume: 0.8, fpsCap: 60 } as const;
 const DEFAULTS: Settings = IS_PREVIEW ? { ...COMMON, map: 'demo', location: 'sim' } : { ...COMMON, map: 'real', location: 'gps' };
 
 export class SettingsStore {

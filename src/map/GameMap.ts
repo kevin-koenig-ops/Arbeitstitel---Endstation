@@ -302,11 +302,12 @@ export class GameMap {
     }
   }
 
-  setPlayer(pos: LatLon, avatarSvg: string) {
+  /** Deine Position; face baut beim ersten Mal das Bild (Porträt) für den Marker. */
+  setPlayer(pos: LatLon, face: () => HTMLElement) {
     this.fog?.setPlayer(pos);
     this.playerPos = pos;
     if (!this.player) {
-      this.playerEl = h('div', { class: 'player' }, h('div', { class: 'player-ring' }), svgEl(avatarSvg, 'player-face'));
+      this.playerEl = h('div', { class: 'player' }, h('div', { class: 'player-ring' }), face());
       if (this.figure) this.attachFigure();
       this.player = new maplibregl.Marker({ element: this.playerEl, anchor: 'center', pitchAlignment: 'viewport' })
         .setLngLat(ll(pos))
@@ -315,6 +316,11 @@ export class GameMap {
       this.player.setLngLat(ll(pos));
     }
     this.scaleFigure();
+  }
+
+  /** Unterwegs: das Porträt wippt leicht. */
+  setPlayerWalking(on: boolean) {
+    this.playerEl?.classList.toggle('walking', on);
   }
 
   /** 3D-Spielfigur statt des runden Gesichts. Die Füße stehen genau auf dem Standort. */

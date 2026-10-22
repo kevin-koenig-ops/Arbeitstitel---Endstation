@@ -3,6 +3,7 @@
 import { GAME_TITLE, WORLD_SEED } from '../config';
 import { GuestAuth } from '../services/auth';
 import { LocalBackend, type GameBackend } from '../services/backend';
+import { installFrameCap } from '../services/frameRate';
 import { music } from '../services/music';
 import { isNativeApp } from '../services/native';
 import { SettingsStore } from '../services/settings';
@@ -60,6 +61,7 @@ export async function createApp(root: HTMLElement) {
 
   const settings = new SettingsStore();
   music.attach(settings);
+  installFrameCap(settings);
 
   const app: App = {
     backend: new LocalBackend(new GuestAuth(), WORLD_SEED),
