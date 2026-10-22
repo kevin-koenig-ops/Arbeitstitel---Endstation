@@ -46,6 +46,53 @@ function pieceModel(id: PieceId): THREE.Object3D {
   }
 }
 
+/** Stufen-Licht für den Comic-Look (drei Helligkeiten statt weicher Übergänge). */
+let toonSteps: THREE.DataTexture | null = null;
+function toonify(g: THREE.Object3D): THREE.Object3D {
+  if (!toonSteps) {
+    toonSteps = new THREE.DataTexture(new Uint8Array([90, 90, 90, 255, 175, 175, 175, 255, 255, 255, 255, 255]), 3, 1);
+    toonSteps.minFilter = toonSteps.magFilter = THREE.NearestFilter;
+    toonSteps.needsUpdate = true;
+  }
+  const made: THREE.Material[] = [];
+  g.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const conv = (m: THREE.Material) => {
+      const src = m as THREE.MeshStandardMaterial;
+      const t = new THREE.MeshToonMaterial({
+        color: src.color ? src.color.clone() : new THREE.Color('#ffffff'),
+        map: src.map ?? null,
+        gradientMap: toonSteps,
+        transparent: src.transparent,
+        opacity: src.opacity,
+        side: src.side,
+        vertexColors: src.vertexColors,
+      });
+      if (src.emissive) t.emissive.copy(src.emissive);
+      made.push(t);
+      return t;
+    };
+    mesh.material = Array.isArray(mesh.material) ? mesh.material.map(conv) : conv(mesh.material);
+  });
+  g.userData.toonMats = made;
+  return g;
+}
+
+/** Kram und Sammelstücke im Comic-Look (Schlüssel "c:kind"). */
+export function comicThumbnails(ids: (FurnitureId | KramId)[]): Record<string, string> {
+  const jobs: ThumbJob[] = [];
+  for (const k of ids) if (!cache[`c:${k}`]) jobs.push({ key: `c:${k}`, build: () => toonify(buildFurniture(k).group) });
+  if (jobs.length) {
+    try {
+      Object.assign(cache, renderThumbnails(jobs, 112, { comic: true }));
+    } catch {
+      // Ohne Vorschaubilder geht es auch
+    }
+  }
+  return cache;
+}
+
 /** Fehlende Vorschaubilder rendern und alle zurückgeben (Schlüssel "f:kind" bzw. "p:id"). */
 export function thumbnails(furniture: (FurnitureId | KramId)[], pieces: PieceId[]): Record<string, string> {
   const jobs: ThumbJob[] = [];

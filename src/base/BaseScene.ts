@@ -1302,15 +1302,19 @@ export interface ThumbJob {
   build: () => THREE.Object3D;
 }
 
-export function renderThumbnails(jobs: ThumbJob[], size = 112): Record<string, string> {
+/**
+ * Vorschaubilder rendern. comic: kräftige Farben, Licht in Stufen und eine dunkle Kontur
+ * rundherum wie bei einem Sticker (für Kram und Sammelstücke).
+ */
+export function renderThumbnails(jobs: ThumbJob[], size = 112, opts: { comic?: boolean } = {}): Record<string, string> {
   const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
   r.setPixelRatio(1);
   r.setSize(size, size);
-  r.toneMapping = THREE.ACESFilmicToneMapping;
+  r.toneMapping = opts.comic ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
   r.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene();
-  scene.add(new THREE.HemisphereLight('#fff1d8', '#4b4538', 1.4));
-  const d = new THREE.DirectionalLight('#ffe0b0', 2.4);
+  scene.add(new THREE.HemisphereLight('#fff1d8', '#4b4538', opts.comic ? 1.7 : 1.4));
+  const d = new THREE.DirectionalLight('#ffe0b0', opts.comic ? 2.2 : 2.4);
   d.position.set(-3, 6, 4);
   scene.add(d);
   const cam = new THREE.PerspectiveCamera(28, 1, 0.1, 50);
@@ -1321,18 +1325,52 @@ export function renderThumbnails(jobs: ThumbJob[], size = 112): Record<string, s
     const bb = new THREE.Box3().setFromObject(g);
     const c = bb.getCenter(new THREE.Vector3());
     const s = bb.getSize(new THREE.Vector3()).length();
-    cam.position.set(c.x + s * 1.25, c.y + s * 1.05, c.z + s * 1.6);
+    // Comic: etwas mehr Abstand, damit die Kontur noch ins Bild passt
+    const k = opts.comic ? 1.02 : 1;
+    cam.position.set(c.x + s * 1.25 * k, c.y + s * 1.05 * k, c.z + s * 1.6 * k);
     cam.lookAt(c);
     r.render(scene, cam);
-    out[job.key] = r.domElement.toDataURL('image/png');
+    out[job.key] = opts.comic ? stickerize(r.domElement, size) : r.domElement.toDataURL('image/png');
     scene.remove(g);
     g.traverse((o) => {
       const m = o as THREE.Mesh;
       if (m.isMesh) m.geometry.dispose();
     });
+    for (const m of (g.userData.toonMats as THREE.Material[] | undefined) ?? []) m.dispose();
   }
   r.dispose();
   r.forceContextLoss();
   return out;
 }
 
+/**
+ * Wie ein Sticker: außen ein heller Rand, innen eine dunkle Kontur, dazu kräftigere Farben.
+ * So steht der Kram auf dunklem und hellem Grund.
+ */
+function stickerize(src: HTMLCanvasElement, size: number): string {
+  const line = Math.max(2, Math.round(size / 48));
+  const silhouette = (color: string) => {
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const g = c.getContext('2d')!;
+    g.drawImage(src, 0, 0);
+    g.globalCompositeOperation = 'source-in';
+    g.fillStyle = color;
+    g.fillRect(0, 0, size, size);
+    return c;
+  };
+  const out = document.createElement('canvas');
+  out.width = out.height = size;
+  const oc = out.getContext('2d')!;
+  const ring = (img: HTMLCanvasElement, r: number) => {
+    for (let i = 0; i < 20; i++) {
+      const a = (i / 20) * Math.PI * 2;
+      oc.drawImage(img, Math.cos(a) * r, Math.sin(a) * r);
+    }
+  };
+  ring(silhouette('#f4e9d2'), line * 2.2);
+  ring(silhouette('#2a1d14'), line);
+  oc.filter = 'saturate(1.45) contrast(1.08) brightness(1.04)';
+  oc.drawImage(src, 0, 0);
+  return out.toDataURL('image/png');
+}

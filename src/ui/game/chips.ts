@@ -22,16 +22,34 @@ export function costChips(cost: Partial<Inventory>, have?: Inventory) {
  *  silhouette: noch nicht gefunden, nur der Umriss. */
 export function thingThumb(id: KramId | FurnitureId, size = 48, silhouette = false): HTMLElement {
   const el = h('span', { class: 'junk-thumb' + (silhouette ? ' silhouette' : ''), style: `width:${size}px;height:${size}px` }, svgEl(icon('junk', Math.round(size * 0.5))));
-  void import('../../base/thumbs')
-    .then(({ thumbnails }) => {
-      const src = thumbnails([id], [])[`f:${id}`];
-      if (src) {
+  const list = thumbQueue.get(id) ?? [];
+  list.push(el);
+  thumbQueue.set(id, list);
+  if (!thumbFlush) thumbFlush = window.setTimeout(() => void flushThumbs(), 0);
+  return el;
+}
+
+// Alle Vorschaubilder eines Bildschirms auf einmal rendern (ein Zeichenbrett statt vieler)
+const thumbQueue = new Map<KramId | FurnitureId, HTMLElement[]>();
+let thumbFlush = 0;
+async function flushThumbs() {
+  thumbFlush = 0;
+  const batch = new Map(thumbQueue);
+  thumbQueue.clear();
+  try {
+    const { comicThumbnails } = await import('../../base/thumbs');
+    const res = comicThumbnails([...batch.keys()]);
+    for (const [id, els] of batch) {
+      const src = res[`c:${id}`];
+      if (!src) continue;
+      for (const el of els) {
         clear(el);
         el.append(h('img', { src, alt: '' }));
       }
-    })
-    .catch(() => undefined);
-  return el;
+    }
+  } catch {
+    // Ohne Vorschaubilder bleibt das Symbol
+  }
 }
 
 /** Was im Kram steckt (wie bei Fallout: vor dem Zerlegen sichtbar). */
