@@ -94,7 +94,19 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 4. **Glossar:** Begriffe aus der Lore (das Weinen, Flux, Rote Zonen, Elysis, Streifer …), schalten sich frei, sobald sie vorkommen.
 5. Jede Sammlung mit Zähler und Belohnung bei 100 %.
 
+## Als Nächstes (Stand 22.10. spät)
+
+1. **Charakter-Level mit Aufnähern** (Plan steht im Doc, Reiter „Level & Freischalten“; erst nach Kevins Okay bauen)
+2. Lange Wege bei schnellem Laufen über Straßen, erst zum Schluss querfeldein
+3. Zentrieren-Knopf zoomt nah ran
+4. Nebel auch beim Herauszoomen, schöneres Aussehen
+5. 3D-Modelle für bekannte Bauwerke (Kirche, Friedhof, Polizei, Feuerwehr …), nur Optik
+6. Danach: eine Woche nichts Neues, draußen testen, Akku und Tempo, Einstieg schleifen
+
 ## Ideen für irgendwann
+
+- **Kapitel (Kevin, 22.10.):** große Ereignisse über zwei Wochen, zum Beispiel „Der Vorarbeiter“ jagt dich. Details im Doc, Reiter „Ideen: Kapitel“.
+- **Fahrzeuge (Kevin, 22.10.):** craftbar, Sprit von Tankstellen; abends mal 30 km in die nächste Stadt fahren. Offen: Wie passt das zu „draußen laufen“ und zur Sicherheit (nie während echter Fahrt spielen)?
 
 - **Gegenden mit eigenem Charakter (Kevin, 22.10.):** Varianten der Kreaturen je Gegend mit eigenem Kniff im Kampf (Küsten-Wandler gepanzert, Sumpf-Wandler zieht runter, Kriecher springen in den Bergen) plus Bestiarium; eigene Fundorte, Beute und Sammel-Sets je Gegend; Rohstoffe nur in bestimmten Gegenden (Salz, Harz, Schiefer, Phosphat) für höhere Ausbauten; Atlas der Gegenden; eigene Kampfkulissen, Wetter und Funksprüche. Details im Doc, Tab „Ideen: Gegenden & Kampf“
 - **Kampfansicht neu:** Schulterblick als zweite Ansicht eingebaut (22.10., Einstellungen → Grafik → Kampfansicht). Offen: gemalte Kulissen je Gegend mit 3D-Figuren davor
@@ -124,6 +136,10 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 - Saison-Events
 
 ## Erledigt
+
+### ✅ 22.10. spät: Sammelkarten und Sichtungen
+
+Sichtungen alle 10 Minuten (für alle gleich, nur an Wegen), Fund-Fenster mit umdrehender Karte, Sammelbuch im Charakterfenster (Reiter „Karten“), Einmal-Karten am Werktisch, 26 neue Karten im Kampf mit Feuer, Rauch, Blenden, Verlangsamen und Hund. Kartenfarbe nach Sorte, Leuchtrand nach Seltenheit, erstes Kartenbild (Brandflasche), Testknopf „Sammelkarte bekommen“. Funk-Radar mit Liste statt Dauer-Pfeilen am Kartenrand. Spielstand Version 16.
 
 ### ✅ Iteration 1: Prototyp
 

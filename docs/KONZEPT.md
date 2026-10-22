@@ -167,6 +167,26 @@ Jede Gegend bekommt eigene Aufträge, weil sie aus der echten Karte entstehen: w
 - **Stufen des Zuhauses bringen etwas:** Notlager (schneller erholen), Unterschlupf (+1 Werktisch-Platz), Zuhause (+10 m Suchradius), Gemütliches Zuhause (mehr Glück: öfter Kram und Sammelstücke), Schmuckstück (noch schneller erholen), Oase (+25 % Beute). Eine neue Stufe wird zu Hause gefeiert.
 - **Streifer-Ruf:** Ein Rang aus allem, was man draußen schafft: Neuling, Sammler, Späher, Streifer, Alter Streifer, Legende. Steht oben neben dem Namen.
 
+### Level und Freischalten (Plan, Kevin 22.10.2026)
+
+- **Ruf-Stufen statt Rang:** Aus den Ruf-Punkten wird eine Stufe (1 bis 30). Man steigt langsam: Stufe 10 nach etwa einem Monat, Stufe 30 nach etwa einem Jahr (Punkte = 7,5 × (Stufe − 1)²). Die Ruf-Namen bleiben als Titel.
+- **Aufnäher:** Jede neue Stufe bringt einen Aufnäher. Damit schaltet man ein Feature aktiv frei, sobald die nötige Stufe erreicht ist. Aufnäher verfallen nie, man kann Features für später aufheben.
+- **Herausforderungen pausierbar:** Trupps, Nachtgänger und Weltereignisse lassen sich nach dem Freischalten wieder pausieren.
+- **Wer schon spielt:** bekommt Aufnäher für seine Stufe, alles schon Genutzte bleibt frei.
+- Alle Features mit Stufe stehen im Doc, Reiter „Level & Freischalten“.
+
+### Sammelkarten und Sichtungen (seit 22.10.2026)
+
+- **Sichtungen:** Alle 10 Minuten taucht in der Gegend etwas auf (Notizbuch, Kiste, Notlazarett-Kiste, Konvoi-Wrack) und bleibt 18 bis 30 Minuten. Für alle Spieler gleich. Immer an einem Weg, nie an heiklen Orten. Hingehen, antippen, Karte umdrehen.
+- **Sammelkarten:** 11 Einmal-Karten (Brandflasche bis Granate, bis zu 3 je Sorte gehen mit in den Kampf), 5 Waffen zum Finden, 10 Fähigkeiten mit Stufen I bis III. Seltenheit gewöhnlich, selten, episch, legendär; ganz selten glänzend. „Glück mit Netz“: spätestens nach 20 Sichtungen etwas Seltenes, nach 100 etwas Legendäres.
+- **Aussehen:** Kartenfarbe nach Sorte (Einmal-Karten rostrot, Waffen stahlgrau, Fähigkeiten grün), Leuchtrand nach Seltenheit. Die Bilder malt Kevin mit Gemini (Prompts im Doc, Reiter „Kartenbilder“).
+- **Funk-Radar:** Oben ein kleiner Knopf, dahinter die Liste aller Sichtungen und Hinweise am Horizont. Höchstens alle paar Minuten ein Funkspruch, antippen zeigt kurz die Richtung. Keine Dauer-Pfeile am Kartenrand.
+
+### Kapitel: große Ereignisse (Idee, Kevin 22.10.2026)
+
+- Etwa zwei Wochen, mit kleiner Geschichte, eigenen Gegnern oder Aufgaben und besonderer Belohnung. Erstes Kapitel: „Der Vorarbeiter“, ein riesiger Borkenmann in Warnweste folgt deiner Fährte.
+- Regeln: Etappen, jeden Tag machbar, aufholen möglich; Gegner nur, während man unterwegs ist; verpasste Kapitel kommen wieder; Stadt- und Landfassung; optional ein Gemeinschaftsziel. Details im Doc, Reiter „Ideen: Kapitel“.
+
 ## Draußen: Händlerkisten und Verstecke
 
 - **Händlerkisten:** Ab und zu ist an einer Fundstelle ein Händlerkarren liegen geblieben (für alle Spieler gleich, je zwei Stunden). Gold leuchtend auf der Karte, ein Funkspruch meldet sie. Viel mehr Beute (×2,5), oft Kram und Sammelstücke, nie bewacht. Wer sie verpasst, verpasst nichts Wichtiges: Es kommen neue.
