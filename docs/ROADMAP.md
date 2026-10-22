@@ -2,6 +2,8 @@
 
 Alle geplanten Features an einer Stelle: erst was für Version 1.0 noch fehlt, dann die Versionen danach, zum Schluss was schon erledigt ist. Dieselbe Planung steht übersichtlich im [Konzeptplan](https://claude.ai/artifact/3VZUUmEiEVBDWWdwN9EpCT). Alle Mechaniken mit Stand und der Weg zu 1.0 in neun Paketen: [Überblick aller Mechaniken](https://claude.ai/artifact/4pbh9xnuaXMgxENYvjNULE). Neue Ideen kommen in die passende Version oder unter „Ideen für irgendwann“.
 
+**Seit 22.10.:** Die Reihenfolge von einfach zu komplex (8 Stufen, mit Aufwand und offenen Entscheidungen) steht im Überblick-Dokument im Tab „Roadmap“. Diese Datei sammelt weiter die Details und was erledigt ist.
+
 ## Version 1.0: was noch fehlt
 
 Version 1.0 ist fertig, wenn der ganze Kreislauf ohne Lücken läuft: rausgehen, finden, heimkommen, auspacken, bauen. **Schwerpunkt seit 21.10.: erst ein rundes Kern-Gameplay, danach neue Features.** Pakete 1–9 (Bus raus bis Balancing) sind erledigt, siehe unten.
