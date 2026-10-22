@@ -35,6 +35,9 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
   const weatherToggle = h('input', { id: 'set-weather', type: 'checkbox', class: 'toggle', onchange: () => s.set({ realWeather: weatherToggle.checked }) });
   weatherToggle.checked = s.get().realWeather;
 
+  const waterToggle = h('input', { id: 'set-water', type: 'checkbox', class: 'toggle', onchange: () => s.set({ waterMotion: waterToggle.checked }) });
+  waterToggle.checked = s.get().waterMotion;
+
   const select = <K extends 'testPhase' | 'testWeather'>(key: K, id: string, options: [Settings[K], string][]) => {
     const sel = h('select', { id, class: 'select', onchange: () => s.set({ [key]: sel.value } as Partial<Settings>) }, options.map(([v, label]) => h('option', { value: String(v) }, label)));
     sel.value = String(s.get()[key]);
@@ -158,6 +161,7 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
           ['off', 'Aus'],
         ]),
       ),
+      h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-water' }, 'Bewegtes Wasser', h('small', null, 'Wellen und Glitzern auf der Karte und am See. Aus spart etwas Akku.')), waterToggle),
       h('div', { class: 'set-row' }, h('label', { class: 'set-label', for: 'set-full' }, 'Vollbild', h('small', null, 'Am Handy beim Spielen ins Vollbild und im Querformat bleiben (geht nicht in jedem Browser).')), fullToggle),
     ),
     h(

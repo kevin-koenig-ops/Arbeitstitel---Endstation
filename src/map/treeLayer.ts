@@ -9,7 +9,8 @@ import type { CustomLayerInterface, CustomRenderMethodInput, Map as MLMap } from
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { LatLon } from '../core/types';
-import type { TreeKind, TreeSpec } from './decor';
+import { SMALL_KINDS, type TreeKind, type TreeSpec } from './decor';
+import { loadNatureModels, type NatureModels } from './natureModels';
 
 type Part = { geo: THREE.BufferGeometry; color: string | null };
 
@@ -68,12 +69,31 @@ function partsFor(kind: TreeKind): Part[] {
       ];
     case 'rock':
       return [{ geo: at(new THREE.DodecahedronGeometry(0.8, 0), 0, 0.35, 0, 1.3, 0.6, 1), color: null }];
+    default:
+      // Farn, Gras und Pilze gibt es nur als fertige Modelle
+      return [];
   }
 }
 
+/** Fertige Modelle je Art (Index = Form v der Daten). */
+const MODELS: Partial<Record<TreeKind, string[]>> = {
+  rock: ['rock_1', 'rock_2', 'rock_3'],
+  fern: ['fern'],
+  grass: ['grass'],
+  mushroom: ['mushroom_1', 'mushroom_2'],
+};
+
+/** Wie stark die Farbe aus den Daten das Modell tönt (0 = gar nicht, 1 = ganz). */
+const TINT: Partial<Record<string, number>> = { rock_1: 0.25, rock_2: 0.25, rock_3: 0.25 };
+/** Steine etwas in den Boden drücken (Meter bei Größe 1). */
+const SINK: Partial<Record<TreeKind, number>> = { rock: 0.15 };
+
+/** Unter diesem Zoom ist Kleinkram am Boden nur noch Pixelrauschen. */
+const SMALL_MINZOOM = 16.5;
+
 /** Wie groß der Schatten unter einer Art ist (Radius in Metern bei Größe 1). */
-const SHADOW_R: Record<TreeKind, number> = { leaf: 3, pine: 2.6, birch: 2.2, dead: 1.2, bush: 1.2, rock: 0.9 };
-const KINDS: TreeKind[] = ['leaf', 'pine', 'birch', 'dead', 'bush', 'rock'];
+const SHADOW_R: Record<TreeKind, number> = { leaf: 3, pine: 2.6, birch: 2.2, dead: 1.2, bush: 1.2, rock: 0.9, fern: 0, grass: 0, mushroom: 0 };
+const KINDS: TreeKind[] = ['leaf', 'pine', 'birch', 'dead', 'bush', 'rock', 'fern', 'grass', 'mushroom'];
 
 export class TreeLayer implements CustomLayerInterface {
   readonly id = 'trees3d';
@@ -91,6 +111,8 @@ export class TreeLayer implements CustomLayerInterface {
   private shadowGeo = new THREE.CircleGeometry(1, 14).rotateX(-Math.PI / 2);
   private shadowMat = new THREE.MeshBasicMaterial({ color: '#2a2a1c', transparent: true, opacity: 0.22, depthWrite: false });
   private mats = new Map<string, THREE.Material>();
+  /** Fertige Modelle, sobald geladen (bis dahin einfache Formen, ohne Kleinkram). */
+  private models: NatureModels | null = null;
 
   /** minZoom: darunter sind die Bäume zu klein, dann wird nichts gezeichnet. */
   constructor(private minZoom = 0) {
@@ -107,6 +129,13 @@ export class TreeLayer implements CustomLayerInterface {
     this.renderer = new THREE.WebGLRenderer({ canvas: map.getCanvas(), context: gl, antialias: true });
     this.renderer.autoClear = false;
     if (this.pending) this.setTrees(this.pending.trees, this.pending.center);
+    loadNatureModels()
+      .then((models) => {
+        if (!this.map) return;
+        this.models = models;
+        if (this.pending) this.setTrees(this.pending.trees, this.pending.center);
+      })
+      .catch((err) => console.warn('[Natur-Modelle]', err));
   }
 
   /** Alle Bäume neu setzen (nach jedem Neuaufbau der Details). */
@@ -123,9 +152,10 @@ export class TreeLayer implements CustomLayerInterface {
     const up = new THREE.Vector3(0, 1, 0);
     const color = new THREE.Color();
 
-    // Schatten: flache, weiche Scheiben unter allem
-    const shadows = new THREE.InstancedMesh(this.shadowGeo, this.shadowMat, trees.length);
-    trees.forEach((t, i) => {
+    // Schatten: flache, weiche Scheiben unter allem (nicht unter Kleinkram)
+    const shaded = trees.filter((t) => SHADOW_R[t.kind] > 0);
+    const shadows = new THREE.InstancedMesh(this.shadowGeo, this.shadowMat, shaded.length);
+    shaded.forEach((t, i) => {
       const r = SHADOW_R[t.kind] * t.s;
       m.compose(new THREE.Vector3((t.lon - center.lon) * kx + r * 0.25, 0.05, -(t.lat - center.lat) * ky + r * 0.2), q.identity(), new THREE.Vector3(r, 1, r * 0.85));
       shadows.setMatrixAt(i, m);
@@ -133,9 +163,35 @@ export class TreeLayer implements CustomLayerInterface {
     shadows.renderOrder = -1;
     this.group.add(shadows);
 
+    const white = new THREE.Color('#ffffff');
+    const place = (t: TreeSpec, sink = 0) => {
+      q.setFromAxisAngle(up, t.rot);
+      return m.compose(new THREE.Vector3((t.lon - center.lon) * kx, -sink * t.s, -(t.lat - center.lat) * ky), q, new THREE.Vector3(t.s, t.s, t.s));
+    };
     for (const kind of KINDS) {
       const list = trees.filter((t) => t.kind === kind);
       if (!list.length) continue;
+      const names = MODELS[kind];
+      if (this.models && names) {
+        // Fertige Modelle: je Form eigene Instanzen
+        names.forEach((name, v) => {
+          const parts = this.models!.get(name);
+          const sub = list.filter((t) => Math.min(names.length - 1, t.v ?? 0) === v);
+          if (!parts || !sub.length) return;
+          const tint = TINT[name] ?? 1;
+          for (const part of parts) {
+            const mesh = new THREE.InstancedMesh(part.geo, part.mat, sub.length);
+            sub.forEach((t, i) => {
+              mesh.setMatrixAt(i, place(t, SINK[kind]));
+              mesh.setColorAt(i, color.copy(white).lerp(new THREE.Color(t.color), tint));
+            });
+            if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+            mesh.userData.small = SMALL_KINDS.includes(kind);
+            this.group.add(mesh);
+          }
+        });
+        continue;
+      }
       let parts = this.geos.get(kind);
       if (!parts) {
         parts = partsFor(kind);
@@ -144,9 +200,7 @@ export class TreeLayer implements CustomLayerInterface {
       for (const part of parts) {
         const mesh = new THREE.InstancedMesh(part.geo, this.material(part.color), list.length);
         list.forEach((t, i) => {
-          q.setFromAxisAngle(up, t.rot);
-          m.compose(new THREE.Vector3((t.lon - center.lon) * kx, 0, -(t.lat - center.lat) * ky), q, new THREE.Vector3(t.s, t.s, t.s));
-          mesh.setMatrixAt(i, m);
+          mesh.setMatrixAt(i, place(t));
           if (!part.color) mesh.setColorAt(i, color.set(t.color));
         });
         if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
@@ -175,7 +229,9 @@ export class TreeLayer implements CustomLayerInterface {
 
   render(_gl: WebGLRenderingContext | WebGL2RenderingContext, args: CustomRenderMethodInput) {
     if (!this.renderer || !this.origin || !this.map || !this.group.children.length) return;
-    if (this.map.getZoom() < this.minZoom) return;
+    const zoom = this.map.getZoom();
+    if (zoom < this.minZoom) return;
+    for (const child of this.group.children) if (child.userData.small) child.visible = zoom >= SMALL_MINZOOM;
     const raw = (args as unknown as { defaultProjectionData?: { mainMatrix: ArrayLike<number> } }).defaultProjectionData?.mainMatrix ?? args.modelViewProjectionMatrix;
     const s = this.meterScale;
     const local = new THREE.Matrix4()
@@ -191,6 +247,8 @@ export class TreeLayer implements CustomLayerInterface {
     this.clear();
     for (const parts of this.geos.values()) for (const p of parts) p.geo.dispose();
     for (const mat of this.mats.values()) mat.dispose();
+    for (const parts of this.models?.values() ?? []) for (const p of parts) p.geo.dispose();
+    this.models = null;
     this.shadowGeo.dispose();
     this.shadowMat.dispose();
     this.renderer = null;

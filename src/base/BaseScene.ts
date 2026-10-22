@@ -90,6 +90,7 @@ export class BaseScene {
   private hemi = new THREE.HemisphereLight();
   private sun = new THREE.DirectionalLight();
   private sunDir = new THREE.Vector3(-0.5, 0.85, 0.35).normalize();
+  private waterMotion = true;
   private ro: ResizeObserver;
   private cache = new TemplateCache();
   private lightSpecs = new Map<FurnitureId, LightSpec | undefined>();
@@ -622,6 +623,11 @@ export class BaseScene {
   }
 
   // --- Licht ---------------------------------------------------------------------------------
+
+  /** Einstellung „Bewegtes Wasser“: aus bleibt der See ruhig stehen. */
+  setWaterMotion(on: boolean) {
+    this.waterMotion = on;
+  }
 
   setPhase(phase: DayPhase) {
     this.phase = phase;
@@ -1257,7 +1263,7 @@ export class BaseScene {
   // --- Schleife ------------------------------------------------------------------------------
 
   private frame(t: number, dt: number) {
-    setWaterTime(t);
+    if (this.waterMotion) setWaterTime(t);
     if (this.viewShiftX !== this.viewShiftXTarget) {
       const d = this.viewShiftXTarget - this.viewShiftX;
       this.viewShiftX = Math.abs(d) < 0.001 ? this.viewShiftXTarget : this.viewShiftX + d * Math.min(1, dt * 9);

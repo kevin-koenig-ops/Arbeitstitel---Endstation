@@ -57,6 +57,8 @@ export const DEMO = demoWorld as unknown as {
 interface Options {
   mode: 'real' | 'demo';
   start: LatLon;
+  /** Wasser bewegt sich (Einstellung). */
+  waterMotion: boolean;
   onTap: (p: LatLon) => void;
   onSpotTap: (id: string) => void;
   onFollowChange: (follow: boolean) => void;
@@ -100,6 +102,9 @@ export class GameMap {
   /** 3D-Bäume (three.js), wird nach dem Laden nachgeladen. Bis dahin Klötzchen-Bäume. */
   private trees: TreeLayer | null = null;
   private water: WaterAnimation | null = null;
+  /** Finger oder Maustasten, die gerade auf der Karte liegen. */
+  private pointers = new Set<number>();
+  private offPointers: (() => void) | null = null;
 
   constructor(
     private container: HTMLElement,
@@ -126,6 +131,18 @@ export class GameMap {
       attributionControl: mode === 'real' ? { compact: true } : false,
       fadeDuration: 0,
     });
+
+    // Finger oder Maus auf der Karte: solange nicht nachführen. Jedes Nachführen bricht in
+    // MapLibre ein begonnenes Ziehen ab, deshalb ließ sich die Karte beim Laufen nicht verschieben.
+    const canvas = this.map.getCanvasContainer();
+    canvas.addEventListener('pointerdown', (e) => this.pointers.add(e.pointerId));
+    const up = (e: PointerEvent) => this.pointers.delete(e.pointerId);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    this.offPointers = () => {
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
 
     this.map.on('styleimagemissing', (e) => {
       const img = patternImage(e.id);
@@ -190,7 +207,7 @@ export class GameMap {
     await new Promise<void>((resolve) => this.map.once('load', () => resolve()));
     this.loaded = true;
     this.fog = new FogOfWar(this.map);
-    this.water = new WaterAnimation(this.map);
+    this.water = new WaterAnimation(this.map, this.opts.waterMotion);
     if (this.pendingRange) this.setRange(this.pendingRange.c, this.pendingRange.r);
     if (this.pendingCaches) this.setCaches(this.pendingCaches);
     void this.initTrees();
@@ -422,6 +439,8 @@ export class GameMap {
   }
 
   centerOn(p: LatLon, smooth: boolean) {
+    // Hält jemand die Karte fest, nicht dazwischenfunken (er will sie vielleicht verschieben)
+    if (this.pointers.size) return;
     if (smooth) this.map.easeTo({ center: ll(p), duration: 900 });
     else this.map.jumpTo({ center: ll(p) });
   }
@@ -783,10 +802,17 @@ export class GameMap {
       rings.some((r) => inside(p, r) || nearEdge(p, r, 20)) || points.some((q) => distanceM(p, q) < 40) || (grid && buildings.some((r) => inside(p, r)));
   }
 
+  /** Einstellung „Bewegtes Wasser“ geändert. */
+  setWaterMotion(on: boolean) {
+    this.opts.waterMotion = on;
+    this.water?.setEnabled(on);
+  }
+
   destroy() {
     clearTimeout(this.decorTimer);
     this.fog?.destroy();
     this.water?.destroy();
+    this.offPointers?.();
     this.markers.forEach((m) => m.marker.remove());
     this.markers.clear();
     this.map?.remove();

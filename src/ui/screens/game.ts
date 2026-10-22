@@ -748,6 +748,7 @@ export function gameScreen(app: App): Screen {
   // Steuerung oder Grafik in den Einstellungen umgestellt: sofort übernehmen
   let lastControl = app.settings.get().control;
   const offSettings = app.settings.onChange((st) => {
+    gm?.setWaterMotion(st.waterMotion);
     if (st.control === lastControl) return;
     lastControl = st.control;
     if (provider) setupJoystick();
@@ -1102,6 +1103,7 @@ export function gameScreen(app: App): Screen {
       gm = new GameMap(mapEl, {
         mode: mapMode,
         start,
+        waterMotion: app.settings.get().waterMotion,
         onTap: (p) => {
           sheet.close();
           if (provider?.kind === 'sim' && !joy) walkTo(p);

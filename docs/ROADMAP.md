@@ -96,6 +96,7 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 
 ## Ideen für irgendwann
 
+- **Untergrund im Baumodus (Wunsch von Kevin, 22.10.):** Im Zuhause den Boden selbst setzen, mit dem Pinsel wie Wände: Rasen, Kies, Hofplatten, Erde, Schutt und so weiter, mit Kevins gemalten Bildern. Ein paar gibt es von Anfang an, weitere schaltet man frei (Baupläne, Fundstücke, Rang). Offen: nur auf dem eigenen Grundstück oder auch drumherum; kostet Untergrund Rohstoffe?
 - **Tiere beobachten:** Vögel und andere Tiere tauchen zufällig auf (passend zu Gelände, Tageszeit, Jahreszeit), antippen und beobachten, Sammlung im Fundbuch (Details im [Konzept](KONZEPT.md)).
 - **Weitere Sprachen:** Das Sprachmenü mit Fahnen steht in den Einstellungen; Englisch, Französisch, Spanisch, Italienisch, Niederländisch, Polnisch, Portugiesisch, Türkisch und Ukrainisch kommen, sobald die Texte fertig sind.
 - **Naturkunde und Kräutersammler:** Beim ersten Fund einer Pilz-, Kraut- oder Beerenart wird sie bestimmt (echter Name, wo und wann sie wirklich wächst, giftig oder essbar, Doppelgänger), dazu eine Sammlung übers Jahr. Der Beruf Kräutersammler bringt eine eigene Kartenansicht, die nur Kräuter, Beeren und Pilze zeigt. Mit klarem Hinweis: im echten Leben nie nach dem Spiel sammeln (Details und Startliste im [Konzept](KONZEPT.md)).
@@ -244,4 +245,7 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - **Schönere Karte:** 12 gemalte Untergründe von Kevin (Wiese, Waldboden, Rasen, Grundboden, Hof, Schutt, Sand, Fels, Sumpf, drei Sorten Acker), auch im Zuhause auf und um das Grundstück; freundlichere Farben, Ufer an Seen und Bächen. Bäume als echte 3D-Modelle (Laub, Nadel, Birke, tot, im Herbst bunt), dazu Büsche, Unterholz und Steine; kein Baum mehr im Wasser. Auf der echten Karte sieht man Hügel und Täler als Schattierung
 - **Pilzstellen:** nur im Wald, wandern wie die anderen Fundstellen, im Herbst am meisten, im Winter kaum. Geben Nahrung, selten Heilkräuter, nie bewacht
 - **Testmodus:** Die Figur läuft nicht mehr durch Flüsse, Bäche und Seen
+- **Natur auf der Karte:** Findlinge im Wald und auf Wiesen, Farn im Wald, hohes trockenes Gras auf Wiesen, im Herbst Pilze. Steine, Farn, Gras und Pilze sind Modelle aus dem „Stylized Nature MegaKit“ von Quaternius (CC0, frei nutzbar). Kleinkram gibt es nur nah um die Figur und erst ab mittlerem Zoom, damit es flüssig bleibt
+- **Karte beim Laufen verschieben:** Läuft die Figur, ließ sich die Karte nur zoomen, nicht ziehen (das Nachführen hat jedes Ziehen abgebrochen). Jetzt pausiert das Nachführen, solange ein Finger auf der Karte liegt
+- **Einstellung „Bewegtes Wasser“:** Wellen und Glitzern lassen sich ausschalten (spart etwas Akku)
 - **Lebendiges Wasser:** Auf der Karte schaukeln Wellen und glitzern Lichtpunkte (nur wenn Wasser im Bild ist und die App vorne liegt, spart Akku). Der See im Zuhause hat ziehende Wellenkämme, spiegelt den Himmel und funkelt in der Sonne

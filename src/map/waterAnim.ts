@@ -23,7 +23,10 @@ export class WaterAnimation {
   private waterInView = false;
   private readonly reduced = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
 
-  constructor(private map: MlMap) {
+  constructor(
+    private map: MlMap,
+    private enabled = true,
+  ) {
     map.on('moveend', this.recheck);
     map.on('idle', this.maybeCheck);
     document.addEventListener('visibilitychange', this.update);
@@ -42,7 +45,7 @@ export class WaterAnimation {
   };
 
   private update = () => {
-    const run = this.waterInView && !document.hidden && !this.reduced?.matches;
+    const run = this.enabled && this.waterInView && !document.hidden && !this.reduced?.matches;
     if (run && !this.timer) {
       // Die Bilder erst malen, wenn sie gebraucht werden
       if (this.frames === undefined) this.frames = waterFrames(FRAMES);
@@ -60,6 +63,17 @@ export class WaterAnimation {
     this.map.updateImage('pat-water', this.frames[this.frame]);
     this.map.triggerRepaint();
   };
+
+  /** Aus den Einstellungen: an oder aus. Aus bleibt das ruhige erste Bild stehen. */
+  setEnabled(on: boolean) {
+    this.enabled = on;
+    this.update();
+    if (!on && this.frames && this.frame !== 0 && this.map.hasImage('pat-water')) {
+      this.frame = 0;
+      this.map.updateImage('pat-water', this.frames[0]);
+      this.map.triggerRepaint();
+    }
+  }
 
   destroy() {
     clearInterval(this.timer);

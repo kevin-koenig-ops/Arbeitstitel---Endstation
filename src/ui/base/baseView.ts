@@ -201,6 +201,8 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   el.dataset.control = control;
 
   const scene = new BaseScene(stage);
+  scene.setWaterMotion(app.settings.get().waterMotion);
+  const offSettings = app.settings.onChange((st) => scene.setWaterMotion(st.waterMotion));
   // Zum Testen: die Szene von außen erreichbar machen (nur mit Debug-Schalter)
   if (localStorage.getItem('endstation.debug')) (window as unknown as { __baseScene?: BaseScene }).__baseScene = scene;
   scene.setPhase(opts.phase());
@@ -1270,6 +1272,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     clearInterval(tick);
     clearInterval(useTimer);
     window.removeEventListener('keydown', onKey);
+    offSettings();
     scene.dispose();
     el.remove();
     opts.onClose();

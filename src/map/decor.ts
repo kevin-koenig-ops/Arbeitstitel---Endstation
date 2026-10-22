@@ -5,6 +5,7 @@
 // Alles ist deterministisch, damit ein Haus beim nächsten Aufbau gleich aussieht
 // und Bäume nicht "springen", wenn sich der Ausschnitt verschiebt.
 
+import { MUSHROOM_CHANCE } from '../core/content';
 import { rngFrom, type Rng } from '../core/rng';
 import type { LatLon } from '../core/types';
 
@@ -52,8 +53,15 @@ export interface TreeSpec {
   rot: number;
   /** Farbe der Krone (bei Steinen: des Steins) */
   color: string;
+  /** Welche Form (bei Arten mit mehreren Modellen), 0 bis 2 */
+  v?: number;
 }
-export type TreeKind = 'leaf' | 'pine' | 'birch' | 'dead' | 'bush' | 'rock';
+export type TreeKind = 'leaf' | 'pine' | 'birch' | 'dead' | 'bush' | 'rock' | 'fern' | 'grass' | 'mushroom';
+
+/** Kleinkram am Boden: nur nah um die Figur, sonst würden es zu viele. */
+export const SMALL_KINDS: readonly TreeKind[] = ['fern', 'grass', 'mushroom'];
+/** So weit um die Mitte gibt es Kleinkram (Meter). */
+export const SMALL_RADIUS_M = 280;
 
 export interface DecorOptions {
   /** Bäume auch als Blöcke in die Extrusions-Ebene (falls die 3D-Ebene fehlt) */
@@ -70,7 +78,7 @@ export interface DecorPart {
 export interface DecorResult {
   parts: DecorPart[];
   trees: TreeSpec[];
-  counts: { buildings: number; trees: number; cars: number };
+  counts: { buildings: number; trees: number; small: number; cars: number };
 }
 
 // --- Farben --------------------------------------------------------------------------
@@ -215,7 +223,7 @@ class Grid<T> {
 
 // --- Hauptfunktion ---------------------------------------------------------------------
 
-export const DECOR_LIMITS = { trees: 6000, cars: 220, poles: 260 };
+export const DECOR_LIMITS = { trees: 6000, small: 3500, cars: 220, poles: 260 };
 
 export function generateDecor(input: DecorInput, center: LatLon, radiusM: number, opts: DecorOptions = {}): DecorResult {
   const P = new Proj(center);
@@ -298,7 +306,8 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
   const latRef = Math.round(center.lat);
   const degLat = 1 / 111320;
   const degLon = 1 / (111320 * Math.cos((latRef * Math.PI) / 180));
-  type Where = 'forest' | 'green' | 'meadow' | 'yard' | 'bush' | 'rock';
+  type Where = 'forest' | 'green' | 'meadow' | 'yard' | 'bush' | 'rock' | 'fern' | 'grass' | 'mushroom';
+  const SMALL_WHERE: Where[] = ['fern', 'grass', 'mushroom'];
   const trees: { p: Pt; key: string; forest: boolean; where: Where }[] = [];
   const seenT = new Set<string>();
 
@@ -329,11 +338,16 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
 
   const scatter = (polys: RawPolygon[], spacing: number, prob: number, tag: string, where: Where, ok?: (p: Pt) => boolean) => {
     const forest = where === 'forest';
+    const small = SMALL_WHERE.includes(where);
     const sLat = spacing * degLat;
     const sLon = spacing * degLon;
     for (const poly of polys) {
       if (!roughlyNear(poly.rings)) continue;
       const rings = toM(poly.rings);
+      if (small) {
+        const mb = bbox(rings[0]);
+        if (mb.x0 > SMALL_RADIUS_M || mb.x1 < -SMALL_RADIUS_M || mb.y0 > SMALL_RADIUS_M || mb.y1 < -SMALL_RADIUS_M) continue;
+      }
       const llb = bbox(poly.rings[0]);
       for (let gx = Math.floor(llb.x0 / sLon); gx <= Math.ceil(llb.x1 / sLon); gx++) {
         for (let gy = Math.floor(llb.y0 / sLat); gy <= Math.ceil(llb.y1 / sLat); gy++) {
@@ -344,7 +358,7 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
           const lon = (gx + 0.1 + 0.8 * r()) * sLon;
           const lat = (gy + 0.1 + 0.8 * r()) * sLat;
           const p = P.toM([lon, lat]);
-          if (!near(p) || !inPolygon(p, rings) || (ok && !ok(p)) || !dry(p)) continue;
+          if ((small ? p[0] * p[0] + p[1] * p[1] > SMALL_RADIUS_M ** 2 : !near(p)) || !inPolygon(p, rings) || (ok && !ok(p)) || !dry(p)) continue;
           seenT.add(key);
           trees.push({ p, key, forest, where });
         }
@@ -386,11 +400,26 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
   scatter(input.greens, 16, 0.3, 'bg', 'bush', freeSpot);
   scatter(input.forests, 13, 0.3, 'bf', 'bush', offPath);
   scatter(input.rocks ?? [], 9, 0.5, 'st', 'rock');
+  // Findlinge: ab und zu ein großer Stein im Wald und auf der Wiese
+  scatter(input.forests, 34, 0.3, 'fw', 'rock', offPath);
+  scatter(input.meadows, 55, 0.18, 'fm', 'rock', freeSpot);
+  // Kleinkram am Boden: Farn im Wald, hohes trockenes Gras auf Wiesen, Pilze im Herbst
+  scatter(input.forests, 6, 0.42, 'fa', 'fern', offPath);
+  scatter(input.meadows, 8, 0.3, 'gr', 'grass', freeSpot);
+  scatter(input.greens, 11, 0.18, 'gg', 'grass', freeSpot);
+  const month = opts.month ?? 10;
+  scatter(input.forests, 16, Math.min(0.5, MUSHROOM_CHANCE[month - 1] * 0.7), 'pz', 'mushroom', offPath);
 
-  if (trees.length > DECOR_LIMITS.trees) {
-    trees.sort((a, b) => a.p[0] ** 2 + a.p[1] ** 2 - (b.p[0] ** 2 + b.p[1] ** 2));
-    trees.length = DECOR_LIMITS.trees;
-  }
+  // Zu viele? Die nächsten behalten (Bäume und Kleinkram getrennt gezählt)
+  const keepNearest = (list: typeof trees, max: number) => {
+    if (list.length <= max) return list;
+    list.sort((a, b) => a.p[0] ** 2 + a.p[1] ** 2 - (b.p[0] ** 2 + b.p[1] ** 2));
+    return list.slice(0, max);
+  };
+  const big = keepNearest(trees.filter((t) => !SMALL_WHERE.includes(t.where)), DECOR_LIMITS.trees);
+  const smallList = keepNearest(trees.filter((t) => SMALL_WHERE.includes(t.where)), DECOR_LIMITS.small);
+  trees.length = 0;
+  trees.push(...big);
   const autumn = opts.month !== undefined && opts.month >= 9 && opts.month <= 11;
   const specs: TreeSpec[] = [];
   for (const t of trees) {
@@ -400,13 +429,14 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
     const rot = r() * Math.PI;
     const roll = r();
     const ll = P.toLL(t.p);
-    const spec = (kind: TreeKind, color: string, size = s) => specs.push({ lon: ll[0], lat: ll[1], kind, s: Math.round(size * 100) / 100, rot: Math.round(rot * 100) / 100, color });
+    const spec = (kind: TreeKind, color: string, size = s, v?: number) =>
+      specs.push({ lon: ll[0], lat: ll[1], kind, s: Math.round(size * 100) / 100, rot: Math.round(rot * 100) / 100, color, ...(v ? { v } : {}) });
     if (t.where === 'bush') {
       spec('bush', pick(r, BUSH), 0.7 + r() * 0.6);
       continue;
     }
     if (t.where === 'rock') {
-      spec('rock', pick(r, STONE), 0.5 + r() * 0.9);
+      spec('rock', pick(r, STONE), 0.5 + r() * 0.9, Math.floor(r() * 3));
       continue;
     }
     // Herbst: ein Teil der Laubbäume färbt sich
@@ -446,6 +476,20 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
         add(ngon(x + 0.4 * s, y - 0.3 * s, 2 * s, 7, rot + 0.3), 7.6 * s, 9.2 * s, c);
       }
     }
+  }
+
+  // Kleinkram am Boden (Farn, trockenes Gras, Pilze)
+  for (const t of smallList) {
+    const r = rngFrom('form', t.key);
+    const ll = P.toLL(t.p);
+    const kind = t.where as TreeKind;
+    // Pilze etwas größer als echt, sonst sieht man sie auf der Karte gar nicht
+    const size = kind === 'mushroom' ? 1.2 + r() * 0.6 : 0.7 + r() * 0.6;
+    const rot = Math.round(r() * Math.PI * 200) / 100;
+    // Farn wird im Herbst braun, Gras ist mal grüner, mal trockener
+    const color = kind === 'fern' ? (autumn && r() < 0.5 ? '#d8b07a' : '#ffffff') : kind === 'grass' ? pick(r, ['#ffffff', '#f2e6c4', '#e6efc8']) : '#ffffff';
+    const v = kind === 'mushroom' && r() < 0.25 ? 1 : 0;
+    specs.push({ lon: ll[0], lat: ll[1], kind, s: Math.round(size * 100) / 100, rot, color, ...(v ? { v } : {}) });
   }
 
   // Autowracks ----------------------------------------------------------------------
@@ -529,5 +573,5 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
     poles++;
   }
 
-  return { parts, trees: specs, counts: { buildings, trees: trees.length, cars } };
+  return { parts, trees: specs, counts: { buildings, trees: trees.length, small: smallList.length, cars } };
 }
