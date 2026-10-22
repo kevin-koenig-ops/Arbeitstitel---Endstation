@@ -13,6 +13,7 @@ import type { LatLon } from '../core/types';
 import type { TreeKind, TreeSpec } from './decor';
 import { buildHome } from './homeModel';
 import { buildHouses, FACADES, ROOF_KINDS, roofKey, type HouseSpec, type MatKey } from './houseMesh';
+import type { BridgeSpec } from './bridges';
 import type { PropSpec } from './landmarks';
 import { drawSign } from './signArt';
 // Alle Hausbilder (Wände, Dächer, Fensterbogen) als Adressen, Schlüssel = Dateiname ohne Endung
@@ -103,7 +104,7 @@ export class TreeLayer implements CustomLayerInterface {
   private origin: maplibregl.MercatorCoordinate | null = null;
   private meterScale = 1;
   private pending: { trees: TreeSpec[]; center: LatLon } | null = null;
-  private pendingHouses: { houses: HouseSpec[]; center: LatLon; props: PropSpec[] } | null = null;
+  private pendingHouses: { houses: HouseSpec[]; center: LatLon; props: PropSpec[]; bridges: BridgeSpec[] } | null = null;
   private signMats = new Map<string, THREE.Material>();
   private houses = new THREE.Group();
   /** Dein Zuhause (eigene Gruppe, liegt an seinem Ort, nicht an der Mitte der Details) */
@@ -167,7 +168,7 @@ export class TreeLayer implements CustomLayerInterface {
     this.renderer = new THREE.WebGLRenderer({ canvas: map.getCanvas(), context: gl, antialias: true });
     this.renderer.autoClear = false;
     if (this.pending) this.setTrees(this.pending.trees, this.pending.center);
-    if (this.pendingHouses) this.setHouses(this.pendingHouses.houses, this.pendingHouses.center, this.pendingHouses.props);
+    if (this.pendingHouses) this.setHouses(this.pendingHouses.houses, this.pendingHouses.center, this.pendingHouses.props, this.pendingHouses.bridges);
     if (this.homeAt) {
       const h = this.homeAt;
       this.homeAt = null;
@@ -176,15 +177,15 @@ export class TreeLayer implements CustomLayerInterface {
   }
 
   /** Alle Häuser neu setzen (nach jedem Neuaufbau der Details, gleiche Mitte wie die Bäume). */
-  setHouses(houses: HouseSpec[], center: LatLon, props: PropSpec[] = []) {
-    this.pendingHouses = { houses, center, props };
+  setHouses(houses: HouseSpec[], center: LatLon, props: PropSpec[] = [], bridges: BridgeSpec[] = []) {
+    this.pendingHouses = { houses, center, props, bridges };
     if (!this.map) return;
     for (const child of [...this.houses.children]) {
       this.houses.remove(child);
       (child as THREE.Mesh).geometry.dispose();
     }
     this.setOrigin(center);
-    const { meshes, shadow, signs } = buildHouses(houses, props);
+    const { meshes, shadow, signs } = buildHouses(houses, props, bridges);
     for (const [key, m] of Object.entries(meshes) as [MatKey, (typeof meshes)[MatKey]][]) {
       if (!m.pos.length) continue;
       const geo = new THREE.BufferGeometry();

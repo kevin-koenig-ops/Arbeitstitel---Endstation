@@ -8,6 +8,7 @@
 
 import { ShapeUtils, Vector2 } from 'three';
 
+import { addBridge, type BridgeSpec } from './bridges';
 import { addProp, addShop, frontWall, isHallKind, type PropSpec, type ShopSpec, type Signs } from './landmarks';
 import { BOARDED, BROKEN, DOOR_H, DOOR_W, DOORS, doorUV, GATE_M, gateUV, STRIP, stripUV, WINDOW_SETS, windowUV } from './windows';
 import { block, dist, emptyMesh, quad, tri, type MeshData, type P3, type Pt, type RGB } from './meshKit';
@@ -221,7 +222,7 @@ function lcg(seed: number) {
 const vOf = (h: number) => (h - GROUND_M) / FACADE_H;
 
 /** Alle Häuser zu Dreiecken (je Bild ein Topf, damit es nur wenige Zeichenaufrufe sind). */
-export function buildHouses(list: HouseSpec[], props: PropSpec[] = []): HouseMeshes {
+export function buildHouses(list: HouseSpec[], props: PropSpec[] = [], bridges: BridgeSpec[] = []): HouseMeshes {
   const meshes = { roofSnow: emptyMesh(), plain: emptyMesh(), win: emptyMesh() } as Record<MatKey, MeshData>;
   for (const f of FACADES) meshes[f] = emptyMesh();
   for (const k of ROOF_KINDS) meshes[roofKey(k)] = emptyMesh();
@@ -234,6 +235,7 @@ export function buildHouses(list: HouseSpec[], props: PropSpec[] = []): HouseMes
     if (h.shop) addShop(h.shop, ring, h.top, meshes.plain, signs);
   }
   for (const p of props) addProp(p, meshes.plain, signs);
+  for (const b of bridges) addBridge(b, meshes.plain);
   return { meshes, shadow, signs };
 }
 

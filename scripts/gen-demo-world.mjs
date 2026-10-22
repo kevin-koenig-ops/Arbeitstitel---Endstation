@@ -97,7 +97,36 @@ poly('landuse', { class: 'cemetery' }, [[-40, 285], [70, 280], [80, 380], [-25, 
 poly('water', { class: 'pond' }, blob(-255, 58, 30, 24, 0.2));
 line('waterway', { class: 'stream' }, creek);
 
-roads.forEach((r) => line('transportation', { class: r.cls }, r.pts));
+// Wo eine Straße den Bach kreuzt, führt eine Brücke darüber (16 m lang)
+function crossing(a, b, c, d) {
+  const r = [b[0] - a[0], b[1] - a[1]];
+  const q = [d[0] - c[0], d[1] - c[1]];
+  const den = r[0] * q[1] - r[1] * q[0];
+  if (Math.abs(den) < 1e-9) return null;
+  const t = ((c[0] - a[0]) * q[1] - (c[1] - a[1]) * q[0]) / den;
+  const u = ((c[0] - a[0]) * r[1] - (c[1] - a[1]) * r[0]) / den;
+  return t > 0 && t < 1 && u > 0 && u < 1 ? t : null;
+}
+roads.forEach((r) => {
+  let pts = [r.pts[0]];
+  for (let i = 0; i < r.pts.length - 1; i++) {
+    const a = r.pts[i];
+    const b = r.pts[i + 1];
+    let t = null;
+    for (let k = 0; k < creek.length - 1 && t === null; k++) t = crossing(a, b, creek[k], creek[k + 1]);
+    if (t === null) {
+      pts.push(b);
+      continue;
+    }
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const at = (d) => [a[0] + (b[0] - a[0]) * (t + d / len), a[1] + (b[1] - a[1]) * (t + d / len)];
+    pts.push(at(-8));
+    line('transportation', { class: r.cls }, pts);
+    line('transportation', { class: r.cls, brunnel: 'bridge' }, [at(-8), at(8)]);
+    pts = [at(8), b];
+  }
+  line('transportation', { class: r.cls }, pts);
+});
 
 // --- Besondere Gebäude & echte Orte --------------------------------------------
 const specials = [];

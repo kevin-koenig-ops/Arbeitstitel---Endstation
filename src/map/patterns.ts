@@ -14,6 +14,7 @@ import schutt from '../assets/textures/schutt.webp';
 import sumpf from '../assets/textures/sumpf.webp';
 import waldboden from '../assets/textures/waldboden.webp';
 import vorgaerten from '../assets/textures/vorgaerten.webp';
+import hof from '../assets/textures/hof.webp';
 import wiese from '../assets/textures/wiese-sommer.webp';
 
 /**
@@ -28,6 +29,10 @@ const IMAGES: Record<string, { url: string; pr: number }> = {
   'pat-gardens': { url: vorgaerten, pr: 2.5 },
   'pat-forest-floor': { url: waldboden, pr: 3.5 },
   'pat-rubble': { url: schutt, pr: 3 },
+  // Siedlung ohne Gärten: Höfe mit Steinplatten, und Asphalt/Pflaster in Städten
+  // (bis es ein eigenes Pflasterbild gibt, der rissige Beton)
+  'pat-yard': { url: hof, pr: 2.5 },
+  'pat-paved': { url: schutt, pr: 3 },
   'pat-sand': { url: sand, pr: 2 },
   'pat-rock': { url: fels, pr: 2.5 },
   'pat-wetland': { url: sumpf, pr: 2.5 },
@@ -42,6 +47,8 @@ const loaded = new Map<string, { data: ImageData; pixelRatio: number; url: strin
 /** Alle Bilder im Texturen-Ordner, auch die je Jahreszeit (sobald Kevin sie liefert). */
 const ALL_FILES = import.meta.glob('../assets/textures/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
 const fileUrl = (name: string): string | undefined => ALL_FILES[`../assets/textures/${name}.webp`];
+// Eigenes Pflaster-/Asphaltbild für Städte, sobald es da ist (pflaster.webp)
+if (fileUrl('pflaster')) IMAGES['pat-paved'] = { url: fileUrl('pflaster')!, pr: 3 };
 const SEASON_NAME: Record<Season, string> = { spring: 'fruehling', summer: 'sommer', autumn: 'herbst', winter: 'winter' };
 /** Muster mit eigenen Bildern je Jahreszeit, z. B. wiese-herbst.webp. Fehlt eins, bleibt das normale. */
 const SEASONAL: Record<string, string> = {

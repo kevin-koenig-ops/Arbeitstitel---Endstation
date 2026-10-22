@@ -770,7 +770,7 @@ export class GameMap {
         houseMeshes: !!this.trees,
       });
       this.trees?.setTrees(res.trees, center);
-      this.trees?.setHouses(res.houses, center, res.props);
+      this.trees?.setHouses(res.houses, center, res.props, res.bridges);
       (this.map.getSource('decor') as GeoJSONSource | undefined)?.setData({
         type: 'FeatureCollection',
         features: res.parts.map((p) => ({
@@ -833,7 +833,10 @@ export class GameMap {
         if (f.properties?.brunnel === 'tunnel') continue;
         const g = f.geometry;
         const list = g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : [];
-        for (const coords of list) if (coords.length > 1 && nearBox(coords)) out.push({ coords: coords as [number, number][], drivable: DRIVABLE.includes(cls(f)) });
+        const c = cls(f);
+        // Brücke: welche Art Weg darüber führt (für das 3D-Modell)
+        const bridge = f.properties?.brunnel === 'bridge' ? (['motorway', 'trunk', 'primary', 'secondary', 'tertiary'].includes(c) ? 'major' : DRIVABLE.includes(c) ? 'minor' : c === 'rail' || c === 'transit' ? 'rail' : 'path') : undefined;
+        for (const coords of list) if (coords.length > 1 && nearBox(coords)) out.push({ coords: coords as [number, number][], drivable: DRIVABLE.includes(c), bridge });
       }
       return out;
     };
@@ -1064,7 +1067,7 @@ export class GameMap {
       const col = c(pat);
       if (col) set(layer, col);
     };
-    one('soft-residential', 'pat-gardens');
+    one('soft-residential', this.settlement && this.settlement !== 'village' ? 'pat-paved' : 'pat-gardens');
     one('soft-industrial', 'pat-rubble');
     one('soft-green', 'pat-grass');
     one('soft-sand', 'pat-sand');
@@ -1082,6 +1085,25 @@ export class GameMap {
     const floor = c('pat-forest-floor');
     if (floor) set('soft-wood', ['step', ['zoom'], '#4f5a33', DECOR_MINZOOM, floor]);
   }
+
+  /**
+   * Boden in Wohngebieten je nach Ort: In Städten meist Asphalt und Pflaster, Gärten nur in
+   * manchen Vierteln; im Dorf meist Gärten, ab und zu ein Hof. Welches Viertel was bekommt,
+   * hängt an der Nummer der Fläche in den Kartendaten (bleibt also immer gleich).
+   */
+  setSettlement(kind: 'city' | 'town' | 'village') {
+    if (this.settlement === kind || !this.map.getLayer('landuse-residential')) return;
+    this.settlement = kind;
+    // Von zehn Vierteln: so viele Gärten, so viele Höfe, der Rest Pflaster
+    const [gardens, yards] = kind === 'city' ? [2, 2] : kind === 'town' ? [4, 2] : [7, 2];
+    const slots = (from: number, n: number) => Array.from({ length: n }, (_, i) => from + i);
+    const fallback = kind === 'village' ? 'pat-gardens' : 'pat-paved';
+    const expr = ['match', ['%', ['to-number', ['coalesce', ['id'], -1]], 10], -1, fallback, slots(0, gardens), 'pat-gardens', slots(gardens, yards), 'pat-yard', 'pat-paved'];
+    this.map.setPaintProperty('landuse-residential', 'fill-pattern', expr as maplibregl.ExpressionSpecification);
+    const col = textureColor(fallback);
+    if (col && this.map.getLayer('soft-residential')) this.map.setPaintProperty('soft-residential', 'line-color', col);
+  }
+  private settlement: 'city' | 'town' | 'village' | null = null;
 
   /** Im Winter liegt eine dünne Schneeschicht über allem Boden (bis es eigene Winterbilder gibt). */
   private applySnow() {

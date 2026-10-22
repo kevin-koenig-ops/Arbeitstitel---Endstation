@@ -7,6 +7,7 @@
 
 import { rngFrom, type Rng } from '../core/rng';
 import type { LatLon } from '../core/types';
+import { joinBridges, type BridgeKind, type BridgeSpec } from './bridges';
 import type { FacadeKind, HouseSpec, RoofKind } from './houseMesh';
 import { isHallKind, isShopKind, landmarkOf, type LandmarkKind, type PropKind, type PropSpec, type ShopKind } from './landmarks';
 
@@ -23,6 +24,8 @@ export interface RawLine {
   coords: Ring;
   /** Fahrbahn (Autowracks möglich) oder nur Weg. */
   drivable: boolean;
+  /** Brücke: Art des Wegs darauf (sonst nicht gesetzt). */
+  bridge?: BridgeKind;
 }
 export interface DecorInput {
   buildings: RawPolygon[];
@@ -82,6 +85,8 @@ export interface DecorResult {
   houses: HouseSpec[];
   /** Nur mit houseMeshes: freistehende Wahrzeichen (Tankstelle, Haltestelle, Brunnen). */
   props: PropSpec[];
+  /** Nur mit houseMeshes: Brücken als 3D-Modell. */
+  bridges: BridgeSpec[];
   counts: { buildings: number; trees: number; cars: number; street: number; gardens: number; forest: number; landmarks: number };
 }
 
@@ -520,11 +525,13 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
   // Für Gartenbäume: Abstand zu Häusern und Straßen halten
   const roadGrid = new Grid<[Pt, Pt]>(40);
   const roadsM: Ring[] = [];
+  const bridgeParts: BridgeSpec[] = [];
   for (const l of input.roads) {
     if (l.coords.length < 2) continue;
     const m = l.coords.map(P.toM);
     const b = bbox(m);
     if (b.x0 > radiusM + 50 || b.x1 < -radiusM - 50 || b.y0 > radiusM + 50 || b.y1 < -radiusM - 50) continue;
+    if (l.bridge && opts.houseMeshes) bridgeParts.push({ path: m, kind: l.bridge });
     if (l.drivable) roadsM.push(m);
     for (let i = 0; i < m.length - 1; i++) {
       const sb = bbox([m[i], m[i + 1]]);
@@ -965,7 +972,8 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
   }
 
   const landmarks = houseSpecs.filter((h) => h.shop).length + props.length;
-  return { parts, trees: specs, houses: houseSpecs, props, counts: { buildings, trees: trees.length, cars, street, gardens, forest, landmarks } };
+  const bridges = joinBridges(bridgeParts);
+  return { parts, trees: specs, houses: houseSpecs, props, bridges, counts: { buildings, trees: trees.length, cars, street, gardens, forest, landmarks } };
 }
 
 /** Lage eines Hauses: Wohngebiet, Gewerbe, draußen, oder ein öffentliches Gebäude. */

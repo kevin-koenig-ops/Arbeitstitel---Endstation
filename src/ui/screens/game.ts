@@ -823,6 +823,8 @@ export function gameScreen(app: App): Screen {
       const r: RegionId = classifyRegion(stats);
       const before = currentRegion();
       setCurrentRegion(r);
+      // Boden in Wohngebieten: Stadt eher Pflaster, Dorf eher Gärten
+      gm?.setSettlement(r === 'city' ? 'city' : r === 'town' ? 'town' : 'village');
       if (regionAt && (!regionKnown || r !== before)) {
         regionKnown = true;
         paintRegion(true);

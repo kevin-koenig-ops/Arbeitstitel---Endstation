@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { distanceM } from '../src/core/geo';
 import { DECOR_LIMITS, generateDecor, type DecorInput, type RawPolygon } from '../src/map/decor';
+import { joinBridges } from '../src/map/bridges';
 import { buildHouses, FACADES, orientedBox, ROOF_KINDS, roofKey, type HouseMeshes, type HouseSpec } from '../src/map/houseMesh';
 import world from '../src/map/demoWorld.json';
 
@@ -22,7 +23,11 @@ const input: DecorInput = {
   residential: polys('landuse', ['residential']),
   roads: feats
     .filter((f) => f.properties._layer === 'transportation' && f.geometry.type === 'LineString')
-    .map((f) => ({ coords: f.geometry.coordinates as [number, number][], drivable: !['path', 'track'].includes(String(f.properties.class)) })),
+    .map((f) => ({
+      coords: f.geometry.coordinates as [number, number][],
+      drivable: !['path', 'track'].includes(String(f.properties.class)),
+      bridge: f.properties.brunnel === 'bridge' ? (['path', 'track'].includes(String(f.properties.class)) ? ('path' as const) : ('major' as const)) : undefined,
+    })),
 };
 const center = (world as unknown as { start: { lat: number; lon: number } }).start;
 
@@ -161,5 +166,19 @@ describe('Kartendetails', () => {
     for (let i = 0; i < pl.win.pos.length; i += 3) if (Math.abs(pl.win.pos[i + 2] - 0.03) < 1e-6) south.push(pl.win.pos[i]);
     expect(south.length).toBe(4 * 2 * 6);
     for (const x of south) expect([0.65, 2.35].some((v) => Math.abs((((x % 3) + 3) % 3) - v) < 1e-6)).toBe(true);
+  });
+
+  it('Brücken: aus den Kartendaten, an Kachelgrenzen wieder zusammengesetzt, mit Modell', () => {
+    const res = generateDecor(input, center, 600, { houseMeshes: true, month: 7 });
+    expect(res.bridges.length).toBe(2);
+    expect(res.bridges.map((b) => b.kind).sort()).toEqual(['major', 'path']);
+    const without = buildHouses(res.houses, res.props).meshes.plain.pos.length;
+    const withB = buildHouses(res.houses, res.props, res.bridges).meshes.plain.pos.length;
+    expect(withB).toBeGreaterThan(without + 9 * 40);
+    // Eine Brücke in zwei Stücken (Kachelgrenze) wird wieder eine, doppelte Stücke fallen weg
+    const a = { kind: 'minor' as const, path: [[0, 0], [10, 0]] as [number, number][] };
+    const b = { kind: 'minor' as const, path: [[10, 0], [20, 2]] as [number, number][] };
+    expect(joinBridges([a, b])).toEqual([{ kind: 'minor', path: [[0, 0], [10, 0], [20, 2]] }]);
+    expect(joinBridges([a, { ...a }])).toHaveLength(1);
   });
 });
