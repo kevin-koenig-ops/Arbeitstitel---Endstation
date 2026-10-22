@@ -129,6 +129,11 @@ Knobeln passt perfekt zu „draußen kurz, zu Hause die Tiefe“: Hinweise finde
 - **Kombos** machen die Tiefe: Ölfass anzünden (alle vorne brennen), erst vereisen und dann ein schwerer Schlag, der doppelt trifft, Autoalarm werfen, damit der Heuler hinläuft statt zu schreien.
 - **Effekte, die sich gut anfühlen:** Feuer und Funken, Eis-Splitter, Rauch, kurzes Anhalten des Bildes beim Treffer, Zeitlupe beim letzten Kill, Kamera-Wackeln, Karten, die sichtbar zum Gegner fliegen.
 - **Tempo:** Draußen bleiben Kämpfe kurz (2 bis 4 Runden, wenige Effekte). Die volle Tiefe gibt es bei Raids und Roten Zonen. Am Anfang nur Schlagen, Ausweichen, Verbinden, Statuseffekte kommen langsam dazu.
+- **Waffen-Ideen (aus dem Überblick, 22.10. freigegeben):**
+  - **Machete:** Haltbarkeit 30, aus 3 Metall, 1 Leder, 1 Kleber (Bauplan aus dem Baumarkt), Karten 3× Hieb.
+  - **Feuerlöscher:** 6 Ladungen, nicht baubar, Fund an Tankstelle oder Baumarkt, Karten 2× Löschwolke (vereist).
+  - **Taschenlampe:** Haltbarkeit 20, aus dem Kram „Taschenlampe“, 1 Batteriezelle und 1 Kupfer, Karten 2× Leuchten (blendet).
+  - **Schutzschild:** Haltbarkeit 40, aus 4 Metall, 2 Schrauben, 1 Leder, 1 Gummi (Bauplan), Karten 2× Schild hoch.
 - **Begleiter später als Update:** Hund oder Bewohner kämpfen mit und bringen eigene Karten ins Deck. Nicht für den Start, sondern als großes Update irgendwann.
 
 ## Fortschritt
@@ -154,7 +159,7 @@ Knobeln passt perfekt zu „draußen kurz, zu Hause die Tiefe“: Hinweise finde
 - **Eins statt viele:** Werktisch, Holzofen, Solarpaneel, Regentonne, Hochbeet, Sanitätsschrank und Funkgerät gibt es nur einmal. Der Werktisch lässt sich in drei Stufen aufrüsten (mehr Plätze, schneller).
 - **Anlagen mit Nutzen:** Regentonne (Wasser) und Hochbeet (Nahrung) füllen sich von selbst, der Sanitätsschrank macht alle 8 Stunden Medizin. Der Holzofen kocht Eintopf (2 Nahrung, 1 Wasser, 1 Holz): heilt ganz und macht 3 Stunden satt, das bringt 20 % mehr Beute. Das Funkgerät empfängt alle 20 Stunden einen Funkspruch auf Kanal 4, oft mit einem Hinweis auf ein Versteck.
 - **Was fehlt und wo:** Fehlen Rohstoffe für ein Teil, sagt das Zuhause, welche und wo man sie oft findet.
-- **Rucksack:** Was du unterwegs findest (Rohstoffe und Kram), steckt im Rucksack. Ohne feste Grenze. Der Rucksack hat drei Reiter: Rucksack, Fundbuch (Sammelstücke, Sets, Erinnerungsstücke) und Ausrüstung (Gesundheit, Waffen).
+- **Rucksack:** Was du unterwegs findest (Rohstoffe und Kram), steckt im Rucksack. Bisher ohne feste Grenze. **Entschieden (22.10.):** Der Rucksack bekommt Fächer, am Anfang 12; größere Rucksäcke baut man am Werktisch. Vorräte (Nahrung, Wasser, Medizin) brauchen kein Fach. Ist er voll, wählt man, was liegen bleibt (nichts geht verloren, ohne dass man es weiß). Der Rucksack hat drei Reiter: Rucksack, Fundbuch (Sammelstücke, Sets, Erinnerungsstücke) und Ausrüstung (Gesundheit, Waffen).
 - **Lager:** Zu Hause packst du aus, dann liegt alles sicher im Lager. Gebaut wird nur aus dem Lager. Eine Niederlage kostet höchstens etwas aus dem Rucksack, nie aus dem Lager.
 
 ## Das Zuhause (Basisbau, das Herzstück für abends)
@@ -321,4 +326,4 @@ Endzeit, aber zu Hause warm: dunkle Flächen mit warmem Bernstein als Akzent, kl
 
 **Gemalte Hintergrundbilder** für Start, Hauptmenü, Charaktererstellung, Einstieg, Kampf und Schauplätze.
 
-**Grafikstil: noch offen.** Im Spiel gibt es einen einzigen Look (Low-Poly), ohne Grafik-Schalter. Gewünscht ist ein Comic-Look wie in einem Handyspiel, das Kevin kennt; er sucht dafür eine Referenz. Ausprobiert und wieder entfernt: Comic- und Gemalt-Stil per Shader, fertige Modellpakete (Quaternius) für Figuren, Möbel und Kulisse, eine 3D-Welt auf der Karte mit Fassaden und Kram an den Straßen. Alles liegt in Git (Commit 4cc884c).
+**Grafikstil:** Vorbild ist das Handyspiel The Island Castaway: gemalt und freundlich. Wichtig dabei: **freundlicher, nicht bunter.** Im Spiel gibt es einen einzigen Look (Low-Poly), ohne Grafik-Schalter. Erste Schritte in diese Richtung (22.10.): Kevins gemalte Bodentexturen auf Karte und Zuhause, hellere Kartenfarben, 3D-Bäume. Ausprobiert und wieder entfernt: Comic- und Gemalt-Stil per Shader, fertige Modellpakete (Quaternius) für Figuren, Möbel und Kulisse, eine 3D-Welt auf der Karte mit Fassaden und Kram an den Straßen. Alles liegt in Git (Commit 4cc884c).
