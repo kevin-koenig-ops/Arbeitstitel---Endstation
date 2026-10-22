@@ -60,6 +60,8 @@ import {
   WEAPONS,
   WILD,
   WORKBENCH_LEVELS,
+  PATROL,
+  gearSum,
 } from './content';
 import { ExploredView, revealAround, SECTOR_LEVELS, sectorOf } from './explore';
 import {
@@ -110,6 +112,7 @@ import type {
   Action,
   ActionResult,
   Cache,
+  Combat,
   LatLon,
   Character,
   EnemyId,
@@ -132,9 +135,11 @@ import type {
   WeaponId,
 } from './types';
 import { gridSpotAlive, resolveGridSpot, resolveSpecialSpot } from './world';
+import { patrolActive, patrolGroup } from './patrols';
+import { resolveDropSpot, zonesAt } from './worldEvents';
 import { GOALS } from './progress';
 
-export const SCHEMA_VERSION = 13;
+export const SCHEMA_VERSION = 14;
 
 /** Startausrüstung: alles gefunden und angezogen. */
 export function startGear(now: number): GearState {
@@ -188,6 +193,7 @@ export function createPlayer(playerId: string, character: Character, now: number
     wildAt: 0,
     places: {},
     discovered: {},
+    patrols: {},
   };
 }
 
@@ -465,6 +471,8 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       if (!spot) return reject('invalid_spot');
       if (!inRange(state, spot, action.at, action.accuracyM)) return reject('too_far');
       if (readyAt(state, spot) > ctx.now) return reject('cooldown');
+      const zoneSearch = zoneRule(state, spot.pos, ctx);
+      if (zoneSearch) return reject(zoneSearch);
       if (guardOf(ctx.worldSeed, spot, ctx.now)) return reject('guarded');
       events.push(lootSpot(state, spot, ctx, { guarded: false, quality: action.quality ?? 'good' }), ...checkSets(state, ctx.now));
       startDig(state, spot, ctx);
@@ -554,6 +562,28 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       break;
     }
 
+    case 'patrolFight': {
+      // Läuft schon ein Kampf mit diesem Trupp: einfach weiter.
+      if (state.combat?.patrol === action.patrol) {
+        events.push({ type: 'combatStarted', enemy: state.combat.enemy });
+        break;
+      }
+      if (state.combat || !patrolActive(action.patrol, ctx.now) || state.patrols[action.patrol]) return reject('nothing');
+      if (action.accuracyM > 120) return reject('too_far');
+      if (state.health < MIN_HEALTH_TO_FIGHT) return reject('exhausted');
+      if (ctx.now - state.wildAt < PATROL.cooldownMin * 60_000) return reject('cooldown');
+      const night = dayPhase(action.at, ctx.now) === 'night';
+      const group = patrolGroup(ctx.worldSeed, action.patrol, night);
+      const window = Math.floor(ctx.now / 60_000);
+      const spot: Spot = { id: `w:${action.patrol}`, kind: 'hide', source: 'grid', pos: action.at, name: group.length > 2 ? 'Horde' : 'Trupp' };
+      const enemy: EnemyId = group.find((k): k is EnemyId => k !== 'screamer') ?? 'walker';
+      state.wildAt = ctx.now;
+      state.dig = null;
+      state.combat = { spot, enemy, group, window, wild: true, patrol: action.patrol, opening: action.opening === 'surprise' ? 'surprise' : 'spotted' };
+      events.push({ type: 'patrol', group, opening: state.combat.opening! }, { type: 'combatStarted', enemy });
+      break;
+    }
+
     case 'engage': {
       const spot = verifySpot(action.spot, ctx);
       if (!spot) return reject('invalid_spot');
@@ -564,6 +594,8 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       }
       if (!inRange(state, spot, action.at, action.accuracyM)) return reject('too_far');
       if (readyAt(state, spot) > ctx.now) return reject('cooldown');
+      const zoneEngage = zoneRule(state, spot.pos, ctx);
+      if (zoneEngage) return reject(zoneEngage);
       const enemy = guardOf(ctx.worldSeed, spot, ctx.now);
       if (!enemy) return reject('not_guarded');
       if (state.health < MIN_HEALTH_TO_FIGHT) return reject('exhausted');
@@ -603,6 +635,14 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
         if (state.health < MAX_HEALTH) state.healthAt = ctx.now;
         state.stats.kills += kills;
         events.push({ type: 'combatWon', enemy: c.enemy, kills, weaponBroke });
+        if (c.patrol) {
+          state.patrols[c.patrol] = ctx.now;
+          for (const [id, at] of Object.entries(state.patrols)) if (ctx.now - at > 2 * HOUR) delete state.patrols[id];
+          const loot = patrolLoot(state, c, ctx, kills);
+          if (c.group.includes('watcher')) watcherBonus(state, loot, ctx.now);
+          events.push(loot, ...checkSets(state, ctx.now));
+          break;
+        }
         if (c.ambush) {
           // Überfall beim Wühlen: die Fundstelle ist schon leer, es gibt nur, was die Gegner dabeihatten
           const main = SPOT_KINDS[c.spot.kind].loot.find((l) => isMaterial(l.res))?.res ?? 'metal';
@@ -1375,6 +1415,11 @@ function dropSome(state: PlayerState, r: () => number): Partial<Inventory> {
  * gegen seine eigene OSM-Liste.
  */
 function verifySpot(spot: Spot, ctx: RuleContext): Spot | null {
+  if (spot.source === 'special' && spot.id.startsWith('e:')) {
+    const drop = resolveDropSpot(ctx.worldSeed, spot.id, ctx.now, ctx.blocked);
+    if (!drop || distanceM(drop.pos, spot.pos) > 1) return null;
+    return drop;
+  }
   if (spot.source === 'special') {
     const real = resolveSpecialSpot(ctx.worldSeed, spot.id);
     if (!real || real.kind !== spot.kind || distanceM(real.pos, spot.pos) > 1) return null;
@@ -1389,6 +1434,36 @@ function verifySpot(spot: Spot, ctx: RuleContext): Spot | null {
   }
   if (!spot.id.startsWith('p:') || !SPOT_KINDS[spot.kind]) return null;
   return spot;
+}
+
+/**
+ * Liegt die Stelle in einer Zone, in der man gerade nicht suchen darf?
+ * Sperrgebiet: gar nicht. Staubsturm: nur mit Atemschutz.
+ */
+function zoneRule(state: PlayerState, p: LatLon, ctx: RuleContext): RejectReason | null {
+  for (const z of zonesAt(ctx.worldSeed, p, ctx.now, ctx.blocked)) {
+    if (z.kind === 'quarantine') return 'zone_closed';
+    if (z.kind === 'dust' && gearSum(state.gear.worn, 'filter') < 1) return 'need_filter';
+  }
+  return null;
+}
+
+/** Was ein besiegter Trupp dabeihatte: je Gegner etwas, manchmal Kram. */
+function patrolLoot(state: PlayerState, c: Combat, ctx: RuleContext, kills: number): Extract<GameEvent, { type: 'loot' }> {
+  const r = rngFrom(ctx.worldSeed, state.playerId, 'trupp-beute', c.patrol ?? c.spot.id);
+  const items: Partial<Inventory> = {};
+  for (let i = 0; i < Math.max(1, kills); i++) {
+    const res = pickWeighted(r, PATROL.loot);
+    items[res] = (items[res] ?? 0) + 1 + (r() < 0.4 ? 1 : 0);
+  }
+  gain(state, items);
+  const loot: Extract<GameEvent, { type: 'loot' }> = { type: 'loot', spotId: c.spot.id, items, bonus: false };
+  if (r() < PATROL.lootKramChance) {
+    const kram = pickWeighted(r, PATROL.lootKram);
+    state.packKram[kram] = (state.packKram[kram] ?? 0) + 1;
+    loot.kram = kram;
+  }
+  return loot;
 }
 
 function pruneSpots(state: PlayerState, now: number) {

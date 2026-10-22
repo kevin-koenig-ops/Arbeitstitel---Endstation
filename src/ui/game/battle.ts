@@ -7,7 +7,10 @@
 // Die Regeln stehen in core/tactics.ts; hier wird nur angezeigt und abgespielt.
 
 import { WORLD_SEED } from '../../config';
-import { CARDS, FOE_TACTICS, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, TACTICS, WEAPONS, type CardId, gearArmor } from '../../core/content';
+import { CARDS, CLIMATE, FOE_TACTICS, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, TACTICS, WEAPONS, type CardId, gearArmor, gearSum } from '../../core/content';
+import { isCold, isHot } from '../../core/terrain';
+import { seasonOf } from '../../services/settings';
+import { currentRegion } from './worldState';
 import { aliveFoes, createTactics, endTurn, flee, foeById, playCard, targetsFor, type Intent, type TacticsState, type TEvent } from '../../core/tactics';
 import { bestWeapon, currentHealth } from '../../core/rules';
 import type { DayPhase } from '../../core/sun';
@@ -16,7 +19,7 @@ import type { App } from '../app';
 import { append, clear, h, reducedMotion, sleep, svgEl } from '../dom';
 import { icon, resIcon } from '../icons';
 import { faceEl } from '../portrait';
-import { walkerMood } from './ambience';
+import { currentAmbience, walkerMood } from './ambience';
 import type { ShownFoe, TacticsScene } from '../../base/CombatScene';
 import { artStyle } from '../art';
 
@@ -85,6 +88,12 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
   const now0 = app.backend.now();
   const weapon = bestWeapon(s0)?.kind ?? null;
   const mood = walkerMood();
+  // Kälte ohne warme Sachen, Hitze ohne Wasser (echtes Wetter oder die Gegend)
+  const amb = currentAmbience();
+  const region = currentRegion();
+  const cold = isCold({ tempC: amb.tempC, region, season: seasonOf(app.settings.get()), phase: amb.phase }) && gearSum(s0.gear.worn, 'warmth') < CLIMATE.warmthNeeded;
+  const thirst = isHot({ tempC: amb.tempC, region, phase: amb.phase }) && s0.inventory.water <= 0;
+  const opening = combat.opening;
   const st: TacticsState = createTactics({
     seed: `${WORLD_SEED}|${s0.playerId}|${spot.id}|${combat.window}|${combat.ambush ? 'u' : 'w'}`,
     group: combat.group?.length ? combat.group : [combat.enemy],
@@ -94,6 +103,9 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     maxHealth: MAX_HEALTH,
     mood,
     armor: gearArmor(s0.gear.worn),
+    opening,
+    cold,
+    thirst,
   });
   const firstFight = s0.stats.kills === 0;
   const fast = reducedMotion();
@@ -203,6 +215,10 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
   const defaultInfo = () => {
     const foes = aliveFoes(st);
     if (firstFight && st.turn === 1) return 'Tippe eine Karte an. Jede kostet Kraft (⚡), pro Runde hast du 3. Tippst du einen Gegner an, treffen ihn deine Karten, bis du wechselst.';
+    if (st.turn === 1 && opening === 'surprise') return 'Überraschung! Die Gegner setzen diese Runde aus, und du hast 1 Kraft mehr.';
+    if (st.turn === 1 && opening === 'spotted') return `Entdeckt: In der ersten Runde hast du 1 Kraft weniger.${cold ? ' Und kalte Finger: eine Karte weniger.' : ''}`;
+    if (st.turn === 1 && cold) return `Kalt: Ohne warme Sachen (Wärme ${CLIMATE.warmthNeeded}) hast du in der ersten Runde eine Karte weniger.`;
+    if (st.turn === 1 && thirst) return 'Hitze und kein Wasser dabei: In der ersten Runde hast du 1 Kraft weniger.';
     if (foes.some((f) => f.row === 'near' && f.intent.kind === 'smash')) return 'Achtung, Wuchtschlag! Ausweichen oder ihn wegtreten.';
     if (st.turn === 1 && mood && foes.some((f) => f.kind === 'walker')) return mood === 'strong' ? 'Nacht, Nebel oder Regen: Die Wandler sind zäher als sonst.' : 'Pralle Sonne: Die Wandler sind träge.';
     if (foes.some((f) => f.kind === 'screamer')) return 'Der Heuler ruft Verstärkung. Erst ihn ausschalten, mit Wurf oder Bolzen.';
@@ -789,7 +805,9 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
       last = performance.now();
       raf = requestAnimationFrame(loop);
       const n = aliveFoes(st).length;
-      say(combat.wild ? 'Aus dem Unterholz!' : combat.ambush ? 'Überfall! Zu viel Lärm gemacht.' : n > 1 ? `${n} Gegner!` : `Ein ${FOE_TACTICS[aliveFoes(st)[0].kind].name}!`, 'bad');
+      if (opening === 'surprise') say('Überraschungsangriff!', 'gold', 1800);
+      else if (opening === 'spotted') say(combat.patrol?.startsWith('t:h:') ? 'Die Horde hat dich entdeckt!' : 'Entdeckt!', 'bad');
+      else say(combat.wild ? 'Aus dem Unterholz!' : combat.ambush ? 'Überfall! Zu viel Lärm gemacht.' : n > 1 ? `${n} Gegner!` : `Ein ${FOE_TACTICS[aliveFoes(st)[0].kind].name}!`, 'bad');
       if (firstFight) showHelp();
     })
     .catch(() => {

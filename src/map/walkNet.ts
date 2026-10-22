@@ -1,14 +1,21 @@
-// Wegenetz für den Testmodus (Simulation): In Orten läuft die Figur nur über Straßen,
-// Gassen und Wege. Quer durchs Gelände geht es nur draußen (Wald, Feld, Wiese), und im
-// Wald abseits der Wege langsamer.
+// Wegenetz für das Laufen per Tippen (Testmodus, später Reisescheine): Man kommt überall
+// hin außer durch Häuser und Wasser. Auf Straßen und Wegen geht es am schnellsten, durch
+// Gärten, Felder, Wald und Sumpf langsamer. Zwei Arten zu gehen:
+//   schnell: die schnellste Strecke (meist über die Straßen)
+//   leise:   eine Strecke durch Deckung (Wald, Hecken, Gärten, im Sommer das Korn)
+// Außerdem rechnet es die Strecken der Trupps (Zufallsweg über die Wege, aus dem Startwert).
 //
 // Reine Rechnung ohne Karte und Browser: bekommt Linien und Flächen (Länge/Breite) und
 // rechnet in Metern rund um einen Mittelpunkt. Dadurch lässt es sich testen.
 
-import type { LatLon } from '../core/types';
+import { TERRAIN } from '../core/content';
+import { visibility } from '../core/terrain';
+import type { LatLon, Season, TerrainKind } from '../core/types';
 
-/** road = auf einem Weg, forest/open = abseits draußen, built = im Ort abseits der Wege, blocked = Haus oder Wasser. */
-export type Terrain = 'road' | 'forest' | 'open' | 'built' | 'blocked';
+/** road = auf einem Weg, built = Gärten und Höfe, blocked = Haus, Wasser oder Sperrgebiet. */
+export type Terrain = TerrainKind;
+/** Schnell (Straßen) oder leise (Deckung). */
+export type Gait = 'fast' | 'quiet';
 
 type Ring = [number, number][];
 type Poly = Ring[];
@@ -27,16 +34,31 @@ export interface WalkInput {
   built: Poly[];
   /** Wald: abseits der Wege langsamer. */
   forest: Poly[];
+  /** Äcker. */
+  fields?: Poly[];
+  /** Sumpf, Moor, Schilf. */
+  wetland?: Poly[];
+  /** Gesperrte Zonen (Sperrgebiet): da geht es nicht hinein. */
+  noGo?: { center: LatLon; radiusM: number }[];
+  /** Jahreszeit (für die leise Strecke: Korn versteckt nur im Sommer). */
+  season?: Season;
+  /** Gummistiefel: im Sumpf schneller. */
+  wade?: boolean;
 }
 
 /** Tempo je Gelände (1 = auf dem Weg). */
-export const SPEED: Record<'road' | 'forest' | 'open', number> = { road: 1, open: 0.8, forest: 0.45 };
+export const SPEED: Record<Exclude<TerrainKind, 'blocked'>, number> = {
+  road: TERRAIN.road.speed,
+  built: TERRAIN.built.speed,
+  open: TERRAIN.open.speed,
+  field: TERRAIN.field.speed,
+  forest: TERRAIN.forest.speed,
+  wetland: TERRAIN.wetland.speed,
+};
 /** So nah an einer Linie gilt man als „auf dem Weg“. */
 export const ON_WAY_M = 7;
 /** So nah an Häusern gilt man als im Ort (Gärten, Höfe, Einfahrten). */
 const NEAR_HOUSE_M = 16;
-/** Im Ort: so weit springt die Figur beim Schieben noch auf den nächsten Weg. */
-const SNAP_M = 14;
 
 export interface Route {
   /** Punkte der Strecke, der erste ist der Start. */
@@ -179,12 +201,23 @@ export class WalkNet {
   private builtGrid = new Grid<number>();
   private forest: Area[] = [];
   private forestGrid = new Grid<number>();
+  private fields: Area[] = [];
+  private fieldGrid = new Grid<number>();
+  private wet: Area[] = [];
+  private wetGrid = new Grid<number>();
   private wlines: [P, P][] = [];
   private wlineGrid = new Grid<number>();
+  private zones: { x: number; y: number; r: number }[] = [];
+  /** Zonen, in denen man gerade steht: aus denen darf man hinaus. */
+  private skipZones = new Set<number>();
+  private season: Season;
+  private speed: Record<Exclude<TerrainKind, 'blocked'>, number>;
 
   constructor(input: WalkInput) {
     this.center = input.center;
     this.kx = 111320 * Math.cos((input.center.lat * Math.PI) / 180);
+    this.season = input.season ?? 'summer';
+    this.speed = { ...SPEED, wetland: input.wade ? 0.6 : SPEED.wetland };
     // Wege: Punkte mit gleicher Lage (auf 1 m gerundet) werden ein Knoten
     const ids = new Map<string, number>();
     const node = (lon: number, lat: number) => {
@@ -239,6 +272,12 @@ export class WalkNet {
     areas(input.water, this.water, this.waterGrid);
     areas(input.built, this.built, this.builtGrid);
     areas(input.forest, this.forest, this.forestGrid);
+    areas(input.fields ?? [], this.fields, this.fieldGrid);
+    areas(input.wetland ?? [], this.wet, this.wetGrid);
+    for (const z of input.noGo ?? []) {
+      const c = this.toXY(z.center);
+      this.zones.push({ x: c.x, y: c.y, r: z.radiusM });
+    }
     for (const line of input.waterLines ?? []) {
       for (let i = 1; i < line.length; i++) {
         const a = this.toXY({ lon: line[i - 1][0], lat: line[i - 1][1] });
@@ -327,12 +366,24 @@ export class WalkNet {
     return false;
   }
 
+  private inZone(p: P): boolean {
+    for (let i = 0; i < this.zones.length; i++) {
+      if (this.skipZones.has(i)) continue;
+      const z = this.zones[i];
+      if ((p.x - z.x) ** 2 + (p.y - z.y) ** 2 <= z.r * z.r) return true;
+    }
+    return false;
+  }
+
   private terrainXY(p: P): Terrain {
+    if (this.zones.length && this.inZone(p)) return 'blocked';
     const w = this.nearest(p, ON_WAY_M);
     if (w) return 'road';
     if (this.any(this.houseGrid, this.houses, p) || this.any(this.waterGrid, this.water, p)) return 'blocked';
     if (this.any(this.builtGrid, this.built, p) || this.nearHouse(p)) return 'built';
     if (this.any(this.forestGrid, this.forest, p)) return 'forest';
+    if (this.any(this.wetGrid, this.wet, p)) return 'wetland';
+    if (this.any(this.fieldGrid, this.fields, p)) return 'field';
     return 'open';
   }
 
@@ -340,10 +391,20 @@ export class WalkNet {
     return this.terrainXY(this.toXY(p));
   }
 
+  private speedOf(t: Terrain): number {
+    return t === 'blocked' ? 0 : this.speed[t];
+  }
+
   /** Tempo-Faktor an dieser Stelle. */
   speedAt(p: LatLon): number {
-    const t = this.terrainAt(p);
-    return t === 'forest' ? SPEED.forest : t === 'open' ? SPEED.open : SPEED.road;
+    return this.speedOf(this.terrainAt(p)) || this.speed.road;
+  }
+
+  /** Kosten pro Meter für die leise Strecke: Zeit mal „wie gut sieht man mich hier“. */
+  private quietCost(t: Terrain): number {
+    if (t === 'blocked') return Infinity;
+    const v = visibility(t, this.season);
+    return (1 / this.speed[t]) * (0.3 + 3 * v * v);
   }
 
   /** Quer durchs Gelände von a nach b: Zeit (Meter geteilt durch Tempo), oder Infinity, wenn Ort, Haus oder Wasser im Weg ist. */
@@ -358,8 +419,8 @@ export class WalkNet {
     for (let i = 1; i <= n; i++) {
       const m = { x: a.x + ((b.x - a.x) * (i - 0.5)) / n, y: a.y + ((b.y - a.y) * (i - 0.5)) / n };
       const t = this.terrainXY(m);
-      if (t === 'built' || t === 'blocked') return { cost: Infinity, pts, speeds };
-      const v = t === 'forest' ? SPEED.forest : t === 'open' ? SPEED.open : SPEED.road;
+      if (t === 'blocked') return { cost: Infinity, pts, speeds };
+      const v = this.speedOf(t);
       cost += len / n / v;
       const p = { x: a.x + ((b.x - a.x) * i) / n, y: a.y + ((b.y - a.y) * i) / n };
       // Gleiches Gelände: Abschnitt verlängern statt neuen Punkt anzulegen
@@ -470,18 +531,38 @@ export class WalkNet {
     return { cost: best.cost, pts, speeds, off };
   }
 
-  /** Strecke von hier zur angetippten Stelle: über Wege, draußen auch quer, was schneller ist. */
-  route(fromLL: LatLon, toLL: LatLon): Route | null {
+  /**
+   * Strecke von hier zur angetippten Stelle.
+   * fast: über Wege oder quer, was schneller ist. quiet: durch Deckung, auch wenn es länger dauert.
+   */
+  route(fromLL: LatLon, toLL: LatLon, gait: Gait = 'fast'): Route | null {
     const F = this.toXY(fromLL);
-    const T = this.toXY(toLL);
+    // Steht man schon in einem Sperrgebiet, darf man hinaus
+    this.skipZones.clear();
+    this.zones.forEach((z, i) => {
+      if ((F.x - z.x) ** 2 + (F.y - z.y) ** 2 <= z.r * z.r) this.skipZones.add(i);
+    });
+    try {
+      if (gait === 'quiet') {
+        const q = this.quietRoute(F, this.toXY(toLL));
+        if (q) return q;
+      }
+      return this.fastRoute(F, this.toXY(toLL));
+    } finally {
+      this.skipZones.clear();
+    }
+  }
+
+  private fastRoute(F: P, T: P): Route | null {
     const tTer = this.terrainXY(T);
     type Cand = { cost: number; pts: P[]; speeds: number[]; off: boolean[]; snapped: boolean };
     const cands: Cand[] = [];
-    const outside = tTer === 'forest' || tTer === 'open' || tTer === 'road';
-    // 1. Direkt quer durchs Gelände (nur draußen)
-    if (outside) {
+    const reachable = tTer !== 'blocked';
+    const road = this.speed.road;
+    // 1. Direkt quer durchs Gelände
+    if (reachable) {
       const leg = this.freeLeg(F, T);
-      if (leg.cost < Infinity) cands.push({ cost: leg.cost, pts: leg.pts, speeds: leg.speeds, off: leg.speeds.map((v) => v !== SPEED.road), snapped: false });
+      if (leg.cost < Infinity) cands.push({ cost: leg.cost, pts: leg.pts, speeds: leg.speeds, off: leg.speeds.map((v) => v !== road), snapped: false });
     }
     // 2. Über die Wege
     const A = this.nearest(F, 400);
@@ -492,31 +573,31 @@ export class WalkNet {
         // Zum ersten Weg darf man immer (man steht ja schon irgendwo)
         const startLen = A.d;
         const pts: P[] = [F, ...way.pts];
-        const speeds: number[] = [SPEED.open, ...way.pts.slice(1).map(() => SPEED.road)];
+        const speeds: number[] = [this.speed.built, ...way.pts.slice(1).map(() => road)];
         const off: boolean[] = [startLen > ON_WAY_M, ...way.pts.slice(1).map(() => false)];
-        let cost = startLen / SPEED.open + way.len;
+        let cost = startLen / this.speed.built + way.len;
         let snapped = false;
-        // Das letzte Stück quer nur draußen; im Ort endet die Strecke auf dem Weg
+        // Das letzte Stück quer zum Ziel (geht nicht, wenn das Ziel ein Haus oder Wasser ist)
         if (B.d > 1) {
-          const leg = outside ? this.freeLeg({ x: B.x, y: B.y }, T) : { cost: Infinity, pts: [], speeds: [] };
+          const leg = reachable ? this.freeLeg({ x: B.x, y: B.y }, T) : { cost: Infinity, pts: [], speeds: [] };
           if (leg.cost < Infinity) {
             pts.push(...leg.pts.slice(1));
             speeds.push(...leg.speeds);
-            off.push(...leg.speeds.map((v) => v !== SPEED.road));
+            off.push(...leg.speeds.map((v) => v !== road));
             cost += leg.cost;
           } else snapped = B.d > ON_WAY_M;
         }
         cands.push({ cost, pts, speeds, off, snapped });
       }
     }
-    // 3. Über die Wege bis an den Ortsrand, dann quer zum Ziel (z. B. ein Wrack draußen auf dem Feld)
-    if (outside && A && !cands.some((c) => !c.snapped && c.pts.length > 2)) {
+    // 3. Über die Wege so nah wie möglich heran, dann quer zum Ziel (z. B. ein Wrack draußen auf dem Feld)
+    if (reachable && A && !cands.some((c) => !c.snapped && c.pts.length > 2)) {
       const ex = this.viaExit(A, T);
       if (ex) {
         const pts: P[] = [F, ...ex.pts];
-        const speeds: number[] = [SPEED.open, ...ex.speeds];
+        const speeds: number[] = [this.speed.built, ...ex.speeds];
         const off: boolean[] = [A.d > ON_WAY_M, ...ex.off];
-        cands.push({ cost: A.d / SPEED.open + ex.cost, pts, speeds, off, snapped: false });
+        cands.push({ cost: A.d / this.speed.built + ex.cost, pts, speeds, off, snapped: false });
       }
     }
     if (!cands.length) return null;
@@ -528,22 +609,172 @@ export class WalkNet {
   }
 
   /**
-   * Ein Schritt mit dem Joystick: draußen frei (außer durch Häuser und Wasser), im Ort nur auf Wegen.
-   * Liegt das Ziel im Ort abseits der Wege, rutscht die Figur auf den nächsten Weg.
+   * Leise Strecke: Suche auf einem Raster über das Gelände. Jede Zelle kostet Zeit mal
+   * „wie gut sieht man mich hier“. Straßen und offene Wiesen sind teuer, Wald, Gärten und
+   * (im Sommer) Korn billig. Danach wird die Zickzack-Linie geglättet.
+   */
+  private quietRoute(F: P, T: P): Route | null {
+    const dist = Math.hypot(T.x - F.x, T.y - F.y);
+    if (dist < 3) return null;
+    const margin = 60 + dist * 0.3;
+    const x0 = Math.min(F.x, T.x) - margin;
+    const y0 = Math.min(F.y, T.y) - margin;
+    const w = Math.max(F.x, T.x) + margin - x0;
+    const hgt = Math.max(F.y, T.y) + margin - y0;
+    const cell = Math.max(5, Math.sqrt((w * hgt) / 45000));
+    const nx = Math.ceil(w / cell);
+    const ny = Math.ceil(hgt / cell);
+    const n = nx * ny;
+    const KINDS: Terrain[] = ['road', 'built', 'open', 'field', 'forest', 'wetland', 'blocked'];
+    const terr = new Int8Array(n).fill(-1);
+    const center = (i: number): P => ({ x: x0 + ((i % nx) + 0.5) * cell, y: y0 + (Math.floor(i / nx) + 0.5) * cell });
+    const kindOf = (i: number): Terrain => {
+      if (terr[i] < 0) terr[i] = KINDS.indexOf(this.terrainXY(center(i)));
+      return KINDS[terr[i]];
+    };
+    const idx = (p: P) => Math.max(0, Math.min(ny - 1, Math.floor((p.y - y0) / cell))) * nx + Math.max(0, Math.min(nx - 1, Math.floor((p.x - x0) / cell)));
+    const S = idx(F);
+    const E = idx(T);
+    // Das Ziel selbst ist ein Haus oder Wasser: dann bringt die schnelle Strecke dich so nah wie möglich
+    if (kindOf(E) === 'blocked') return null;
+    const minCost = Math.min(...(['road', 'built', 'open', 'field', 'forest', 'wetland'] as Terrain[]).map((t) => this.quietCost(t)));
+    const g = new Float64Array(n).fill(Infinity);
+    const from = new Int32Array(n).fill(-1);
+    const done = new Uint8Array(n);
+    const heap = new Heap();
+    const ex = (i: number) => center(i).x;
+    const ey = (i: number) => center(i).y;
+    const hx = ex(E);
+    const hy = ey(E);
+    g[S] = 0;
+    heap.push(S, 0);
+    const DIRS = [
+      [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1],
+    ];
+    let steps = 0;
+    while (heap.size && steps++ < 200000) {
+      const u = heap.pop();
+      if (done[u]) continue;
+      done[u] = 1;
+      if (u === E) break;
+      const ux = u % nx;
+      const uy = Math.floor(u / nx);
+      const tu = kindOf(u);
+      for (const [dx, dy] of DIRS) {
+        const vx = ux + dx;
+        const vy = uy + dy;
+        if (vx < 0 || vy < 0 || vx >= nx || vy >= ny) continue;
+        const v = vy * nx + vx;
+        if (done[v]) continue;
+        const tv = kindOf(v);
+        if (tv === 'blocked' && v !== E) continue;
+        // Über Bäche und Flüsse nur auf einem Weg (Brücke)
+        if ((tu !== 'road' || tv !== 'road') && this.crossesWater(center(u), center(v))) continue;
+        const len = cell * (dx && dy ? Math.SQRT2 : 1);
+        const ng = g[u] + len * (this.quietCost(tv) + this.quietCost(tu)) * 0.5;
+        if (ng < g[v]) {
+          g[v] = ng;
+          from[v] = u;
+          heap.push(v, ng + Math.hypot(ex(v) - hx, ey(v) - hy) * minCost);
+        }
+      }
+    }
+    if (!isFinite(g[E])) return null;
+    const cells: number[] = [];
+    for (let c = E; c !== -1; c = from[c]) cells.push(c);
+    cells.reverse();
+    const raw: P[] = [F, ...cells.slice(1, -1).map(center), T];
+    // Glätten: so weit geradeaus, wie die Linie nicht durch teureres Gelände führt
+    const worst = (a: number, b: number) => {
+      let m = 0;
+      for (let k = a; k <= b; k++) m = Math.max(m, this.quietCost(this.terrainXY(raw[k])));
+      return m;
+    };
+    const lineOk = (a: P, b: P, limit: number) => {
+      const len = Math.hypot(b.x - a.x, b.y - a.y);
+      const k = Math.max(1, Math.ceil(len / 4));
+      for (let i = 1; i < k; i++) {
+        const q = { x: a.x + ((b.x - a.x) * i) / k, y: a.y + ((b.y - a.y) * i) / k };
+        if (this.quietCost(this.terrainXY(q)) > limit + 1e-9) return false;
+      }
+      return !this.crossesWater(a, b) || (this.terrainXY(a) === 'road' && this.terrainXY(b) === 'road');
+    };
+    const pts: P[] = [raw[0]];
+    let i = 0;
+    while (i < raw.length - 1) {
+      let j = Math.min(raw.length - 1, i + 1);
+      for (let k = Math.min(raw.length - 1, i + 40); k > i + 1; k--) {
+        if (lineOk(raw[i], raw[k], worst(i, k))) {
+          j = k;
+          break;
+        }
+      }
+      pts.push(raw[j]);
+      i = j;
+    }
+    // Tempo je Abschnitt (aus dem Gelände in der Mitte)
+    const speeds: number[] = [];
+    const off: boolean[] = [];
+    for (let k = 1; k < pts.length; k++) {
+      const t = this.terrainXY({ x: (pts[k - 1].x + pts[k].x) / 2, y: (pts[k - 1].y + pts[k].y) / 2 });
+      const v = this.speedOf(t) || this.speed.built;
+      speeds.push(v);
+      off.push(t !== 'road');
+    }
+    const path = pts.map((p) => this.toLatLon(p));
+    return { path, speeds, offroad: off, end: path[path.length - 1], snapped: false };
+  }
+
+  /**
+   * Ein Schritt mit dem Joystick: überall hin außer durch Häuser, Wasser und Sperrgebiete.
+   * Über Flüsse und Bäche nur auf einem Weg (Brücke).
    */
   step(fromLL: LatLon, toLL: LatLon): LatLon {
     const P0 = this.toXY(fromLL);
     const P1 = this.toXY(toLL);
+    this.skipZones.clear();
+    this.zones.forEach((z, i) => {
+      if ((P0.x - z.x) ** 2 + (P0.y - z.y) ** 2 <= z.r * z.r) this.skipZones.add(i);
+    });
     const t = this.terrainXY(P1);
-    // Über einen Fluss oder Bach nur auf einer Brücke (also auf dem Weg)
+    this.skipZones.clear();
     if (t !== 'road' && this.crossesWater(P0, P1)) return fromLL;
-    if (t === 'road' || t === 'forest' || t === 'open') return toLL;
-    const snap = this.nearest(P1, SNAP_M);
-    if (snap) return this.toLatLon(snap);
-    // Weit weg von jedem Weg (z. B. Start mitten im Ort): nur Schritte, die näher an einen Weg führen
-    const w = this.nearest(P0, 300);
-    if (w && Math.hypot(P1.x - w.x, P1.y - w.y) < Math.hypot(P0.x - w.x, P0.y - w.y)) return toLL;
+    if (t !== 'blocked') return toLL;
+    // In ein Haus gelaufen: am Rand entlang rutschen geht nicht, also stehen bleiben
     return fromLL;
+  }
+
+  /**
+   * Strecke eines Trupps: vom nächsten Weg am Startpunkt ein Zufallsweg über das Netz,
+   * so lang wie verlangt. Gleicher Zufall, gleiche Wege, gleiche Strecke (für alle Spieler).
+   * null, wenn in der Nähe kein Weg ist.
+   */
+  patrolPath(anchor: LatLon, lengthM: number, rnd: () => number): LatLon[] | null {
+    const A = this.nearest(this.toXY(anchor), 250);
+    if (!A) return null;
+    const [a0, a1] = this.segs[A.seg];
+    const pts: P[] = [{ x: A.x, y: A.y }];
+    // Erste Richtung: zum einen oder anderen Ende des Abschnitts
+    let prev = rnd() < 0.5 ? a0 : a1;
+    let cur = prev === a0 ? a1 : a0;
+    pts.push(this.nodes[cur]);
+    let len = Math.hypot(this.nodes[cur].x - A.x, this.nodes[cur].y - A.y);
+    let guard = 0;
+    while (len < lengthM && guard++ < 400) {
+      const here = this.nodes[cur];
+      // Nach Richtung sortiert, damit die Reihenfolge der Kartendaten keine Rolle spielt
+      const opts = this.adj[cur]
+        .filter(([v]) => v !== prev)
+        .map(([v, d]) => ({ v, d, ang: Math.atan2(this.nodes[v].y - here.y, this.nodes[v].x - here.x) }))
+        .sort((p, q) => p.ang - q.ang);
+      if (!opts.length) break;
+      const nxt = opts[Math.floor(rnd() * opts.length)];
+      prev = cur;
+      cur = nxt.v;
+      pts.push(this.nodes[cur]);
+      len += nxt.d;
+    }
+    return pts.length > 1 ? pts.map((p) => this.toLatLon(p)) : null;
   }
 }
 

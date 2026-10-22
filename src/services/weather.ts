@@ -10,6 +10,8 @@ export type WeatherKind = 'clear' | 'cloudy' | 'fog' | 'rain' | 'snow' | 'storm'
 export interface Weather {
   kind: WeatherKind;
   tempC: number | null;
+  /** Wind in km/h (null: unbekannt). */
+  windKmh: number | null;
   at: number;
 }
 
@@ -35,12 +37,12 @@ export async function fetchWeather(p: LatLon): Promise<Weather | null> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 8000);
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=auto`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m&timezone=auto`;
     const res = await fetch(url, { signal: ctrl.signal });
     if (!res.ok) return null;
-    const json = (await res.json()) as { current?: { temperature_2m?: number; weather_code?: number } };
+    const json = (await res.json()) as { current?: { temperature_2m?: number; weather_code?: number; wind_speed_10m?: number } };
     if (!json.current || typeof json.current.weather_code !== 'number') return null;
-    const w: Weather = { kind: weatherFromCode(json.current.weather_code), tempC: json.current.temperature_2m ?? null, at: Date.now() };
+    const w: Weather = { kind: weatherFromCode(json.current.weather_code), tempC: json.current.temperature_2m ?? null, windKmh: json.current.wind_speed_10m ?? null, at: Date.now() };
     writeJson(CACHE_KEY, { key, w });
     return w;
   } catch {

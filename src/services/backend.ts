@@ -11,7 +11,9 @@
 import { distanceM } from '../core/geo';
 import { applyAction, cartOf, createPlayer, guardOf } from '../core/rules';
 import { migrate } from '../core/save';
-import type { Action, ActionResult, Character, EnemyId, LatLon, PlayerState, Spot } from '../core/types';
+import type { Action, ActionResult, Character, EnemyId, LatLon, PlayerState, RegionId, Spot, WorldEvent } from '../core/types';
+import { patrolsAround, type PatrolPlan } from '../core/patrols';
+import { eventsAround } from '../core/worldEvents';
 import { gridSpotsAround, gridSpotUntil, poiSpots, specialPlacesAround, type PoiCandidate } from '../core/world';
 import type { AuthProvider } from './auth';
 import { readJson, removeKey, writeJson } from './storage';
@@ -38,6 +40,12 @@ export interface GameBackend {
   setPlaceFilter(fn: ((p: LatLon) => boolean) | null): void;
   /** Wo keine besonderen Orte liegen sollen (bebaut, Gärten, Höfe): sie liegen draußen im Offenen. */
   setSpecialFilter(fn: ((p: LatLon) => boolean) | null): void;
+  /** Weltereignisse im Umkreis (laufende und die, die in soonMs beginnen). Im Mehrspieler vom Server. */
+  eventsNear(center: LatLon, radiusM: number, soonMs?: number): WorldEvent[];
+  /** Trupps, die gerade im Umkreis unterwegs sind. */
+  patrolsNear(center: LatLon, radiusM: number, region: RegionId, night: boolean, events: WorldEvent[]): PatrolPlan[];
+  /** Weltstartwert (für Zufall, den alle Spieler gleich sehen, z. B. die Strecken der Trupps). */
+  readonly seed: string;
   now(): number;
 }
 
@@ -117,6 +125,18 @@ export class LocalBackend implements GameBackend {
   async spotsNear(center: LatLon, radiusM: number, pois: PoiCandidate[]) {
     const nearPois = poiSpots(this.worldSeed, pois).filter((s) => distanceM(center, s.pos) <= radiusM);
     return [...nearPois, ...gridSpotsAround(this.worldSeed, center, radiusM, this.clock()), ...this.specialsNear(center, radiusM)];
+  }
+
+  get seed() {
+    return this.worldSeed;
+  }
+
+  eventsNear(center: LatLon, radiusM: number, soonMs = 0) {
+    return eventsAround(this.worldSeed, center, radiusM, this.clock(), this.placeFilter ?? undefined, soonMs);
+  }
+
+  patrolsNear(center: LatLon, radiusM: number, region: RegionId, night: boolean, events: WorldEvent[]) {
+    return patrolsAround(this.worldSeed, center, radiusM, this.clock(), region, night, events);
   }
 
   specialsNear(center: LatLon, radiusM: number) {

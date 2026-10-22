@@ -298,6 +298,43 @@ Die Häuser stehen schon als einfache Klötze in echter Höhe auf der Karte. Ech
 
 Später: mehr Karten und Gegner, Gefahrenstufe pro Ausflug, Horden, die durch echte Straßen ziehen, Nester als Raids für mehrere Spieler.
 
+## Gelände, Trupps, Gegenden und Weltereignisse (seit 22.10.2026)
+
+Das Gelände ist ein Werkzeug, nicht nur Kulisse: Straßen sind schnell, aber man wird gesehen. Im Wald ist man langsam, aber versteckt. Man überlegt sich, wie man an einem Trupp vorbeikommt.
+
+- **Überall hinlaufen (Laufen per Tippen):** Man kommt überall hin außer durch Häuser, Wasser und Sperrgebiete. Unten in der Mitte wählt man die Gangart: **Schnell** nimmt den schnellsten Weg (meist die Straßen), **Leise** sucht Deckung (Wald, Gärten, Hecken, im Sommer das Korn) und geht etwas langsamer. Mit GPS bestimmen die eigenen Beine das Tempo; Deckung und Verstecken gelten trotzdem.
+- **Gelände:** Straße (schnell, offen), Gärten und Höfe, Wiese, Acker, Wald (langsam, gute Deckung), Sumpf (sehr langsam; mit Gummistiefeln schneller). Im Sommer versteckt das Korn, im Winter sind die Wälder kahl und man hebt sich vom Schnee ab.
+- **Trupps:** Kleine Gruppen ziehen über echte Straßen und Wege, mit einem Sichtkegel in Laufrichtung. Wer im Kegel ist, wird nach gut einer Sekunde entdeckt (Fragezeichen, dann Ausrufezeichen). Ganz nah hören sie dich auch von hinten; Heuler hören weit, sind aber fast blind. Turnschuhe sind leise, Regenjacke und Arbeitsstiefel lauter. Nachts, bei Nebel, Regen und im Staub sehen sie schlechter; der Bleiche Wächter sieht nachts gut.
+- **Verstecken:** Still stehen in Deckung (Wald, Hecke, Schilf, im Sommer das Korn): Die Figur wird blass, die Sichtkegel schrumpfen.
+- **Überraschungsangriff:** Von hinten anschleichen (näher als 30 m) und den Trupp antippen: Die Gegner setzen die erste Runde aus, du hast 1 Kraft mehr. Wirst du entdeckt, hast du in der ersten Runde 1 Kraft weniger. Fliehen geht immer.
+- **Mit GPS** beginnt ein Kampf nie im Gehen: Ein Hinweis fragt „Kämpfen“, oder du gehst weg (70 m Abstand). Das Spiel lockt nie abseits der Wege; ausweichen heißt im echten Leben: die Nebenstraße nehmen. Rund ums Zuhause (150 m) sucht dich kein Trupp, erschöpft auch nicht, und nach einer Begegnung sind ein paar Minuten Ruhe.
+- **Spuren im Schnee:** Im Winter folgen Trupps deinen frischen Spuren.
+- **Alle sehen dasselbe:** Wer wo unterwegs ist, kommt aus dem Weltstartwert (Raster ~190 m, Runden von 30 Minuten). Die Strecken rechnet das Wegenetz an einem festen Raster aus. Besiegte Trupps sind für ihre Runde weg.
+
+**Gegenden:** Aus den Kartendaten rund um dich (Häuser, Wald, Acker, Wasser, Sand, Fels, Eis, Höhenunterschied) bestimmt das Spiel die Art der Gegend. Keine ist schlechter, jede hat ihre Stärke und Schwäche:
+
+| Gegend | Leicht | Schwer |
+| --- | --- | --- |
+| Großstadt | Ecken und Hinterhöfe überall | viele Trupps, Heuler |
+| Kleinstadt | viele Fundstellen, Gärten | mehr Trupps auf den Straßen |
+| Dorf und Felder | weite Sicht (Trupps früh sehen), ruhige Feldwege | offenes Feld |
+| Wald und Wildnis | Deckung | langsam, Kriecher und Borkenmänner |
+| Hügel und Berge | von oben siehst du weiter | oben sieht man auch dich |
+| Küste und Seen | Wasser schützt den Rücken | Wasser schneidet Wege ab |
+| Wüste und Steppe | du siehst Trupps von Weitem | sie dich auch, Hitze (Wasser dabeihaben) |
+| Schnee und Eis | du siehst Trupps früh | Kälte (warme Kleidung), Spuren |
+
+Welche Kreaturen wo häufiger sind, folgt der Lore (Wandler in Wäldern und Dörfern, Heuler in Städten, Kriecher in Ruinen und Gräben, Borkenmänner in alten Wäldern). **Kälte** (Frost, Schnee, Winternacht ohne Wetterdaten): ohne Wärme 3 in der ersten Kampfrunde eine Karte weniger (Mütze und Regenjacke geben zusammen 2). **Hitze** (ab 28 °C oder Wüste am Tag): ohne Wasser in der ersten Runde 1 Kraft weniger.
+
+**Weltereignisse:** Pro Gegend (~1,5 km) und Runde (3 Stunden) passiert manchmal etwas für ein bis drei Stunden, für alle Spieler gleich. Man erfährt es per Funk (bis 2,5 km), oben rechts steht das nächste.
+- **Staubsturm:** zieht langsam weiter. Im Staub schlafen Keime: Durchsuchen nur mit Staubmaske oder Gasmaske. Dafür sehen dich die Trupps kaum.
+- **Horde:** mehrere Trupps zu dritt in der Zone.
+- **Sperrgebiet:** Landstreifer brennen eine Fiebergrube aus. Absperrband, Fundstellen darin sind tabu, beim Laufen per Tippen kommt man nicht hinein (hinaus schon).
+- **Hilfsabwurf:** eine Kiste mit Vorräten und Medizin, solange das Ereignis läuft.
+- **Echtes Wetter:** Bei Gewitter und Sturm übertönen Donner und Wind deine Schritte (und das Spiel erinnert daran, sich in echt unterzustellen).
+- Nie an heiklen Orten (die Mitte liegt nie auf Friedhof, Schule, Kirche, Krankenhaus, Privatgrund). Verpassen kostet nichts.
+- Testmodus: Im Menü „Test: Ereignis“ (nur Anzeige).
+
 ## Langfristiges Ziel (geplant)
 
 Welche Features wann kommen, steht gesammelt im [Fahrplan](ROADMAP.md).

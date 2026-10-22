@@ -11,6 +11,10 @@ import type { PlayerState } from './types';
 type Raw = Record<string, unknown> & { schema?: number };
 
 const MIGRATIONS: Record<number, (s: Raw) => void> = {
+  // Version 13 -> 14: Trupps auf der Karte (besiegte merkt sich das Spiel für ihre Runde).
+  13: (s) => {
+    s.patrols = {};
+  },
   // Version 12 -> 13: Ausrüstung am Körper. Alle bekommen die Startausrüstung, angezogen.
   12: (s) => {
     s.gear = startGear(Number(s.lastActiveAt) || 0);

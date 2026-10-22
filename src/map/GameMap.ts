@@ -3,7 +3,8 @@
 import maplibregl from 'maplibre-gl';
 import type { GeoJSONFeature, GeoJSONSource, Map as MLMap, Marker } from 'maplibre-gl';
 import { circleRing, distanceM, offsetM } from '../core/geo';
-import type { EnemyId, LatLon, Spot } from '../core/types';
+import type { EnemyId, FoeKind, LatLon, Spot, WorldEventKind } from '../core/types';
+import type { RegionStats } from '../core/terrain';
 import type { PoiCandidate } from '../core/world';
 import { h, svgEl } from '../ui/dom';
 import { icon, spotIcon } from '../ui/icons';
@@ -38,6 +39,31 @@ export interface SpotView {
   fresh?: boolean;
 }
 
+/** Ein Trupp auf der Karte. */
+export interface PatrolView {
+  id: string;
+  pos: LatLon;
+  /** Blickrichtung in Grad (0 = Norden). */
+  heading: number;
+  group: FoeKind[];
+  /** So weit sieht er dich gerade (Meter), für den Sichtkegel. */
+  sightM: number;
+  coneDeg: number;
+  /** Wie kurz er davor ist, dich zu entdecken (0–1). */
+  alert: number;
+  /** Folgt deiner Spur im Schnee oder hat dich entdeckt. */
+  hunting?: boolean;
+  horde?: boolean;
+}
+
+/** Eine Zone eines Weltereignisses. */
+export interface ZoneView {
+  id: string;
+  kind: WorldEventKind;
+  center: LatLon;
+  radiusM: number;
+}
+
 /** Ein Versteck-Suchkreis auf der Karte. */
 export interface CacheView {
   id: string;
@@ -70,6 +96,7 @@ interface Options {
   onError: (msg: string) => void;
   onBaseTap?: () => void;
   onCacheTap?: (id: string) => void;
+  onPatrolTap?: (id: string) => void;
 }
 
 const ll = (p: LatLon): [number, number] => [p.lon, p.lat];
@@ -87,6 +114,7 @@ export class GameMap {
   fog: FogOfWar | null = null;
   private markers = new Map<string, { marker: Marker; el: HTMLElement; state: string }>();
   private cacheMarkers = new Map<string, Marker>();
+  private patrolMarkers = new Map<string, { marker: Marker; el: HTMLElement; sig: string }>();
   private pendingCaches: CacheView[] | null = null;
   private player: Marker | null = null;
   private playerEl: HTMLElement | null = null;
@@ -378,9 +406,9 @@ export class GameMap {
   }
 
   /** Straßen, Wege, Häuser, Wasser, Ortsflächen und Wald rund um einen Punkt (für das Wegenetz). */
-  walkInput(center: LatLon, radiusM: number): WalkInput {
+  walkInput(center: LatLon, radiusM: number, extra: Pick<WalkInput, 'noGo' | 'season' | 'wade'> = {}): WalkInput {
     const real = this.opts.mode === 'real';
-    const out: WalkInput = { center, ways: [], buildings: [], water: [], built: [], forest: [] };
+    const out: WalkInput = { center, ways: [], buildings: [], water: [], built: [], forest: [], fields: [], wetland: [], ...extra };
     let feats: (layer: string) => { geometry: GeoJSON.Geometry; properties: Record<string, unknown> | null }[];
     if (real) {
       if (!this.loaded || !this.map.getSource('omt')) return out;
@@ -426,9 +454,169 @@ export class GameMap {
       }
       polys('landuse', ['residential', 'commercial', 'industrial', 'retail', 'garages', 'railway'], out.built);
       polys('landcover', ['wood', 'forest'], out.forest);
+      polys('landcover', ['farmland'], out.fields!);
+      polys('landcover', ['wetland'], out.wetland!);
     } catch {
       /* ohne Kartendaten: freies Laufen */
     }
+    return out;
+  }
+
+  /** Zonen der Weltereignisse (Staubsturm, Horde, Sperrgebiet). */
+  setZones(list: ZoneView[]) {
+    if (!this.loaded) return;
+    (this.map.getSource('zones') as GeoJSONSource | undefined)?.setData({
+      type: 'FeatureCollection',
+      features: list.filter((z) => z.radiusM > 0).map((z): GeoJSON.Feature => ({ type: 'Feature', properties: { k: z.kind, id: z.id }, geometry: { type: 'Polygon', coordinates: [circleRing(z.center, z.radiusM, 96)] } })),
+    });
+  }
+
+  /** Trupps mit Sichtkegel. Wer nicht in der Liste ist, verschwindet. */
+  setPatrols(list: PatrolView[]) {
+    if (!this.loaded) return;
+    const cones: GeoJSON.Feature[] = [];
+    for (const p of list) {
+      const ring: [number, number][] = [ll(p.pos)];
+      const steps = 14;
+      for (let i = 0; i <= steps; i++) {
+        const a = ((p.heading - p.coneDeg + (2 * p.coneDeg * i) / steps) * Math.PI) / 180;
+        ring.push(ll(offsetM(p.pos, Math.sin(a) * p.sightM, Math.cos(a) * p.sightM)));
+      }
+      ring.push(ll(p.pos));
+      cones.push({ type: 'Feature', properties: { a: p.alert, id: p.id }, geometry: { type: 'Polygon', coordinates: [ring] } });
+    }
+    (this.map.getSource('patrols') as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: cones });
+    const seen = new Set<string>();
+    for (const p of list) {
+      seen.add(p.id);
+      let m = this.patrolMarkers.get(p.id);
+      if (!m) {
+        const el = h('button', { class: 'patrol', type: 'button' }, h('span', { class: 'patrol-badge' }, svgEl(icon(p.group.includes('watcher') ? 'eye' : 'patrol', 18)), h('b', null, String(p.group.length))), h('span', { class: 'patrol-alert', 'aria-hidden': 'true' }));
+        el.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          this.lastMarkerTap = Date.now();
+          this.opts.onPatrolTap?.(p.id);
+        });
+        m = { marker: new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(ll(p.pos)).addTo(this.map), el, sig: '' };
+        this.patrolMarkers.set(p.id, m);
+      } else m.marker.setLngLat(ll(p.pos));
+      const state = p.hunting || p.alert >= 1 ? 'hunt' : p.alert > 0.05 ? 'alert' : 'idle';
+      const sig = state + (p.horde ? 'h' : '') + p.group.join(',');
+      if (m.sig !== sig) {
+        m.sig = sig;
+        m.el.dataset.state = state;
+        m.el.dataset.horde = p.horde ? '1' : '0';
+        m.el.dataset.watcher = p.group.includes('watcher') ? '1' : '0';
+        const alertEl = m.el.querySelector('.patrol-alert');
+        if (alertEl) alertEl.textContent = state === 'hunt' ? '!' : state === 'alert' ? '?' : '';
+        m.el.setAttribute('aria-label', `${p.horde ? 'Horde' : 'Trupp'}: ${p.group.length} ${p.group.length === 1 ? 'Gegner' : 'Gegner'}${state === 'hunt' ? ', hat dich entdeckt' : state === 'alert' ? ', wird aufmerksam' : ''}`);
+      }
+    }
+    for (const [id, m] of this.patrolMarkers) {
+      if (!seen.has(id)) {
+        m.marker.remove();
+        this.patrolMarkers.delete(id);
+      }
+    }
+  }
+
+  /** Spielerfigur: versteckt (blasser, mit Zeichen) oder nicht. */
+  setHidden(on: boolean) {
+    this.playerEl?.classList.toggle('is-hidden', on);
+  }
+
+  /**
+   * Was rund um einen Punkt liegt (für die Art der Gegend): Anteile von Häusern, Wald, Acker,
+   * Wasser, Sand, Fels und Eis. Gezählt wird an Stichproben auf einem Raster.
+   */
+  regionStats(center: LatLon, radiusM: number): RegionStats {
+    const out: RegionStats = { buildings: 0, houses: 0, forest: 0, farm: 0, water: 0, sand: 0, rock: 0, ice: 0, relief: null };
+    const real = this.opts.mode === 'real';
+    if (real && (!this.loaded || !this.map.getSource('omt'))) return out;
+    const feats = (layer: string): { geometry: GeoJSON.Geometry; properties: Record<string, unknown> | null }[] => {
+      try {
+        return real ? this.map.querySourceFeatures('omt', { sourceLayer: layer }) : (DEMO.geojson.features.filter((f) => f.properties?._layer === layer) as unknown as { geometry: GeoJSON.Geometry; properties: Record<string, unknown> | null }[]);
+      } catch {
+        return [];
+      }
+    };
+    const kx = 111320 * Math.cos((center.lat * Math.PI) / 180);
+    const toXY = (lon: number, lat: number) => [(lon - center.lon) * kx, (lat - center.lat) * 111320] as const;
+    type A = { ring: [number, number][]; x0: number; y0: number; x1: number; y1: number; cls: string };
+    const areas: A[] = [];
+    const add = (g: GeoJSON.Geometry, cls: string) => {
+      const list = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+      for (const r of list) {
+        if (!r[0] || r[0].length < 4) continue;
+        const ring = r[0].map(([lon, lat]) => toXY(lon, lat) as unknown as [number, number]);
+        const xs = ring.map((p) => p[0]);
+        const ys = ring.map((p) => p[1]);
+        const a: A = { ring, x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys), cls };
+        if (a.x1 < -radiusM || a.x0 > radiusM || a.y1 < -radiusM || a.y0 > radiusM) continue;
+        areas.push(a);
+      }
+    };
+    for (const f of feats('landcover')) {
+      const c = String(f.properties?.class ?? '');
+      const sub = String(f.properties?.subclass ?? '');
+      const cls = c === 'wood' || c === 'forest' ? 'forest' : c === 'farmland' ? 'farm' : c === 'sand' ? 'sand' : c === 'rock' ? 'rock' : c === 'ice' || sub === 'glacier' ? 'ice' : '';
+      if (cls) add(f.geometry, cls);
+    }
+    for (const f of feats('water')) add(f.geometry, 'water');
+    // Häuser: Fläche und Anzahl (Mittelpunkt im Umkreis)
+    let houseArea = 0;
+    for (const f of feats('building')) {
+      const g = f.geometry;
+      const list = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+      for (const r of list) {
+        const ring = r[0];
+        if (!ring || ring.length < 4) continue;
+        let cx = 0;
+        let cy = 0;
+        let area = 0;
+        for (let i = 1; i < ring.length; i++) {
+          const [ax, ay] = toXY(ring[i - 1][0], ring[i - 1][1]);
+          const [bx, by] = toXY(ring[i][0], ring[i][1]);
+          area += ax * by - bx * ay;
+          cx += ax;
+          cy += ay;
+        }
+        cx /= ring.length - 1;
+        cy /= ring.length - 1;
+        if (cx * cx + cy * cy > radiusM * radiusM) continue;
+        out.houses++;
+        houseArea += Math.abs(area) / 2;
+      }
+    }
+    // Vektor-Kacheln liefern Häuser an Kachelrändern doppelt: grob ausgleichen
+    if (real) {
+      out.houses = Math.round(out.houses * 0.85);
+      houseArea *= 0.85;
+    }
+    out.buildings = Math.min(1, houseArea / (Math.PI * radiusM * radiusM));
+    const inside = (x: number, y: number, ring: [number, number][]) => {
+      let c = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [xi, yi] = ring[i];
+        const [xj, yj] = ring[j];
+        if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c;
+      }
+      return c;
+    };
+    const n = 17;
+    let total = 0;
+    const hits: Record<string, number> = { forest: 0, farm: 0, water: 0, sand: 0, rock: 0, ice: 0 };
+    for (let i = 0; i < n; i++)
+      for (let j = 0; j < n; j++) {
+        const x = (-1 + (2 * (i + 0.5)) / n) * radiusM;
+        const y = (-1 + (2 * (j + 0.5)) / n) * radiusM;
+        if (x * x + y * y > radiusM * radiusM) continue;
+        total++;
+        const got = new Set<string>();
+        for (const a of areas) if (!got.has(a.cls) && x >= a.x0 && x <= a.x1 && y >= a.y0 && y <= a.y1 && inside(x, y, a.ring)) got.add(a.cls);
+        for (const c of got) hits[c]++;
+      }
+    if (total) for (const k of Object.keys(hits) as (keyof typeof hits)[]) (out as unknown as Record<string, number>)[k] = hits[k] / total;
     return out;
   }
 

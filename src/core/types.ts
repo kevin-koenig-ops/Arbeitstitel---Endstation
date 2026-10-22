@@ -386,6 +386,37 @@ export interface Combat {
   ambush?: boolean;
   /** Begegnung abseits der Wege im Wald (keine echte Fundstelle). */
   wild?: boolean;
+  /** Kampf gegen einen Trupp auf der Karte (seine Kennung). */
+  patrol?: string;
+  /** Wer wen zuerst gesehen hat: Überraschungsangriff von dir oder du wurdest entdeckt. */
+  opening?: Opening;
+}
+
+/** Wie ein Kampf mit einem Trupp beginnt. */
+export type Opening = 'surprise' | 'spotted';
+
+// --- Gelände, Gegenden, Weltereignisse -------------------------------------------
+
+/** Untergrund an einer Stelle (aus den Kartendaten). blocked = Haus oder Wasser. */
+export type TerrainKind = 'road' | 'built' | 'open' | 'field' | 'forest' | 'wetland' | 'blocked';
+/** Jahreszeit (für Deckung im Kornfeld, kahle Wälder, Spuren im Schnee). */
+export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
+/** Wetter, wie es das Spiel kennt (echtes Wetter, grob eingeteilt). */
+export type Sky = 'clear' | 'cloudy' | 'fog' | 'rain' | 'snow' | 'storm';
+/** Art der Gegend rund um den Spieler (aus den Kartendaten). */
+export type RegionId = 'city' | 'town' | 'village' | 'wild' | 'mountain' | 'coast' | 'desert' | 'snow';
+/** Weltereignis: Staubsturm, Horde, Sperrgebiet, Hilfsabwurf. */
+export type WorldEventKind = 'dust' | 'horde' | 'quarantine' | 'drop';
+
+export interface WorldEvent {
+  /** Stabile Kennung: "x:<x>:<y>:<fenster>" */
+  id: string;
+  kind: WorldEventKind;
+  center: LatLon;
+  /** Umkreis der Zone (0 beim Hilfsabwurf: dort liegt nur eine Kiste). */
+  radiusM: number;
+  from: number;
+  until: number;
 }
 
 /** Weiter wühlen nach dem Durchsuchen: mehr Beute, aber jedes Mal lauter. */
@@ -544,6 +575,8 @@ export interface PlayerState {
   places: Partial<Record<SpotKind, number>>;
   /** Entdeckte besondere Orte: ID -> Zeitpunkt. */
   discovered: Record<string, number>;
+  /** Besiegte Trupps (Kennung -> Zeitpunkt): Sie sind für ihre Runde verschwunden. */
+  patrols: Record<string, number>;
 }
 
 /** Ein Versteck, auf das ein Hinweis zeigt. Es läuft nie ab. */
@@ -622,6 +655,8 @@ export type Action =
   | { type: 'stopDig' }
   /** Abseits der Wege unterwegs (Meter seit der letzten Meldung). Im Wald kann dir etwas begegnen. */
   | { type: 'roam'; at: LatLon; accuracyM: number; meters: number; terrain: 'forest' }
+  /** Kampf mit einem Trupp auf der Karte: du greifst aus dem Versteck an (surprise) oder er hat dich entdeckt (spotted). */
+  | { type: 'patrolFight'; patrol: string; at: LatLon; accuracyM: number; opening: Opening }
   /** Nur im Testmodus (Simulation): sofort ein Kampf gegen diese Gegner. Der Server nimmt das später nicht an. */
   | { type: 'testFight'; at: LatLon; group: FoeKind[] }
   /** Ertrag einer Anlage (Regentonne, Hochbeet) abholen. */
@@ -694,7 +729,9 @@ export type RejectReason =
   | 'no_radio'
   | 'radio_quiet'
   | 'no_stove'
-  | 'no_gear';
+  | 'no_gear'
+  | 'zone_closed'
+  | 'need_filter';
 
 export type GameEvent =
   | { type: 'loot'; spotId: string; items: Partial<Inventory>; kram?: KramId; collectible?: CollectibleId; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: BlueprintId; gear?: GearId; site?: SiteId; quality?: Quality; first?: boolean; canDig?: boolean; cart?: boolean; fed?: boolean; clue?: string; newKind?: boolean; discovery?: boolean; tier?: number }
@@ -714,6 +751,7 @@ export type GameEvent =
   | { type: 'dug'; items: Partial<Inventory>; kram?: KramId; collectible?: CollectibleId; round: number; noise: number; left: number }
   | { type: 'ambush'; group: FoeKind[] }
   | { type: 'wild'; group: FoeKind[] }
+  | { type: 'patrol'; group: FoeKind[]; opening: Opening }
   | { type: 'combatWon'; enemy: EnemyId; kills?: number; weaponBroke?: WeaponId }
   | { type: 'combatLost'; enemy: EnemyId; dropped: Partial<Inventory>; weaponBroke?: WeaponId }
   | { type: 'fled'; weaponBroke?: WeaponId }

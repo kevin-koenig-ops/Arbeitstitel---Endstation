@@ -1,7 +1,7 @@
 // Spielinhalte als reine Daten. Neue Fundorte, Gegenstände oder Ausbauten
 // kommen hier dazu, ohne dass sich die Logik ändern muss.
 
-import type { GearId, GearSlot, BackgroundId, CollectibleId, EnemyId, FoeKind, Inventory, KramId, Material, Quality, Resource, SetId, SpotKind, Survival, Weapon, WeaponId } from './types';
+import type { GearId, GearSlot, BackgroundId, CollectibleId, EnemyId, FoeKind, Inventory, KramId, Material, Quality, RegionId, Resource, SetId, SpotKind, Survival, TerrainKind, Weapon, WeaponId, WorldEventKind } from './types';
 
 export const SURVIVAL_ORDER: Survival[] = ['food', 'water', 'medicine'];
 /** Rohstoffe, grob von häufig nach selten. */
@@ -1041,6 +1041,10 @@ export interface GearDef {
   filter?: number;
   /** Fächer im Rucksack (zählt mit dem Rucksack-Limit). */
   packSlots?: number;
+  /** Lauter oder leiser unterwegs (−0,2 = Trupps hören dich 20 % später). */
+  noise?: number;
+  /** Schneller im Sumpf und an Bächen (Gummistiefel). */
+  wade?: boolean;
   /** Wo man es finden kann. */
   findAt: SpotKind[];
 }
@@ -1052,7 +1056,7 @@ export const GEAR: Record<GearId, GearDef> = {
   dustMask: { name: 'Staubmaske', slot: 'face', desc: 'Gegen Staub. Gegen das Weinen hilft sie nur kurz.', filter: 1, findAt: ['pharmacy', 'hardware', 'shed'] },
   safetyGoggles: { name: 'Schutzbrille', slot: 'face', desc: 'Schützt die Augen vor Splittern und Schnäbeln.', armor: 1, findAt: ['hardware', 'container', 'fuel'] },
   gasMask: { name: 'Gasmaske', slot: 'face', desc: 'Mit frischem Filter. Damit traut man sich nach unten.', filter: 2, findAt: ['bunker', 'convoy', 'heli'] },
-  rainJacket: { name: 'Regenjacke', slot: 'body', desc: 'Raschelt bei jedem Schritt, aber du bleibst trocken.', warmth: 1, findAt: ['backpack', 'car', 'market'] },
+  rainJacket: { name: 'Regenjacke', slot: 'body', desc: 'Raschelt bei jedem Schritt, aber du bleibst trocken.', warmth: 1, noise: 0.15, findAt: ['backpack', 'car', 'market'] },
   workJacket: { name: 'Arbeitsjacke', slot: 'body', desc: 'Dicker Stoff, viele Taschen, Ölflecken.', armor: 1, warmth: 1, findAt: ['hardware', 'container', 'fuel'] },
   protectiveVest: { name: 'Schutzweste', slot: 'body', desc: 'Aus einem liegengebliebenen Einsatzwagen. Schwer, aber sie hält.', armor: 2, findAt: ['convoy', 'heli', 'bunker'] },
   gardenGloves: { name: 'Gartenhandschuhe', slot: 'hands', desc: 'Grün mit Blümchen. Gut zum Wühlen.', findAt: ['shed', 'market'] },
@@ -1060,9 +1064,9 @@ export const GEAR: Record<GearId, GearDef> = {
   jeans: { name: 'Jeans', slot: 'legs', desc: 'Ausgeblichen, aber robust.', findAt: ['backpack', 'parcel', 'market'] },
   workTrousers: { name: 'Arbeitshose', slot: 'legs', desc: 'Mit Knieschonern. Man kniet ja oft.', warmth: 1, findAt: ['hardware', 'container'] },
   rainTrousers: { name: 'Regenhose', slot: 'legs', desc: 'Über die Hose gezogen, bei Nebel und Regen Gold wert.', warmth: 1, findAt: ['camp', 'backpack', 'shed'] },
-  sneakers: { name: 'Turnschuhe', slot: 'feet', desc: 'Leise und leicht. Bei Regen nasse Füße.', findAt: ['backpack', 'parcel', 'market'] },
-  workBoots: { name: 'Arbeitsstiefel', slot: 'feet', desc: 'Stahlkappen. Treten tut damit richtig weh.', armor: 1, findAt: ['hardware', 'container', 'convoy'] },
-  rubberBoots: { name: 'Gummistiefel', slot: 'feet', desc: 'Für Gräben, Bäche und Sumpf.', warmth: 1, findAt: ['shed', 'well', 'market'] },
+  sneakers: { name: 'Turnschuhe', slot: 'feet', desc: 'Leise und leicht. Bei Regen nasse Füße.', noise: -0.2, findAt: ['backpack', 'parcel', 'market'] },
+  workBoots: { name: 'Arbeitsstiefel', slot: 'feet', desc: 'Stahlkappen. Treten tut damit richtig weh.', armor: 1, noise: 0.1, findAt: ['hardware', 'container', 'convoy'] },
+  rubberBoots: { name: 'Gummistiefel', slot: 'feet', desc: 'Für Gräben, Bäche und Sumpf.', warmth: 1, wade: true, findAt: ['shed', 'well', 'market'] },
   oldBackpack: { name: 'Alter Rucksack', slot: 'back', desc: 'Der, mit dem alles anfing. Ein Riemen ist geflickt.', packSlots: 12, findAt: [] },
   hikingPack: { name: 'Wanderrucksack', slot: 'back', desc: 'Mit Hüftgurt. Da passt deutlich mehr rein.', packSlots: 16, findAt: ['camp', 'car', 'backpack'] },
   armyPack: { name: 'Bundeswehr-Rucksack', slot: 'back', desc: 'Riesig, oliv, unverwüstlich.', packSlots: 20, findAt: ['convoy', 'bunker', 'airdrop'] },
@@ -1077,6 +1081,10 @@ export const GEAR_CHANCE = { poi: 0.12, grid: 0.04, special: 0.35 };
 /** Abwehr zu Kampfbeginn aus allem, was du trägst. */
 export function gearArmor(worn: Partial<Record<GearSlot, GearId>>): number {
   return Object.values(worn).reduce((a, g) => a + (g ? (GEAR[g].armor ?? 0) : 0), 0);
+}
+/** Summe eines Werts über alles, was du trägst (Wärme, Atemschutz, Lärm). */
+export function gearSum(worn: Partial<Record<GearSlot, GearId>>, key: 'warmth' | 'filter' | 'noise'): number {
+  return Object.values(worn).reduce((a, g) => a + (g ? (GEAR[g][key] ?? 0) : 0), 0);
 }
 
 // --- Kampf: kurze Taktik mit Karten (Runde für Runde) ------------------------------
@@ -1225,6 +1233,272 @@ export const WILD = {
   cooldownMs: 4 * 60_000,
   /** Höchstens so viele Meter zählen pro Meldung (gegen Sprünge). */
   maxMeters: 60,
+};
+
+// --- Gelände: Deckung und Tempo ------------------------------------------------------
+// Straßen sind schnell, aber man wird gesehen. Im Wald ist man langsam, aber versteckt.
+
+export const TERRAIN: Record<TerrainKind, { name: string; vis: number; speed: number }> = {
+  road: { name: 'Straße', vis: 1, speed: 1 },
+  built: { name: 'Gärten und Höfe', vis: 0.6, speed: 0.65 },
+  open: { name: 'Wiese', vis: 0.9, speed: 0.8 },
+  field: { name: 'Acker', vis: 0.85, speed: 0.7 },
+  forest: { name: 'Wald', vis: 0.32, speed: 0.45 },
+  wetland: { name: 'Sumpf', vis: 0.5, speed: 0.35 },
+  blocked: { name: 'Haus oder Wasser', vis: 0.6, speed: 0 },
+};
+
+// --- Gegenden ---------------------------------------------------------------------------
+// Jede Gegend hat etwas, das dort leicht ist, und etwas, das dort schwer ist. Keine ist
+// schlechter. Welche Kreaturen wo häufiger sind, folgt der Lore (Wandler in Wäldern und
+// Dörfern, Heuler in Städten, Kriecher in Ruinen und Gräben, Borkenmänner in alten Wäldern).
+
+export interface RegionDef {
+  name: string;
+  /** Kurz: was hier leicht und was schwer ist. */
+  desc: string;
+  /** Chance auf einen Trupp pro Rasterzelle und Runde. */
+  patrolChance: number;
+  /** Wie weit Trupps hier sehen (1 = normal). */
+  sight: number;
+  /** Wie weit du Trupps hier siehst (1 = normal; offene Gegenden mehr). */
+  view: number;
+  /** Gruppen, die hier unterwegs sind, mit Gewicht. */
+  groups: readonly (readonly [FoeKind[], number])[];
+  /** Hier ist es kalt (Wärme zählt) oder heiß (Wasser zählt). */
+  cold?: boolean;
+  heat?: boolean;
+}
+
+export const REGIONS: Record<RegionId, RegionDef> = {
+  city: {
+    name: 'Großstadt',
+    desc: 'Ecken, Durchgänge und Hinterhöfe überall, aber viele Trupps, und Heuler hören jeden Schritt.',
+    patrolChance: 0.95,
+    sight: 0.85,
+    view: 0.8,
+    groups: [
+      [['walker', 'walker', 'screamer'], 30],
+      [['screamer', 'walker'], 20],
+      [['walker', 'walker'], 20],
+      [['crawler', 'crawler'], 15],
+      [['brute', 'walker'], 15],
+    ],
+  },
+  town: {
+    name: 'Kleinstadt',
+    desc: 'Viele Fundstellen und Gärten zum Verstecken, dafür mehr Trupps auf den Straßen.',
+    patrolChance: 0.75,
+    sight: 0.95,
+    view: 0.9,
+    groups: [
+      [['walker'], 25],
+      [['walker', 'walker'], 30],
+      [['walker', 'screamer'], 15],
+      [['crawler', 'walker'], 20],
+      [['brute'], 10],
+    ],
+  },
+  village: {
+    name: 'Dorf und Felder',
+    desc: 'Weite Sicht und ruhige Feldwege. Auf dem offenen Feld sieht man dich aber von Weitem. Hecken, Waldränder und im Sommer das Korn verstecken dich.',
+    patrolChance: 0.55,
+    sight: 1.15,
+    view: 1.2,
+    groups: [
+      [['walker'], 35],
+      [['walker', 'walker'], 30],
+      [['crawler', 'walker'], 20],
+      [['brute'], 15],
+    ],
+  },
+  wild: {
+    name: 'Wald und Wildnis',
+    desc: 'Im Wald bist du kaum zu sehen, kommst aber nur langsam voran. Hier streifen Kriecher und Borkenmänner.',
+    patrolChance: 0.4,
+    sight: 0.9,
+    view: 0.8,
+    groups: [
+      [['walker'], 25],
+      [['crawler', 'crawler'], 25],
+      [['crawler', 'walker'], 25],
+      [['brute'], 25],
+    ],
+  },
+  mountain: {
+    name: 'Hügel und Berge',
+    desc: 'Von oben siehst du weiter: mehr Karte, Trupps schon von Weitem. Oben sieht man aber auch dich.',
+    patrolChance: 0.35,
+    sight: 1.2,
+    view: 1,
+    groups: [
+      [['crawler'], 25],
+      [['crawler', 'crawler'], 25],
+      [['brute'], 25],
+      [['walker', 'crawler'], 25],
+    ],
+  },
+  coast: {
+    name: 'Küste und Seen',
+    desc: 'Das Wasser schützt dir den Rücken, schneidet aber Wege ab. Schilf und Dünen geben Deckung.',
+    patrolChance: 0.4,
+    sight: 1.1,
+    view: 1.2,
+    groups: [
+      [['walker'], 35],
+      [['walker', 'walker'], 35],
+      [['crawler', 'walker'], 30],
+    ],
+  },
+  desert: {
+    name: 'Wüste und Steppe',
+    desc: 'Riesige offene Flächen: Du siehst Trupps schon von Weitem, sie dich aber auch. Tagsüber Hitze (Wasser dabeihaben).',
+    patrolChance: 0.3,
+    sight: 1.4,
+    view: 1.5,
+    heat: true,
+    groups: [
+      [['crawler'], 30],
+      [['walker', 'walker'], 30],
+      [['brute'], 20],
+      [['crawler', 'crawler'], 20],
+    ],
+  },
+  snow: {
+    name: 'Schnee und Eis',
+    desc: 'Weite weiße Flächen: Trupps siehst du früh. Aber es ist kalt (warme Kleidung zählt), und deine Spuren im Schnee verraten dich.',
+    patrolChance: 0.3,
+    sight: 1.2,
+    view: 1.3,
+    cold: true,
+    groups: [
+      [['walker'], 30],
+      [['brute'], 30],
+      [['walker', 'walker'], 40],
+    ],
+  },
+};
+export const REGION_ORDER = Object.keys(REGIONS) as RegionId[];
+
+// --- Trupps -------------------------------------------------------------------------------
+// Gegner ziehen in kleinen Gruppen über echte Straßen und Wege. Jeder Trupp hat einen
+// Sichtkegel. Wer im Blick ist, wird nach kurzer Zeit entdeckt. Wer sich von hinten
+// anschleicht, greift überraschend an (die Gegner setzen die erste Runde aus).
+
+export const PATROL = {
+  /** Rasterzelle für Trupps (Kachel-Zoom 17, ~190 m bei uns). */
+  zoom: 17,
+  /** So lange läuft ein Trupp seine Strecke (Minuten). */
+  lifeMin: 35,
+  /** Alle so viele Minuten startet eine neue Runde. */
+  windowMin: 30,
+  /** Tempo in m/s (gemächlich, Wandler sind langsam). */
+  speed: [0.6, 1.0] as [number, number],
+  /** Länge der Strecke, die er hin und her läuft (Meter). */
+  lengthM: [260, 600] as [number, number],
+  /** Grund-Sichtweite tagsüber bei klarem Wetter (Meter). */
+  sightM: 34,
+  /** Halber Öffnungswinkel des Sichtkegels (Grad). */
+  coneDeg: 55,
+  /** So nah hört er dich auf jeden Fall (Meter). */
+  hearM: 9,
+  /** Heuler jagen nach Gehör: so weit hören sie dich (Meter). */
+  screamerHearM: 24,
+  /** So lange (Sekunden) musst du im Blick sein, bis er dich entdeckt. */
+  noticeS: 1.3,
+  /** So lange still stehen in Deckung, dann bist du versteckt (Sekunden). */
+  hideAfterS: 2.5,
+  /** Versteckt: so viel von der Sichtweite bleibt. */
+  hiddenFactor: 0.3,
+  /** Leise gehen (Testmodus): so viel von Sicht und Lärm bleibt. */
+  sneakFactor: 0.75,
+  /** So nah musst du für einen Überraschungsangriff sein (Meter). */
+  surpriseM: 30,
+  /** Nach einer Begegnung so lange Ruhe (Minuten). */
+  cooldownMin: 3,
+  /** Rund ums Zuhause sucht dich kein Trupp (Meter). */
+  homeSafeM: 150,
+  /** Nachts sind mehr Trupps unterwegs. */
+  nightExtra: 0.15,
+  /** Nachts zieht manchmal der Bleiche Wächter allein umher. */
+  watcherChance: 0.2,
+  /** So weit siehst du Trupps auf der Karte (Tag, klare Sicht). */
+  showM: 170,
+  /** Im Schnee: Spuren, die jünger sind, verraten dich (Minuten). */
+  trackMin: 3,
+  /** Was ein Trupp dabeihat (je Gegner etwas davon). */
+  loot: [['cloth', 3], ['metal', 3], ['screws', 2], ['food', 2], ['water', 2], ['leather', 2], ['plastic', 2], ['medicine', 1]] as readonly (readonly [Resource, number])[],
+  lootKramChance: 0.35,
+  lootKram: [['tinCans', 3], ['flashlight', 2], ['radio', 1], ['tape', 2], ['bottles', 2], ['blanket', 1]] as readonly (readonly [KramId, number])[],
+};
+
+// --- Weltereignisse -----------------------------------------------------------------------
+// Ab und zu passiert in einer Gegend (Kachel Zoom 14, ~1,5 km) etwas für ein paar Stunden.
+// Alles kommt aus dem Weltstartwert: Alle Spieler sehen dasselbe zur selben Zeit.
+// Verpassen kostet nichts. Nie an heiklen Orten (die Mitte liegt dort nie).
+
+export interface WorldEventDef {
+  name: string;
+  /** Was es bedeutet (für den Hinweis). */
+  desc: string;
+  weight: number;
+  /** Größe der Zone (Meter). 0: nur ein Punkt. */
+  radiusM: [number, number];
+  durationMin: [number, number];
+}
+
+export const WORLD_EVENTS: Record<WorldEventKind, WorldEventDef> = {
+  dust: {
+    name: 'Staubsturm',
+    desc: 'Eine Staubwalze zieht durch. Im Staub schlafen Keime: Durchsuchen nur mit Atemschutz (Staubmaske oder Gasmaske). Dafür sehen dich die Trupps kaum.',
+    weight: 3,
+    radiusM: [260, 420],
+    durationMin: [60, 150],
+  },
+  horde: {
+    name: 'Horde',
+    desc: 'Eine Horde zieht durch die Gegend: viele Trupps, größere Gruppen. Leise sein oder einen Bogen machen.',
+    weight: 3,
+    radiusM: [220, 330],
+    durationMin: [60, 120],
+  },
+  quarantine: {
+    name: 'Sperrgebiet',
+    desc: 'Landstreifer brennen eine Fiebergrube aus. Die Gegend ist abgesperrt, bis der Rauch abzieht. Fundstellen darin sind so lange tabu.',
+    weight: 2,
+    radiusM: [140, 240],
+    durationMin: [45, 120],
+  },
+  drop: {
+    name: 'Hilfsabwurf',
+    desc: 'Ein Versorgungspaket ist abgeworfen worden. Rotes Rauchzeichen zeigt, wo. Es liegt nur ein paar Stunden.',
+    weight: 2,
+    radiusM: [0, 0],
+    durationMin: [90, 180],
+  },
+};
+export const WORLD_EVENT = {
+  zoom: 14,
+  /** Runde in Stunden (weltweit gleich getaktet). */
+  windowH: 3,
+  /** Chance pro Gegend und Runde. */
+  chance: 0.35,
+  /** So viele mögliche Mitten (die erste, die nicht an einem heiklen Ort liegt, gilt). */
+  candidates: 5,
+  /** Bis zu dieser Entfernung erfährt man davon (Meter). */
+  newsM: 2500,
+  /** So viele Trupps sind in einer Horde unterwegs. */
+  hordePatrols: 4,
+};
+
+/** Kälte und Hitze im Kampf (echtes Wetter oder Gegend). */
+export const CLIMATE = {
+  /** Ab so kalt (°C) zählt Wärme. */
+  coldC: 2,
+  /** So viel Wärme brauchst du dann (Mütze + Regenjacke = 2). */
+  warmthNeeded: 3,
+  /** Ab so heiß (°C) brauchst du Wasser. */
+  hotC: 28,
 };
 
 // --- Erkunden: besondere Orte, Neuland, Ketten, Spuren ------------------------------

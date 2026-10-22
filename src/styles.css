@@ -1434,3 +1434,38 @@ button.base-res { align-items: center; padding: 3px 6px 3px 4px; border: 1px sol
   .char { grid-template-columns: 1fr; }
   .char-figure { order: -1; }
 }
+
+/* --- Gelände, Trupps, Weltereignisse ----------------------------------------------------- */
+/* Gangart beim Laufen per Tippen: unten in der Mitte */
+.gait-btn { grid-column: 2; display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px 0 11px; border-radius: 20px; border: 1px solid var(--line); background: rgba(18, 17, 15, 0.82); color: var(--bone); font: 700 14px/1 var(--font-ui); letter-spacing: 0.03em; text-transform: uppercase; cursor: pointer; pointer-events: auto; }
+.gait-btn[hidden] { display: none; }
+.gait-btn[data-gait="fast"] .svg { color: var(--amber); }
+.gait-btn[data-gait="quiet"] { border-color: #6f8a4a; }
+.gait-btn[data-gait="quiet"] .svg { color: var(--moss); }
+.gait-btn:active { transform: scale(0.96); }
+
+/* Weltereignis oben rechts */
+.event-chip[hidden] { display: none; }
+.event-chip[data-kind="dust"] .svg { color: #d1a46a; }
+.event-chip[data-kind="horde"] .svg, .event-chip[data-kind="quarantine"] .svg { color: #ef6a4c; }
+.event-chip[data-kind="drop"] .svg { color: var(--amber); }
+.event-chip[data-inside="true"] { border-color: #ef6a4c; box-shadow: 0 0 0 1px rgba(239, 106, 76, 0.4); }
+
+/* Trupp auf der Karte: dunkles Schild mit Anzahl, darüber ? (aufmerksam) oder ! (entdeckt) */
+.patrol { position: relative; width: 44px; height: 46px; padding: 0; border: 0; background: none; cursor: pointer; color: #f1e2c8; }
+.patrol-badge { position: absolute; left: 4px; bottom: 6px; display: inline-flex; align-items: center; gap: 2px; height: 28px; padding: 0 7px 0 5px; border-radius: 14px; background: rgba(40, 22, 18, 0.92); box-shadow: 0 0 0 2px #b8402b, 0 4px 10px rgba(0, 0, 0, 0.45); font: 800 13px/1 var(--font-ui); }
+.patrol-badge b { font-variant-numeric: tabular-nums; }
+.patrol::after { content: ''; position: absolute; left: 50%; bottom: 0; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: #b8402b; box-shadow: 0 0 0 2px rgba(18, 17, 15, 0.8); }
+.patrol[data-watcher="1"] .patrol-badge { background: rgba(28, 30, 40, 0.94); box-shadow: 0 0 0 2px #a9bce6, 0 4px 10px rgba(0, 0, 0, 0.45); color: #dfe6f6; }
+.patrol[data-horde="1"] .patrol-badge { box-shadow: 0 0 0 2px #ef6a4c, 0 0 14px rgba(239, 106, 76, 0.55); }
+.patrol-alert { position: absolute; left: 50%; top: -12px; transform: translateX(-50%); min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; display: none; place-items: center; font: 900 14px/20px var(--font-ui); text-align: center; }
+.patrol[data-state="alert"] .patrol-alert { display: block; background: #ffb22e; color: var(--ink); }
+.patrol[data-state="hunt"] .patrol-alert { display: block; background: #e0442a; color: #fff; animation: patrol-pulse 0.8s ease-in-out infinite; }
+@keyframes patrol-pulse { 50% { transform: translateX(-50%) scale(1.2); } }
+
+/* Versteckt: die Figur wird blasser, ein Zeichen am Ring */
+.player.is-hidden .player-figure { opacity: 0.55; filter: saturate(0.5) brightness(0.85); transition: opacity 0.4s ease; }
+.player.is-hidden .player-ring { border-color: var(--moss) !important; box-shadow: 0 0 0 2px rgba(156, 176, 109, 0.35); }
+.player.is-hidden::before { content: ''; position: absolute; left: calc(50% + 14px); top: 2px; width: 22px; height: 22px; border-radius: 50%; background: rgba(18, 17, 15, 0.85) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239cb06d' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M3 3l18 18'/%3E%3Cpath d='M10.6 5.6A10 10 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-3.2 3.9M6.2 6.9A17 17 0 0 0 2.5 12s3.5 6.5 9.5 6.5c1.6 0 3-.4 4.2-1'/%3E%3C/svg%3E") center / 15px no-repeat; box-shadow: 0 0 0 2px var(--moss); }
+/* Mitten im Staubsturm: braune Luft, die Ferne verschwindet */
+.game.in-dust .wfog { opacity: 1; background: radial-gradient(ellipse at 50% 60%, rgba(150, 110, 62, 0.18) 0%, rgba(150, 110, 62, 0.5) 55%, rgba(120, 86, 48, 0.78) 100%); }

@@ -48,12 +48,13 @@ export interface WeatherLayer {
   destroy(): void;
 }
 
-/** Nebel in drei Schichten (unterschiedlich schnell) und Niesel darüber. */
-export function titleWeather(): WeatherLayer {
-  const tex = makeFogTexture();
+/** Nebel in drei Schichten (unterschiedlich schnell) und Niesel darüber. fog: false = nur Niesel. */
+export function titleWeather(o: { fog?: boolean } = {}): WeatherLayer {
+  const fog = o.fog !== false;
+  const tex = fog ? makeFogTexture() : '';
   const layer = (cls: string) => h('div', { class: `fog-layer ${cls}`, style: tex ? `background-image:url(${tex})` : '' });
   const rain = h('canvas', { class: 'title-rain' }) as HTMLCanvasElement;
-  const el = h('div', { class: 'title-weather', 'aria-hidden': 'true' }, layer('l1'), layer('l2'), layer('l3'), rain);
+  const el = h('div', { class: 'title-weather' + (fog ? '' : ' no-fog'), 'aria-hidden': 'true' }, ...(fog ? [layer('l1'), layer('l2'), layer('l3')] : []), rain);
   let particles: Particles | null = null;
   // Erst nach dem Einhängen messen, sonst ist die Fläche 0 × 0
   requestAnimationFrame(() => {

@@ -32,6 +32,8 @@ export const REJECT_TEXT: Record<RejectReason, string> = {
   radio_quiet: 'Auf Kanal 4 rauscht es nur. Später nochmal reinhören.',
   no_stove: 'Dafür brauchst du zu Hause einen Holzofen.',
   no_gear: 'Das hast du noch nicht gefunden.',
+  zone_closed: 'Sperrgebiet: Hier brennen Landstreifer eine Fiebergrube aus. Komm wieder, wenn der Rauch abgezogen ist.',
+  need_filter: 'Staubsturm: Im Staub schlafen Keime. Ohne Staubmaske oder Gasmaske wühlst du hier nicht.',
 };
 
 /** Fundstellen in der Mehrzahl, für Hinweise wie "Zu finden in: Autos, Packstationen". */
@@ -62,4 +64,10 @@ export const LOADING_TIPS: string[] = [
   'Helm, Weste und Handschuhe geben dir zu Beginn jedes Kampfs Abwehr.',
   'Besondere Orte gibt es einmal pro Gegend. Ein Hubschrauber, ein Konvoi, ein Bunker …',
   'Zettel, Kreidezeichen und Funksprüche führen zu Verstecken.',
+  'Trupps sehen nur, was vor ihnen liegt. Von hinten angeschlichen, setzen sie die erste Runde aus.',
+  'Still stehen im Wald, in einer Hecke oder im Sommer im Korn: Dann bist du versteckt.',
+  'Heuler sind fast blind, hören aber jeden Schritt. Turnschuhe sind leiser als Stiefel.',
+  'Im Staubsturm nur mit Atemschutz suchen. Dafür sehen dich die Trupps kaum.',
+  'Von einem Hügel aus siehst du Trupps schon von Weitem.',
+  'Im Schnee hinterlässt du Spuren. Trupps, die sie finden, folgen dir.',
 ];

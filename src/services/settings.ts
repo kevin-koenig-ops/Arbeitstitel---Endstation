@@ -1,17 +1,17 @@
 import type { LangCode } from '../ui/flags';
 import { IS_PREVIEW } from '../config';
 import type { DayPhase } from '../core/sun';
-import type { LatLon } from '../core/types';
+import type { LatLon, Season } from '../core/types';
+import { seasonFromMonth } from '../core/terrain';
 import type { WeatherKind } from './weather';
 import { readJson, writeJson } from './storage';
 
-export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
+export type { Season };
 
 /** Jahreszeit für die Optik: aus den Einstellungen oder aus dem Kalender. */
 export function seasonOf(s: Pick<Settings, 'testSeason'>, now = new Date()): Season {
   if (s.testSeason !== 'auto') return s.testSeason;
-  const m = now.getMonth() + 1;
-  return m >= 3 && m <= 5 ? 'spring' : m >= 6 && m <= 8 ? 'summer' : m >= 9 && m <= 11 ? 'autumn' : 'winter';
+  return seasonFromMonth(now.getMonth() + 1);
 }
 
 /** Ein typischer Monat der Jahreszeit (für Laubfarben und Ähnliches). */
@@ -44,13 +44,15 @@ export interface Settings {
   language: LangCode;
   /** Wasser bewegt sich (Wellen, Glitzern). Aus spart etwas Akku. */
   waterMotion: boolean;
+  /** Laufen per Tippen: schnell über die Straßen oder leise durch Deckung. */
+  gait: 'fast' | 'quiet';
   /** Letzter bekannter Standort, nur auf diesem Gerät gespeichert. */
   lastPos?: LatLon;
 }
 
 const KEY = 'endstation.settings';
 
-const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', testSeason: 'auto', control: 'tap', lootGames: 'on', fullscreen: true, language: 'de', waterMotion: true } as const;
+const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', testSeason: 'auto', control: 'tap', lootGames: 'on', fullscreen: true, language: 'de', waterMotion: true, gait: 'fast' } as const;
 const DEFAULTS: Settings = IS_PREVIEW ? { ...COMMON, map: 'demo', location: 'sim' } : { ...COMMON, map: 'real', location: 'gps' };
 
 export class SettingsStore {

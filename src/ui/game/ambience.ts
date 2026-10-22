@@ -12,11 +12,13 @@ export interface Ambience {
   phase: DayPhase;
   weather: WeatherKind;
   tempC: number | null;
+  /** Starker Wind (ab 40 km/h): übertönt Schritte. */
+  windy: boolean;
   /** true, wenn Tageszeit oder Wetter über den Test-Schalter erzwungen sind */
   forced: boolean;
 }
 
-let current: Ambience = { phase: 'day', weather: 'clear', tempC: null, forced: false };
+let current: Ambience = { phase: 'day', weather: 'clear', tempC: null, windy: false, forced: false };
 /** Für Kampf und Karte: aktuelle Stimmung lesen. */
 export const currentAmbience = () => current;
 
@@ -49,7 +51,8 @@ export function ambienceEffects(a: Ambience): string {
   if (a.phase === 'dusk') parts.push('Dämmerung: Bald wird es Nacht, dann gibt es mehr Beute und mehr Gefahr.');
   if (a.phase === 'night' || ['fog', 'rain', 'storm'].includes(a.weather)) parts.push('Wandler sind jetzt zäher.');
   if (a.weather === 'rain') parts.push('Regen: Wandler mögen das.');
-  if (a.weather === 'storm') parts.push('Gewitter: Such dir in echt einen Unterschlupf.');
+  if (a.weather === 'storm') parts.push('Gewitter: Donner übertönt deine Schritte, Trupps hören dich schlechter. Aber such dir in echt einen Unterschlupf!');
+  if (a.windy && a.weather !== 'storm') parts.push('Sturm: Der Wind übertönt deine Schritte.');
   if (a.weather === 'snow') parts.push('Schnee: Alles ist still.');
   if (a.weather === 'fog') parts.push('Nebel: Wächter siehst du erst aus der Nähe.');
   if (a.phase === 'day' && a.weather === 'clear') parts.push('Pralle Sonne: Wandler sind träge. Ein guter Tag zum Plündern.');
@@ -79,7 +82,7 @@ const LIGHTS: Record<DayPhase, { color: string; intensity: number; position: [nu
 
 export class AmbienceController {
   private pos: LatLon | null = null;
-  private weather: { kind: WeatherKind; tempC: number | null } | null = null;
+  private weather: { kind: WeatherKind; tempC: number | null; windKmh: number | null } | null = null;
   private weatherFor = '';
   private boltTimer = 0;
   private tick = 0;
@@ -111,7 +114,7 @@ export class AmbienceController {
     if (key !== this.weatherFor && this.app.settings.get().realWeather) {
       this.weatherFor = key;
       void fetchWeather(p).then((w) => {
-        if (w) this.weather = { kind: w.kind, tempC: w.tempC };
+        if (w) this.weather = { kind: w.kind, tempC: w.tempC, windKmh: w.windKmh ?? null };
         this.refresh();
       });
     }
@@ -127,6 +130,7 @@ export class AmbienceController {
       phase,
       weather,
       tempC: s.realWeather ? (this.weather?.tempC ?? null) : null,
+      windy: s.realWeather && s.testWeather === 'auto' && (this.weather?.windKmh ?? 0) >= 40,
       forced: s.testPhase !== 'auto' || s.testWeather !== 'auto',
     };
     this.apply();

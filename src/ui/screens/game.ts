@@ -1,12 +1,17 @@
 // Der Spielbildschirm: Karte, Standort, Fundstellen, HUD und Overlays.
 
 import { FALLBACK_START, IS_PREVIEW, VIEW_RADIUS_M } from '../../config';
-import { CACHE, ENEMIES, HINT_NAMES, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, SPECIAL, SPECIAL_HINT, SURVIVAL_ORDER, TIER } from '../../core/content';
+import { CACHE, ENEMIES, FOE_TACTICS, GEAR, HINT_NAMES, MAX_HEALTH, PATROL, REGIONS, RESOURCE_ORDER, RESOURCES, SPECIAL, SPECIAL_HINT, SURVIVAL_ORDER, TIER, WORLD_EVENT, WORLD_EVENTS } from '../../core/content';
 import { ExploredView, SECTOR_LEVELS, sectorOf } from '../../core/explore';
 import { bearingDeg, distanceM, formatDistance, offsetM } from '../../core/geo';
 import { rankOf } from '../../core/progress';
 import { currentHealth, dayNumber, packCount, pendingHarvest, readyAt, readyParts, regionTier, searchRangeM, spotKey } from '../../core/rules';
-import type { Cache, FoeKind, LatLon, Spot } from '../../core/types';
+import type { Cache, FoeKind, LatLon, Opening, RegionId, Spot, WorldEvent } from '../../core/types';
+import { classifyRegion, hearRangeM, sightRangeM } from '../../core/terrain';
+import { dropSpot, eventCenter } from '../../core/worldEvents';
+import { PatrolControl, type LivePatrol } from '../game/patrolControl';
+import { currentRegion, setCurrentRegion } from '../game/worldState';
+import { reliefAround } from '../../map/elevation';
 import { DEMO, GameMap, type SpotView } from '../../map/GameMap';
 import { WalkNet } from '../../map/walkNet';
 import {
@@ -119,7 +124,7 @@ export function gameScreen(app: App): Screen {
   // Kompass: Nadel zeigt nach Norden. Antippen: Karte nach Norden, nochmal: Karte dreht sich mit deiner Blickrichtung
   const needle = h('span', { class: 'compass-needle', 'aria-hidden': 'true' }, h('i', null, 'N'));
   const compassBtn = h('button', { class: 'iconbtn compass', type: 'button', 'aria-label': 'Kompass', onclick: () => toggleCompass() }, needle);
-  const envChip = h('button', { class: 'env-chip', type: 'button', onclick: () => app.toast(ambienceEffects(currentAmbience())) });
+  const envChip = h('button', { class: 'env-chip', type: 'button', onclick: () => app.toast(`${ambienceEffects(currentAmbience())} Gegend: ${REGIONS[currentRegion()].name}. ${REGIONS[currentRegion()].desc}`) });
   const goals = goalChip(app, () => openProgress());
   // Versteck in der Nähe: kalt, warm, heiß (und dann ausgraben)
   const cacheChip = h('button', { class: 'env-chip cache-chip', type: 'button', hidden: true });
@@ -157,6 +162,10 @@ export function gameScreen(app: App): Screen {
   const locateBtn = h('button', { class: 'iconbtn locate', type: 'button', 'aria-label': 'Auf mich zentrieren', onclick: () => recenter() }, svgEl(icon('locate')));
   const homeBadge = h('span', { class: 'home-badge', hidden: true }, '+');
   const homeBtn = h('button', { class: 'iconbtn home', type: 'button', 'aria-label': 'Dein Zuhause', onclick: () => void openBase() }, svgEl(icon('home')), homeBadge);
+  // Laufen per Tippen: schnell über die Straßen oder leise durch Deckung
+  const gaitBtn = h('button', { class: 'gait-btn', type: 'button', hidden: true, onclick: () => toggleGait() });
+  // Weltereignis in der Nähe (Staubsturm, Horde, Sperrgebiet, Hilfsabwurf)
+  const eventChip = h('button', { class: 'env-chip event-chip', type: 'button', hidden: true });
   const hud = h(
     'div',
     { class: 'hud' },
@@ -167,6 +176,7 @@ export function gameScreen(app: App): Screen {
       h(
         'div',
         { class: 'hud-tr' },
+        eventChip,
         cacheChip,
         tierChip,
         sectorChip,
@@ -177,7 +187,7 @@ export function gameScreen(app: App): Screen {
     compassBtn,
     banners,
     packBtn,
-    h('div', { class: 'hud-bottom' }, locChip, homeBtn, locateBtn),
+    h('div', { class: 'hud-bottom' }, locChip, homeBtn, gaitBtn, locateBtn),
   );
   const el = h('div', { class: 'screen game' }, mapEl, tilt, fog, tint, wfog, dust, bolt, hud, sheetHost, overlayHost);
 
@@ -199,6 +209,7 @@ export function gameScreen(app: App): Screen {
     return seenCache.set;
   };
   let ticker = 0;
+  let zoneTimer = 0;
   let overlay: HTMLElement | null = null;
   let destroyed = false;
   let lastExplorePos: LatLon | null = null;
@@ -227,6 +238,16 @@ export function gameScreen(app: App): Screen {
       walkTo(offsetM(s0, dx, dy));
       return { ways: net?.wayCount ?? 0, legs: routeOff.length, off: routeOff.filter(Boolean).length };
     };
+
+  // Zum Testen: wo steht die Figur gerade? Und: an eine Stelle springen (nur Simulation)
+  if (localStorage.getItem('endstation.debug')) {
+    const w = window as unknown as { __fix?: () => unknown; __tp?: (lat: number, lon: number) => void };
+    w.__fix = () => fix;
+    (window as unknown as { __events?: () => unknown }).__events = () => worldEvents.map((e) => ({ ...e, now: eventCenter(e, app.backend.now()) }));
+    w.__tp = (lat, lon) => {
+      if (provider instanceof SimulatedLocation) provider.moveTo({ lat, lon });
+    };
+  }
 
   // Zum Testen: die Karte von außen steuern (Ausschnitt, Neigung)
   if (localStorage.getItem('endstation.debug')) (window as unknown as { __map?: () => unknown }).__map = () => gm?.map;
@@ -366,8 +387,8 @@ export function gameScreen(app: App): Screen {
   };
 
   // Hinweise oben: einer für GPS, einer für die Karte. So verdrängen sie sich nicht.
-  const bannerEls: Partial<Record<'gps' | 'map', HTMLElement>> = {};
-  const showBanner = (key: 'gps' | 'map', title: string, text: string, actions: [string, () => void][]) => {
+  const bannerEls: Partial<Record<'gps' | 'map' | 'patrol', HTMLElement>> = {};
+  const showBanner = (key: 'gps' | 'map' | 'patrol', title: string, text: string, actions: [string, () => void][]) => {
     let b = bannerEls[key];
     if (!b) {
       b = bannerEls[key] = h('div', { class: 'banner' });
@@ -380,7 +401,7 @@ export function gameScreen(app: App): Screen {
       actions.length ? h('div', { class: 'row' }, actions.map(([label, fn], i) => h('button', { class: 'btn small' + (i ? ' ghost' : ''), type: 'button', onclick: fn }, label))) : null,
     ]);
   };
-  const hideBanner = (key: 'gps' | 'map') => {
+  const hideBanner = (key: 'gps' | 'map' | 'patrol') => {
     bannerEls[key]?.remove();
     delete bannerEls[key];
   };
@@ -390,7 +411,7 @@ export function gameScreen(app: App): Screen {
     if (!gm || !fix) return;
     const p = gm.project(fix.pos);
     // Sicht: klar bis ~150 m, dann Dunst, ab ~500 m fast nur noch Nebel.
-    const px = (m: number) => Math.max(m / 2.2, gm!.metersToPixels(m, fix!.pos));
+    const px = (m: number) => Math.max(m / 2.2, gm!.metersToPixels(m * Math.sqrt(viewBonus), fix!.pos));
     el.style.setProperty('--px', `${p.x}px`);
     el.style.setProperty('--py', `${p.y}px`);
     el.style.setProperty('--r1', `${px(150)}px`);
@@ -408,8 +429,12 @@ export function gameScreen(app: App): Screen {
     app.backend.setSpecialFilter(gm.builtCheck());
     const list = await app.backend.spotsNear(fix.pos, VIEW_RADIUS_M, gm.poiCandidates());
     if (destroyed || !gm) return;
+    // Hilfsabwürfe: eine Kiste, solange das Ereignis läuft
+    const now = app.backend.now();
+    const drops = worldEvents.filter((e) => e.kind === 'drop' && now >= e.from && now < e.until).map(dropSpot);
+    for (const d of drops) if (distanceM(fix.pos, d.pos) <= VIEW_RADIUS_M) list.push(d);
     // Besondere Orte weiter weg: für die Hinweise am Horizont
-    specials = app.backend.specialsNear(fix.pos, SPECIAL.hintM);
+    specials = [...app.backend.specialsNear(fix.pos, SPECIAL.hintM), ...drops];
     // Pilzstellen nur im Wald
     const forest = gm.forestCheck();
     spots = new Map(list.filter((s) => !sensitive(s.pos, s.source === 'grid') && (s.biome !== 'forest' || forest(s.pos))).map((s) => [s.id, s]));
@@ -605,16 +630,21 @@ export function gameScreen(app: App): Screen {
   // --- Wegenetz (nur Testmodus): im Ort über Straßen und Wege, draußen auch quer ------------
   let net: WalkNet | null = null;
   let netAt = 0;
+  let netZones = '';
   let routeOff: boolean[] = [];
   let snapHintAt = -Infinity;
   /** Wegenetz rund um p, bei Bedarf neu aus den geladenen Kartendaten gebaut. */
   const walkNet = (p: LatLon, needM = 0): WalkNet | null => {
     if (!gm) return null;
     const now = performance.now();
-    const stale = !net || distanceM(net.center, p) + needM > 450 || now - netAt > (net.wayCount ? 20000 : 3000);
+    const stale = !net || netZones !== zoneSig || distanceM(net.center, p) + needM > 450 || now - netAt > (net.wayCount ? 20000 : 3000);
     if (stale) {
       try {
-        net = new WalkNet(gm.walkInput(p, Math.max(700, needM + 300)));
+        const s = app.backend.current();
+        const t = app.backend.now();
+        const noGo = worldEvents.filter((e) => e.kind === 'quarantine' && t >= e.from && t < e.until).map((e) => ({ center: eventCenter(e, t), radiusM: e.radiusM }));
+        netZones = zoneSig;
+        net = new WalkNet(gm.walkInput(p, Math.max(700, needM + 300), { noGo, season: seasonOf(app.settings.get()), wade: !!s && Object.values(s.gear.worn).some((g) => g && GEAR[g].wade) }));
         netAt = now;
       } catch {
         net = null;
@@ -623,19 +653,40 @@ export function gameScreen(app: App): Screen {
     return net;
   };
 
+  // Wegenetz für die Trupps: Mitte an einem festen Raster (~550 m), damit alle Spieler
+  // in der Gegend dieselben Strecken berechnen. Nur neu, wenn man in ein anderes Feld kommt.
+  let pNet: { key: string; net: WalkNet; at: number } | null = null;
+  const patrolNet = (p: LatLon): WalkNet | null => {
+    if (!gm) return null;
+    const gy = Math.round(p.lat / 0.005);
+    const gx = Math.round(p.lon / 0.008);
+    const key = `${gy}:${gx}`;
+    const now = performance.now();
+    if (!pNet || pNet.key !== key || (!pNet.net.wayCount && now - pNet.at > 3000)) {
+      try {
+        pNet = { key, net: new WalkNet(gm.walkInput({ lat: gy * 0.005, lon: gx * 0.008 }, 1100)), at: now };
+      } catch {
+        return null;
+      }
+    }
+    return pNet.net;
+  };
+
   const walkTo = (p: LatLon) => {
     if (!(provider instanceof SimulatedLocation)) return;
     const from = provider.position;
     const n = walkNet(from, distanceM(from, p));
-    const r = n?.wayCount ? n.route(from, p) : null;
+    const gait = app.settings.get().gait;
+    const r = n?.wayCount ? n.route(from, p, gait) : null;
     if (r) {
-      provider.walkPath(r.path, r.speeds);
+      // Leise gehen ist etwas langsamer
+      provider.walkPath(r.path, gait === 'quiet' ? r.speeds.map((v) => v * 0.8) : r.speeds);
       routeOff = r.offroad;
       gm?.setRoute(r.path, r.offroad);
       gm?.setTarget(r.end);
       if (r.snapped && performance.now() - snapHintAt > 30000) {
         snapHintAt = performance.now();
-        app.toast('Im Ort geht es nur über Straßen und Wege.');
+        app.toast('Dort kommst du nicht hin (Haus, Wasser oder Sperrgebiet). Du läufst so nah wie möglich heran.');
       }
     } else {
       provider.walkTo(p);
@@ -684,6 +735,217 @@ export function gameScreen(app: App): Screen {
       .finally(() => (roamBusy = false));
   };
 
+  // --- Gegend, Weltereignisse, Trupps ---------------------------------------------------
+  let worldEvents: WorldEvent[] = [];
+  /** Nur im Testmodus: von Hand ausgelöste Ereignisse (nur Anzeige, die Regeln kennen sie nicht). */
+  let testEvents: WorldEvent[] = [];
+  let zoneSig = '';
+  let dropSig = '';
+  /** Von oben (Hügel) siehst du weiter. */
+  let viewBonus = 1;
+  let patrols: PatrolControl | null = null;
+  let regionAt: LatLon | null = null;
+  let regionKnown = false;
+  let eventsAt: LatLon | null = null;
+  let eventsTime = 0;
+  const newsSeen = new Set<string>();
+  let hiddenHintShown = false;
+
+  /** Art der Gegend aus den Kartendaten (alle 150 m neu), dazu die Höhe für die Aussicht. */
+  const updateRegion = (f: Fix) => {
+    if (!gm || (regionAt && distanceM(regionAt, f.pos) < 150)) return;
+    regionAt = f.pos;
+    const stats = gm.regionStats(f.pos, 600);
+    // Noch keine Kartendaten geladen: beim nächsten Mal nochmal
+    if (stats.houses + stats.forest + stats.farm + stats.water === 0) regionAt = null;
+    const apply = (relief: { relief: number; above: number } | null) => {
+      if (destroyed) return;
+      stats.relief = relief?.relief ?? null;
+      const r: RegionId = classifyRegion(stats);
+      const before = currentRegion();
+      setCurrentRegion(r);
+      if (regionAt && (!regionKnown || r !== before)) {
+        regionKnown = true;
+        app.toast(`Gegend: ${REGIONS[r].name}. ${REGIONS[r].desc}`);
+      }
+      const nb = relief && relief.above >= 25 ? 1.6 : 1;
+      if (nb > viewBonus) app.toast('Aussicht: Von hier oben siehst du weiter, auch Trupps schon von Weitem.', 'good');
+      viewBonus = nb;
+      updateFog();
+    };
+    if (mapMode === 'real') void reliefAround(f.pos, 600).then(apply);
+    else apply(null);
+  };
+
+  const remaining = (e: WorldEvent) => {
+    const m = Math.max(1, Math.round((e.until - app.backend.now()) / 60_000));
+    return m >= 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')} h` : `${m} min`;
+  };
+
+  /** Weltereignisse in der Gegend: neu einlesen, Funkmeldung bei neuen, Zonen zeichnen. */
+  const refreshEvents = (f: Fix, force = false) => {
+    const t = performance.now();
+    if (!force && eventsAt && distanceM(eventsAt, f.pos) < 150 && t - eventsTime < 30_000) return;
+    eventsAt = f.pos;
+    eventsTime = t;
+    const now = app.backend.now();
+    testEvents = testEvents.filter((e) => e.until > now);
+    worldEvents = [...app.backend.eventsNear(f.pos, WORLD_EVENT.newsM, 30 * 60_000), ...testEvents];
+    for (const e of worldEvents) {
+      if (newsSeen.has(e.id) || now < e.from || now >= e.until) continue;
+      newsSeen.add(e.id);
+      const c = eventCenter(e, now);
+      const d = distanceM(f.pos, c);
+      const where = e.radiusM && d <= e.radiusM ? 'genau hier' : `${formatDistance(d)} Richtung ${compassWord(bearingDeg(f.pos, c))}`;
+      app.toast(`Funk: ${WORLD_EVENTS[e.kind].name}, ${where}. Noch ${remaining(e)}. Antippen oben für mehr.`, e.kind === 'drop' ? 'good' : 'warn');
+    }
+    const drops = worldEvents.filter((e) => e.kind === 'drop' && now >= e.from && now < e.until).map((e) => e.id).join('|');
+    if (drops !== dropSig) {
+      dropSig = drops;
+      void refreshSpots(true);
+    }
+    updateZones();
+  };
+
+  const updateZones = () => {
+    if (!gm) return;
+    const now = app.backend.now();
+    const active = worldEvents.filter((e) => now >= e.from && now < e.until);
+    gm.setZones(active.map((e) => ({ id: e.id, kind: e.kind, center: eventCenter(e, now), radiusM: e.radiusM })));
+    zoneSig = active
+      .filter((e) => e.kind === 'quarantine')
+      .map((e) => e.id)
+      .join('|');
+    // Im Staubsturm: braune Luft
+    el.classList.toggle('in-dust', !!fix && active.some((e) => e.kind === 'dust' && distanceM(fix!.pos, eventCenter(e, now)) <= e.radiusM));
+    renderEventChip(active);
+  };
+
+  const EVENT_ICON = { dust: 'dust', horde: 'patrol', quarantine: 'barrier', drop: 'airdrop' } as const;
+  const renderEventChip = (active: WorldEvent[]) => {
+    if (!fix) return;
+    const here = fix.pos;
+    const now = app.backend.now();
+    const best = active.map((e) => ({ e, d: Math.max(0, distanceM(here, eventCenter(e, now)) - e.radiusM) })).sort((a, b) => a.d - b.d)[0];
+    eventChip.hidden = !best;
+    if (!best) return;
+    const { e, d } = best;
+    const def = WORLD_EVENTS[e.kind];
+    const inside = d === 0 && e.radiusM > 0;
+    clear(eventChip);
+    eventChip.dataset.kind = e.kind;
+    eventChip.dataset.inside = String(inside);
+    eventChip.append(svgEl(icon(EVENT_ICON[e.kind], 15)), inside ? def.name : `${def.name} · ${formatDistance(d)}`);
+    eventChip.setAttribute('aria-label', `${def.name}${inside ? ', du bist mittendrin' : `, ${formatDistance(d)} entfernt`}. Antippen für mehr`);
+    eventChip.onclick = () =>
+      app.toast(`${def.name}${inside ? ' (du bist mittendrin)' : ` (${formatDistance(d)} Richtung ${compassWord(bearingDeg(here, eventCenter(e, now)))})`}: ${def.desc} Noch ${remaining(e)}.`);
+  };
+
+  const patrolLabel = (group: FoeKind[]) => {
+    const n = new Map<string, number>();
+    for (const k of group) n.set(FOE_TACTICS[k].name, (n.get(FOE_TACTICS[k].name) ?? 0) + 1);
+    return [...n].map(([name, c]) => `${c} ${name}`).join(', ');
+  };
+
+  const startPatrolFight = async (id: string, opening: Opening) => {
+    const f = fix;
+    if (!f) return;
+    const res = await app.backend.dispatch({ type: 'patrolFight', patrol: id, at: f.pos, accuracyM: f.accuracyM, opening });
+    const ev = res.events[0];
+    hideBanner('patrol');
+    if (ev.type === 'rejected') {
+      patrols?.release(id);
+      if (ev.reason !== 'nothing') app.toast(REJECT_TEXT[ev.reason], 'warn');
+      return;
+    }
+    if (provider instanceof SimulatedLocation) provider.halt();
+    gm?.setRoute(null);
+    gm?.setTarget(null);
+    openFight();
+  };
+
+  const vibrateWarn = () => {
+    if (!app.settings.get().vibration) return;
+    try {
+      navigator.vibrate?.([120, 80, 120]);
+    } catch {
+      /* egal */
+    }
+  };
+
+  /** Ein Trupp hat dich entdeckt. Beim Laufen per Tippen geht es gleich los, mit GPS erst, wenn du stehst und kämpfen willst. */
+  const onSpotted = (p: LivePatrol) => {
+    vibrateWarn();
+    if (provider?.kind === 'sim') {
+      if (provider instanceof SimulatedLocation) provider.halt();
+      gm?.setRoute(null);
+      gm?.setTarget(null);
+      sheet.close();
+      app.toast('Entdeckt! Der Trupp kommt auf dich zu.', 'warn');
+      window.setTimeout(() => !destroyed && !overlay && void startPatrolFight(p.plan.id, 'spotted'), 800);
+      return;
+    }
+    showBanner(
+      'patrol',
+      'Entdeckt!',
+      `Ein ${p.plan.horde ? 'Teil der Horde' : 'Trupp'} (${patrolLabel(p.plan.group)}) hat dich gesehen und kommt auf dich zu. Bleib stehen und kämpfe, oder geh weg, bis du 70 m Abstand hast.`,
+      [['Kämpfen', () => void startPatrolFight(p.plan.id, 'spotted')]],
+    );
+  };
+
+  const onPatrolTap = (id: string) => {
+    const p = patrols?.get(id);
+    if (!p || !fix || !patrols) return;
+    const names = patrolLabel(p.plan.group);
+    if (p.spotted) {
+      if (p.distM <= 45) void startPatrolFight(id, 'spotted');
+      else app.toast(`Der Trupp (${names}) hat dich entdeckt und folgt dir. Kämpfen oder Abstand gewinnen (70 m).`, 'warn');
+      return;
+    }
+    if (p.distM <= PATROL.surpriseM && p.awareness < 0.5) {
+      app.toast('Überraschungsangriff!', 'good');
+      void startPatrolFight(id, 'surprise');
+      return;
+    }
+    const cond = patrols.conditions();
+    const exp = patrols.exposure();
+    const sight = Math.round(sightRangeM(p.plan.group, cond, exp));
+    const hear = Math.round(hearRangeM(p.plan.group, cond, exp));
+    app.toast(
+      `${p.plan.horde ? 'Horde' : 'Trupp'}: ${names}, ${formatDistance(p.distM)} entfernt. Im Blickfeld sieht er dich auf etwa ${sight} m, hören tut er dich auf ${hear} m. Schleich dich von hinten an (näher als ${PATROL.surpriseM} m) und tipp ihn an: Überraschungsangriff, die Gegner setzen die erste Runde aus.`,
+    );
+  };
+
+  const onHidden = (on: boolean) => {
+    gm?.setHidden(on);
+    if (on && !hiddenHintShown) {
+      hiddenHintShown = true;
+      app.toast('Versteckt: Still in Deckung sehen dich die Trupps kaum.', 'good');
+    }
+  };
+
+  // Gangart beim Laufen per Tippen
+  const renderGait = () => {
+    const sim = provider?.kind === 'sim' && !joy;
+    gaitBtn.hidden = !sim;
+    if (!sim) return;
+    const g = app.settings.get().gait;
+    clear(gaitBtn);
+    gaitBtn.dataset.gait = g;
+    gaitBtn.append(svgEl(icon(g === 'quiet' ? 'quiet' : 'fast', 18)), h('span', null, g === 'quiet' ? 'Leise' : 'Schnell'));
+    gaitBtn.setAttribute('aria-label', g === 'quiet' ? 'Gangart: leise durch Deckung. Antippen für schnell' : 'Gangart: schnell über die Straßen. Antippen für leise');
+  };
+  const toggleGait = () => {
+    const g = app.settings.get().gait === 'quiet' ? 'fast' : 'quiet';
+    app.settings.set({ gait: g });
+    renderGait();
+    app.toast(
+      g === 'quiet'
+        ? 'Leise: Du gehst durch Deckung (Wald, Gärten, Hecken, im Sommer das Korn) und etwas langsamer. Trupps sehen und hören dich später.'
+        : 'Schnell: Du nimmst den schnellsten Weg, meist über die Straßen. Dort sieht man dich aber.',
+    );
+  };
+
   // --- Joystick (nur in der Simulation; mit GPS läufst du selbst) ---------------------
   let joy: Joystick | null = null;
   let joyRaf = 0;
@@ -713,7 +975,10 @@ export function gameScreen(app: App): Screen {
   };
   const setupJoystick = () => {
     teardownJoystick();
-    if (!(provider instanceof SimulatedLocation) || app.settings.get().control !== 'joystick') return renderLocChip();
+    if (!(provider instanceof SimulatedLocation) || app.settings.get().control !== 'joystick') {
+      renderGait();
+      return renderLocChip();
+    }
     const j = new Joystick();
     joy = j;
     const use = useButton(() => {
@@ -745,6 +1010,7 @@ export function gameScreen(app: App): Screen {
       provider.moveTo(n?.wayCount ? n.step(from, to) : to);
     };
     joyRaf = requestAnimationFrame(loop);
+    renderGait();
     renderLocChip();
   };
   // Steuerung oder Grafik in den Einstellungen umgestellt: sofort übernehmen
@@ -803,6 +1069,8 @@ export function gameScreen(app: App): Screen {
     // Reststrecke nachziehen, Unterholz prüfen
     if (provider instanceof SimulatedLocation && provider.moving && routeOff.length) gm.setRoute(provider.remaining, routeOff.slice(provider.leg));
     checkRoam(f);
+    updateRegion(f);
+    refreshEvents(f);
     void explore(f);
     if (first) renderSectorChip();
     renderTierChip();
@@ -845,7 +1113,25 @@ export function gameScreen(app: App): Screen {
       overlay = null;
       renderHud();
       updateSpots();
-      if (end.outcome === 'won' && end.loot) sheet.showLoot(end.spot, end.loot, end.spot.id.startsWith('w:test') ? 'Testkampf gewonnen.' : end.spot.id.startsWith('w:') ? 'Begegnung im Unterholz überstanden.' : end.ambush ? 'Überfall abgewehrt. Mehr war hier nicht mehr zu holen.' : end.kills && end.kills > 1 ? `${end.kills} Gegner erledigt` : `${ENEMIES[end.enemy].name} erledigt`);
+      hideBanner('patrol');
+      const pid = end.spot.id.startsWith('w:t:') ? end.spot.id.slice(2) : null;
+      if (pid) patrols?.release(pid);
+      if (end.outcome === 'won' && end.loot)
+        sheet.showLoot(
+          end.spot,
+          end.loot,
+          pid
+            ? `${pid.startsWith('t:h:') ? 'Teil der Horde' : 'Trupp'} besiegt. Das hatten sie dabei.`
+            : end.spot.id.startsWith('w:test')
+              ? 'Testkampf gewonnen.'
+              : end.spot.id.startsWith('w:')
+                ? 'Begegnung im Unterholz überstanden.'
+                : end.ambush
+                  ? 'Überfall abgewehrt. Mehr war hier nicht mehr zu holen.'
+                  : end.kills && end.kills > 1
+                    ? `${end.kills} Gegner erledigt`
+                    : `${ENEMIES[end.enemy].name} erledigt`,
+        );
       else if (end.outcome === 'fled') app.toast('Du hast dich zurückgezogen.');
     });
   };
@@ -1029,6 +1315,7 @@ export function gameScreen(app: App): Screen {
           menuItem('Weiterspielen', null, close, true),
           menuItem('Einstellungen', null, showSettings),
           provider?.kind === 'sim' ? menuItem('Test: Angriff', 'Nur im Testmodus: Kampf gegen Gegner nach Wahl', showTestFight) : null,
+          provider?.kind === 'sim' ? menuItem('Test: Ereignis', 'Nur im Testmodus: Staubsturm, Horde, Sperrgebiet oder Hilfsabwurf gleich nebenan', showTestEvent) : null,
           menuItem('Hauptmenü', 'Dein Spielstand ist gespeichert', () => app.go('menu')),
         ),
       );
@@ -1058,6 +1345,29 @@ export function gameScreen(app: App): Screen {
                 closeOverlay();
                 openFight();
               }
+            }),
+          ),
+        ),
+      );
+    };
+    // Testmodus: ein Weltereignis gleich nebenan (nur Anzeige)
+    const showTestEvent = () => {
+      clear(body);
+      const kinds: WorldEvent['kind'][] = ['dust', 'horde', 'quarantine', 'drop'];
+      body.append(
+        h('button', { class: 'btn ghost small back-link', type: 'button', onclick: showMain }, svgEl(icon('back', 16)), 'Zurück'),
+        h(
+          'ol',
+          { class: 'menu-list compact' },
+          kinds.map((k) =>
+            menuItem(WORLD_EVENTS[k].name, k === 'drop' ? 'Nur Anzeige: die Kiste lässt sich nicht öffnen' : 'Nur Anzeige: die Regeln kennen es nicht', () => {
+              if (!fix) return;
+              const now = app.backend.now();
+              const r = (WORLD_EVENTS[k].radiusM[0] + WORLD_EVENTS[k].radiusM[1]) / 2;
+              const center = offsetM(fix.pos, 0, k === 'drop' ? 60 : r * 0.6);
+              testEvents.push({ id: `x:-1:-${testEvents.length + 1}:${Math.floor(now / (WORLD_EVENT.windowH * 3_600_000))}`, kind: k, center, radiusM: k === 'drop' ? 0 : r, from: now, until: now + 20 * 60_000 });
+              closeOverlay();
+              refreshEvents(fix, true);
             }),
           ),
         ),
@@ -1135,6 +1445,7 @@ export function gameScreen(app: App): Screen {
         onSpotTap: (id) => sheet.open(id),
         onBaseTap: () => void openBase(),
         onCacheTap: (id) => showCacheHint(id),
+        onPatrolTap: (id) => onPatrolTap(id),
         onFollowChange: (f) => locateBtn.classList.toggle('lost', !f),
         onCameraMove: updateFog,
         onDataChanged: () => {
@@ -1184,12 +1495,38 @@ export function gameScreen(app: App): Screen {
       renderLocChip();
       void loadFigure();
 
+      patrols = new PatrolControl({
+        app,
+        map: () => gm,
+        fix: () => fix,
+        isSim: () => provider?.kind === 'sim',
+        net: (p) => walkNet(p),
+        patrolNet: (p) => patrolNet(p),
+        sneaking: () => app.settings.get().gait === 'quiet',
+        season: () => seasonOf(app.settings.get()),
+        region: () => currentRegion(),
+        events: () => worldEvents,
+        home: () => getBasePlace()?.pos ?? null,
+        busy: () => !!overlay,
+        viewBonus: () => viewBonus,
+        onSpotted,
+        onTrack: () => app.toast('Ein Trupp hat deine Spur im Schnee gefunden und folgt ihr!', 'warn'),
+        onLost: () => {
+          hideBanner('patrol');
+          app.toast('Abgehängt. Der Trupp hat aufgegeben.', 'good');
+        },
+        onHidden,
+      });
+      // Der Staubsturm zieht weiter: Zonen regelmäßig nachziehen
+      zoneTimer = window.setInterval(() => !document.hidden && updateZones(), 5000);
+
       ticker = window.setInterval(() => {
         renderHud();
         // Ist eine Fundstelle weitergewandert? Dann die Gegend neu einlesen.
         const now = app.backend.now();
         if ([...spots.values()].some((sp) => (app.backend.spotUntil(sp) ?? Infinity) <= now)) void refreshSpots(true);
         else updateSpots();
+        if (fix) refreshEvents(fix);
       }, 15000);
     },
     destroy() {
@@ -1204,6 +1541,8 @@ export function gameScreen(app: App): Screen {
       pointers?.destroy();
       offSettings();
       clearInterval(ticker);
+      clearInterval(zoneTimer);
+      patrols?.destroy();
       document.removeEventListener('visibilitychange', onVisible);
       provider?.stop();
       app.backend.setPlaceFilter(null);

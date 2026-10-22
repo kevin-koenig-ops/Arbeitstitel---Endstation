@@ -1,4 +1,4 @@
-// Startbild: gemaltes Bild mit bewegtem Nebel und Niesel, Logo, „Zum Starten berühren“.
+// Startbild: gemaltes Bild (Feldweg) mit feinem Niesel, Logo, „Zum Starten berühren“.
 // Wer schon angemeldet ist, kommt danach direkt ins Hauptmenü, sonst zur Anmeldung.
 // Das erste Berühren schaltet am Handy auch Vollbild und Querformat ein (siehe app.ts).
 
@@ -13,7 +13,8 @@ import { titleWeather } from '../titleWeather';
 const ACCOUNT_NAMES = { guest: 'Gast', google: 'Google', apple: 'Apple' } as const;
 
 export function titleScreen(app: App): Screen {
-  const weather = titleWeather();
+  // Ohne Nebel: das Feldweg-Bild soll klar bleiben (Wunsch von Kevin)
+  const weather = titleWeather({ fog: false });
   let done = false;
   const start = () => {
     if (done) return;

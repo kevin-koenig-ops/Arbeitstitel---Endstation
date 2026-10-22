@@ -12,7 +12,7 @@
 
 import { BASE_DECK, CARDS, FOE_TACTICS, TACTICS, WEAPON_CARDS, type CardId, type IntentKind } from './content';
 import { hashString } from './rng';
-import type { FoeKind, Weapon, WeaponId } from './types';
+import type { FoeKind, Opening, Weapon, WeaponId } from './types';
 
 export interface Intent {
   kind: IntentKind;
@@ -133,8 +133,26 @@ export function intentOf(f: TFoe): Intent {
   return { kind: p.kind, dmg: p.dmg };
 }
 
-/** mood: Wandler bei Nebel, Regen und nachts zäher, in praller Sonne träge (±2 Gesundheit). */
-export function createTactics(o: { seed: string; group: FoeKind[]; weapons: Weapon[]; medicine: number; health: number; maxHealth: number; mood?: 'strong' | 'weak' | null; armor?: number }): TacticsState {
+/**
+ * mood: Wandler bei Nebel, Regen und nachts zäher, in praller Sonne träge (±2 Gesundheit).
+ * opening: Überraschungsangriff aus dem Versteck (Gegner setzen die erste Runde aus, du hast
+ * 1 Kraft mehr) oder entdeckt worden (1 Kraft weniger in der ersten Runde).
+ * cold: Kälte ohne warme Kleidung (erste Runde 1 Karte weniger).
+ * thirst: Hitze ohne Wasser (erste Runde 1 Kraft weniger).
+ */
+export function createTactics(o: {
+  seed: string;
+  group: FoeKind[];
+  weapons: Weapon[];
+  medicine: number;
+  health: number;
+  maxHealth: number;
+  mood?: 'strong' | 'weak' | null;
+  armor?: number;
+  opening?: Opening;
+  cold?: boolean;
+  thirst?: boolean;
+}): TacticsState {
   const st: TacticsState = {
     rng: hashString(o.seed) >>> 0,
     turn: 0,
@@ -170,6 +188,15 @@ export function createTactics(o: { seed: string; group: FoeKind[]; weapons: Weap
   startTurn(st, []);
   // Ausrüstung (Helm, Weste …): Abwehr in der ersten Runde
   st.block += Math.max(0, o.armor ?? 0);
+  if (o.opening === 'surprise') {
+    for (const f of st.foes) {
+      f.stunned = true;
+      f.intent = intentOf(f);
+    }
+    st.energy += 1;
+  } else if (o.opening === 'spotted') st.energy = Math.max(1, st.energy - 1);
+  if (o.thirst) st.energy = Math.max(1, st.energy - 1);
+  if (o.cold && st.hand.length > 2) st.draw.push(st.hand.pop()!);
   return st;
 }
 

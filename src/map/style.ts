@@ -185,6 +185,39 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
     { id: 'route-way', type: 'line', source: 'route', filter: ['!=', ['get', 'off'], true], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffb22e', 'line-width': 4, 'line-opacity': 0.95 } },
     { id: 'route-off', type: 'line', source: 'route', filter: ['==', ['get', 'off'], true], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffd27a', 'line-width': 4, 'line-dasharray': [0.2, 2] } },
 
+    // Weltereignisse: Zonen am Boden (Staubsturm braun, Horde rot, Sperrgebiet rot-weiß gestrichelt)
+    {
+      id: 'zone-fill',
+      type: 'fill',
+      source: 'zones',
+      paint: {
+        'fill-color': ['match', ['get', 'k'], 'dust', '#b08a58', 'horde', '#b8402b', 'quarantine', '#c23a22', '#ffffff'],
+        'fill-opacity': ['match', ['get', 'k'], 'dust', 0.28, 'horde', 0.12, 'quarantine', 0.16, 0.1],
+      },
+    },
+    {
+      id: 'zone-line',
+      type: 'line',
+      source: 'zones',
+      filter: ['!=', ['get', 'k'], 'quarantine'],
+      paint: { 'line-color': ['match', ['get', 'k'], 'dust', '#8a6a3e', '#d4553a'], 'line-width': 2.5, 'line-opacity': 0.85, 'line-dasharray': [3, 2] },
+    },
+    // Absperrband: rot und weiß im Wechsel
+    { id: 'zone-tape-white', type: 'line', source: 'zones', filter: ['==', ['get', 'k'], 'quarantine'], paint: { 'line-color': '#f2ede4', 'line-width': 4, 'line-opacity': 0.9 } },
+    { id: 'zone-tape-red', type: 'line', source: 'zones', filter: ['==', ['get', 'k'], 'quarantine'], paint: { 'line-color': '#c23a22', 'line-width': 4, 'line-opacity': 0.95, 'line-dasharray': [1.2, 1.2] } },
+
+    // Sichtkegel der Trupps: blass am Boden (rot, wenn sie dich gleich sehen)
+    {
+      id: 'patrol-cone',
+      type: 'fill',
+      source: 'patrols',
+      paint: {
+        'fill-color': ['case', ['>', ['get', 'a'], 0.5], '#e0442a', ['>', ['get', 'a'], 0.05], '#ff9a3a', '#ffe6a8'],
+        'fill-opacity': ['case', ['>', ['get', 'a'], 0.05], 0.42, 0.32],
+      },
+    },
+    { id: 'patrol-cone-edge', type: 'line', source: 'patrols', paint: { 'line-color': ['case', ['>', ['get', 'a'], 0.05], '#e0442a', '#fff1cc'], 'line-width': 2, 'line-opacity': 0.9 } },
+
     // Suchkreise von Verstecken: wie mit Kreide auf den Boden gemalt
     { id: 'cache-fill', type: 'fill', source: 'caches', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': '#e8dec8', 'fill-opacity': 0.07 } },
     { id: 'cache-line', type: 'line', source: 'caches', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'line-color': '#e8dec8', 'line-width': 2.5, 'line-opacity': 0.75, 'line-dasharray': [1, 2.2] } },
@@ -293,7 +326,7 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
   }
 
   const empty: SourceSpecification = { type: 'geojson', data: { type: 'FeatureCollection', features: [] } };
-  const sources: Record<string, SourceSpecification> = { range: empty, decor: { ...empty }, glow: { ...empty }, caches: { ...empty }, route: { ...empty } };
+  const sources: Record<string, SourceSpecification> = { range: empty, decor: { ...empty }, glow: { ...empty }, caches: { ...empty }, route: { ...empty }, zones: { ...empty }, patrols: { ...empty } };
   if (mode === 'real' && real) sources.omt = real.source;
   if (mode === 'real') sources.dem = { type: 'raster-dem', tiles: [DEM_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: 15, attribution: 'Höhen: <a href="https://registry.opendata.aws/terrain-tiles/">Terrain Tiles</a>' };
 

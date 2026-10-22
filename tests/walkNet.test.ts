@@ -27,8 +27,8 @@ const ll = (x: number, y: number) => offsetM(C, x, y);
 const nearWay = (p: LatLon) => {
   // Abstand zu den beiden Straßen
   const q = { x: (p.lon - C.lon) * 111320 * Math.cos((C.lat * Math.PI) / 180), y: (p.lat - C.lat) * 111320 };
-  const d1 = q.y >= -200 && q.y <= 200 ? Math.abs(q.x) : Infinity;
-  const d2 = q.x >= 0 && q.x <= 200 ? Math.abs(q.y - 200) : Infinity;
+  const d1 = q.y >= -201 && q.y <= 201 ? Math.abs(q.x) : Infinity;
+  const d2 = q.x >= -1 && q.x <= 201 ? Math.abs(q.y - 200) : Infinity;
   return Math.min(d1, d2);
 };
 
@@ -51,10 +51,14 @@ describe('Wegenetz', () => {
     expect(r.offroad.every((o) => !o)).toBe(true);
   });
 
-  it('bleibt bei einem Tipp in einen Garten auf der Straße stehen', () => {
+  it('kommt auch in Gärten und Höfe (langsamer), aber nicht ins Haus', () => {
     const r = net.route(ll(0, -100), ll(100, 0))!;
-    expect(r.snapped).toBe(true);
-    expect(nearWay(r.end)).toBeLessThan(2);
+    expect(r.snapped).toBe(false);
+    expect(distanceM(r.end, ll(100, 0))).toBeLessThan(1);
+    expect(r.speeds).toContain(SPEED.built);
+    // Tipp aufs Haus: so nah wie möglich, auf dem Weg
+    const h = net.route(ll(0, -100), ll(50, 50))!;
+    expect(net.terrainAt(h.end)).not.toBe('blocked');
   });
 
   it('geht draußen quer durch den Wald, aber langsamer', () => {
@@ -65,12 +69,13 @@ describe('Wegenetz', () => {
     expect(r.offroad.some((o) => o)).toBe(true);
   });
 
-  it('rutscht mit dem Joystick im Ort zurück auf die Straße', () => {
+  it('mit dem Joystick überall hin, nur nicht ins Haus', () => {
     const p = net.step(ll(0, 0), ll(10, 3));
-    expect(nearWay(p)).toBeLessThan(1);
-    // Draußen geht es frei
+    expect(distanceM(p, ll(10, 3))).toBeLessThan(0.01);
     const q = net.step(ll(300, 0), ll(305, 2));
     expect(distanceM(q, ll(305, 2))).toBeLessThan(0.01);
+    const house = net.step(ll(38, 50), ll(42, 50));
+    expect(distanceM(house, ll(38, 50))).toBeLessThan(0.01);
   });
 });
 
@@ -111,5 +116,56 @@ describe('Wegenetz: Wasser', () => {
     // Auf der Brücke geht es
     const q = wet.step(ll(298, 0), ll(302, 0));
     expect(distanceM(q, ll(302, 0))).toBeLessThan(0.01);
+  });
+});
+
+describe('Wegenetz: schnell oder leise', () => {
+  // Eine gerade Straße nach Norden (x = 0), daneben ein Waldstreifen (x = 30 bis 80).
+  const g = new WalkNet({
+    center: C,
+    ways: [[at(0, -300), at(0, 300)]],
+    buildings: [],
+    water: [],
+    built: [],
+    forest: [rect(30, -260, 80, 260)],
+    fields: [rect(-200, -300, -20, 300)],
+    season: 'autumn',
+  });
+  const offWay = (p: LatLon) => Math.abs((p.lon - C.lon) * 111320 * Math.cos((C.lat * Math.PI) / 180));
+
+  it('schnell geht über die Straße, leise durch den Wald', () => {
+    const fast = g.route(ll(0, -250), ll(0, 250), 'fast')!;
+    expect(fast.path.every((p) => offWay(p) < 2)).toBe(true);
+    const quiet = g.route(ll(0, -250), ll(0, 250), 'quiet')!;
+    expect(quiet).not.toBeNull();
+    expect(distanceM(quiet.end, ll(0, 250))).toBeLessThan(1);
+    // Ein großer Teil der Strecke liegt im Wald
+    const inForest = quiet.path.filter((p) => g.terrainAt(p) === 'forest').length;
+    expect(inForest).toBeGreaterThan(1);
+    expect(quiet.speeds).toContain(SPEED.forest);
+  });
+
+  it('Sperrgebiete: hinein geht es nicht, hinaus schon', () => {
+    const z = new WalkNet({ center: C, ways: [[at(0, -300), at(0, 300)]], buildings: [], water: [], built: [], forest: [], noGo: [{ center: ll(0, 0), radiusM: 60 }] });
+    expect(z.terrainAt(ll(0, 0))).toBe('blocked');
+    const around = z.route(ll(0, -150), ll(0, 150))!;
+    expect(around.path.every((p) => distanceM(p, ll(0, 0)) > 55)).toBe(true);
+    const out = z.route(ll(0, 0), ll(0, -150))!;
+    expect(distanceM(out.end, ll(0, -150))).toBeLessThan(1);
+  });
+});
+
+describe('Wegenetz: Strecken der Trupps', () => {
+  it('folgen den Wegen und sind bei gleichem Zufall gleich', () => {
+    const mk = (seed: number) => {
+      let a = seed;
+      return () => ((a = (a * 16807) % 2147483647) / 2147483647);
+    };
+    const p1 = net.patrolPath(ll(5, 30), 300, mk(7))!;
+    const p2 = net.patrolPath(ll(5, 30), 300, mk(7))!;
+    expect(p1).toEqual(p2);
+    expect(p1.length).toBeGreaterThan(1);
+    for (const p of p1) expect(nearWay(p)).toBeLessThan(2);
+    expect(net.patrolPath(ll(2000, 2000), 300, mk(1))).toBeNull();
   });
 });
