@@ -44,12 +44,21 @@ function foliageNormals(name: string, geo: THREE.BufferGeometry) {
   nrm.needsUpdate = true;
 }
 
+function dataUrlBuffer(url: string): ArrayBuffer {
+  const bin = atob(url.slice(url.indexOf(',') + 1));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out.buffer;
+}
+
 export async function loadNatureModels(): Promise<NatureModels> {
   const [{ GLTFLoader }, { MeshoptDecoder }] = await Promise.all([
     import('three/examples/jsm/loaders/GLTFLoader.js'),
     import('three/examples/jsm/libs/meshopt_decoder.module.js'),
   ]);
-  const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(url);
+  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  // In der Einzeldatei-Vorschau steckt das Modell als Text in der Seite: direkt auspacken statt laden
+  const gltf = url.startsWith('data:') ? await loader.parseAsync(dataUrlBuffer(url), '') : await loader.loadAsync(url);
   gltf.scene.updateMatrixWorld(true);
   const mats = new Map<THREE.Material, THREE.Material>();
   const out: NatureModels = new Map();
