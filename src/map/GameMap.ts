@@ -59,8 +59,6 @@ interface Options {
   start: LatLon;
   /** Wasser bewegt sich (Einstellung). */
   waterMotion: boolean;
-  /** Fertige Natur-Modelle (Einstellung). */
-  natureModels: boolean;
   onTap: (p: LatLon) => void;
   onSpotTap: (id: string) => void;
   onFollowChange: (follow: boolean) => void;
@@ -220,7 +218,7 @@ export class GameMap {
     try {
       const { TreeLayer } = await import('./treeLayer');
       if (!this.map) return;
-      this.trees = new TreeLayer(DECOR_MINZOOM, this.opts.natureModels);
+      this.trees = new TreeLayer(DECOR_MINZOOM);
       this.map.addLayer(this.trees, this.map.getLayer('street-names') ? 'street-names' : undefined);
       // Details neu aufbauen, jetzt mit echten Bäumen statt Klötzchen
       this.decorCenter = null;
@@ -802,12 +800,6 @@ export class GameMap {
     // Echte Läden liegen natürlich in Gebäuden; nur erfundene Fundstellen dürfen nicht in Häusern liegen
     return (p: LatLon, grid = true) =>
       rings.some((r) => inside(p, r) || nearEdge(p, r, 20)) || points.some((q) => distanceM(p, q) < 40) || (grid && buildings.some((r) => inside(p, r)));
-  }
-
-  /** Einstellung „Neue Natur-Grafik“ geändert. */
-  setNatureModels(on: boolean) {
-    this.opts.natureModels = on;
-    this.trees?.setUseModels(on);
   }
 
   /** Einstellung „Bewegtes Wasser“ geändert. */

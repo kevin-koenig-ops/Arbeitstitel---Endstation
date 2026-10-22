@@ -248,9 +248,9 @@ Logo, Hauptmenü, Einstellungen, Charaktererstellung, Endzeit-Karte (echt + Demo
 - **Pilzstellen:** nur im Wald, wandern wie die anderen Fundstellen, im Herbst am meisten, im Winter kaum. Geben Nahrung, selten Heilkräuter, nie bewacht
 - **Testmodus:** Die Figur läuft nicht mehr durch Flüsse, Bäche und Seen
 - **Kampf: Ziel anvisieren:** Einen Gegner einmal antippen, dann treffen alle Karten ihn, bis man einen anderen antippt oder er fällt (Fadenkreuz am Namen, fester Kreis am Boden). Kann eine Karte ihn nicht erreichen (er steht hinten), fragt das Spiel wie bisher nach dem Ziel
-- **Natur auf der Karte:** Findlinge im Wald und auf Wiesen, Farn im Wald, hohes trockenes Gras auf Wiesen, im Herbst Pilze. Steine, Farn, Gras und Pilze sind Modelle aus dem „Stylized Nature MegaKit“ von Quaternius (CC0, frei nutzbar). Kleinkram gibt es nur nah um die Figur und erst ab mittlerem Zoom, damit es flüssig bleibt
+- **Findlinge:** Ab und zu liegt ein großer Stein im Wald und auf Wiesen (eigene einfache Steine). Ausprobiert und wieder entfernt (22.10.): Steine, Farn, Gras, Pilze und Bäume aus dem Quaternius-Paket „Stylized Nature MegaKit“, der Stil passt nicht (Stand in Git, Commit 8b4ebe5)
 - **Karte beim Laufen verschieben:** Läuft die Figur, ließ sich die Karte nur zoomen, nicht ziehen (das Nachführen hat jedes Ziehen abgebrochen). Jetzt pausiert das Nachführen, solange ein Finger auf der Karte liegt
 - **Einstellung „Bewegtes Wasser“:** Wellen und Glitzern lassen sich ausschalten (spart etwas Akku)
-- **Einstellung „Neue Natur-Grafik (Test)“** (unter „Zum Ausprobieren“): die neuen Modelle aus- und wieder einschalten, zum Vergleichen. Seit 22.10. vormittags als Test auch Bäume aus dem Paket (Laub-, Nadel- und tote Bäume, je 5 Formen, auf etwa 500 Dreiecke vereinfacht, Laub in der Farbe des Baums, also auch Herbstlaub), aber nur im Umkreis von 180 m, weiter weg die einfachen Bäume. Unten in den Einstellungen steht jetzt, wann die Version gebaut wurde
+- **Version sichtbar:** Unten in den Einstellungen steht, wann die Version gebaut wurde
 - **Zuhause:** beschrifteter Knopf „Zur Karte“ oben rechts statt nur einem X
 - **Lebendiges Wasser:** Auf der Karte schaukeln Wellen und glitzern Lichtpunkte (nur wenn Wasser im Bild ist und die App vorne liegt, spart Akku). Der See im Zuhause hat ziehende Wellenkämme, spiegelt den Himmel und funkelt in der Sonne

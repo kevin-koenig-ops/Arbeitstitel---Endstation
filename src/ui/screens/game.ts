@@ -749,7 +749,6 @@ export function gameScreen(app: App): Screen {
   let lastControl = app.settings.get().control;
   const offSettings = app.settings.onChange((st) => {
     gm?.setWaterMotion(st.waterMotion);
-    gm?.setNatureModels(st.natureModels);
     if (st.control === lastControl) return;
     lastControl = st.control;
     if (provider) setupJoystick();
@@ -1105,7 +1104,6 @@ export function gameScreen(app: App): Screen {
         mode: mapMode,
         start,
         waterMotion: app.settings.get().waterMotion,
-        natureModels: app.settings.get().natureModels,
         onTap: (p) => {
           sheet.close();
           if (provider?.kind === 'sim' && !joy) walkTo(p);
