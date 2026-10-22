@@ -14,7 +14,9 @@ export interface PointerTarget {
   icon: string;
   /** Kurzer Text für Vorleser (z. B. „Rauch am Horizont“). */
   label: string;
-  tone?: 'hint' | 'cache';
+  tone?: 'hint' | 'cache' | 'sight';
+  /** Sichtungen: Farbe nach Seltenheit. */
+  rarity?: string;
   /** Liegt das Ziel im Bild, zeigt die Karte es schon selbst: dann kein Pfeil. */
   hideInside?: boolean;
   onTap: () => void;
@@ -57,7 +59,7 @@ export class Pointers {
       if (!it) {
         const arrow = h('span', { class: 'ptr-arrow' });
         const dist = h('span', { class: 'ptr-dist' });
-        const el = h('button', { class: 'ptr', type: 'button', 'data-tone': t.tone ?? 'hint' }, arrow, h('span', { class: 'ptr-icon' }, svgEl(icon(t.icon, 18)), h('i', null, '?')), dist);
+        const el = h('button', { class: 'ptr', type: 'button', 'data-tone': t.tone ?? 'hint', 'data-rarity': t.rarity ?? '' }, arrow, h('span', { class: 'ptr-icon' }, svgEl(icon(t.icon, 18)), h('i', null, '?')), dist);
         el.addEventListener('click', (ev) => {
           ev.stopPropagation();
           it?.t.onTap();

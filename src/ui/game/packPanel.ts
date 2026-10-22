@@ -31,15 +31,16 @@ import {
 import { deckFor } from '../../core/tactics';
 import { blueprintName } from '../../core/building';
 import { bestWeapon, collectiblePlaced, currentHealth, dayNumber, kramCount, packCount } from '../../core/rules';
-import type { CollectibleId, GearId, GearSlot, KramId, PlayerState, SpotKind, WeaponId } from '../../core/types';
+import type { CollectibleId, GearId, GearSlot, KramId, PlayerState, SpotKind } from '../../core/types';
 import type { App } from '../app';
 import { clear, h, svgEl, type Child } from '../dom';
 import { icon, resIcon, spotIcon } from '../icons';
 import { REJECT_TEXT, SPOT_PLURAL } from '../texts';
 import { exploredStats } from '../../core/explore';
 import { costChips, itemsLine, partsChips, thingThumb } from './chips';
+import { BOOK_ORDER, bookItem, CARD_ICON, cardFace, levelProgress, ROMAN, WEAPON_ICON, type BookKey } from '../cards';
 
-export type PackTab = 'pack' | 'book' | 'gear';
+export type PackTab = 'pack' | 'book' | 'gear' | 'cards';
 
 /** Wo man ein Sammelstück finden kann (höchstens zwei Orte). */
 export function whereCollectible(id: CollectibleId): string {
@@ -82,7 +83,7 @@ export function openPackPanel(app: App, host: HTMLElement, onClose: () => void, 
   };
 
   const tabBtn = (id: PackTab, label: string) => h('button', { type: 'button', role: 'tab', 'data-tab': id, onclick: () => ((tab = id), render()) }, h('span', { class: 'tab-plate' }, label));
-  tabs.append(tabBtn('pack', 'Charakter'), tabBtn('book', 'Fundbuch'));
+  tabs.append(tabBtn('pack', 'Charakter'), tabBtn('cards', 'Karten'), tabBtn('book', 'Fundbuch'));
 
   const render = () => {
     [...tabs.children].forEach((b) => b.setAttribute('aria-selected', String((b as HTMLElement).dataset.tab === tab)));
@@ -91,6 +92,7 @@ export function openPackPanel(app: App, host: HTMLElement, onClose: () => void, 
     panel.classList.toggle('wide', tab === 'pack');
     if (tab === 'pack') body.append(charView());
     if (tab === 'book') body.append(bookView());
+    if (tab === 'cards') body.append(cardsView());
     body.scrollTop = 0;
     panel.scrollTop = 0;
   };
@@ -372,10 +374,95 @@ export function openPackPanel(app: App, host: HTMLElement, onClose: () => void, 
           SURVIVAL_ORDER.map((r) => h('li', { title: RESOURCES[r].name, 'aria-label': `${RESOURCES[r].name}: ${s.inventory[r]}`, 'data-res': r }, svgEl(resIcon(r, 26)), h('b', null, String(s.inventory[r])))),
         ),
         h('div', { class: 'slot-well' }, h('div', { class: 'slot-grid' }, slots, empties)),
+        packCardsRow(s),
         h('div', { class: 'char-detail-wrap' }, detail),
         h('p', { class: 'char-note lager' }, svgEl(icon('home', 14)), ` Zu Hause im Lager: ${lagerMats} Rohstoffe${lagerKram ? `, ${lagerKram} Kram` : ''}. ${packCount(s) ? 'Zu Hause auspacken, dann ist alles sicher.' : ''}`),
       ),
     );
+  };
+
+  /** Einmal-Karten im Rucksack (zählen nicht als Fach, passen in jede Jackentasche). */
+  const packCardsRow = (s: PlayerState) => {
+    const ids = (Object.keys(s.packCards) as CardId[]).filter((k) => (s.packCards[k] ?? 0) > 0);
+    if (!ids.length) return null;
+    return h(
+      'button',
+      { class: 'pack-cards', type: 'button', title: 'Sammelbuch öffnen', onclick: () => ((tab = 'cards'), render()) },
+      h('small', null, 'Karten dabei'),
+      ids.map((k) => h('span', { class: `pc rar-${CARDS[k].rarity ?? 'common'}`, title: CARDS[k].name }, svgEl(icon(CARD_ICON[k], 16)), h('b', null, String(s.packCards[k])))),
+    );
+  };
+
+  // --- Sammelbuch: Karten und Waffen ---------------------------------------------------
+  let cardSel: BookKey | null = null;
+  const cardsView = () => {
+    const s = app.backend.current()!;
+    const have = BOOK_ORDER.filter((k) => s.book[k]).length;
+    const detail = h('div', { class: 'cbook-detail', 'aria-live': 'polite' });
+    const count = (k: BookKey) => {
+      if (k.startsWith('w:')) return 0;
+      const id = k as CardId;
+      return (s.packCards[id] ?? 0) + (s.stash[id] ?? 0);
+    };
+    const level = (k: BookKey) => (bookItem(k).kind === 'skill' ? levelProgress(s.book[k]?.n ?? 0).level : 1);
+    const showDetail = (k: BookKey) => {
+      cardSel = k;
+      for (const b of grid.querySelectorAll('.cbook-cell')) b.classList.toggle('sel', (b as HTMLElement).dataset.key === k);
+      clear(detail);
+      const it = bookItem(k);
+      const e = s.book[k];
+      if (!e) {
+        detail.append(cardFace(k, { locked: true, big: true }), h('p', { class: 'char-note' }, `Noch nicht gefunden. Zu finden: ${it.where}. Und in Sichtungen, die auf der Karte auftauchen.`));
+        return;
+      }
+      const lines: Child[] = [];
+      if (it.kind === 'once') {
+        const id = k as CardId;
+        lines.push(`Im Rucksack: ${s.packCards[id] ?? 0} · Im Lager: ${s.stash[id] ?? 0}`);
+        lines.push('In jeden Kampf nimmst du bis zu 3 davon mit. Gespielt sind sie weg. Wirst du niedergeschlagen, sind die mitgenommenen weg.');
+        if (CARDS[id].craft) lines.push(['Am Werktisch zu bauen: ', costChips(CARDS[id].craft!)]);
+      } else if (it.kind === 'skill') {
+        const p = levelProgress(e.n);
+        lines.push(`Stufe ${ROMAN[p.level]} · ${e.n} gefunden${p.next ? ` · Stufe ${ROMAN[p.level + 1]} ab ${p.next}` : ' · höchste Stufe'}`);
+        lines.push(CARDS[k as CardId].passive ? 'Wirkt von selbst, in jedem Kampf.' : 'Ist in jedem Kampf in deinem Stapel.');
+      } else {
+        const w = it.weapon!;
+        const own = s.weapons.find((x) => x.kind === w);
+        lines.push(own ? `Haltbarkeit ${own.dur} von ${WEAPONS[w].dur}. Findest du sie nochmal, ist sie wieder wie neu.` : 'Kaputt gegangen. Findest du sie nochmal, hast du sie wieder.');
+      }
+      lines.push(`Fundorte: ${it.where}`);
+      detail.append(cardFace(k, { level: level(k), shiny: e.shiny, big: true }), h('div', { class: 'cbook-lines' }, lines.map((l) => h('p', { class: 'char-note' }, l))));
+    };
+    const section = (title: string, keys: BookKey[]) =>
+      h(
+        'section',
+        { class: 'cbook-sec' },
+        h('h3', { class: 'stock-head' }, title, h('small', null, `${keys.filter((k) => s.book[k]).length} von ${keys.length}`)),
+        h(
+          'div',
+          { class: 'cbook-grid' },
+          keys.map((k) =>
+            h(
+              'button',
+              { class: 'cbook-cell', type: 'button', 'data-key': k, 'aria-label': s.book[k] ? bookItem(k).name : 'Noch nicht gefunden', onclick: () => showDetail(k) },
+              cardFace(k, { locked: !s.book[k], level: level(k), count: count(k), shiny: s.book[k]?.shiny }),
+            ),
+          ),
+        ),
+      );
+    const once = BOOK_ORDER.filter((k) => bookItem(k).kind === 'once');
+    const weapons = BOOK_ORDER.filter((k) => bookItem(k).kind === 'weapon');
+    const skills = BOOK_ORDER.filter((k) => bookItem(k).kind === 'skill');
+    const grid = h('div', { class: 'cbook-main' }, section('Einmal-Karten', once), section('Waffen zum Finden', weapons), section('Fähigkeiten', skills));
+    const first = cardSel ?? BOOK_ORDER.find((k) => s.book[k]) ?? BOOK_ORDER[0];
+    const view = h(
+      'div',
+      { class: 'cbook' },
+      h('p', { class: 'mem-count' }, `${have} von ${BOOK_ORDER.length} gesammelt. Alle 10 Minuten taucht in der Gegend etwas Neues auf: Achte auf Sichtungen auf der Karte.`),
+      h('div', { class: 'cbook-wrap' }, grid, detail),
+    );
+    showDetail(first);
+    return view;
   };
 
   // --- Fundbuch -----------------------------------------------------------------------
@@ -506,7 +593,6 @@ function cardLine(cards: CardId[]): string {
 // --- Ausrüstungsblatt -------------------------------------------------------------------
 
 const SLOT_ICON: Record<GearSlot | 'weapon', string> = { head: 'gHead', face: 'gFace', body: 'cloth', hands: 'gHands', legs: 'gLegs', feet: 'gFeet', back: 'backpack', weapon: 'crowbar' };
-export const WEAPON_ICON: Record<WeaponId, string> = { crowbar: 'crowbar', bat: 'bat', crossbow: 'bolt', shovel: 'shovel', axe: 'axe', golfclub: 'golfclub', slingshot: 'slingshot', nailgun: 'nailgun' };
 /** Plätze am Blatt: links Kopf bis Hand (Waffe), rechts Rücken bis Füße. */
 const SHEET_LEFT: (GearSlot | 'weapon')[] = ['head', 'face', 'body', 'weapon'];
 const SHEET_RIGHT: (GearSlot | 'weapon')[] = ['back', 'hands', 'legs', 'feet'];

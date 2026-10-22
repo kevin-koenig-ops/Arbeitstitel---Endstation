@@ -1117,8 +1117,10 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .t-hand { display: flex; justify-content: center; gap: 8px; min-height: 112px; transition: transform 0.22s ease-in, opacity 0.22s; }
 .t-hand.away { transform: translateY(120px); opacity: 0; pointer-events: none; }
 .t-card { position: relative; width: 92px; height: 112px; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; padding: 8px 5px 6px; border-radius: 10px; border: 0; cursor: pointer; touch-action: manipulation; color: var(--paper-ink); background: linear-gradient(#efe6cf, #d9cba8); box-shadow: 0 0 0 2px #2b261e, 0 6px 14px rgba(0, 0, 0, 0.55); font-family: var(--font-ui); transition: transform 0.15s, opacity 0.15s, filter 0.15s; }
-.t-card.weapon { background: linear-gradient(#f2d9b0, #d9a868); }
-.t-card.self { background: linear-gradient(#dfe9d8, #b9c9a8); }
+/* Kartenfarbe = Sorte: Grundkarten Papier, Waffen Stahl, Einmal-Karten Rost, Fähigkeiten Grün */
+.t-card.kind-weapon { background: linear-gradient(#e6e7e3, #a7aba5); }
+.t-card.kind-once { background: linear-gradient(#f2cdb8, #d48a68); }
+.t-card.kind-skill { background: linear-gradient(#e0ead2, #a6bf8a); }
 .t-card:hover { transform: translateY(-4px); }
 .t-card.picked { transform: translateY(-16px); box-shadow: 0 0 0 3px var(--amber), 0 0 22px var(--amber-glow), 0 10px 18px rgba(0, 0, 0, 0.6); }
 .t-card.off { filter: grayscale(0.7) brightness(0.65); }
@@ -1779,3 +1781,146 @@ button.base-res { align-items: center; padding: 3px 6px 3px 4px; border: 1px sol
 @keyframes spot-pop { from { transform: scale(0.2) translateY(14px); opacity: 0; } }
 /* Farbige Icons: ein heller Hauch um die dunkle Kontur, damit sie auch auf dunklem Grund stehen */
 .cicon { flex: none; filter: drop-shadow(0 0 0.7px rgba(255, 244, 222, 0.55)); }
+
+/* --- Sammelkarten ------------------------------------------------------------------------ */
+.rar-common { --rar: #b9ad94; --rar-dim: rgba(185, 173, 148, 0.35); }
+.rar-rare { --rar: #5aa6e6; --rar-dim: rgba(90, 166, 230, 0.4); }
+.rar-epic { --rar: #b07ce8; --rar-dim: rgba(176, 124, 232, 0.45); }
+.rar-legendary { --rar: #ffc43d; --rar-dim: rgba(255, 196, 61, 0.5); }
+
+/* Karte als Bildchen (Sammelbuch, Fund, Fundbeleg) */
+.cc { position: relative; width: 96px; aspect-ratio: 5 / 7; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 6px 18px; border-radius: 9px; color: var(--paper-ink); background: linear-gradient(#efe6cf, #d6c7a2); box-shadow: 0 0 0 2px var(--rar), 0 0 0 4px #1b1915, 0 4px 12px rgba(0, 0, 0, 0.5); font-family: var(--font-ui); overflow: hidden; text-align: center; }
+.cc.kind-weapon { background: linear-gradient(#e6e7e3, #a7aba5); }
+.cc.kind-once { background: linear-gradient(#f2cdb8, #d48a68); }
+.cc.kind-skill { background: linear-gradient(#e0ead2, #a6bf8a); }
+.cc-art { display: grid; place-items: center; width: 100%; flex: 1 1 auto; min-height: 0; border-radius: 6px; background: radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.55), rgba(0, 0, 0, 0.08)); color: #3a2e1e; overflow: hidden; }
+.cc-img { width: 100%; height: 100%; object-fit: cover; }
+.cc-name { font: 800 12px/1.05 var(--font-ui); }
+.cc-eff { font: 800 11px/1 var(--font-ui); color: #7a2a12; }
+.cc.kind-skill .cc-eff { color: #2a5a2a; }
+.cc-where { font: 600 9.5px/1.15 var(--font-ui); color: #6a5a40; }
+.cc-tag { font: 600 10px/1.15 var(--font-ui); color: #5a4a30; }
+.cc-desc { margin: 2px 0 0; font: 500 11.5px/1.3 var(--font-ui); color: #3a3022; }
+.cc-foot { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 4px; font: 700 8.5px/1 var(--font-ui); text-transform: uppercase; letter-spacing: 0.04em; color: #1b1915; background: var(--rar); }
+.cc-cost, .cc-level, .cc-count { position: absolute; top: 4px; display: grid; place-items: center; min-width: 19px; height: 19px; padding: 0 4px; border-radius: 10px; font: 800 11px/1 var(--font-ui); }
+.cc-cost { left: 4px; background: #2b261e; color: var(--amber-hi); }
+.cc-level { right: 4px; background: #2a5a2a; color: #eaf5df; }
+.cc-count { right: 4px; background: #2b261e; color: var(--bone); }
+.cc.big { width: min(230px, 62vw); padding: 10px 10px 24px; gap: 4px; }
+.cc.big .cc-name { font-size: 19px; }
+.cc.big .cc-eff { font-size: 15px; }
+.cc.big .cc-foot { font-size: 10.5px; padding: 5px; }
+.cc.big .cc-cost, .cc.big .cc-level, .cc.big .cc-count { top: 8px; min-width: 26px; height: 26px; font-size: 14px; border-radius: 13px; }
+.cc.big .cc-cost { left: 8px; }
+.cc.big .cc-level, .cc.big .cc-count { right: 8px; }
+.cc.locked { background: linear-gradient(#3a362f, #2a2722); color: var(--dust); box-shadow: 0 0 0 2px #4a453c, 0 0 0 4px #1b1915; }
+.cc.locked .cc-art { color: #5a5448; background: rgba(0, 0, 0, 0.2); }
+.cc.locked .cc-where { color: var(--dust); }
+.cc.locked .cc-foot { background: #4a453c; color: #8a8270; }
+.cc.shiny::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.55) 45%, rgba(255, 230, 160, 0.4) 52%, transparent 66%); background-size: 260% 100%; animation: shine 2.6s linear infinite; mix-blend-mode: overlay; }
+.cc.rar-legendary:not(.locked) { box-shadow: 0 0 0 2px var(--rar), 0 0 0 4px #1b1915, 0 0 18px var(--rar-dim), 0 4px 12px rgba(0, 0, 0, 0.5); }
+@keyframes shine { from { background-position: 130% 0; } to { background-position: -130% 0; } }
+
+/* Kampf: Sammelkarten auf der Hand, Zustände, Effekte */
+.t-card.collect { box-shadow: 0 0 0 2px var(--rar), 0 0 0 4px #2b261e, 0 6px 14px rgba(0, 0, 0, 0.55); }
+.t-card.collect.rar-legendary, .t-card.collect.rar-epic { box-shadow: 0 0 0 2px var(--rar), 0 0 0 4px #2b261e, 0 0 16px var(--rar-dim), 0 6px 14px rgba(0, 0, 0, 0.55); }
+.t-status { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; margin-top: 2px; }
+.t-st { padding: 1px 5px; border-radius: 8px; font: 700 9.5px/1.3 var(--font-ui); color: #fff; background: rgba(0, 0, 0, 0.6); text-shadow: none; }
+.t-st.st-burn { background: #b8461e; }
+.t-st.st-blind { background: #6a6a7a; }
+.t-st.st-slow { background: #4a6a8a; }
+.t-st.st-silence { background: #5a4a7a; }
+.t-fx { position: absolute; inset: 0; z-index: 3; pointer-events: none; animation: fx-fade 0.85s ease-out forwards; }
+.t-fx.fx-fire { background: radial-gradient(ellipse at 50% 45%, rgba(255, 150, 40, 0.55), rgba(200, 60, 10, 0.25) 45%, transparent 70%); }
+.t-fx.fx-blast { background: radial-gradient(circle at 50% 42%, rgba(255, 240, 200, 0.95), rgba(255, 140, 40, 0.6) 30%, rgba(60, 40, 20, 0.3) 60%, transparent 80%); }
+.t-fx.fx-flash { background: rgba(255, 255, 255, 0.92); animation-duration: 0.7s; }
+.t-fx.fx-smoke { background: radial-gradient(ellipse at 50% 50%, rgba(200, 200, 190, 0.6), rgba(150, 150, 140, 0.35) 55%, transparent 85%); animation-duration: 1.1s; }
+.t-fx.fx-spark { background: radial-gradient(circle at 30% 40%, rgba(255, 220, 120, 0.7), transparent 18%), radial-gradient(circle at 65% 35%, rgba(255, 120, 60, 0.6), transparent 16%), radial-gradient(circle at 52% 58%, rgba(255, 255, 200, 0.6), transparent 14%); }
+.t-fx.fx-flare { background: radial-gradient(circle at 60% 40%, rgba(255, 70, 50, 0.6), transparent 45%); }
+.t-fx.fx-radio { background: repeating-radial-gradient(circle at 20% 80%, rgba(150, 220, 160, 0.25) 0 6px, transparent 6px 22px); }
+.t-fx.fx-dust { background: linear-gradient(transparent 60%, rgba(140, 120, 90, 0.4)); }
+@keyframes fx-fade { 0% { opacity: 0; } 15% { opacity: 1; } 100% { opacity: 0; } }
+
+/* Sammelbuch (Charakterfenster, Reiter „Karten“) */
+.cbook { padding: 4px 0 24px; }
+.cbook-wrap { display: grid; grid-template-columns: 1fr; gap: 16px; }
+@media (min-width: 760px) { .cbook-wrap { grid-template-columns: 1fr 260px; align-items: start; } .cbook-detail { position: sticky; top: 8px; } }
+.cbook-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; justify-items: center; }
+.cbook-cell { padding: 4px; border: 0; border-radius: 12px; background: none; cursor: pointer; }
+.cbook-cell.sel { background: rgba(255, 178, 46, 0.18); }
+.cbook-cell:focus-visible { outline: 2px solid var(--amber); }
+.cbook-detail { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 12px; border-radius: 12px; background: var(--steel-2); }
+.cbook-lines { width: 100%; }
+.cbook-lines .char-note { margin: 4px 0; }
+.pack-cards { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; margin: 8px 0 0; padding: 6px 8px; border: 1px solid var(--line); border-radius: 10px; background: rgba(0, 0, 0, 0.18); color: var(--bone); cursor: pointer; font: 600 12px/1 var(--font-ui); }
+.pack-cards small { margin-right: 4px; color: var(--dust); }
+.pc { display: inline-flex; align-items: center; gap: 3px; padding: 3px 6px; border-radius: 8px; box-shadow: inset 0 0 0 1.5px var(--rar); }
+.ws-card-ico { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 8px; background: linear-gradient(#f2cdb8, #d48a68); color: #3a2e1e; box-shadow: 0 0 0 2px var(--rar); }
+.receipt-card { background: linear-gradient(180deg, #2d2a24, #201e1a); color: var(--bone); box-shadow: inset 0 0 0 2px var(--rar), 0 0 16px var(--rar-dim), 0 4px 10px rgba(0, 0, 0, 0.25); }
+.receipt-card .cc { width: 64px; flex: none; padding-bottom: 14px; }
+.receipt-card .cc .cc-foot, .receipt-card .cc .cc-eff { display: none; }
+
+/* Fund aus einer Sichtung */
+.card-reveal { z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: calc(24px + var(--safe-t)) var(--gutter-r) calc(24px + var(--safe-b)) var(--gutter-l); background: radial-gradient(circle at 50% 42%, rgba(40, 34, 26, 0.97), rgba(10, 9, 8, 0.99)); overflow: hidden; text-align: center; }
+.reveal-rays { position: absolute; left: 50%; top: 42%; width: 160vmax; height: 160vmax; transform: translate(-50%, -50%); pointer-events: none; background: repeating-conic-gradient(from 0deg, var(--rar-dim) 0deg 6deg, transparent 6deg 18deg); mask-image: radial-gradient(circle, #000 0%, transparent 45%); -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 45%); opacity: 0; animation: rays-in 0.6s 0.55s ease-out forwards, rays-turn 30s linear infinite; }
+.card-reveal.rar-common .reveal-rays { display: none; }
+@keyframes rays-in { to { opacity: 1; } }
+@keyframes rays-turn { to { transform: translate(-50%, -50%) rotate(360deg); } }
+.reveal-kicker { position: relative; margin: 0; font: 700 14px/1.2 var(--font-ui); text-transform: uppercase; letter-spacing: 0.08em; color: var(--dust); }
+.reveal-flip { position: relative; perspective: 900px; display: grid; }
+.reveal-flip > * { grid-area: 1 / 1; backface-visibility: hidden; -webkit-backface-visibility: hidden; transition: transform 0.7s cubic-bezier(0.3, 1.4, 0.5, 1); }
+.reveal-flip > .cc { transform: rotateY(180deg); }
+.reveal-back { border-radius: 9px; background: repeating-linear-gradient(45deg, #2b261e 0 8px, #3a3229 8px 16px); box-shadow: 0 0 0 2px var(--rar), 0 0 0 4px #1b1915, 0 0 30px var(--rar-dim); }
+.reveal-flip.open > .cc { transform: rotateY(0); }
+.reveal-flip.open > .reveal-back { transform: rotateY(-180deg); }
+.reveal-flip.now > * { transition: none; }
+.reveal-rarity { position: relative; margin: 0; font: 900 22px/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.05em; color: var(--rar); text-shadow: 0 0 16px var(--rar-dim); opacity: 0; animation: reveal-in 0.4s 0.6s ease-out forwards; }
+.reveal-lines { position: relative; max-width: 340px; opacity: 0; animation: reveal-in 0.4s 0.8s ease-out forwards; }
+@keyframes reveal-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.reveal-lines p { margin: 4px 0; color: var(--bone); }
+.card-reveal .btn { position: relative; max-width: 320px; }
+
+/* Sichtungen auf der Karte */
+.sighting { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0; border: 0; background: none; cursor: pointer; color: #1b1915; }
+.sighting-badge { position: relative; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #fff8e6, var(--rar)); box-shadow: 0 0 0 2px #1b1915, 0 0 0 4px var(--rar), 0 3px 8px rgba(0, 0, 0, 0.5); }
+.sighting[data-rarity="common"] { --rar: #d8ccb0; --rar-dim: rgba(216, 204, 176, 0.5); }
+.sighting[data-rarity="rare"] { --rar: #5aa6e6; --rar-dim: rgba(90, 166, 230, 0.55); }
+.sighting[data-rarity="epic"] { --rar: #b07ce8; --rar-dim: rgba(176, 124, 232, 0.6); }
+.sighting[data-rarity="legendary"] { --rar: #ffc43d; --rar-dim: rgba(255, 196, 61, 0.65); }
+.sighting-glow { position: absolute; top: 19px; left: 50%; width: 76px; height: 76px; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle, var(--rar-dim), transparent 65%); animation: sight-pulse 1.8s ease-in-out infinite; pointer-events: none; }
+.sighting-time { padding: 2px 6px; border-radius: 8px; background: rgba(18, 17, 15, 0.85); color: var(--bone); font: 700 10.5px/1.2 var(--font-ui); white-space: nowrap; }
+.sighting[data-near="1"] .sighting-time { background: var(--amber); color: #1b1915; }
+.sighting[data-near="1"] .sighting-badge { animation: sight-bob 0.9s ease-in-out infinite alternate; }
+.sighting[data-late="1"] { opacity: 0.75; }
+.sighting.pop .sighting-badge { animation: sight-pop 0.5s cubic-bezier(0.2, 1.5, 0.4, 1); }
+@keyframes sight-pulse { 0%, 100% { opacity: 0.55; transform: translate(-50%, -50%) scale(0.85); } 50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); } }
+@keyframes sight-bob { to { transform: translateY(-5px); } }
+@keyframes sight-pop { from { transform: scale(0.2); } }
+.radar-slot { display: contents; }
+.radar-chip { color: var(--bone); }
+.radar-chip[data-rarity="rare"] { border-color: #5aa6e6; }
+.radar-chip[data-rarity="epic"] { border-color: #b07ce8; box-shadow: 0 0 10px rgba(176, 124, 232, 0.5); }
+.radar-chip[data-rarity="legendary"] { border-color: #ffc43d; box-shadow: 0 0 12px rgba(255, 196, 61, 0.6); }
+@media (prefers-reduced-motion: reduce) { .sighting-glow, .sighting .sighting-badge, .cc.shiny::after, .reveal-rays { animation: none !important; } .reveal-rays { opacity: 1; } }
+.ptr[data-tone="sight"] .ptr-icon { background: radial-gradient(circle at 40% 35%, #fff8e6, #d8ccb0); color: #1b1915; box-shadow: 0 0 0 2px #15130f, 0 0 0 4px #d8ccb0, 0 4px 12px rgba(0, 0, 0, 0.45); }
+.ptr[data-tone="sight"] .ptr-icon i { display: none; }
+.ptr[data-tone="sight"][data-rarity="rare"] .ptr-icon { background: radial-gradient(circle at 40% 35%, #fff8e6, #5aa6e6); box-shadow: 0 0 0 2px #15130f, 0 0 0 4px #5aa6e6, 0 0 12px rgba(90, 166, 230, 0.6); }
+.ptr[data-tone="sight"][data-rarity="epic"] .ptr-icon { background: radial-gradient(circle at 40% 35%, #fff8e6, #b07ce8); box-shadow: 0 0 0 2px #15130f, 0 0 0 4px #b07ce8, 0 0 14px rgba(176, 124, 232, 0.7); }
+.ptr[data-tone="sight"][data-rarity="legendary"] .ptr-icon { background: radial-gradient(circle at 40% 35%, #fff8e6, #ffc43d); box-shadow: 0 0 0 2px #15130f, 0 0 0 4px #ffc43d, 0 0 16px rgba(255, 196, 61, 0.75); }
+
+/* Fund-Fenster quer (Handy im Querformat): Karte links, Text rechts */
+@media (orientation: landscape) and (max-height: 560px) {
+  .card-reveal { display: grid; grid-template-columns: auto minmax(0, 340px); grid-template-rows: 1fr auto auto auto 1fr; column-gap: 28px; justify-content: center; align-content: center; text-align: left; }
+  .card-reveal .reveal-flip { grid-column: 1; grid-row: 1 / span 5; align-self: center; }
+  .card-reveal .reveal-kicker { grid-column: 2; grid-row: 2; }
+  .card-reveal .reveal-rarity { grid-column: 2; grid-row: 3; }
+  .card-reveal .reveal-lines { grid-column: 2; grid-row: 4; }
+  .card-reveal .btn { grid-column: 2; grid-row: 5; align-self: start; margin-top: 8px; }
+  .card-reveal .cc.big { width: min(200px, calc((100vh - 48px) / 1.4)); }
+}
+/* Sammelbuch: kleine Karten knapp beschriften */
+.cbook-grid .cc-foot { font-size: 8px; }
+.cbook-grid .cc-where { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: 9px; }
+.cbook-detail .cc.big { width: min(190px, 60vw); }
+.t-card-art { width: 46px; height: 46px; border-radius: 6px; object-fit: cover; box-shadow: 0 0 0 1px rgba(43, 38, 30, 0.6); }
+.gift-row { display: flex; gap: 8px; align-items: center; }

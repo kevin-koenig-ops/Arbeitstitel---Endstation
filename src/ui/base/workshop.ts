@@ -1,7 +1,8 @@
 // Der Werktisch: Kram in echter Zeit zerlegen, Fertiges abholen, Waffen bauen, aufrüsten.
 // Es läuft weiter, auch wenn die App zu ist. Fertiges wartet, nichts verdirbt.
 
-import { KRAM, KRAM_ORDER, WEAPON_ORDER, WEAPONS, WORKBENCH_LEVELS } from '../../core/content';
+import { CARDS, KRAM, KRAM_ORDER, ONCE_CARDS, WEAPON_ORDER, WEAPONS, WORKBENCH_LEVELS } from '../../core/content';
+import { CARD_ICON } from '../cards';
 import { canAfford, dismantleMs, readyParts, workbenchLevel, workbenchSlots } from '../../core/rules';
 import type { Action, KramId, PlayerState } from '../../core/types';
 import type { App } from '../app';
@@ -187,6 +188,46 @@ export function openWorkshop(app: App, host: HTMLElement, opts: Opts): { el: HTM
                 onclick: async () => {
                   const res = await dispatch({ type: 'craft', weapon: id });
                   if (res?.events[0].type === 'crafted') app.toast(`${def.name} gebaut.`, 'good');
+                  render();
+                },
+              },
+              'Bauen',
+            ),
+          );
+        }),
+      ),
+    );
+
+    // --- Einmal-Karten bauen (Brandflasche, Rauchdose, Krähenfüße) ---
+    const craftable = ONCE_CARDS.filter((id) => CARDS[id].craft);
+    body.append(h('h3', { class: 'ws-sec' }, 'Für den Kampf', h('small', null, 'Einmal-Karten, sofort fertig')));
+    body.append(
+      h(
+        'ul',
+        { class: 'ws-junk ws-weapons' },
+        craftable.map((id) => {
+          const def = CARDS[id];
+          const have = (s.packCards[id] ?? 0) + (s.stash[id] ?? 0);
+          return h(
+            'li',
+            null,
+            h('span', { class: `ws-card-ico rar-${def.rarity ?? 'common'}` }, svgEl(icon(CARD_ICON[id], 24))),
+            h(
+              'div',
+              { class: 'ws-junk-main' },
+              h('b', null, def.name, have ? h('span', { class: 'junk-n' }, ` (hast du ${have})`) : null),
+              h('small', { class: 'ws-weapon-desc' }, def.desc),
+              costChips(def.craft!, s.inventory),
+            ),
+            h(
+              'button',
+              {
+                class: 'btn small ghost',
+                type: 'button',
+                disabled: !canAfford(s.inventory, def.craft!),
+                onclick: async () => {
+                  const res = await dispatch({ type: 'craftCard', card: id });
+                  if (res?.events[0].type === 'crafted') app.toast(`${def.name} gebaut. Bis zu 3 davon packst du automatisch ein.`, 'good');
                   render();
                 },
               },

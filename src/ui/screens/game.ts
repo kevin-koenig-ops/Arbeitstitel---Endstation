@@ -10,9 +10,10 @@ import type { Cache, FoeKind, LatLon, Opening, RegionId, Spot, WorldEvent } from
 import { classifyRegion, hearRangeM, sightRangeM } from '../../core/terrain';
 import { dropSpot, eventCenter } from '../../core/worldEvents';
 import { PatrolControl, type LivePatrol } from '../game/patrolControl';
+import { SightingControl } from '../game/sightingControl';
 import { currentRegion, setCurrentRegion } from '../game/worldState';
 import { elevationAt, reliefAround } from '../../map/elevation';
-import { DEMO, GameMap, type SpotView } from '../../map/GameMap';
+import { DEMO, GameMap, SIGHTING_ICON, type SpotView } from '../../map/GameMap';
 import { WalkNet } from '../../map/walkNet';
 import {
   AnchoredLocation,
@@ -179,6 +180,8 @@ export function gameScreen(app: App): Screen {
   const gaitBtn = h('button', { class: 'gait-btn', type: 'button', hidden: true, onclick: () => toggleGait() });
   // Weltereignis in der Nähe (Staubsturm, Horde, Sperrgebiet, Hilfsabwurf)
   const eventChip = h('button', { class: 'env-chip event-chip', type: 'button', hidden: true });
+  // Funk-Radar: Sichtungen in der Nähe (das Abzeichen kommt von SightingControl)
+  const radarSlot = h('span', { class: 'radar-slot' });
   const hud = h(
     'div',
     { class: 'hud' },
@@ -190,6 +193,7 @@ export function gameScreen(app: App): Screen {
         'div',
         { class: 'hud-tr' },
         eventChip,
+        radarSlot,
         cacheChip,
         tierChip,
         sectorChip,
@@ -209,6 +213,7 @@ export function gameScreen(app: App): Screen {
 
   // --- Zustand -------------------------------------------------------------------
   let gm: GameMap | null = null;
+  let sightings: SightingControl | null = null;
   let provider: LocationProvider | null = null;
   let fix: Fix | null = null;
   let spots = new Map<string, Spot>();
@@ -226,6 +231,8 @@ export function gameScreen(app: App): Screen {
   };
   let ticker = 0;
   let zoneTimer = 0;
+  let sightTimer = 0;
+  let sightAt: LatLon | null = null;
   let overlay: HTMLElement | null = null;
   let destroyed = false;
   let lastExplorePos: LatLon | null = null;
@@ -263,6 +270,7 @@ export function gameScreen(app: App): Screen {
     w.__tp = (lat, lon) => {
       if (provider instanceof SimulatedLocation) provider.moveTo({ lat, lon });
     };
+    (window as unknown as { __sightings?: () => unknown }).__sightings = () => sightings?.list() ?? [];
   }
 
   // Zum Testen: die Karte von außen steuern (Ausschnitt, Neigung)
@@ -546,6 +554,10 @@ export function gameScreen(app: App): Screen {
     for (const c of s.caches) {
       if (distanceM(here, c.center) <= (c.areaM ?? CACHE.areaM) + 25) continue;
       targets.push({ id: c.id, pos: c.center, icon: c.via === 'tracks' ? 'steps' : c.via === 'radio' ? 'radioSet' : 'chalk', label: 'Versteck', tone: 'cache', hideInside: true, onTap: () => sheet.showCache(c) });
+    }
+    // Sichtungen außerhalb des Bildes: Pfeil am Rand, Farbe nach Seltenheit
+    for (const v of sightings?.list() ?? []) {
+      targets.push({ id: v.id, pos: v.pos, icon: SIGHTING_ICON[v.kind], label: 'Sichtung', tone: 'sight', rarity: v.rarity, hideInside: true, onTap: () => void sightings?.tap(v.id) });
     }
     pointers.set(targets);
     pointers.setPlayer(here);
@@ -1208,6 +1220,10 @@ export function gameScreen(app: App): Screen {
     updateFog();
     void refreshSpots(first);
     updateSpots();
+    if (first || !sightAt || distanceM(sightAt, f.pos) > 8) {
+      sightAt = f.pos;
+      sightings?.update();
+    }
   };
 
   const useSimulation = () => {
@@ -1610,11 +1626,21 @@ export function gameScreen(app: App): Screen {
         onBaseTap: () => void openBase(),
         onCacheTap: (id) => showCacheHint(id),
         onPatrolTap: (id) => onPatrolTap(id),
+        onSightingTap: (id) => {
+          if (provider instanceof SimulatedLocation && provider.moving) {
+            provider.halt();
+            gm?.setRoute(null);
+            gm?.setTarget(null);
+          }
+          sheet.close();
+          void sightings?.tap(id);
+        },
         onFollowChange: (f) => locateBtn.classList.toggle('lost', !f),
         onCameraMove: updateFog,
         onDataChanged: () => {
           if (mapMode === 'real') {
             netDirty = true;
+            sightings?.dataChanged();
             void refreshSpots(true);
           }
         },
@@ -1689,6 +1715,26 @@ export function gameScreen(app: App): Screen {
         },
         onHidden,
       });
+      sightings = new SightingControl({
+        app,
+        map: () => gm,
+        fix: () => fix,
+        net: (p) => walkNet(p),
+        isSim: () => provider?.kind === 'sim',
+        walkTo: (p) => walkTo(p),
+        host: overlayHost,
+        onChanged: () => {
+          renderHud();
+          updateSpots();
+        },
+        quiet: () => !!overlay,
+      });
+      radarSlot.append(sightings.chip);
+      sightTimer = window.setInterval(() => {
+        if (document.hidden) return;
+        sightings?.update();
+        updatePointers();
+      }, 5000);
       // Der Staubsturm zieht weiter: Zonen regelmäßig nachziehen
       zoneTimer = window.setInterval(() => !document.hidden && updateZones(), 5000);
 
@@ -1713,6 +1759,7 @@ export function gameScreen(app: App): Screen {
       offSettings();
       clearInterval(ticker);
       clearInterval(zoneTimer);
+      clearInterval(sightTimer);
       patrols?.destroy();
       document.removeEventListener('visibilitychange', onVisible);
       provider?.stop();

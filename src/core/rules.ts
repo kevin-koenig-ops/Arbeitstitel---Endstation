@@ -482,6 +482,27 @@ function gainWeapon(state: PlayerState, kind: WeaponId): boolean {
   return false;
 }
 
+/** Sammelkarte oder Waffe bekommen: ins Sammelbuch, Einmal-Karten in den Rucksack, Waffen neu oder wieder heil. */
+function grantCollectible(
+  state: PlayerState,
+  reward: { card?: CardId; weapon?: WeaponId },
+  now: number,
+  shiny: boolean,
+): { card?: CardId; weapon?: WeaponId; repaired?: boolean; level?: number; levelUp?: boolean } | null {
+  if (reward.weapon) {
+    const repaired = gainWeapon(state, reward.weapon);
+    addToBook(state, `w:${reward.weapon}`, now, shiny);
+    return { weapon: reward.weapon, repaired };
+  }
+  if (!reward.card) return null;
+  const card = reward.card;
+  const before = skillOf(state, card);
+  addToBook(state, card, now, shiny);
+  if (CARDS[card].kind === 'once') state.packCards[card] = (state.packCards[card] ?? 0) + 1;
+  const level = skillOf(state, card) || undefined;
+  return { card, level, levelUp: !!level && level > before && before > 0 };
+}
+
 /** Zu Hause: aus dem Lager wieder bis zu 3 je Sorte in den Rucksack packen. */
 function refillPackCards(state: PlayerState) {
   for (const [id, n] of Object.entries(state.stash) as [CardId, number][]) {
@@ -822,18 +843,19 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       if (rarity === 'legendary') state.pity.legendary = 0;
       state.sightings[s.id] = ctx.now;
       for (const [id, at] of Object.entries(state.sightings)) if (ctx.now - at > 2 * HOUR) delete state.sightings[id];
-      if (reward.weapon) {
-        const repaired = gainWeapon(state, reward.weapon);
-        addToBook(state, `w:${reward.weapon}`, ctx.now, s.shiny);
-        events.push({ type: 'sightingClaimed', id: s.id, weapon: reward.weapon, repaired, rarity, shiny: s.shiny, pity });
-      } else if (reward.card) {
-        const card = reward.card;
-        const before = skillOf(state, card);
-        addToBook(state, card, ctx.now, s.shiny);
-        if (CARDS[card].kind === 'once') state.packCards[card] = (state.packCards[card] ?? 0) + 1;
-        const level = skillOf(state, card) || undefined;
-        events.push({ type: 'sightingClaimed', id: s.id, card, rarity, shiny: s.shiny, level, levelUp: !!level && level > before && before > 0, pity });
-      }
+      const got = grantCollectible(state, reward, ctx.now, s.shiny);
+      if (got) events.push({ type: 'sightingClaimed', id: s.id, ...got, rarity, shiny: s.shiny, pity });
+      break;
+    }
+
+    case 'testGift': {
+      // Nur zum Testen (Einstellungen → Testen): eine Sammelkarte oder Waffe geschenkt.
+      // Ein Server lehnt das später ab.
+      if (action.card && !CARDS[action.card]?.rarity) return reject('not_found');
+      if (action.weapon && !WEAPONS[action.weapon]?.rarity) return reject('not_found');
+      const got = grantCollectible(state, { card: action.card, weapon: action.weapon }, ctx.now, false);
+      if (!got) return reject('nothing');
+      events.push({ type: 'gifted', ...got });
       break;
     }
 

@@ -11,6 +11,7 @@ import type { App } from '../app';
 import { append, clear, h, reducedMotion, sleep, svgEl, type Child } from '../dom';
 import { icon, resIcon, spotIcon } from '../icons';
 import { partsChips, thingThumb } from './chips';
+import { bookItem, cardFace } from '../cards';
 import { REJECT_TEXT } from '../texts';
 import { blueprintName, SITES } from '../../core/building';
 import { enemySvg } from '../zombies';
@@ -312,6 +313,7 @@ export class SpotSheet {
         ev.perk ? h('p', { class: 'receipt-note' }, `${perkBg}: +1 ${RESOURCES[ev.perk].name} extra`) : null,
         note ? h('p', { class: 'receipt-note' }, note) : null,
         ev.kram ? kramCard(ev.kram) : null,
+        ev.card || ev.weapon ? cardNote(state, ev) : null,
         state.stats.searches <= 4 && RESOURCE_ORDER.some((r) => ev.items[r] && isMaterial(r))
           ? h('p', { class: 'receipt-note' }, 'Rohstoffe und Kram kommen in den Rucksack. Zu Hause packst du aus.')
           : null,
@@ -610,3 +612,21 @@ const MEMENTO_ICON: Record<string, string> = {
 /** Büroklammer aus Kupferdraht. */
 const CLIP_SVG =
   '<svg viewBox="0 0 24 64" width="16" height="44"><path d="M8 50V12a6 6 0 0 1 12 0v40a8 8 0 0 1-16 0V18" fill="none" stroke="#6e3f22" stroke-width="2.8" stroke-linecap="round"/><path d="M8 50V12a6 6 0 0 1 12 0v40a8 8 0 0 1-16 0V18" fill="none" stroke="#c98a5c" stroke-width="1" stroke-linecap="round" transform="translate(-.5 -.5)"/></svg>';
+
+/** Sammelkarte oder Waffe im Fundbeleg. */
+function cardNote(state: import('../../core/types').PlayerState, ev: Extract<GameEvent, { type: 'loot' }>) {
+  const key = (ev.card ?? `w:${ev.weapon}`) as import('../cards').BookKey;
+  const n = state.book[key]?.n ?? 1;
+  const it = bookItem(key);
+  const text = ev.weapon
+    ? n > 1
+      ? `Deine ${it.name} ist wieder wie neu.`
+      : `Neue Waffe! Bringt im Kampf eigene Karten.`
+    : `Steckt im Rucksack. Bis zu 3 davon nimmst du in jeden Kampf mit.`;
+  return h(
+    'div',
+    { class: `receipt-find receipt-card rar-${it.rarity}` },
+    cardFace(key),
+    h('div', null, h('div', { class: 'receipt-find-kicker' }, svgEl(icon('cards', 14)), n === 1 ? 'Neu im Sammelbuch' : 'Sammelkarte'), h('b', null, it.name), h('small', null, text)),
+  );
+}

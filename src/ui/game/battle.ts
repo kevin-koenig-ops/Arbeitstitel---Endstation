@@ -12,7 +12,8 @@ import { isCold, isHot } from '../../core/terrain';
 import { seasonOf } from '../../services/settings';
 import { currentRegion } from './worldState';
 import { aliveFoes, createTactics, endTurn, flee, foeById, playCard, targetsFor, type Intent, type TacticsState, type TEvent } from '../../core/tactics';
-import { bestWeapon, currentHealth } from '../../core/rules';
+import { bestWeapon, cardKit, currentHealth } from '../../core/rules';
+import { artUrl, CARD_ICON, cardEffect } from '../cards';
 import type { DayPhase } from '../../core/sun';
 import type { EnemyId, GameEvent, Inventory, KramBag, Spot } from '../../core/types';
 import type { App } from '../app';
@@ -33,43 +34,13 @@ export interface CombatEnd {
   ambush?: boolean;
 }
 
-export const CARD_ICON: Record<CardId, string> = {
-  punch: 'fist',
-  throw: 'throwStone',
-  dodge: 'shield',
-  kick: 'shove',
-  pry: 'crowbar',
-  swing: 'bat',
-  homerun: 'smash',
-  bolt: 'bolt',
-  aim: 'aim',
-  bandage: 'medicine',
-  spade: 'shovel',
-  chop: 'axe',
-  drive: 'golfclub',
-  pellet: 'slingshot',
-  nail: 'nailgun',
-  molotov: 'molotov',
-  smoke: 'smoke',
-  caltrops: 'caltrops',
-  firecracker: 'firecracker',
-  lure: 'lure',
-  pepper: 'pepper',
-  dressing: 'dressing',
-  adrenaline: 'adrenaline',
-  flare: 'flare',
-  flashbang: 'flashbang',
-  grenade: 'grenade',
-  counter: 'counter',
-  steady: 'steady',
-  breath: 'breath',
-  sweep: 'sweep',
-  sneak: 'sneak',
-  scavenger: 'scavenger',
-  radio: 'radioSet',
-  secondwind: 'secondwind',
-  packleader: 'packleader',
-  laststand: 'laststand',
+
+const STATUS_TEXT: Record<Extract<TEvent, { type: 'status' }>['status'], string> = {
+  burn: 'Brennt!',
+  blind: 'Geblendet!',
+  slow: 'Verlangsamt',
+  silence: 'Verstummt',
+  interrupt: 'Unterbrochen!',
 };
 
 const INTENT: Record<Intent['kind'], { icon: string; label: string; tone: string }> = {
@@ -85,20 +56,6 @@ const INTENT: Record<Intent['kind'], { icon: string; label: string; tone: string
   fade: { icon: 'moon', label: 'Weicht ins Dunkel', tone: 'calm' },
   pounce: { icon: 'leap', label: 'Sprung', tone: 'worst' },
 };
-
-/** Was eine Karte tut, kurz für die Karte selbst. */
-function cardEffect(id: CardId): { main: string; tag: string } {
-  const c = CARDS[id];
-  const main = c.dmg ? `${c.dmg} Schaden` : c.block ? `Blockt ${c.block}` : c.heal ? `Heilt ${c.heal}` : c.focus ? `+${c.focus} Schaden` : '';
-  const tags: string[] = [];
-  if (c.target === 'near') tags.push('vorne');
-  if (c.target === 'any') tags.push('auch hinten');
-  if (c.push) tags.push('stößt weg');
-  if (c.stun) tags.push('betäubt');
-  if (c.focus) tags.push('nächster Wurf');
-  if (c.medicine) tags.push('1 Medizin');
-  return { main, tag: tags.join(' · ') };
-}
 
 /** Der Teil des Zustands, den man sieht (hinkt beim Abspielen der Gegnerzüge kurz hinterher). */
 interface Shown {
@@ -132,6 +89,8 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     opening,
     cold,
     thirst,
+    // Einmal-Karten aus dem Rucksack und Fähigkeiten aus dem Sammelbuch
+    kit: cardKit(s0, now0),
   });
   const firstFight = s0.stats.kills === 0;
   const fast = reducedMotion();
@@ -219,6 +178,13 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
       /* nicht unterstützt */
     }
   };
+  /** Kurzer Effekt über dem ganzen Kampf (Feuer, Rauch, Blitz …). */
+  const fx = (kind: string) => {
+    if (fast) return;
+    const f = h('div', { class: `t-fx fx-${kind}`, 'aria-hidden': 'true' });
+    el.append(f);
+    setTimeout(() => f.remove(), 900);
+  };
   const shake = (node: Element) => {
     node.classList.remove('shake');
     void (node as HTMLElement).offsetWidth;
@@ -275,9 +241,13 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
       if (btn) shake(btn);
       return setInfo('Keine Medizin mehr dabei.');
     }
-    if (def.heal && st.hp >= st.maxHp) {
+    if (def.heal && !def.gain && st.hp >= st.maxHp) {
       if (btn) shake(btn);
       return setInfo('Du bist unverletzt. Heb dir das Verbandszeug auf.');
+    }
+    if (def.perTurn && (st.turnPlays[card] ?? 0) >= def.perTurn) {
+      if (btn) shake(btn);
+      return setInfo(`${def.name}: nur einmal pro Runde.`);
     }
     if (def.target === 'self') return void doPlay(i);
     const options = targetsFor(st, card);
@@ -321,18 +291,90 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
       switch (e.type) {
         case 'play': {
           const id = e.target;
-          if (e.card === 'throw' || e.card === 'bolt') {
-            if (id !== undefined) scene?.shoot(id, e.card === 'bolt' ? 'bolt' : 'stone');
-            await wait(e.card === 'bolt' ? 160 : 300);
-          } else if (e.card === 'dodge') scene?.shieldUp();
-          else if (e.card === 'bandage') scene?.heal();
-          else if (e.card === 'aim') scene?.focus();
-          else {
-            scene?.act(e.card === 'homerun' ? 'power' : e.card === 'kick' ? 'shove' : 'swing', id);
-            await wait(e.card === 'homerun' ? 260 : 150);
+          const c = e.card;
+          const def = CARDS[c];
+          if (def.kind === 'once') say(def.name, def.rarity === 'legendary' || def.rarity === 'epic' ? 'gold' : 'good', 900);
+          if (c === 'throw' || c === 'bolt' || c === 'pellet' || c === 'drive' || c === 'lure' || c === 'flare') {
+            if (id !== undefined) scene?.shoot(id, c === 'bolt' ? 'bolt' : 'stone');
+            if (c === 'flare') fx('flare');
+            await wait(c === 'bolt' ? 160 : 300);
+          } else if (c === 'dodge' || c === 'counter') scene?.shieldUp();
+          else if (c === 'bandage' || c === 'dressing' || c === 'adrenaline' || c === 'secondwind') scene?.heal();
+          else if (c === 'aim' || c === 'steady') scene?.focus();
+          else if (c === 'molotov' || c === 'grenade' || c === 'flashbang' || c === 'smoke' || c === 'firecracker' || c === 'caltrops' || c === 'radio') {
+            fx(c === 'molotov' ? 'fire' : c === 'grenade' ? 'blast' : c === 'flashbang' ? 'flash' : c === 'smoke' ? 'smoke' : c === 'firecracker' ? 'spark' : c === 'radio' ? 'radio' : 'dust');
+            vibrate(c === 'grenade' ? [40, 30, 90] : 30);
+            await wait(c === 'grenade' ? 420 : 300);
+          } else if (c === 'breath' || c === 'packleader') {
+            await wait(120);
+          } else {
+            if (c === 'pepper') fx('smoke');
+            scene?.act(c === 'homerun' || c === 'chop' || c === 'sweep' ? 'power' : c === 'kick' || c === 'spade' || c === 'pepper' ? 'shove' : 'swing', id);
+            await wait(c === 'homerun' || c === 'chop' ? 260 : 150);
           }
           break;
         }
+        case 'burn':
+        case 'thorns':
+        case 'ally': {
+          const f = sfoe(e.id);
+          if (f) {
+            f.hp = Math.max(0, f.hp - e.dmg);
+            if (e.kill) f.alive = false;
+          }
+          scene?.hitFoe(e.id, e.dmg, e.kill, false);
+          floatAt(e.id, e.type === 'burn' ? `🔥${e.dmg}` : e.type === 'ally' ? `Hund ${e.dmg}` : `Konter ${e.dmg}`, e.type === 'burn' ? 'power' : 'dmg');
+          if (e.kill) {
+            vibrate(40);
+            scene?.setFoes(shownList());
+            await wait(300);
+          } else await wait(e.type === 'ally' ? 260 : 160);
+          break;
+        }
+        case 'status':
+          floatAt(e.id, STATUS_TEXT[e.status], e.status === 'burn' ? 'power' : 'crit');
+          if (e.status === 'interrupt') {
+            const f = sfoe(e.id);
+            if (f) {
+              f.raised = false;
+              f.intent = foeById(st, e.id)?.intent ?? f.intent;
+            }
+            scene?.setFoes(shownList());
+          }
+          await wait(140);
+          break;
+        case 'miss': {
+          const f = sfoe(e.id);
+          if (f) f.acted = true;
+          scene?.blocked(e.id);
+          floatAt(e.id, 'Daneben!', 'miss');
+          await wait(420);
+          break;
+        }
+        case 'allyIn':
+          say(`Ein Hund springt dir bei! (${e.rounds} Runden)`, 'gold', 1800);
+          vibrate([20, 40, 20]);
+          await wait(300);
+          break;
+        case 'draw':
+          floatAt(-1, `+${e.n} Karten`, 'heal');
+          break;
+        case 'gain':
+          floatAt(-1, `+${e.amount} Kraft`, 'power');
+          break;
+        case 'secondWind':
+          shown.hp = Math.min(st.maxHp, shown.hp + e.amount);
+          say(`Zweiter Atem! +${e.amount}`, 'gold', 1600);
+          scene?.heal();
+          vibrate([30, 30, 60]);
+          await wait(400);
+          break;
+        case 'lastStand':
+          shown.hp = 1;
+          say('Letztes Gefecht! Du bleibst stehen.', 'gold', 2000);
+          vibrate([80, 40, 80]);
+          await wait(500);
+          break;
         case 'hit': {
           const f = sfoe(e.id);
           if (f) {
@@ -513,6 +555,9 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     if (events[0]?.type === 'denied') {
       busy = false;
       renderHand();
+      const btn = handEl.children[i];
+      if (btn) shake(btn);
+      if (events[0].reason === 'target') setInfo('Da steht gerade niemand, den diese Karte trifft.');
       return;
     }
     renderHand();
@@ -593,7 +638,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     weaponLine.textContent = kinds.length ? kinds.map((k) => `${WEAPONS[k].name} ${st.weaponDur[k]}`).join(' · ') : 'Keine Waffe: Fäuste und Steine';
   };
 
-  const foeEls = new Map<number, { el: HTMLElement; intent: HTMLElement; hp: HTMLElement; hpText: HTMLElement; block: HTMLElement; row: HTMLElement; key: string }>();
+  const foeEls = new Map<number, { el: HTMLElement; intent: HTMLElement; hp: HTMLElement; hpText: HTMLElement; block: HTMLElement; row: HTMLElement; status: HTMLElement; key: string; skey: string }>();
   const renderFoeOverlays = () => {
     for (const f of shown.foes.values()) {
       let v = foeEls.get(f.id);
@@ -603,15 +648,17 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
         const hpText = h('span', { class: 't-hp-text' });
         const block = h('span', { class: 't-fblock', hidden: true });
         const rowTag = h('small', { class: 't-row' });
+        const statusEl = h('span', { class: 't-status' });
         const node = h(
           'button',
           { class: 't-foe', type: 'button', 'data-kind': f.kind, onclick: () => tapFoe(f.id) },
           intentEl,
           h('span', { class: 't-foe-name' }, h('span', { class: 't-lock', 'aria-label': 'anvisiert' }, svgEl(icon('aim', 12))), FOE_TACTICS[f.kind].name, rowTag, block),
           h('span', { class: 'bar foe' }, hp, hpText),
+          statusEl,
         );
         foeLayer.append(node);
-        v = { el: node, intent: intentEl, hp, hpText, block, row: rowTag, key: '' };
+        v = { el: node, intent: intentEl, hp, hpText, block, row: rowTag, status: statusEl, key: '', skey: '' };
         foeEls.set(f.id, v);
       }
       v.el.hidden = !f.alive;
@@ -621,6 +668,19 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
       v.hpText.textContent = `${f.hp}/${f.maxHp}`;
       v.block.hidden = f.block <= 0;
       v.block.textContent = `🛡${f.block}`;
+      // Zustände (Brennt, Geblendet, Verlangsamt, Still) aus dem echten Kampfzustand
+      const live = foeById(st, f.id);
+      const sts: [string, string][] = [];
+      if (live?.burn) sts.push(['burn', `Brennt ${live.burn}`]);
+      if (live?.blind) sts.push(['blind', 'Geblendet']);
+      if (live?.slow) sts.push(['slow', `Langsam ${live.slow}`]);
+      if (live?.silence) sts.push(['silence', 'Still']);
+      const skey = sts.map((x) => x[1]).join('|');
+      if (skey !== v.skey) {
+        v.skey = skey;
+        clear(v.status);
+        for (const [k, t] of sts) v.status.append(h('small', { class: `t-st st-${k}` }, t));
+      }
       const it = INTENT[f.intent.kind];
       const key = `${f.intent.kind}|${f.intent.dmg ?? ''}|${f.acted}`;
       if (key !== v.key) {
@@ -658,7 +718,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     for (let i = 0; i < Math.max(TACTICS.energy, st.energy); i++) energyEl.append(h('span', { class: 'orb' + (i < st.energy ? ' on' : '') }, svgEl(icon('energy', 14))));
     energyEl.setAttribute('aria-label', `Kraft ${st.energy} von ${TACTICS.energy}`);
     endBtn.disabled = busy || !!st.over;
-    endBtn.classList.toggle('glow', !busy && !st.over && st.hand.every((c) => CARDS[c].cost > st.energy || (CARDS[c].heal && st.hp >= st.maxHp) || (CARDS[c].target !== 'self' && !targetsFor(st, c).length)));
+    endBtn.classList.toggle('glow', !busy && !st.over && st.hand.every((c) => CARDS[c].cost > st.energy || (CARDS[c].heal && !CARDS[c].gain && st.hp >= st.maxHp) || (CARDS[c].target !== 'self' && !targetsFor(st, c).length)));
     pileEl.textContent = `Stapel ${st.draw.length}`;
     pileEl.title = `Noch ${st.draw.length} Karten im Stapel, ${st.discard.length} abgelegt`;
   };
@@ -667,14 +727,19 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     clear(handEl);
     st.hand.forEach((card, i) => {
       const def = CARDS[card];
-      const eff = cardEffect(card);
-      const playable = def.cost <= st.energy && (!def.medicine || st.medicine > 0) && (!def.heal || st.hp < st.maxHp) && (def.target === 'self' || targetsFor(st, card).length > 0);
+      const eff = cardEffect(card, st.levels[card] ?? 1);
+      const playable =
+        def.cost <= st.energy &&
+        (!def.medicine || st.medicine > 0) &&
+        (!def.heal || !!def.gain || st.hp < st.maxHp) &&
+        (!def.perTurn || (st.turnPlays[card] ?? 0) < def.perTurn) &&
+        (def.target === 'self' || targetsFor(st, card).length > 0);
       let pressTimer = 0;
       let longPressed = false;
       const btn = h(
         'button',
         {
-          class: `t-card${def.weapon ? ' weapon' : ''}${def.target === 'self' ? ' self' : ''}${playable ? '' : ' off'}${selected === i ? ' picked' : ''}${deal ? ' deal' : ''}`,
+          class: `t-card kind-${def.kind}${def.target === 'self' ? ' self' : ''}${def.kind === 'once' || def.kind === 'skill' ? ` collect rar-${def.rarity ?? 'common'}` : ''}${playable ? '' : ' off'}${selected === i ? ' picked' : ''}${deal ? ' deal' : ''}`,
           type: 'button',
           style: `--i:${i}`,
           'aria-label': `${def.name}, kostet ${def.cost} Kraft: ${def.desc}`,
@@ -693,7 +758,8 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           },
         },
         h('span', { class: 't-cost' }, String(def.cost)),
-        svgEl(icon(CARD_ICON[card], 26), 't-card-icon'),
+        // Gemaltes Kartenbild, sobald es eins gibt, sonst das Symbol
+        artUrl(def.art) ? h('img', { class: 't-card-art', src: artUrl(def.art)!, alt: '', draggable: 'false' }) : svgEl(icon(CARD_ICON[card], 26), 't-card-icon'),
         h('b', { class: 't-card-name' }, def.name),
         h('span', { class: 't-card-eff' }, eff.main),
         eff.tag ? h('small', { class: 't-card-tag' }, eff.tag) : null,
@@ -758,13 +824,13 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     const banner = h('div', { class: `battle-banner ${outcome}` }, outcome === 'won' ? 'Sieg!' : outcome === 'lost' ? 'Niedergeschlagen' : 'Rückzug');
     el.append(banner);
     if (outcome === 'won') vibrate([30, 40, 60]);
-    const res = await app.backend.dispatch({ type: 'battleResult', outcome, health: st.hp, kills: st.kills, usedMedicine: st.usedMedicine, wear: st.wear });
+    const res = await app.backend.dispatch({ type: 'battleResult', outcome, health: st.hp, kills: st.kills, usedMedicine: st.usedMedicine, wear: st.wear, used: st.used, lastStand: st.lastStandUsed || undefined });
     const loot = res.events.find((e) => e.type === 'loot');
     const lost = res.events.find((e) => e.type === 'combatLost');
     const broke = res.events.map((e) => ('weaponBroke' in e ? e.weaponBroke : undefined)).find(Boolean);
     if (broke) app.toast(`${WEAPONS[broke].name} ist zerbrochen. Am Werktisch baust du eine neue.`, 'warn');
     if (outcome === 'lost' && lost?.type === 'combatLost') {
-      setTimeout(() => showLost(lost.dropped, lost.droppedKram), 900);
+      setTimeout(() => showLost(lost.dropped, lost.droppedKram, lost.droppedCards ?? {}), 900);
       return;
     }
     setTimeout(
@@ -776,10 +842,11 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     );
   };
 
-  const showLost = (dropped: Partial<Inventory>, droppedKram: KramBag) => {
+  const showLost = (dropped: Partial<Inventory>, droppedKram: KramBag, droppedCards: Partial<Record<CardId, number>>) => {
     const list = RESOURCE_ORDER.filter((k) => dropped[k]);
     const kram = KRAM_ORDER.filter((k) => droppedKram[k]);
-    const nothing = !list.length && !kram.length;
+    const cards = (Object.keys(droppedCards) as CardId[]).filter((k) => droppedCards[k]);
+    const nothing = !list.length && !kram.length && !cards.length;
     el.append(
       h(
         'div',
@@ -791,6 +858,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           : h('ul', { class: 'dropped' }, [
               ...list.map((k) => h('li', null, svgEl(resIcon(k, 16)), `${dropped[k]} ${RESOURCES[k].name}`)),
               ...kram.map((k) => h('li', null, `${droppedKram[k]} × ${KRAM[k].name}`)),
+              ...cards.map((k) => h('li', null, svgEl(icon(CARD_ICON[k], 16)), `${droppedCards[k]} × ${CARDS[k].name}`)),
             ]),
         h('p', { class: 'note' }, 'Dein Lager zu Hause, deine Waffen und deine Ausrüstung hast du noch. Die Gesundheit kommt von selbst zurück, schneller mit Medizin oder einem Eintopf. Tipp: Bring Gutes öfter nach Hause, bevor du dich mit einem Trupp anlegst.'),
         h(

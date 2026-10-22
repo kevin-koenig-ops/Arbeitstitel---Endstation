@@ -5,6 +5,10 @@ import type { Settings } from '../services/settings';
 import type { App } from './app';
 import { h, svgEl } from './dom';
 import { flagSvg, LANGUAGES } from './flags';
+import { BOOK_ORDER, bookItem, type BookKey } from './cards';
+import { showCardReveal } from './game/cardReveal';
+import { CARDS, WEAPONS } from '../core/content';
+import type { WeaponId } from '../core/types';
 
 type Cat = 'general' | 'map' | 'control' | 'graphics' | 'sound' | 'test' | 'account';
 /** Zuletzt offener Bereich (bleibt beim nächsten Öffnen). */
@@ -88,6 +92,34 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
     ['autumn', 'Herbst'],
     ['winter', 'Winter'],
   ]);
+
+  // Testen: eine Sammelkarte bekommen und gleich ansehen (wie bei einem Fund)
+  let giftKey: BookKey = 'molotov';
+  const giftSelect = h(
+    'select',
+    { id: 'set-gift', class: 'select', onchange: () => (giftKey = giftSelect.value as BookKey) },
+    BOOK_ORDER.map((k) => h('option', { value: k }, bookItem(k).name)),
+  );
+  giftSelect.value = giftKey;
+  const giftBtn = h(
+    'button',
+    {
+      class: 'btn small',
+      type: 'button',
+      onclick: async () => {
+        if (!app.backend.current()) return app.toast('Erst ein Spiel starten, dann geht das.', 'warn');
+        const weapon = giftKey.startsWith('w:') ? (giftKey.slice(2) as WeaponId) : undefined;
+        const card = weapon ? undefined : (giftKey as keyof typeof CARDS);
+        const res = await app.backend.dispatch({ type: 'testGift', card, weapon });
+        const ev = res.events[0];
+        if (ev?.type !== 'gifted') return app.toast('Das ging nicht.', 'warn');
+        const rarity = weapon ? (WEAPONS[weapon].rarity ?? 'common') : (CARDS[card!].rarity ?? 'common');
+        const host = (document.querySelector('.overlay-host') as HTMLElement | null) ?? (document.querySelector('.screen') as HTMLElement | null) ?? document.body;
+        showCardReveal(host, { type: 'sightingClaimed', id: 'test', card: ev.card, weapon: ev.weapon, repaired: ev.repaired, level: ev.level, levelUp: ev.levelUp, rarity, shiny: false }, res.state, '', () => undefined);
+      },
+    },
+    'Bekommen',
+  );
 
   let armed = false;
   let armTimer = 0;
@@ -241,6 +273,7 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
         row(lbl('set-phase', 'Tageszeit'), phaseSelect),
         row(lbl('set-wx', 'Wetter'), weatherSelect),
         row(lbl('set-season', 'Jahreszeit', 'Laub, kahle Bäume, Schnee und später die Bodenbilder je Jahreszeit'), seasonSelect),
+        row(lbl('set-gift', 'Sammelkarte bekommen', 'Zum Ansehen: kommt in den Rucksack und ins Sammelbuch'), h('div', { class: 'gift-row' }, giftSelect, giftBtn)),
       ],
     ],
     [

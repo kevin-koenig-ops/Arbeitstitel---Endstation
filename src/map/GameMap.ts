@@ -79,6 +79,20 @@ export interface CacheView {
   trail?: LatLon[];
 }
 
+/** Eine Sichtung auf der Karte (was drin ist, sieht man erst beim Einsammeln). */
+export interface SightingMapView {
+  id: string;
+  pos: LatLon;
+  kind: 'notebook' | 'cache' | 'medkit' | 'convoy';
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  /** Noch so viele Minuten da. */
+  minLeft: number;
+  /** Nah genug zum Einsammeln. */
+  near: boolean;
+}
+
+export const SIGHTING_ICON: Record<SightingMapView['kind'], string> = { notebook: 'book', cache: 'crate', medkit: 'medicine', convoy: 'convoy' };
+
 export const DEMO = demoWorld as unknown as {
   name: string;
   center: LatLon;
@@ -103,6 +117,7 @@ interface Options {
   onBaseTap?: () => void;
   onCacheTap?: (id: string) => void;
   onPatrolTap?: (id: string) => void;
+  onSightingTap?: (id: string) => void;
 }
 
 const ll = (p: LatLon): [number, number] => [p.lon, p.lat];
@@ -122,6 +137,7 @@ export class GameMap {
   private cacheMarkers = new Map<string, Marker>();
   private patrolMarkers = new Map<string, { marker: Marker; el: HTMLElement; sig: string }>();
   private pendingCaches: CacheView[] | null = null;
+  private sightMarkers = new Map<string, { marker: Marker; el: HTMLElement; sig: string }>();
   private player: Marker | null = null;
   private playerEl: HTMLElement | null = null;
   private figure: { el: HTMLElement; anchorY: number; h: number; px: number } | null = null;
@@ -299,6 +315,47 @@ export class GameMap {
         this.opts.onCacheTap?.(c.id);
       });
       this.cacheMarkers.set(c.id, new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(ll(c.center)).addTo(this.map));
+    }
+  }
+
+  /** Sichtungen: leuchtende Abzeichen, Farbe nach Seltenheit, darunter die Restzeit. */
+  setSightings(list: SightingMapView[]) {
+    if (!this.map) return;
+    const seen = new Set<string>();
+    for (const v of list) {
+      seen.add(v.id);
+      let m = this.sightMarkers.get(v.id);
+      if (!m) {
+        const el = h(
+          'button',
+          { class: 'sighting', type: 'button', 'data-rarity': v.rarity, 'data-kind': v.kind },
+          h('span', { class: 'sighting-glow', 'aria-hidden': 'true' }),
+          h('span', { class: 'sighting-badge' }, svgEl(icon(SIGHTING_ICON[v.kind], 20))),
+          h('small', { class: 'sighting-time' }),
+        );
+        el.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          this.lastMarkerTap = Date.now();
+          this.opts.onSightingTap?.(v.id);
+        });
+        m = { marker: new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(ll(v.pos)).addTo(this.map), el, sig: '' };
+        this.sightMarkers.set(v.id, m);
+        el.classList.add('pop');
+      }
+      const sig = `${v.minLeft}|${v.near}`;
+      if (m.sig !== sig) {
+        m.sig = sig;
+        m.el.dataset.near = v.near ? '1' : '0';
+        m.el.dataset.late = v.minLeft <= 3 ? '1' : '0';
+        const t = m.el.querySelector('.sighting-time');
+        if (t) t.textContent = v.near ? 'Einsammeln!' : `${Math.max(1, v.minLeft)} Min.`;
+        m.el.setAttribute('aria-label', `Sichtung, noch ${v.minLeft} Minuten${v.near ? ', antippen zum Einsammeln' : ''}`);
+      }
+    }
+    for (const [id, m] of this.sightMarkers) {
+      if (seen.has(id)) continue;
+      m.marker.remove();
+      this.sightMarkers.delete(id);
     }
   }
 
@@ -1132,6 +1189,8 @@ export class GameMap {
     this.offPointers?.();
     this.markers.forEach((m) => m.marker.remove());
     this.markers.clear();
+    this.sightMarkers.forEach((m) => m.marker.remove());
+    this.sightMarkers.clear();
     this.map?.remove();
   }
 }

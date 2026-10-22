@@ -692,6 +692,8 @@ export type Action =
   | { type: 'battleResult'; outcome: 'won' | 'lost' | 'fled'; health: number; kills: number; usedMedicine: number; wear?: Partial<Record<WeaponId, number>>; used?: Partial<Record<CardId, number>>; lastStand?: boolean }
   | { type: 'craftCard'; card: CardId }
   | { type: 'claimSighting'; id: string; candidate: number; at: LatLon; accuracyM: number }
+  /** Nur zum Testen: eine Sammelkarte oder Waffe bekommen. */
+  | { type: 'testGift'; card?: CardId; weapon?: WeaponId }
   | { type: 'craft'; weapon: WeaponId }
   | { type: 'heal' }
   /** Ein Teil anziehen (ersetzt, was an diesem Platz war). */
@@ -785,6 +787,7 @@ export type GameEvent =
   | { type: 'fled'; weaponBroke?: WeaponId }
   | { type: 'crafted'; weapon?: WeaponId; card?: CardId }
   | { type: 'sightingClaimed'; id: string; card?: CardId; weapon?: WeaponId; repaired?: boolean; rarity: CardRarity; shiny: boolean; level?: number; levelUp?: boolean; pity?: boolean }
+  | { type: 'gifted'; card?: CardId; weapon?: WeaponId; repaired?: boolean; level?: number; levelUp?: boolean }
   | { type: 'healed'; amount: number }
   | { type: 'equipped'; slot: GearSlot; gear: GearId | null }
   | { type: 'dismantleQueued'; kram: KramId; endsAt: number }
