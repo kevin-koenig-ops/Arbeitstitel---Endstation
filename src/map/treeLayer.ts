@@ -114,8 +114,14 @@ export class TreeLayer implements CustomLayerInterface {
   /** Fertige Modelle, sobald geladen (bis dahin einfache Formen, ohne Kleinkram). */
   private models: NatureModels | null = null;
 
-  /** minZoom: darunter sind die Bäume zu klein, dann wird nichts gezeichnet. */
-  constructor(private minZoom = 0) {
+  /**
+   * minZoom: darunter sind die Bäume zu klein, dann wird nichts gezeichnet.
+   * useModels: fertige Natur-Modelle nutzen (Einstellung „Neue Natur-Grafik“).
+   */
+  constructor(
+    private minZoom = 0,
+    private useModels = true,
+  ) {
     this.scene.add(new THREE.HemisphereLight('#fff6e2', '#5a5a3e', 1.35));
     const sun = new THREE.DirectionalLight('#fff0d4', 1.6);
     // Sonne von Süden oben (x = Osten, y = oben, z = Süden)
@@ -129,13 +135,29 @@ export class TreeLayer implements CustomLayerInterface {
     this.renderer = new THREE.WebGLRenderer({ canvas: map.getCanvas(), context: gl, antialias: true });
     this.renderer.autoClear = false;
     if (this.pending) this.setTrees(this.pending.trees, this.pending.center);
+    if (this.useModels) this.loadModels();
+  }
+
+  private loading = false;
+  private loadModels() {
+    if (this.models || this.loading) return;
+    this.loading = true;
     loadNatureModels()
       .then((models) => {
         if (!this.map) return;
         this.models = models;
         if (this.pending) this.setTrees(this.pending.trees, this.pending.center);
       })
-      .catch((err) => console.warn('[Natur-Modelle]', err));
+      .catch((err) => console.warn('[Natur-Modelle]', err))
+      .finally(() => (this.loading = false));
+  }
+
+  /** Einstellung „Neue Natur-Grafik“ umgeschaltet. */
+  setUseModels(on: boolean) {
+    if (on === this.useModels) return;
+    this.useModels = on;
+    if (on && !this.models) return this.loadModels();
+    if (this.pending) this.setTrees(this.pending.trees, this.pending.center);
   }
 
   /** Alle Bäume neu setzen (nach jedem Neuaufbau der Details). */
@@ -172,7 +194,7 @@ export class TreeLayer implements CustomLayerInterface {
       const list = trees.filter((t) => t.kind === kind);
       if (!list.length) continue;
       const names = MODELS[kind];
-      if (this.models && names) {
+      if (this.models && this.useModels && names) {
         // Fertige Modelle: je Form eigene Instanzen
         names.forEach((name, v) => {
           const parts = this.models!.get(name);

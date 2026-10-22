@@ -3,6 +3,10 @@
 export const GAME_TITLE = 'Nachhall'; // Platzhalter-Titel (Arbeitstitel)
 export const GAME_VERSION = '0.1.0';
 
+declare const __BUILD_STAMP__: string;
+/** Wann gebaut (Datum, Uhrzeit, Git-Stand), z. B. „22.10., 09:20 · 135467a“. */
+export const BUILD_STAMP: string = typeof __BUILD_STAMP__ === 'string' ? __BUILD_STAMP__ : '';
+
 /** Bestimmt, wo in der Welt welche Fundstellen liegen. Ändern = neue Welt. */
 export const WORLD_SEED = 'endstation-welt-1';
 

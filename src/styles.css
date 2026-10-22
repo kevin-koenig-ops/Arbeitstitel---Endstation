@@ -725,7 +725,10 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .base-res { display: inline-flex; gap: 4px; flex-wrap: wrap; }
 .base-res .cost-chip { background: rgba(18, 17, 15, 0.85); }
 .base-away { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 10px; background: rgba(27, 26, 23, 0.94); border: 1px solid var(--line); font-size: 14px; color: var(--dust); }
-.base-cam { position: absolute; right: calc(var(--gutter-r) + 58px); top: calc(var(--safe-t) + 14px); display: flex; gap: 6px; }
+.base-cam { position: absolute; right: calc(var(--gutter-r) + 150px); top: calc(var(--safe-t) + 14px); display: flex; gap: 6px; }
+/* Zurück zur Karte: beschrifteter Knopf statt nur X */
+.base-exit { flex: none; display: inline-flex; align-items: center; gap: 7px; height: 44px; padding: 0 16px 0 13px; border-radius: 22px; border: 0; background: rgba(18, 17, 15, 0.86); color: var(--bone); font: 700 15px var(--font-ui); letter-spacing: 0.02em; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1); cursor: pointer; }
+.base-exit:hover { background: var(--steel-2); }
 .base-view[data-build="on"] .base-head { right: calc(var(--panel-w) + 52px); }
 /* Baumodus: Seitenleiste rechts */
 .base-view { --panel-w: min(320px, 40vw); }
@@ -754,7 +757,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .base-view[data-build="on"] .base-ctx { right: calc(var(--panel-w) + 12px); }
 .base-view[data-build="off"][data-control="joystick"] .base-ctx { left: 170px; right: 150px; bottom: calc(var(--safe-b) + 14px); }
 .base-view[data-build="on"] .base-cam { right: calc(var(--panel-w) + 10px); top: calc(var(--safe-t) + 10px); flex-direction: column; }
-.base-view[data-build="on"] .base-head .base-title-row > .iconbtn { display: none; }
+.base-view[data-build="on"] .base-head .base-title-row > .iconbtn, .base-view[data-build="on"] .base-exit { display: none; }
 .base-view[data-build="on"] .build-toggle { display: none; }
 .build-toggle { position: absolute; right: calc(var(--gutter-r) + 4px); bottom: calc(var(--safe-b) + 14px); display: inline-flex; align-items: center; gap: 8px; height: 52px; padding: 0 20px 0 16px; border-radius: 26px; border: 0; background: var(--amber); color: var(--ink); font: 700 17px var(--font-ui); text-transform: uppercase; letter-spacing: 0.06em; box-shadow: 0 0 0 4px rgba(18, 17, 15, 0.85), 0 0 20px var(--amber-glow); cursor: pointer; }
 .base-view[data-control="joystick"] .build-toggle { bottom: auto; top: calc(var(--safe-t) + 62px); right: calc(var(--gutter-r) + 4px); height: 44px; font-size: 15px; padding: 0 16px 0 12px; }
@@ -1040,7 +1043,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .ws-empty { margin: 0; font-size: 13px; line-height: 1.4; color: var(--dust); }
 .base-view[data-workshop="on"] .build-toggle, .base-view[data-workshop="on"] .use-btn, .base-view[data-workshop="on"] .base-ctx { display: none; }
 .base-view[data-workshop="on"] .base-head { right: calc(min(380px, 48vw) + 52px); }
-.base-view[data-workshop="on"] .base-head .base-title-row > .iconbtn { display: none; }
+.base-view[data-workshop="on"] .base-head .base-title-row > .iconbtn, .base-view[data-workshop="on"] .base-exit { display: none; }
 .base-view[data-workshop="on"] .base-cam { right: calc(min(380px, 48vw) + 10px); top: calc(var(--safe-t) + 10px); flex-direction: column; }
 
 /* --- Rucksack, Lager, Fundbuch (v8) --- */

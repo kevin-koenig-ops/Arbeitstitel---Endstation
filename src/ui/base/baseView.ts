@@ -160,7 +160,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   const head = h(
     'header',
     { class: 'base-head' },
-    h('div', { class: 'base-title-row' }, titleEl, h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Schließen', onclick: () => close() }, svgEl(icon('close')))),
+    h('div', { class: 'base-title-row' }, titleEl, h('button', { class: 'base-exit', type: 'button', onclick: () => close() }, svgEl(icon('map', 18)), h('span', null, 'Zur Karte'))),
     h('div', { class: 'base-info' }, comfortEl, resEl, workChip, harvestChip),
     packCard,
     away,

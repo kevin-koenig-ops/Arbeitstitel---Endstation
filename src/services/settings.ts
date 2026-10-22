@@ -26,13 +26,15 @@ export interface Settings {
   language: LangCode;
   /** Wasser bewegt sich (Wellen, Glitzern). Aus spart etwas Akku. */
   waterMotion: boolean;
+  /** Fertige Natur-Modelle auf der Karte (Steine, Farn, Gras, Pilze). Aus = alte einfache Formen. */
+  natureModels: boolean;
   /** Letzter bekannter Standort, nur auf diesem Gerät gespeichert. */
   lastPos?: LatLon;
 }
 
 const KEY = 'endstation.settings';
 
-const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', control: 'tap', lootGames: 'on', fullscreen: true, language: 'de', waterMotion: true } as const;
+const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', control: 'tap', lootGames: 'on', fullscreen: true, language: 'de', waterMotion: true, natureModels: true } as const;
 const DEFAULTS: Settings = IS_PREVIEW ? { ...COMMON, map: 'demo', location: 'sim' } : { ...COMMON, map: 'real', location: 'gps' };
 
 export class SettingsStore {
