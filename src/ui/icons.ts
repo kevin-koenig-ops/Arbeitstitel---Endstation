@@ -130,6 +130,17 @@ const P: Record<string, string> = {
   stew: '<path d="M4 11h16v2.5a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M2.5 11h19M9 7.5c0-1.5 1.5-1.5 1.5-3M13.5 7.5c0-1.5 1.5-1.5 1.5-3"/>',
   star: '<path d="M12 3l2.6 5.5 6 .7-4.4 4.1 1.2 5.9L12 16.3 6.6 19.2l1.2-5.9-4.4-4.1 6-.7z"/>',
   flag: '<path d="M5 21V4M5 4.5h11l-2 3.5 2 3.5H5"/>',
+  // Erinnerungsstücke (Bildchen auf dem Polaroid im Fundbeleg)
+  lake: '<path d="M3.5 13.5h17l-2.8 3.8H6.3z"/><circle cx="8" cy="10.6" r="1.5"/><circle cx="12" cy="10.1" r="1.5"/><circle cx="16" cy="10.6" r="1.5"/><path d="M1.8 11.2l4.2 3.4M22.2 11.2L18 14.6"/><path d="M2.5 20.5c1.6 1 3.2 1 4.8 0s3.2-1 4.8 0 3.2 1 4.8 0 3.2-1 4.8 0"/>',
+  cassette: '<rect x="3" y="6" width="18" height="12.5" rx="1.5"/><circle cx="8.5" cy="11.5" r="1.8"/><circle cx="15.5" cy="11.5" r="1.8"/><path d="M8.5 9.7h7M7 18.5l1.5-3h7l1.5 3"/>',
+  key: '<circle cx="7" cy="12" r="3.8"/><path d="M10.8 12H21M17.5 12v3.2M20.5 12v2.6"/>',
+  note: '<path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3M9 10h6M9 13.5h6M9 17h4"/>',
+  letter: '<rect x="3" y="6" width="18" height="12.5" rx="1"/><path d="M3 7l9 6.5L21 7"/>',
+  dogtag: '<rect x="7" y="8" width="10" height="13.5" rx="5"/><circle cx="12" cy="11" r="1"/><path d="M12 2.5V10M9.5 15.5h5M9.5 18h5"/>',
+  ticket: '<path d="M3 7h18v3a2 2 0 0 0 0 4v3H3v-3a2 2 0 0 0 0-4z"/><path d="M14.5 7v10" stroke-dasharray="1.6 2"/>',
+  paper: '<rect x="3.5" y="5" width="17" height="14" rx="1"/><path d="M6.5 8.5h11M6.5 12h5M6.5 15.5h5M13.5 12h4v3.5h-4z"/>',
+  book: '<path d="M5 18V6.5a2 2 0 0 1 2-2h11V16H7a2 2 0 0 0-2 2 2 2 0 0 0 2 2h11"/><path d="M9 8.5h6"/>',
+  warning: '<path d="M12 3.5l9.5 17h-19z"/><path d="M12 10v5M12 17.6v.3"/>',
 };
 
 export function icon(name: string, size = 22): string {

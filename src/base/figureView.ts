@@ -47,6 +47,96 @@ export function renderPortrait(look: Look, size = 128): string {
   return url;
 }
 
+// --- Sockel ---------------------------------------------------------------------------
+
+/** Kleiner Zufall mit festem Startwert, damit der Sockel immer gleich aussieht. */
+function seeded(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Rostiges Blech als kleine Textur: dunkles Metall mit Rostflecken und Kratzern. */
+function rustTexture(): THREE.Texture {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d')!;
+  const rnd = seeded(7);
+  g.fillStyle = '#4b4846';
+  g.fillRect(0, 0, 256, 256);
+  // Rostflecken (weich, mehrere Schichten)
+  for (let i = 0; i < 70; i++) {
+    const x = rnd() * 256;
+    const y = rnd() * 256;
+    const r = 6 + rnd() * 38;
+    const col = ['138,74,36', '166,90,42', '107,58,30', '186,112,58'][Math.floor(rnd() * 4)];
+    const grad = g.createRadialGradient(x, y, 0, x, y, r);
+    grad.addColorStop(0, `rgba(${col},${0.35 + rnd() * 0.4})`);
+    grad.addColorStop(1, `rgba(${col},0)`);
+    g.fillStyle = grad;
+    g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  // Körnung und helle Kratzer
+  for (let i = 0; i < 2600; i++) {
+    g.fillStyle = rnd() < 0.5 ? 'rgba(0,0,0,0.18)' : 'rgba(255,220,180,0.08)';
+    g.fillRect(rnd() * 256, rnd() * 256, 1 + rnd() * 2, 1 + rnd() * 2);
+  }
+  g.strokeStyle = 'rgba(220,200,170,0.18)';
+  for (let i = 0; i < 26; i++) {
+    const x = rnd() * 256;
+    const y = rnd() * 256;
+    g.beginPath();
+    g.moveTo(x, y);
+    g.lineTo(x + (rnd() - 0.5) * 60, y + (rnd() - 0.5) * 16);
+    g.stroke();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+/** Sockel: runde, rostige Blechscheibe mit Rand, auf ein paar Steinen. Oberkante bei y = 0. */
+function pedestal(): THREE.Group {
+  const g = new THREE.Group();
+  const tex = rustTexture();
+  const rust = new THREE.MeshStandardMaterial({ map: tex, color: '#d9cfc4', roughness: 0.78, metalness: 0.35 });
+  const dark = new THREE.MeshStandardMaterial({ map: tex, color: '#8f8278', roughness: 0.85, metalness: 0.3 });
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.82, 0.12, 48), rust);
+  top.position.y = -0.06;
+  top.receiveShadow = true;
+  g.add(top);
+  // Aufgebogener Rand oben
+  const lip = new THREE.Mesh(new THREE.TorusGeometry(0.78, 0.03, 8, 64), rust);
+  lip.rotation.x = Math.PI / 2;
+  lip.position.y = 0.004;
+  g.add(lip);
+  // Breiterer, dunklerer Fuß
+  const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.86, 0.9, 0.1, 48), dark);
+  foot.position.y = -0.17;
+  foot.receiveShadow = true;
+  g.add(foot);
+  // Steine rundherum
+  const rnd = seeded(3);
+  const stone = new THREE.MeshStandardMaterial({ color: '#6c7077', roughness: 0.95, flatShading: true });
+  const geo = new THREE.DodecahedronGeometry(0.15, 0);
+  for (let i = 0; i < 18; i++) {
+    const a = (i / 18) * Math.PI * 2 + rnd() * 0.2;
+    const r = 0.8 + rnd() * 0.08;
+    const m = new THREE.Mesh(geo, stone);
+    m.position.set(Math.cos(a) * r, -0.29 + rnd() * 0.04, Math.sin(a) * r);
+    m.scale.set(1.1 + rnd() * 0.6, 0.55 + rnd() * 0.3, 0.9 + rnd() * 0.5);
+    m.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3);
+    g.add(m);
+  }
+  return g;
+}
+
 // --- Live-Ansicht ---------------------------------------------------------------------
 
 export interface FigureViewOpts {
@@ -93,24 +183,21 @@ export class FigureView {
     sc.left = sc.bottom = -1.2;
     sc.right = sc.top = 1.2;
     this.scene.add(sun);
-    const rim = new THREE.DirectionalLight('#a9bce6', stage ? 1.6 : 0.8);
+    // Auf dem Sockel: warmes Gegenlicht von hinten (wie ein Feuer hinter der Figur), sonst kühles Randlicht
+    const rim = new THREE.DirectionalLight(stage ? '#ff9a4a' : '#a9bce6', stage ? 2.4 : 0.8);
     rim.position.set(-3, 2, -3);
     this.scene.add(rim);
+    if (stage) {
+      const rim2 = new THREE.DirectionalLight('#ffb45e', 1.6);
+      rim2.position.set(3, 1.6, -2.6);
+      this.scene.add(rim2);
+    }
     this.scene.add(this.holder);
 
     if (stage) {
       this.camera = new THREE.PerspectiveCamera(28, opts.width / opts.height, 0.1, 30);
-      this.camera.position.set(0, 1.3, 4.6);
-      this.camera.lookAt(0, 0.92, 0);
-      // Sockel: ein Stück Bahnsteig mit gelber Kante
-      const slab = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.76, 0.12, 10), new THREE.MeshStandardMaterial({ color: '#8a8476', roughness: 0.95, flatShading: true }));
-      slab.position.y = -0.06;
-      slab.receiveShadow = true;
-      this.scene.add(slab);
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.66, 0.025, 4, 30), new THREE.MeshStandardMaterial({ color: '#c9a23a', roughness: 0.7, flatShading: true }));
-      ring.rotation.x = Math.PI / 2;
-      ring.position.y = 0.002;
-      this.scene.add(ring);
+      this.frameStage();
+      this.scene.add(pedestal());
       this.bindDrag();
       this.targetYaw = this.yaw = 0.35;
     } else {
@@ -125,9 +212,23 @@ export class FigureView {
   setSize(w: number, h: number) {
     if (w < 10 || h < 10) return;
     this.renderer.setSize(w, h);
+    this.opts.width = w;
+    this.opts.height = h;
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    if (this.opts.mode === 'stage') this.frameStage();
     this.renderOnce();
+  }
+
+  /** Kamera so weit zurück, dass Figur und Sockel samt Steinen ganz ins Bild passen (auch schmal und hoch). */
+  private frameStage() {
+    const tanV = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
+    const tanH = tanV * this.camera.aspect;
+    // Sichtbarer Bereich: unten die Steine (y = -0,45), oben über dem Kopf (y = 2,0); Breite der Sockel samt Steinen
+    const midY = 0.76;
+    const dist = Math.max(1.24 / tanV, 1.08 / tanH);
+    this.camera.position.set(0, midY + dist * 0.095, dist);
+    this.camera.lookAt(0, midY, 0);
   }
 
   setLook(look: Look) {
