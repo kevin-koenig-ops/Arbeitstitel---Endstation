@@ -7,6 +7,7 @@
 
 import { rngFrom, type Rng } from '../core/rng';
 import type { LatLon } from '../core/types';
+import type { FacadeKind, HouseSpec } from './houseMesh';
 
 type Pt = [number, number];
 type Ring = Pt[];
@@ -58,6 +59,8 @@ export type TreeKind = 'leaf' | 'pine' | 'birch' | 'dead' | 'bush' | 'rock';
 export interface DecorOptions {
   /** Bäume auch als Blöcke in die Extrusions-Ebene (falls die 3D-Ebene fehlt) */
   treeParts?: boolean;
+  /** Häuser als 3D-Häuser mit Fassaden (map/houseMesh.ts) statt als einfarbige Blöcke */
+  houseMeshes?: boolean;
   /** Monat 1–12 für Herbstlaub (aus der Oberfläche, nicht aus der Spiellogik) */
   month?: number;
 }
@@ -70,6 +73,8 @@ export interface DecorPart {
 export interface DecorResult {
   parts: DecorPart[];
   trees: TreeSpec[];
+  /** Nur mit houseMeshes: die Häuser für die 3D-Ebene (Meter um die Mitte). */
+  houses: HouseSpec[];
   counts: { buildings: number; trees: number; cars: number; street: number; gardens: number; forest: number };
 }
 
@@ -78,6 +83,30 @@ const WALLS = ['#b9ae98', '#c6baa1', '#a99e88', '#9c907b', '#a0634b', '#b7a58a',
 const SOOT = ['#4a4440', '#56504a', '#4f4943'];
 const ROOFS = ['#a24f38', '#8e4632', '#5e5b58', '#7a5a42', '#b0603f', '#6a6660'];
 const FLAT_ROOF = ['#7d7a72', '#8a867c', '#73706a'];
+/** 3D-Häuser: Farbtöne über den Fassadenbildern und Dachziegeln (1 = wie gemalt). */
+const FACADE_TINTS: Record<FacadeKind, [number, number, number][]> = {
+  putz: [
+    [1, 1, 1],
+    [1, 0.95, 0.88],
+    [0.92, 0.94, 0.9],
+    [0.96, 0.93, 0.9],
+  ],
+  klinker: [
+    [1, 1, 1],
+    [0.88, 0.86, 0.84],
+  ],
+  fachwerk: [
+    [1, 1, 1],
+    [0.95, 0.93, 0.9],
+  ],
+};
+const ROOF_TINTS: [number, number, number][] = [
+  [1, 1, 1],
+  [1, 1, 1],
+  [0.8, 0.7, 0.64],
+  [0.52, 0.52, 0.55],
+];
+const SOOT_TINT: [number, number, number] = [0.42, 0.38, 0.35];
 // Überwiegend grün, ein paar kränkliche und herbstliche Kronen
 const LEAF = ['#5f7a3a', '#6b8540', '#58703a', '#7a8f45', '#64803c', '#708a42', '#8a8a3e', '#a8873a'];
 const CONIFER = ['#3f5a35', '#4a6638', '#365232'];
@@ -111,6 +140,7 @@ const SOIL = '#5a4632';
 const LOG = ['#6a5440', '#5e4a38', '#74604a'];
 
 const pick = <T>(r: Rng, a: readonly T[]) => a[Math.floor(r() * a.length)];
+const rgb = (hex: string): [number, number, number] => [parseInt(hex.slice(1, 3), 16) / 255, parseInt(hex.slice(3, 5), 16) / 255, parseInt(hex.slice(5, 7), 16) / 255];
 
 // --- lokale Projektion in Metern ------------------------------------------------------
 class Proj {
@@ -261,6 +291,8 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
   // Gebäude ----------------------------------------------------------------------
   const seenB = new Set<string>();
   const bGrid = new Grid<Ring>(40);
+  const houseSpecs: HouseSpec[] = [];
+  const snowRoofs = opts.month !== undefined && (opts.month === 12 || opts.month <= 2);
   /** Wohnhäuser (für Gärten): Mitte, ungefährer Radius, Schlüssel für den Zufall. */
   const houses: { c: Pt; rad: number; key: string }[] = [];
   let buildings = 0;
@@ -288,6 +320,25 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
     const wall = state === 'burnt' ? pick(r, SOOT) : pick(r, WALLS);
     const simple = ring.length <= 9 && inRing(c, ring);
     if (minH === 0 && simple && area >= 30 && area <= 280 && state !== 'ruin') houses.push({ c, rad: Math.sqrt(area / Math.PI), key });
+    if (opts.houseMeshes) {
+      const hs = houseSpec(ring, key, state, h0, minH * k, wallTop, wall, simple, area);
+      if (snowRoofs) {
+        hs.snow = true;
+        hs.flatColor = [0.86, 0.88, 0.9];
+      }
+      houseSpecs.push(hs);
+      // Schutt um Ruinen bleibt als Klötze
+      if (state === 'ruin') {
+        const piles = 2 + Math.floor(r() * 4);
+        for (let i = 0; i < piles; i++) {
+          const v = ring[Math.floor(r() * (ring.length - 1))];
+          const px = v[0] + (v[0] - c[0]) * (0.12 + r() * 0.2) + (r() - 0.5) * 2;
+          const py = v[1] + (v[1] - c[1]) * (0.12 + r() * 0.2) + (r() - 0.5) * 2;
+          add(ngon(px, py, 0.7 + r() * 1.1, 5, r() * 3), 0, 0.3 + r() * 0.7, pick(r, RUBBLE));
+        }
+      }
+      continue;
+    }
     add(ring, minH * k, wallTop, wall);
     // Sockel: dunkler Streifen unten, das Haus steht damit sichtbar auf dem Boden
     if (minH === 0 && simple && area < 450) add(scaleRing(ring, c, 1.04), 0, 0.55, PLINTH);
@@ -774,5 +825,34 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
     }
   }
 
-  return { parts, trees: specs, counts: { buildings, trees: trees.length, cars, street, gardens, forest } };
+  return { parts, trees: specs, houses: houseSpecs, counts: { buildings, trees: trees.length, cars, street, gardens, forest } };
+}
+
+/** Ein Haus für die 3D-Ebene: Fassade, Stockwerke, Dach. Zufall je Haus, immer gleich. */
+function houseSpec(ring: Ring, key: string, state: 'intact' | 'burnt' | 'ruin', h0: number, base: number, wallTop: number, wall: string, simple: boolean, area: number): HouseSpec {
+  const r = rngFrom('fassade', key);
+  // Schuppen und Garagen bleiben schlicht (ohne Fenster)
+  const small = area < 30;
+  const f = r();
+  const facade: FacadeKind | null = small ? null : f < 0.5 ? 'putz' : f < 0.78 ? 'klinker' : h0 > 12 ? 'putz' : 'fachwerk';
+  // Fenster stockwerksgenau: die Wand endet zwischen zwei Fensterreihen
+  let top = wallTop;
+  if (facade && base === 0 && state !== 'ruin') top = 0.5 + Math.max(1, Math.round((wallTop - 0.5) / 2.9)) * 2.9;
+  const tint = facade ? (state === 'burnt' ? SOOT_TINT : pick(r, FACADE_TINTS[facade])) : rgb(wall);
+  const roof = state !== 'intact' ? 'none' : base > 0 || !simple || area > 450 ? 'flat' : small ? (r() < 0.5 ? 'flat' : 'pitched') : 'pitched';
+  return {
+    ring,
+    base,
+    top: Math.max(base + 0.5, top),
+    facade,
+    tint,
+    state,
+    roof,
+    roofTint: pick(r, ROOF_TINTS),
+    flatColor: rgb(pick(r, FLAT_ROOF)),
+    slope: 0.7 + r() * 0.3,
+    chimney: r() < 0.6,
+    plinth: state !== 'ruin',
+    seed: r(),
+  };
 }

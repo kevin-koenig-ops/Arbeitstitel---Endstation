@@ -750,8 +750,10 @@ export class GameMap {
       const res = generateDecor(this.collectDecorInput(center, DECOR_RADIUS_M + 250), center, DECOR_RADIUS_M, {
         month: seasonMonth(this.opts.season),
         treeParts: !this.trees,
+        houseMeshes: !!this.trees,
       });
       this.trees?.setTrees(res.trees, center);
+      this.trees?.setHouses(res.houses, center);
       (this.map.getSource('decor') as GeoJSONSource | undefined)?.setData({
         type: 'FeatureCollection',
         features: res.parts.map((p) => ({

@@ -1,8 +1,9 @@
-// Bäume, Büsche und Steine als echte 3D-Modelle (three.js) direkt auf der Karte.
+// Bäume, Büsche, Steine und Häuser als echte 3D-Modelle (three.js) direkt auf der Karte.
 //
 // Eine eigene MapLibre-Ebene: Alle Bäume einer Art sind ein einziges „Instanced Mesh“,
-// das bleibt auch mit Tausenden Bäumen flüssig. Häuser (Extrusionen) und Bäume teilen
-// sich die Tiefe, verdecken sich also richtig. Die Daten kommen aus map/decor.ts.
+// das bleibt auch mit Tausenden Bäumen flüssig. Die Häuser sind je Bild (Fassade, Dach)
+// ein einziges Mesh. Alles teilt sich die Tiefe mit den Extrusionen der Karte (Autos,
+// Schutt), verdeckt sich also richtig. Die Daten kommen aus map/decor.ts und map/houseMesh.ts.
 
 import maplibregl from 'maplibre-gl';
 import type { CustomLayerInterface, CustomRenderMethodInput, Map as MLMap } from 'maplibre-gl';
@@ -10,6 +11,18 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { LatLon } from '../core/types';
 import type { TreeKind, TreeSpec } from './decor';
+import { buildHouses, type HouseSpec, type MatKey } from './houseMesh';
+import texPutz from '../assets/textures/haus-putz.webp';
+import texKlinker from '../assets/textures/haus-klinker.webp';
+import texFachwerk from '../assets/textures/haus-fachwerk.webp';
+import texDach from '../assets/textures/haus-dach-ziegel.webp';
+
+const HOUSE_TEX: Partial<Record<MatKey, string>> = { putz: texPutz, klinker: texKlinker, fachwerk: texFachwerk, roof: texDach, roofSnow: texDach };
+
+/** sRGB (0–1, auch etwas darüber) in lineare Farbe, wie three.js rechnet. */
+function toLinear(c: number) {
+  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+}
 
 type Part = { geo: THREE.BufferGeometry; color: string | null };
 
@@ -87,6 +100,10 @@ export class TreeLayer implements CustomLayerInterface {
   private origin: maplibregl.MercatorCoordinate | null = null;
   private meterScale = 1;
   private pending: { trees: TreeSpec[]; center: LatLon } | null = null;
+  private pendingHouses: { houses: HouseSpec[]; center: LatLon } | null = null;
+  private houses = new THREE.Group();
+  private houseMats = new Map<MatKey | 'shadow', THREE.Material>();
+  private textures: THREE.Texture[] = [];
   private geos = new Map<TreeKind, Part[]>();
   private shadowGeo = new THREE.CircleGeometry(1, 14).rotateX(-Math.PI / 2);
   private shadowMat = new THREE.MeshBasicMaterial({ color: '#2a2a1c', transparent: true, opacity: 0.22, depthWrite: false });
@@ -100,6 +117,7 @@ export class TreeLayer implements CustomLayerInterface {
     sun.position.set(-3, 7, 5);
     this.scene.add(sun);
     this.scene.add(this.group);
+    this.scene.add(this.houses);
   }
 
   onAdd(map: MLMap, gl: WebGLRenderingContext | WebGL2RenderingContext) {
@@ -107,6 +125,64 @@ export class TreeLayer implements CustomLayerInterface {
     this.renderer = new THREE.WebGLRenderer({ canvas: map.getCanvas(), context: gl, antialias: true });
     this.renderer.autoClear = false;
     if (this.pending) this.setTrees(this.pending.trees, this.pending.center);
+    if (this.pendingHouses) this.setHouses(this.pendingHouses.houses, this.pendingHouses.center);
+  }
+
+  /** Alle Häuser neu setzen (nach jedem Neuaufbau der Details, gleiche Mitte wie die Bäume). */
+  setHouses(houses: HouseSpec[], center: LatLon) {
+    this.pendingHouses = { houses, center };
+    if (!this.map) return;
+    for (const child of [...this.houses.children]) {
+      this.houses.remove(child);
+      (child as THREE.Mesh).geometry.dispose();
+    }
+    this.setOrigin(center);
+    const { meshes, shadow } = buildHouses(houses);
+    for (const [key, m] of Object.entries(meshes) as [MatKey, (typeof meshes)[MatKey]][]) {
+      if (!m.pos.length) continue;
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(m.pos, 3));
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(m.uv, 2));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(m.col.map(toLinear), 3));
+      this.houses.add(new THREE.Mesh(geo, this.houseMaterial(key)));
+    }
+    if (shadow.length) {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(shadow, 3));
+      const mesh = new THREE.Mesh(geo, this.houseMaterial('shadow'));
+      mesh.renderOrder = -1;
+      this.houses.add(mesh);
+    }
+    this.map.triggerRepaint();
+  }
+
+  private houseMaterial(key: MatKey | 'shadow') {
+    let mat = this.houseMats.get(key);
+    if (mat) return mat;
+    if (key === 'shadow') {
+      // Weicher Bodenschatten der Häuser
+      mat = new THREE.MeshBasicMaterial({ color: '#2a2a1c', transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide });
+    } else {
+      const url = HOUSE_TEX[key];
+      let map: THREE.Texture | null = null;
+      if (url) {
+        map = new THREE.TextureLoader().load(url, () => this.map?.triggerRepaint());
+        map.wrapS = map.wrapT = THREE.RepeatWrapping;
+        map.colorSpace = THREE.SRGBColorSpace;
+        map.anisotropy = Math.min(8, this.renderer?.capabilities.getMaxAnisotropy() ?? 1);
+        this.textures.push(map);
+      }
+      mat = new THREE.MeshLambertMaterial({ map, vertexColors: true, flatShading: true, side: THREE.DoubleSide });
+      // Schnee auf dem Dach: die Ziegel schimmern nur noch durch
+      if (key === 'roofSnow') (mat as THREE.MeshLambertMaterial).emissive.set('#a2a4a5');
+    }
+    this.houseMats.set(key, mat);
+    return mat;
+  }
+
+  private setOrigin(center: LatLon) {
+    this.origin = maplibregl.MercatorCoordinate.fromLngLat([center.lon, center.lat], 0);
+    this.meterScale = this.origin.meterInMercatorCoordinateUnits();
   }
 
   /** Alle Bäume neu setzen (nach jedem Neuaufbau der Details). */
@@ -114,8 +190,7 @@ export class TreeLayer implements CustomLayerInterface {
     this.pending = { trees, center };
     if (!this.map) return;
     this.clear();
-    this.origin = maplibregl.MercatorCoordinate.fromLngLat([center.lon, center.lat], 0);
-    this.meterScale = this.origin.meterInMercatorCoordinateUnits();
+    this.setOrigin(center);
     const kx = 111320 * Math.cos((center.lat * Math.PI) / 180);
     const ky = 111320;
     const m = new THREE.Matrix4();
@@ -174,7 +249,7 @@ export class TreeLayer implements CustomLayerInterface {
   }
 
   render(_gl: WebGLRenderingContext | WebGL2RenderingContext, args: CustomRenderMethodInput) {
-    if (!this.renderer || !this.origin || !this.map || !this.group.children.length) return;
+    if (!this.renderer || !this.origin || !this.map || (!this.group.children.length && !this.houses.children.length)) return;
     if (this.map.getZoom() < this.minZoom) return;
     const raw = (args as unknown as { defaultProjectionData?: { mainMatrix: ArrayLike<number> } }).defaultProjectionData?.mainMatrix ?? args.modelViewProjectionMatrix;
     const s = this.meterScale;
@@ -191,6 +266,9 @@ export class TreeLayer implements CustomLayerInterface {
     this.clear();
     for (const parts of this.geos.values()) for (const p of parts) p.geo.dispose();
     for (const mat of this.mats.values()) mat.dispose();
+    for (const child of this.houses.children) (child as THREE.Mesh).geometry.dispose();
+    for (const mat of this.houseMats.values()) mat.dispose();
+    for (const t of this.textures) t.dispose();
     this.shadowGeo.dispose();
     this.shadowMat.dispose();
     this.renderer = null;
