@@ -10,7 +10,7 @@ import { RARITY_NAMES, type CardRarity } from '../../core/content';
 import { bearingDeg, distanceM, formatDistance } from '../../core/geo';
 import { SIGHT, SIGHTING_NAMES, sightingsNear, type Sighting } from '../../core/sightings';
 import type { LatLon } from '../../core/types';
-import type { GameMap, SightingMapView } from '../../map/GameMap';
+import { SIGHTING_ICON, type GameMap, type SightingMapView } from '../../map/GameMap';
 import type { WalkNet } from '../../map/walkNet';
 import type { Fix } from '../../services/location';
 import type { App } from '../app';
@@ -21,6 +21,25 @@ import { showCardReveal } from './cardReveal';
 import { compassWord } from './spotSheet';
 
 const RANK: Record<CardRarity, number> = { common: 0, rare: 1, epic: 2, legendary: 3 };
+/** Funksprüche höchstens so oft (ms), damit nichts nervt. */
+const RADIO_GAP = 150_000;
+
+/** Ein Hinweis am Horizont (Rauch, Licht, Funksignal …), für die Radar-Liste. */
+export interface RadarHint {
+  id: string;
+  pos: LatLon;
+  icon: string;
+  label: string;
+}
+/** Etwas, das die Karte kurz mit einem Pfeil zeigen soll. */
+export interface RadarFocus {
+  id: string;
+  pos: LatLon;
+  icon: string;
+  label: string;
+  rarity?: string;
+  onTap?: () => void;
+}
 /** Nur Stellen so nah am Wegenetz prüfen (das reicht etwa 700 m weit). */
 const CHECK_M = 620;
 
@@ -36,6 +55,12 @@ export class SightingControl {
   private first = true;
   private sensitive: { at: number; fn: (p: LatLon, grid?: boolean) => boolean } | null = null;
   private busy = false;
+  /** Liste hinter dem Radar-Knopf. */
+  private pop: HTMLElement;
+  /** Funkspruch-Karte oben (verschwindet nach ein paar Sekunden). */
+  private radioEl: HTMLElement;
+  private radioTimer = 0;
+  private lastRadio = -Infinity;
 
   constructor(
     private o: {
@@ -49,9 +74,59 @@ export class SightingControl {
       onChanged: () => void;
       /** Gerade ein Fenster offen (Kampf, Zuhause …)? Dann keine Meldungen. */
       quiet: () => boolean;
+      /** Hinweise am Horizont (unentdeckte besondere Orte), für die Liste. */
+      hints: () => RadarHint[];
+      /** Kurz einen Pfeil zu etwas zeigen. */
+      focus: (t: RadarFocus) => void;
     },
   ) {
-    this.chip = h('button', { class: 'env-chip radar-chip', type: 'button', hidden: true, onclick: () => this.explain() });
+    this.chip = h('button', { class: 'env-chip radar-chip', type: 'button', hidden: true, 'aria-haspopup': 'true', onclick: (e: Event) => (e.stopPropagation(), this.togglePop()) });
+    this.pop = h('div', { class: 'radar-pop', role: 'dialog', 'aria-label': 'Funk-Radar', hidden: true });
+    this.radioEl = h('button', { class: 'radio-msg', type: 'button', hidden: true });
+    document.addEventListener('pointerdown', this.onDocDown, true);
+  }
+
+  /** Die Elemente für die Oberfläche (Liste und Funkspruch-Karte). */
+  get els(): HTMLElement[] {
+    return [this.pop, this.radioEl];
+  }
+
+  destroy() {
+    document.removeEventListener('pointerdown', this.onDocDown, true);
+    clearTimeout(this.radioTimer);
+  }
+
+  private onDocDown = (e: Event) => {
+    if (this.pop.hidden) return;
+    const t = e.target as Node;
+    if (this.pop.contains(t) || this.chip.contains(t)) return;
+    this.pop.hidden = true;
+  };
+
+  /**
+   * Funkspruch: eine kleine Karte oben, antippen zeigt die Richtung.
+   * Höchstens alle paar Minuten (force: trotzdem, z. B. wenn man angekommen ist).
+   */
+  radio(text: string, iconName: string, onTap: (() => void) | null, opts: { force?: boolean; tone?: string } = {}): boolean {
+    const t = performance.now();
+    if (this.o.quiet()) return false;
+    if (!opts.force && t - this.lastRadio < RADIO_GAP) return false;
+    this.lastRadio = t;
+    clearTimeout(this.radioTimer);
+    const el = this.radioEl;
+    el.dataset.tone = opts.tone ?? '';
+    el.replaceChildren(h('span', { class: 'radio-msg-ico' }, svgEl(icon(iconName, 18))), h('span', { class: 'radio-msg-text' }, h('small', null, 'Funkspruch'), text));
+    if (onTap) el.append(h('span', { class: 'radio-msg-go' }, 'Zeigen'));
+    el.onclick = () => {
+      el.hidden = true;
+      onTap?.();
+    };
+    el.hidden = false;
+    el.classList.remove('in');
+    void el.offsetWidth;
+    el.classList.add('in');
+    this.radioTimer = window.setTimeout(() => (el.hidden = true), 9000);
+    return true;
   }
 
   /** Was gerade zu sehen ist (zum Testen). */
@@ -143,39 +218,93 @@ export class SightingControl {
       return;
     }
     if (!fresh.length) return;
+    // Beim Start nichts melden: Das Radar-Abzeichen oben zeigt, dass etwas da ist
     if (this.first) {
       this.first = false;
-      const count = views.length === 1 ? 'eine Sichtung' : views.length + ' Sichtungen';
-      this.o.app.toast(`Funk-Radar: ${count} in der Nähe.`);
       return;
     }
     const best = fresh.sort((a, b) => RANK[b.rarity] - RANK[a.rarity])[0];
     const v = this.live.get(best.id);
     if (!v) return;
     const big = RANK[best.rarity] >= 2;
-    this.vibrate(big ? [60, 50, 60, 50, 120] : [40]);
     const glow = best.rarity === 'legendary' ? ' Es glänzt golden!' : big ? ' Es glänzt violett!' : '';
     const where = formatDistance(v.d) + ' Richtung ' + compassWord(bearingDeg(this.o.fix()!.pos, v.pos));
-    this.o.app.toast('Funkspruch: ' + SIGHTING_NAMES[v.s.kind] + ', ' + where + '.' + glow, big ? 'good' : undefined);
+    // Seltenes darf sich auch vordrängeln, Gewöhnliches wartet auf die nächste Lücke
+    if (this.radio(SIGHTING_NAMES[v.s.kind] + ', ' + where + '.' + glow, SIGHTING_ICON[v.s.kind], () => this.focusSighting(v.s.id), { force: big, tone: best.rarity })) this.vibrate(big ? [60, 50, 60, 50, 120] : [40]);
+  }
+
+  private focusSighting(id: string) {
+    const v = this.live.get(id);
+    if (!v) return;
+    this.o.focus({ id, pos: v.pos, icon: SIGHTING_ICON[v.s.kind], label: SIGHTING_NAMES[v.s.kind], rarity: v.s.rarity, onTap: () => void this.tap(id) });
   }
 
   private renderChip() {
     const n = this.live.size;
-    this.chip.hidden = n === 0;
-    if (!n) return;
-    const best = [...this.live.values()].reduce((a, b) => (RANK[b.s.rarity] > RANK[a.s.rarity] ? b : a));
-    this.chip.dataset.rarity = best.s.rarity;
-    this.chip.replaceChildren(svgEl(icon('radar', 14)), String(n));
-    this.chip.setAttribute('aria-label', `Funk-Radar: ${n} ${n === 1 ? 'Sichtung' : 'Sichtungen'} in der Nähe`);
+    const hints = this.o.hints().length;
+    this.chip.hidden = n + hints === 0;
+    if (n + hints === 0) {
+      this.pop.hidden = true;
+      return;
+    }
+    const best = n ? [...this.live.values()].reduce((a, b) => (RANK[b.s.rarity] > RANK[a.s.rarity] ? b : a)).s.rarity : '';
+    this.chip.dataset.rarity = best;
+    this.chip.replaceChildren(svgEl(icon('radar', 14)), n ? String(n) : '');
+    this.chip.setAttribute('aria-label', `Funk-Radar: ${n} ${n === 1 ? 'Sichtung' : 'Sichtungen'}, ${hints} ${hints === 1 ? 'Hinweis' : 'Hinweise'} in der Nähe`);
+    if (!this.pop.hidden) this.renderPop();
   }
 
-  private explain() {
+  private togglePop() {
+    if (!this.pop.hidden) {
+      this.pop.hidden = true;
+      return;
+    }
+    this.renderPop();
+    this.pop.hidden = false;
+  }
+
+  /** Liste: Sichtungen (mit Restzeit) und Hinweise am Horizont. Antippen zeigt die Richtung. */
+  private renderPop() {
     const f = this.o.fix();
-    const near = [...this.live.values()].sort((a, b) => a.d - b.d)[0];
-    if (!f || !near) return;
-    const min = Math.ceil((near.s.until - this.o.app.backend.now()) / 60_000);
-    this.o.app.toast(`Nächste Sichtung: ${SIGHTING_NAMES[near.s.kind]}, ${formatDistance(near.d)} Richtung ${compassWord(bearingDeg(f.pos, near.pos))}, noch ${min} Min. Alle 10 Minuten taucht in der Gegend etwas Neues auf.`);
-    if (this.o.isSim()) this.o.walkTo(near.pos);
+    if (!f) return;
+    const now = this.o.app.backend.now();
+    const dir = (p: LatLon) => `${formatDistance(distanceM(f.pos, p))} ${compassWord(bearingDeg(f.pos, p))}`;
+    const row = (ico: string, title: string, sub: string, rarity: string, go: () => void) =>
+      h(
+        'button',
+        {
+          class: 'radar-row',
+          type: 'button',
+          'data-rarity': rarity,
+          onclick: () => {
+            this.pop.hidden = true;
+            go();
+          },
+        },
+        h('span', { class: 'radar-row-ico' }, svgEl(icon(ico, 16))),
+        h('span', { class: 'radar-row-text' }, h('b', null, title), h('small', null, sub)),
+      );
+    const sights = [...this.live.values()].sort((a, b) => a.d - b.d);
+    const hints = this.o.hints();
+    const parts: (HTMLElement | null)[] = [
+      h('p', { class: 'radar-head' }, 'Funk-Radar'),
+      sights.length ? h('p', { class: 'radar-sec' }, 'Sichtungen') : null,
+      ...sights.map((v) =>
+        row(SIGHTING_ICON[v.s.kind], SIGHTING_NAMES[v.s.kind], `${dir(v.pos)} · noch ${Math.max(1, Math.ceil((v.s.until - now) / 60_000))} Min.`, v.s.rarity, () => {
+          this.focusSighting(v.s.id);
+          if (this.o.isSim()) this.o.walkTo(v.pos);
+        }),
+      ),
+      hints.length ? h('p', { class: 'radar-sec' }, 'Am Horizont') : null,
+      ...hints.map((x) =>
+        row(x.icon, x.label, `${dir(x.pos)} · was es ist, siehst du vor Ort`, '', () => {
+          this.o.focus({ id: x.id, pos: x.pos, icon: x.icon, label: x.label });
+          if (this.o.isSim()) this.o.walkTo(x.pos);
+        }),
+      ),
+      h('p', { class: 'radar-foot' }, 'Alle 10 Minuten taucht in der Gegend etwas Neues auf.'),
+    ];
+    this.pop.replaceChildren(...parts.filter((x): x is HTMLElement => !!x));
   }
 
   /** Sichtung angetippt: einsammeln, wenn nah genug, sonst Weg und Restzeit. */

@@ -10,10 +10,10 @@ import type { Cache, FoeKind, LatLon, Opening, RegionId, Spot, WorldEvent } from
 import { classifyRegion, hearRangeM, sightRangeM } from '../../core/terrain';
 import { dropSpot, eventCenter } from '../../core/worldEvents';
 import { PatrolControl, type LivePatrol } from '../game/patrolControl';
-import { SightingControl } from '../game/sightingControl';
+import { SightingControl, type RadarFocus, type RadarHint } from '../game/sightingControl';
 import { currentRegion, setCurrentRegion } from '../game/worldState';
 import { elevationAt, reliefAround } from '../../map/elevation';
-import { DEMO, GameMap, SIGHTING_ICON, type SpotView } from '../../map/GameMap';
+import { DEMO, GameMap, type SpotView } from '../../map/GameMap';
 import { WalkNet } from '../../map/walkNet';
 import {
   AnchoredLocation,
@@ -520,6 +520,60 @@ export function gameScreen(app: App): Screen {
 
   // --- Erkunden: Hinweise am Horizont, Pfeile zu Verstecken, Neuland, Kompass ---------
   let specials: Spot[] = [];
+  /** Ein Ziel, das gerade kurz mit Pfeil gezeigt wird (20 Sekunden). */
+  let focusTarget: { t: PointerTarget; until: number } | null = null;
+  let focusTimer = 0;
+  const focusOn = (f: RadarFocus) => {
+    focusTarget = {
+      t: { id: `fokus:${f.id}`, pos: f.pos, icon: f.icon, label: f.label, tone: f.rarity !== undefined ? 'sight' : 'hint', rarity: f.rarity, hideInside: true, onTap: f.onTap ?? (() => undefined) },
+      until: performance.now() + 20_000,
+    };
+    updatePointers();
+    clearTimeout(focusTimer);
+    focusTimer = window.setTimeout(updatePointers, 20_100);
+    if (fix && gm) {
+      const d = distanceM(fix.pos, f.pos);
+      app.toast(`${f.label}: ${formatDistance(d)} Richtung ${compassWord(bearingDeg(fix.pos, f.pos))}.`);
+    }
+  };
+  /** Unentdeckte besondere Orte in Hörweite (für das Funk-Radar), die nächsten drei. */
+  const horizonHints = (): RadarHint[] => {
+    const s = app.backend.current();
+    if (!s || !fix) return [];
+    const here = fix.pos;
+    const range = searchRangeM(s);
+    return specials
+      .filter((sp) => !s.discovered[sp.id])
+      .map((sp) => ({ sp, d: distanceM(here, sp.pos) }))
+      .filter((x) => x.d > range && x.d <= SPECIAL.hintM)
+      .sort((a, b) => a.d - b.d)
+      .slice(0, 3)
+      .map(({ sp }) => {
+        const hint = SPECIAL_HINT[sp.kind] ?? 'smoke';
+        return { id: sp.id, pos: sp.pos, icon: hint, label: HINT_NAMES[hint] };
+      });
+  };
+  // Hinweise am Horizont als seltener Funkspruch: frühestens nach 1 Minute, dann alle 3 bis 6 Minuten einer
+  let nextHintAt = performance.now() + 60_000;
+  const hintedHorizon = new Set<string>();
+  const maybeHorizonHint = () => {
+    if (!fix || !sightings || overlay) return;
+    const t = performance.now();
+    if (t < nextHintAt) return;
+    const x = horizonHints().find((hh) => !hintedHorizon.has(hh.id));
+    if (!x) {
+      nextHintAt = t + 60_000;
+      return;
+    }
+    const d = distanceM(fix.pos, x.pos);
+    const ok = sightings.radio(`${x.label}, etwa ${formatDistance(d)} Richtung ${compassWord(bearingDeg(fix.pos, x.pos))}.`, x.icon, () => {
+      focusOn({ id: x.id, pos: x.pos, icon: x.icon, label: x.label });
+      if (provider?.kind === 'sim' && !joy) walkTo(x.pos);
+    });
+    if (!ok) return;
+    hintedHorizon.add(x.id);
+    nextHintAt = t + (180 + Math.random() * 180) * 1000;
+  };
   let pointers: Pointers | null = null;
   const notifiedSpecials = new Set<string>();
   const updatePointers = () => {
@@ -527,38 +581,14 @@ export function gameScreen(app: App): Screen {
     if (!pointers || !s || !fix) return;
     const here = fix.pos;
     const targets: PointerTarget[] = [];
-    // Die drei nächsten unbekannten besonderen Orte (liegen sie im Bild, zeigt die Karte das Fragezeichen selbst)
-    const range = searchRangeM(s);
-    const hidden = specials
-      .filter((sp) => !s.discovered[sp.id])
-      .map((sp) => ({ sp, d: distanceM(here, sp.pos) }))
-      .filter((x) => x.d > range && x.d <= SPECIAL.hintM)
-      .sort((a, b) => a.d - b.d)
-      .slice(0, 3);
-    for (const { sp, d } of hidden) {
-      const hint = SPECIAL_HINT[sp.kind] ?? 'smoke';
-      targets.push({
-        id: sp.id,
-        pos: sp.pos,
-        icon: hint,
-        label: HINT_NAMES[hint],
-        hideInside: d <= VIEW_RADIUS_M,
-        onTap: () => {
-          app.toast(`${HINT_NAMES[hint]}: ${formatDistance(d)} Richtung ${compassWord(bearingDeg(here, sp.pos))}. Was es ist, siehst du erst vor Ort.`);
-          // Im Testmodus gleich hinlaufen
-          if (provider?.kind === 'sim' && !joy) walkTo(sp.pos);
-        },
-      });
-    }
     // Verstecke, deren Suchkreis noch nicht im Bild ist
     for (const c of s.caches) {
       if (distanceM(here, c.center) <= (c.areaM ?? CACHE.areaM) + 25) continue;
       targets.push({ id: c.id, pos: c.center, icon: c.via === 'tracks' ? 'steps' : c.via === 'radio' ? 'radioSet' : 'chalk', label: 'Versteck', tone: 'cache', hideInside: true, onTap: () => sheet.showCache(c) });
     }
-    // Sichtungen außerhalb des Bildes: Pfeil am Rand, Farbe nach Seltenheit
-    for (const v of sightings?.list() ?? []) {
-      targets.push({ id: v.id, pos: v.pos, icon: SIGHTING_ICON[v.kind], label: 'Sichtung', tone: 'sight', rarity: v.rarity, hideInside: true, onTap: () => void sightings?.tap(v.id) });
-    }
+    // Kurz gezeigtes Ziel (aus dem Funk-Radar oder einem Funkspruch)
+    if (focusTarget && performance.now() < focusTarget.until) targets.push(focusTarget.t);
+    else focusTarget = null;
     pointers.set(targets);
     pointers.setPlayer(here);
     // Erstes Mal in der Nähe eines unbekannten Ortes: kurzer Hinweis
@@ -1728,12 +1758,15 @@ export function gameScreen(app: App): Screen {
           updateSpots();
         },
         quiet: () => !!overlay,
+        hints: () => horizonHints(),
+        focus: (f) => focusOn(f),
       });
       radarSlot.append(sightings.chip);
+      hud.append(...sightings.els);
       sightTimer = window.setInterval(() => {
         if (document.hidden) return;
         sightings?.update();
-        updatePointers();
+        maybeHorizonHint();
       }, 5000);
       // Der Staubsturm zieht weiter: Zonen regelmäßig nachziehen
       zoneTimer = window.setInterval(() => !document.hidden && updateZones(), 5000);
@@ -1760,6 +1793,8 @@ export function gameScreen(app: App): Screen {
       clearInterval(ticker);
       clearInterval(zoneTimer);
       clearInterval(sightTimer);
+      clearTimeout(focusTimer);
+      sightings?.destroy();
       patrols?.destroy();
       document.removeEventListener('visibilitychange', onVisible);
       provider?.stop();
