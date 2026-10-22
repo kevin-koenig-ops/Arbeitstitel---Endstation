@@ -105,6 +105,31 @@ Knobeln passt perfekt zu „draußen kurz, zu Hause die Tiefe“: Hinweise finde
 - **Kleine Rätsel nebenbei:** Kreidezeichen als Geheimschrift, Funksprüche zum Entschlüsseln (z. B. Morse oder einfache Verschiebung), Zahlenschlösser an Verstecken, deren Code man aus Hinweisen zusammensetzt.
 - **Echte Orte respektieren:** Fälle und Hinweise liegen nie an sensiblen Orten und nie an echten Wohnhäusern. Tatorte sind erfundene Fundstellen, echte Namen von Geschäften oder Menschen tauchen in Fällen nicht auf.
 
+## Aufträge aus echten Kartendaten (Idee von Kevin, 22.10.2026)
+
+Jede Gegend bekommt eigene Aufträge, weil sie aus der echten Karte entstehen: was es in der Nähe gibt (Apotheke, Brücke, Hügel, Bach, Bahnhof), wie hoch es geht, wie weit es ist. Dadurch fühlt sich jeder Auftrag gemacht an, obwohl ihn das Spiel zusammensetzt.
+
+- **Funkspruch von oben:** „Das Signal ist zu schwach. Geh auf den höchsten Punkt in deiner Nähe.“ Oben empfängst du ein Stück Geschichte. Ziel ist immer der höchste erreichbare Punkt im Umkreis (aus den Höhendaten), nie eine feste Höhe.
+- **Besorgen:** „Hol Medizin aus der Apotheke am Marktplatz für Nachbarin X.“ Ziel ist eine echte Apotheke (Fundort), Belohnung und ein Satz Dank beim Abgeben zu Hause.
+- **Wasser holen:** von einem echten Brunnen oder einer Quelle, abgekocht zu Hause.
+- **Über die Brücke:** „Auf der anderen Seite des Flusses soll ein Lager sein.“ Ziel liegt jenseits einer echten Brücke.
+- **Haltestellen abklappern, Tankstellen nach Treibstoff durchsuchen** (echte Orte; nie an Gleisen entlang, nie auf Dächer oder Baustellen).
+- **Aussichtspunkt, Gipfel, Turm:** Gipfel mit Namen und Höhe stehen in den Kartendaten; oben gibt es Sicht (weiter sehen) und manchmal einen Hinweis.
+
+**Regeln**
+- Kein Zwang: Aufträge laufen nicht ab, man kann sie liegen lassen oder tauschen. Höchstens 3 gleichzeitig.
+- Erreichbar: Ziele liegen auf Wegen, nie auf Privatgrund, nie an sensiblen Orten (Friedhof, Schule, Kita, Kirche, Krankenhaus, Gedenkstätte), meist 300 m bis 2 km entfernt.
+- Echte Namen von Läden und Menschen tauchen nicht auf (nur „die Apotheke am Marktplatz“, „der Hügel im Nordosten“).
+- Geschichte passt zur Lore: Funksprüche erzählen von Elysis, APATIT-V und den Notlazaretten. Auftraggeber sind Überlebende in der Gegend, später Leute, die bei dir einziehen.
+- **Gerecht für alle (Kevin, 22.10.):** Nicht jeder kommt auf 500 m oder in einen Wald (Berlin). Deshalb:
+  - Ziele sind immer **relativ zur Umgebung**: „höchster Punkt in deiner Nähe“, „größte Grünfläche“, „der nächste Bach oder Brunnen“, nie „über 500 m“ oder „im Wald“.
+  - Jeder Auftrag hat eine **Stadt- und eine Landfassung** mit derselben Geschichte und derselben Belohnung (Funkspruch auf dem Land: Hügel; in der Stadt: ein erfundener Funkmast auf einem Platz oder einer Brücke).
+  - **Asynchroner Fortschritt:** Schritte in beliebiger Reihenfolge, über Tage verteilt, ohne Zeitdruck; jeder Schritt zählt sofort. Manche Schritte gehen zu Hause (Funkspruch entschlüsseln, Medizin mischen).
+  - **Die Geschichte hängt nie an einem Ort:** Jedes Kapitel lässt sich über mehrere Auftragsarten abschließen. Gegend-typische Aufträge (Küste, Berge, Wald) gibt es nur als Zugabe.
+  - In der Stadt liegen Ziele näher beieinander, auf dem Land weiter; die Wege sind dadurch für alle ähnlich lang.
+
+**Bauweise:** Auftrags-Vorlagen als Daten in content.ts (Art, Ziel-Bedingung, Texte mit Platzhaltern), das Spiel sucht passende echte Ziele und prüft das Erreichen wie bei Fundstellen (GPS stehend, Genauigkeit).
+
 ## Kampf: wie es weitergeht (geplant)
 
 - **Kartensammlung:** Heute bringen nur Waffen neue Karten. Dazu kommen:
