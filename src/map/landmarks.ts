@@ -132,8 +132,8 @@ const WHITE: RGB = [0.9, 0.9, 0.88];
 const GREY: RGB = [0.55, 0.57, 0.58];
 const CONCRETE: RGB = [0.66, 0.64, 0.6];
 
-/** Wand, an die die Ladenfront kommt: die, die am meisten zur Straße schaut. */
-function frontWall(ring: Pt[], toward: Pt) {
+/** Die Wand, die am meisten zur Straße (toward) schaut: Ladenfront, Haustür. */
+export function frontWall(ring: Pt[], toward: Pt) {
   let sa = 0;
   for (let i = 0; i < ring.length; i++) {
     const a = ring[i];
@@ -165,7 +165,7 @@ function frontWall(ring: Pt[], toward: Pt) {
   const n: Pt = ccw ? [e[1], -e[0]] : [-e[1], e[0]];
   /** Punkt an der Wand: t entlang, off nach außen. */
   const at = (t: number, off: number): Pt => [a[0] + e[0] * t + n[0] * off, a[1] + e[1] * t + n[1] * off];
-  return { len, e, n, at, ang: Math.atan2(e[1], e[0]) };
+  return { i: best.i, len, e, n, at, ang: Math.atan2(e[1], e[0]) };
 }
 
 /** Senkrechtes Rechteck vor der Wand, von t0 bis t1, Höhe z0 bis z1, off vor der Wand. */

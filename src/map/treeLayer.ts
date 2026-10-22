@@ -14,12 +14,13 @@ import type { TreeKind, TreeSpec } from './decor';
 import { buildHouses, type HouseSpec, type MatKey } from './houseMesh';
 import type { PropSpec } from './landmarks';
 import { drawSign } from './signArt';
-import texPutz from '../assets/textures/haus-putz.webp';
-import texKlinker from '../assets/textures/haus-klinker.webp';
-import texFachwerk from '../assets/textures/haus-fachwerk.webp';
+import texPutz from '../assets/textures/haus-wand-putz.webp';
+import texKlinker from '../assets/textures/haus-wand-klinker.webp';
+import texFachwerk from '../assets/textures/haus-wand-fachwerk.webp';
 import texDach from '../assets/textures/haus-dach-ziegel.webp';
+import texFenster from '../assets/textures/haus-fenster.webp';
 
-const HOUSE_TEX: Partial<Record<MatKey, string>> = { putz: texPutz, klinker: texKlinker, fachwerk: texFachwerk, roof: texDach, roofSnow: texDach };
+const HOUSE_TEX: Partial<Record<MatKey, string>> = { putz: texPutz, klinker: texKlinker, fachwerk: texFachwerk, roof: texDach, roofSnow: texDach, win: texFenster };
 
 /** sRGB (0–1, auch etwas darüber) in lineare Farbe, wie three.js rechnet. */
 function toLinear(c: number) {
@@ -178,7 +179,8 @@ export class TreeLayer implements CustomLayerInterface {
       let map: THREE.Texture | null = null;
       if (url) {
         map = new THREE.TextureLoader().load(url, () => this.map?.triggerRepaint());
-        map.wrapS = map.wrapT = THREE.RepeatWrapping;
+        // Der Fensterbogen wird nicht gekachelt (sonst bluten die Ränder)
+        if (key !== 'win') map.wrapS = map.wrapT = THREE.RepeatWrapping;
         map.colorSpace = THREE.SRGBColorSpace;
         map.anisotropy = Math.min(8, this.renderer?.capabilities.getMaxAnisotropy() ?? 1);
         this.textures.push(map);

@@ -509,9 +509,19 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
     return best;
   };
   for (const hs of houseSpecs) {
-    if (!hs.shop) continue;
-    const road = nearestRoad(centroid(hs.ring), 60);
-    if (road) hs.shop.toward = road.pt;
+    const c = centroid(hs.ring);
+    const road = nearestRoad(c, 60);
+    // Haustür zur Straße
+    if (road) hs.street = road.pt;
+    if (hs.shop && road) hs.shop.toward = road.pt;
+    // Anstoßende Nachbarn: dort keine Fenster
+    const b = bbox(hs.ring);
+    const near = bGrid.around(c, Math.max(b.x1 - b.x0, b.y1 - b.y0) / 2 + 2).filter((r) => {
+      if (r === hs.ring) return false;
+      const o = bbox(r);
+      return o.x0 < b.x1 + 0.8 && o.x1 > b.x0 - 0.8 && o.y0 < b.y1 + 0.8 && o.y1 > b.y0 - 0.8;
+    });
+    if (near.length) hs.neighbors = near;
   }
   const props: PropSpec[] = [];
   for (const q of propPois) {

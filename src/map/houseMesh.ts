@@ -7,8 +7,9 @@
 
 import { ShapeUtils, Vector2 } from 'three';
 
-import { addProp, addShop, type PropSpec, type ShopSpec, type Signs } from './landmarks';
-import { dist, emptyMesh, quad, tri, type MeshData, type P3, type Pt, type RGB } from './meshKit';
+import { addProp, addShop, frontWall, isHallKind, type PropSpec, type ShopSpec, type Signs } from './landmarks';
+import { BOARDED, BROKEN, DOOR_H, DOOR_W, DOORS, doorUV, WINDOW_SETS, windowUV } from './windows';
+import { block, dist, emptyMesh, quad, tri, type MeshData, type P3, type Pt, type RGB } from './meshKit';
 
 export type { Pt };
 
@@ -42,9 +43,13 @@ export interface HouseSpec {
   snow?: boolean;
   /** Echter Laden, Apotheke, Supermarkt …: Ladenfront und Schild. */
   shop?: ShopSpec;
+  /** Nächster Punkt an der Straße (Meter): dorthin zeigt die Haustür. */
+  street?: Pt;
+  /** Grundrisse der Häuser, die direkt anstoßen (dort gibt es keine Fenster). */
+  neighbors?: Pt[][];
 }
 
-/** Ein Fassadenbild ist zwei Fenster breit und zwei Stockwerke hoch. */
+/** Ein Wandbild ist so breit (Meter) und zwei Stockwerke hoch. Fenster und Türen kommen extra. */
 export const FACADE_W = 6;
 export const FLOOR_H = 2.9;
 const FACADE_H = FLOOR_H * 2;
@@ -61,7 +66,7 @@ const RUBBLE: RGB = [0.36, 0.33, 0.3];
 /** Verschneite Ziegel: das Bild gedämpft, darüber hell (siehe treeLayer, „roofSnow“). */
 const SNOW_TINT: RGB = [0.55, 0.54, 0.54];
 
-export type MatKey = FacadeKind | 'roof' | 'roofSnow' | 'plain';
+export type MatKey = FacadeKind | 'roof' | 'roofSnow' | 'plain' | 'win';
 export type { MeshData };
 export interface HouseMeshes {
   meshes: Record<MatKey, MeshData>;
@@ -200,18 +205,11 @@ function lcg(seed: number) {
   };
 }
 
-/** u-Bereich einer Wand: ganze Fensterachsen, an den Ecken ein Stück glatte Wand. */
-function wallU(len: number): [number, number] {
-  if (len < 1.6) return [-len / 2 / FACADE_W, len / 2 / FACADE_W];
-  const bays = Math.max(1, Math.round(len / 3));
-  return [0, bays / 2];
-}
-
 const vOf = (h: number) => (h - GROUND_M) / FACADE_H;
 
 /** Alle Häuser zu Dreiecken (je Bild ein Topf, damit es nur wenige Zeichenaufrufe sind). */
 export function buildHouses(list: HouseSpec[], props: PropSpec[] = []): HouseMeshes {
-  const meshes: Record<MatKey, MeshData> = { putz: emptyMesh(), klinker: emptyMesh(), fachwerk: emptyMesh(), roof: emptyMesh(), roofSnow: emptyMesh(), plain: emptyMesh() };
+  const meshes: Record<MatKey, MeshData> = { putz: emptyMesh(), klinker: emptyMesh(), fachwerk: emptyMesh(), roof: emptyMesh(), roofSnow: emptyMesh(), plain: emptyMesh(), win: emptyMesh() };
   const shadow: number[] = [];
   const signs: Signs = {};
   for (const h of list) {
@@ -231,14 +229,18 @@ function buildOne(h: HouseSpec, ring: Pt[], M: Record<MatKey, MeshData>, shadow:
   const area = areaOf(ring);
   const rnd = lcg(h.seed);
 
-  // Wände (Ruinen: unregelmäßige Oberkante, hier und da ein eingestürztes Stück)
+  // Wände (Ruinen: unregelmäßige Oberkante, hier und da ein eingestürztes Stück).
+  // Das Wandbild läuft um die Ecken herum weiter.
   const tops = ring.map(() => (h.state === 'ruin' ? h.base + (h.top - h.base) * (0.4 + 0.6 * rnd()) : h.top));
+  let along = 0;
   for (let i = 0; i < n; i++) {
     const a = ring[i];
     const b = ring[(i + 1) % n];
-    if (h.state === 'ruin' && rnd() < 0.18) continue;
     const len = dist(a, b);
-    const [u0, u1] = h.facade ? wallU(len) : [0, len / FACADE_W];
+    const u0 = along / FACADE_W;
+    const u1 = (along + len) / FACADE_W;
+    along += len;
+    if (h.state === 'ruin' && rnd() < 0.18) continue;
     quad(
       wallMesh,
       [a[0], a[1], h.base],
@@ -252,6 +254,9 @@ function buildOne(h: HouseSpec, ring: Pt[], M: Record<MatKey, MeshData>, shadow:
       h.tint,
     );
   }
+
+  // Fenster und Haustür (nicht bei Ruinen und nicht an großen Hallen mit Ladenfront)
+  if (h.state !== 'ruin' && !(h.shop && isHallKind(h.shop.kind) && !h.facade)) openings(h, ring, M.win, M.plain, rnd);
 
   // Sockel: ein dunkler Streifen unten, etwas vorstehend
   if (h.plinth && h.base === 0) {
@@ -274,7 +279,7 @@ function buildOne(h: HouseSpec, ring: Pt[], M: Record<MatKey, MeshData>, shadow:
     }
   } else {
     let done = false;
-    if (h.roof === 'pitched') done = gableRoof(h, ring, area, M) || hipRoof(h, ring, c, M);
+    if (h.roof === 'pitched') done = gableRoof(h, ring, area, M, rnd) || hipRoof(h, ring, c, M);
     if (!done) flatRoof(h, ring, M);
   }
 
@@ -285,7 +290,7 @@ function buildOne(h: HouseSpec, ring: Pt[], M: Record<MatKey, MeshData>, shadow:
 }
 
 /** Satteldach über (fast) rechteckigen Häusern, mit Giebeln aus der Fassade. */
-function gableRoof(h: HouseSpec, ring: Pt[], area: number, M: Record<MatKey, MeshData>): boolean {
+function gableRoof(h: HouseSpec, ring: Pt[], area: number, M: Record<MatKey, MeshData>, rnd: () => number): boolean {
   const box = orientedBox(ring);
   if (area / (box.L * box.W) < 0.82 || box.W < 2.5) return false;
   const ca = Math.cos(box.ang);
@@ -317,9 +322,26 @@ function gableRoof(h: HouseSpec, ring: Pt[], area: number, M: Record<MatKey, Mes
   }
   // Giebel: Dreiecke über den Stirnseiten, mit derselben Fassade
   const wallMesh = h.facade ? M[h.facade] : M.plain;
-  const [u0, u1] = h.facade ? wallU(box.W) : [0, box.W / FACADE_W];
+  const u1 = box.W / FACADE_W;
   for (const end of [-1, 1]) {
-    tri(wallMesh, at(end * hl, -hw, h.top), at(end * hl, hw, h.top), at(end * hl, 0, ridge), [u0, vOf(h.top)], [u1, vOf(h.top)], [(u0 + u1) / 2, vOf(ridge)], h.tint);
+    tri(wallMesh, at(end * hl, -hw, h.top), at(end * hl, hw, h.top), at(end * hl, 0, ridge), [0, vOf(h.top)], [u1, vOf(h.top)], [u1 / 2, vOf(ridge)], h.tint);
+    // Kleines Dachbodenfenster im Giebel, wenn Platz ist und kein Nachbar davor steht
+    if (h.facade && h.state !== 'ruin' && pitch >= 2.4) {
+      const set = WINDOW_SETS[h.facade];
+      const w = set.w * 0.75;
+      const wh = set.h * 0.75;
+      const z0 = h.top + 0.35;
+      const fits = h.top + pitch * (1 - w / 2 / hw) > z0 + wh + 0.15;
+      const outside = at(end * (hl + 0.6), 0, 0);
+      if (fits && !blockedBy(h, [outside[0], outside[1]])) {
+        const id = h.state === 'burnt' ? BROKEN[0] : set.ids[Math.floor(rnd() * set.ids.length)];
+        const [ua, va, ub, vb] = windowUV(id);
+        const off = end * (hl + 0.03);
+        const p0 = at(off, -end * (w / 2), z0);
+        const p1 = at(off, end * (w / 2), z0);
+        quad(M.win, p0, p1, [p1[0], p1[1], z0 + wh], [p0[0], p0[1], z0 + wh], [ua, va], [ub, va], [ub, vb], [ua, vb], [1, 1, 1]);
+      }
+    }
   }
   if (h.chimney) {
     const a = hl * 0.45 * (h.seed > 0.5 ? 1 : -1);
@@ -383,4 +405,90 @@ function chimney(m: MeshData, p: P3, ang: number, z0: number, z1: number) {
     quad(m, [a[0], a[1], z0], [b[0], b[1], z0], [b[0], b[1], z1], [a[0], a[1], z1], [0, 0], [0, 0], [0, 0], [0, 0], CHIMNEY);
   }
   quad(m, [cs[0][0], cs[0][1], z1], [cs[1][0], cs[1][1], z1], [cs[2][0], cs[2][1], z1], [cs[3][0], cs[3][1], z1], [0, 0], [0, 0], [0, 0], [0, 0], [0.25, 0.22, 0.2]);
+}
+
+function inRingPt(p: Pt, r: Pt[]): boolean {
+  let inside = false;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+    const [xi, yi] = r[i];
+    const [xj, yj] = r[j];
+    if (yi > p[1] !== yj > p[1] && p[0] < ((xj - xi) * (p[1] - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/** Steht an dieser Stelle (knapp vor der Wand) schon ein anderes Haus? */
+function blockedBy(h: HouseSpec, p: Pt): boolean {
+  return !!h.neighbors?.some((r) => inRingPt(p, r));
+}
+
+/**
+ * Fenster je Stockwerk, gleichmäßig über jede Wand verteilt, und eine Haustür zur Straße.
+ * Keine Fenster, wo ein Nachbarhaus anstößt; im Erdgeschoss eines Ladens zur Straße auch nicht.
+ */
+function openings(h: HouseSpec, ring: Pt[], win: MeshData, plain: MeshData, rnd: () => number) {
+  const set = h.facade ? WINDOW_SETS[h.facade] : { ...WINDOW_SETS.fachwerk, w: 0.85, h: 1.05 };
+  const small = !h.facade;
+  const main = set.ids[Math.floor(rnd() * set.ids.length)];
+  const pickWindow = () => {
+    if (h.state === 'burnt') return rnd() < 0.5 ? BROKEN[Math.floor(rnd() * 2)] : BOARDED[Math.floor(rnd() * 2)];
+    const r = rnd();
+    if (r < 0.06) return BOARDED[Math.floor(rnd() * 2)];
+    if (r < 0.1) return BROKEN[Math.floor(rnd() * 2)];
+    return rnd() < 0.65 ? main : set.ids[Math.floor(rnd() * set.ids.length)];
+  };
+  const groundZ = h.base === 0 ? GROUND_M : h.base + 0.3;
+  const floors = small ? 1 : Math.max(1, Math.round((h.top - groundZ) / FLOOR_H));
+  const spacing = h.facade === 'fachwerk' ? 2.3 : 2.6;
+  const front = h.street ? frontWall(ring, h.street) : null;
+  const shopFront = h.shop ? frontWall(ring, h.shop.toward).i : -1;
+  let doorDone = !!h.shop || h.base > 0;
+  // Haustür-Platz: Fensterachse an der Straßenwand, die am nächsten zur Mitte liegt
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i];
+    const b = ring[(i + 1) % ring.length];
+    const len = dist(a, b);
+    if (len < 1.8) continue;
+    const e: Pt = [(b[0] - a[0]) / len, (b[1] - a[1]) / len];
+    // nach außen: die Seite, auf der die Mitte des Hauses nicht liegt
+    const mid: Pt = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    let nrm: Pt = [e[1], -e[0]];
+    if (inRingPt([mid[0] + nrm[0] * 0.3, mid[1] + nrm[1] * 0.3], ring)) nrm = [-e[1], e[0]];
+    const slots = small ? (len >= 3 && rnd() < 0.5 ? 1 : 0) : Math.max(1, Math.floor((len - 0.6) / spacing));
+    const isFront = front?.i === i;
+    const doorSlot = isFront && !doorDone ? Math.floor((slots - 1) / 2) : -1;
+    for (let k = 0; k < Math.max(slots, doorSlot >= 0 ? 1 : 0); k++) {
+      const t = (len * (k + 0.5)) / Math.max(1, slots);
+      const at = (dt: number, off: number): Pt => [a[0] + e[0] * (t + dt) + nrm[0] * off, a[1] + e[1] * (t + dt) + nrm[1] * off];
+      if (blockedBy(h, at(0, 0.6))) continue;
+      for (let f = 0; f < floors; f++) {
+        if (f === 0 && k === doorSlot) {
+          // Haustür mit Stufe, manchmal mit kleinem Vordach
+          const id = h.state === 'burnt' ? DOORS.boarded[0] : small ? DOORS.barn[0] : DOORS.house[Math.floor(rnd() * DOORS.house.length)];
+          const [ua, va, ub, vb] = doorUV(id);
+          const p0 = at(-DOOR_W / 2, 0.035);
+          const p1 = at(DOOR_W / 2, 0.035);
+          const z0 = h.base + 0.18;
+          quad(win, [p0[0], p0[1], z0], [p1[0], p1[1], z0], [p1[0], p1[1], z0 + DOOR_H], [p0[0], p0[1], z0 + DOOR_H], [ua, va], [ub, va], [ub, vb], [ua, vb], [1, 1, 1]);
+          const st = at(0, 0.25);
+          block(plain, st[0], st[1], Math.atan2(e[1], e[0]), 1.5, 0.5, h.base, h.base + 0.18, [0.62, 0.6, 0.56]);
+          if (!small && rnd() < 0.5) {
+            const cp = at(0, 0.45);
+            block(plain, cp[0], cp[1], Math.atan2(e[1], e[0]), 1.7, 0.9, z0 + DOOR_H + 0.15, z0 + DOOR_H + 0.25, [0.4, 0.38, 0.36], [0.52, 0.5, 0.47]);
+          }
+          doorDone = true;
+          continue;
+        }
+        if (f === 0 && i === shopFront) continue;
+        if (k >= slots) continue;
+        const z0 = groundZ + f * FLOOR_H + (small ? 0.9 : 0.7);
+        const z1 = z0 + set.h;
+        if (z1 > h.top - 0.2) continue;
+        const [ua, va, ub, vb] = windowUV(pickWindow());
+        const p0 = at(-set.w / 2, 0.03);
+        const p1 = at(set.w / 2, 0.03);
+        quad(win, [p0[0], p0[1], z0], [p1[0], p1[1], z0], [p1[0], p1[1], z1], [p0[0], p0[1], z1], [ua, va], [ub, va], [ub, vb], [ua, vb], [1, 1, 1]);
+      }
+    }
+  }
 }

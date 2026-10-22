@@ -113,7 +113,16 @@ describe('Kartendetails', () => {
     // First (höchster Punkt) 4 m über der Traufe (halbe Breite × Neigung 1)
     const ys = meshes.roof.pos.filter((_, i) => i % 3 === 1);
     expect(Math.max(...ys)).toBeCloseTo(10.3, 5);
-    // Lange Wand 12 m: vier Fensterachsen = zwei Bildbreiten
-    expect(Math.max(...meshes.putz.uv.filter((_, i) => i % 2 === 0))).toBeCloseTo(2, 5);
+    // Das Wandbild läuft um das Haus herum: 40 m Umfang = 40/6 Bildbreiten
+    expect(Math.max(...meshes.putz.uv.filter((_, i) => i % 2 === 0))).toBeCloseTo(40 / 6, 5);
+    // Fenster: 2 Stockwerke × (4 + 2) Achsen je Seite × 2 Seiten, dazu 2 Giebelfenster
+    expect(meshes.win.pos.length / 18).toBe(26);
+    // Mit Straße im Süden: eine Tür (statt eines Fensters), samt Stufe
+    const withDoor = buildHouses([{ ...house, street: [6, -10] }]);
+    expect(withDoor.meshes.win.pos.length / 18).toBe(26);
+    expect(withDoor.meshes.plain.pos.length).toBeGreaterThan(meshes.plain.pos.length);
+    // Ein Nachbar an der Ostwand: dort keine Fenster mehr
+    const blocked = buildHouses([{ ...house, neighbors: [[[12, 0], [20, 0], [20, 8], [12, 8]]] }]);
+    expect(blocked.meshes.win.pos.length / 18).toBe(26 - 4 - 1);
   });
 });
