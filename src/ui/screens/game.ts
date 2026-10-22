@@ -34,7 +34,8 @@ import { goalChip, openProgressPanel } from '../game/progressPanel';
 import { icon } from '../icons';
 import { settingsPanel } from '../settingsPanel';
 import { menuItem } from './menu';
-import { REJECT_TEXT } from '../texts';
+import { LOADING_TIPS, REJECT_TEXT } from '../texts';
+import { artStyle, LOADING_ART } from '../art';
 
 export function gameScreen(app: App): Screen {
   const initial = app.settings.get();
@@ -1101,6 +1102,26 @@ export function gameScreen(app: App): Screen {
       if (app.backend.current()?.combat) openFight();
       document.addEventListener('visibilitychange', onVisible);
 
+      // Ladebildschirm, bis die Karte das erste Mal fertig gezeichnet ist
+      const loadArt = LOADING_ART[Math.floor(Math.random() * LOADING_ART.length)];
+      const loadingEl = h(
+        'div',
+        { class: 'loading-screen has-art', style: artStyle(loadArt), 'aria-live': 'polite' },
+        h('div', { class: 'loading-box' }, h('b', null, 'Die Karte lädt …'), h('p', null, LOADING_TIPS[Math.floor(Math.random() * LOADING_TIPS.length)])),
+      );
+      el.append(loadingEl);
+      const shownAt = performance.now();
+      let loadingDone = false;
+      const hideLoading = () => {
+        if (loadingDone) return;
+        loadingDone = true;
+        window.setTimeout(() => {
+          loadingEl.classList.add('gone');
+          window.setTimeout(() => loadingEl.remove(), 600);
+        }, Math.max(0, 1400 - (performance.now() - shownAt)));
+      };
+      window.setTimeout(hideLoading, 9000);
+
       const start = mapMode === 'demo' ? DEMO.start : (initial.lastPos ?? FALLBACK_START);
       gm = new GameMap(mapEl, {
         mode: mapMode,
@@ -1132,7 +1153,9 @@ export function gameScreen(app: App): Screen {
       });
       try {
         await gm.init();
+        gm.map.once('idle', hideLoading);
       } catch (err) {
+        hideLoading();
         console.error(err);
         showBanner('map', 'Karte konnte nicht starten', 'Dein Browser unterstützt vermutlich kein WebGL.', []);
         return;

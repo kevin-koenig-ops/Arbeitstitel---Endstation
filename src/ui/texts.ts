@@ -50,3 +50,16 @@ export const SPOT_PLURAL: Partial<Record<SpotKind, string>> = {
   well: 'Brunnen',
   stop: 'Bushaltestellen',
 };
+
+/** Kurze Tipps auf den Ladebildschirmen. */
+export const LOADING_TIPS: string[] = [
+  'Wenn du mal Pause machst, verpasst du nichts. Dein Zuhause wartet auf dich.',
+  'Die kleinen Fundstellen wandern etwa einmal am Tag weiter.',
+  'Im Kampf: Tippe einen Gegner einmal an, dann treffen ihn alle deine Karten.',
+  'Wandler sind bei Nebel, Regen und nachts zäher. In praller Sonne werden sie träge.',
+  'Was im Rucksack ist, ist erst sicher, wenn du es zu Hause auspackst.',
+  'Pilzstellen gibt es nur im Wald, im Herbst am meisten. Im echten Leben nie nach dem Spiel sammeln!',
+  'Helm, Weste und Handschuhe geben dir zu Beginn jedes Kampfs Abwehr.',
+  'Besondere Orte gibt es einmal pro Gegend. Ein Hubschrauber, ein Konvoi, ein Bunker …',
+  'Zettel, Kreidezeichen und Funksprüche führen zu Verstecken.',
+];

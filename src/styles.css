@@ -1254,6 +1254,13 @@ button.base-res { align-items: center; padding: 3px 6px 3px 4px; border: 1px sol
 .menu.has-art .menu-scene { pointer-events: none; }
 .intro.has-art { --art-shade: linear-gradient(rgba(14, 12, 10, 0.72), rgba(14, 12, 10, 0.88)); }
 .character.has-art { --art-shade: linear-gradient(rgba(14, 12, 10, 0.8), rgba(14, 12, 10, 0.9)); background-attachment: local; }
+/* Ladebildschirm der Karte */
+.loading-screen { position: absolute; inset: 0; z-index: 60; display: flex; align-items: flex-end; justify-content: center; padding: 0 calc(var(--gutter-r) + 16px) calc(var(--safe-b) + 26px) calc(var(--gutter-l) + 16px); transition: opacity 0.55s ease; }
+.loading-screen.has-art { --art-shade: linear-gradient(180deg, rgba(14, 12, 10, 0) 50%, rgba(14, 12, 10, 0.82) 100%); }
+.loading-screen.gone { opacity: 0; pointer-events: none; }
+.loading-box { max-width: 620px; text-align: center; color: var(--bone); text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9); }
+.loading-box b { font: 700 17px var(--font-ui); letter-spacing: 0.1em; text-transform: uppercase; color: var(--amber); }
+.loading-box p { margin: 6px 0 0; font-size: 15px; line-height: 1.35; }
 .battle-loading.has-art { --art-shade: radial-gradient(ellipse at 55% 45%, rgba(14, 12, 10, 0.1), rgba(14, 12, 10, 0.75) 80%); text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9); }
 .overlay.site-picker.has-art { --art-shade: linear-gradient(rgba(14, 12, 10, 0.78), rgba(14, 12, 10, 0.9)); }
 @media (orientation: landscape) {

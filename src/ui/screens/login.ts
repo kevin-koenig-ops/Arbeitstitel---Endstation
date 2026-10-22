@@ -20,7 +20,7 @@ export function loginScreen(app: App): Screen {
     );
   const el = h(
     'div',
-    { class: 'screen login', style: artStyle('title') },
+    { class: 'screen login', style: artStyle('login') },
     h('div', { class: 'title-art', 'aria-hidden': 'true' }),
     weather.el,
     h('div', { class: 'login-shade', 'aria-hidden': 'true' }),
