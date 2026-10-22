@@ -70,7 +70,7 @@ export interface DecorPart {
 export interface DecorResult {
   parts: DecorPart[];
   trees: TreeSpec[];
-  counts: { buildings: number; trees: number; cars: number };
+  counts: { buildings: number; trees: number; cars: number; street: number; gardens: number; forest: number };
 }
 
 // --- Farben --------------------------------------------------------------------------
@@ -98,6 +98,17 @@ const PLINTH = '#6a6256';
 const CHIMNEY = ['#8a5a44', '#6a6460', '#9a6a52'];
 const RUBBLE = ['#9a9282', '#8a8272', '#a39a88', '#7f786a'];
 const POLE = '#6a5a46';
+// Straßenmöbel, Gärten, Wald
+const LAMP = '#5b5f5c';
+const LAMP_HEAD = '#d9d2b8';
+const BINS = ['#3b3f45', '#2f4a3a', '#6b4a2a', '#30506a'];
+const SIGN = ['#c8c2b0', '#b8452e', '#2f5f8a', '#d8b030'];
+const WOOD = ['#7a5a3a', '#8a6a45', '#6e5236'];
+const PLASTIC = ['#c8c2b0', '#b5aa92', '#5a6a5a'];
+const LAUNDRY = ['#d8d2c4', '#a8b8c8', '#c8a8a0', '#c8c088'];
+const HEDGE = ['#4f6a35', '#56723a', '#48602f'];
+const SOIL = '#5a4632';
+const LOG = ['#6a5440', '#5e4a38', '#74604a'];
 
 const pick = <T>(r: Rng, a: readonly T[]) => a[Math.floor(r() * a.length)];
 
@@ -216,17 +227,27 @@ class Grid<T> {
   near(p: Pt): T[] {
     return this.cells.get(this.key(Math.floor(p[0] / this.size), Math.floor(p[1] / this.size))) ?? [];
   }
+  /** Alles aus den Zellen im Umkreis d (ohne Doppelte), unabhängig davon, wie das Raster liegt. */
+  around(p: Pt, d: number): T[] {
+    const out = new Set<T>();
+    for (let cx = Math.floor((p[0] - d) / this.size); cx <= Math.floor((p[0] + d) / this.size); cx++)
+      for (let cy = Math.floor((p[1] - d) / this.size); cy <= Math.floor((p[1] + d) / this.size); cy++)
+        for (const it of this.cells.get(this.key(cx, cy)) ?? []) out.add(it);
+    return [...out];
+  }
 }
 
 // --- Hauptfunktion ---------------------------------------------------------------------
 
-export const DECOR_LIMITS = { trees: 6000, cars: 220, poles: 260 };
+export const DECOR_LIMITS = { trees: 6000, cars: 220, poles: 260, street: 450, gardens: 600, forest: 350 };
 
 export function generateDecor(input: DecorInput, center: LatLon, radiusM: number, opts: DecorOptions = {}): DecorResult {
   const P = new Proj(center);
   const parts: DecorPart[] = [];
-  const add = (ring: Ring, base: number, top: number, color: string) =>
-    parts.push({ ring: ring.map(P.toLL), base: Math.round(base * 10) / 10, top: Math.round(top * 10) / 10, color });
+  const add = (ring: Ring, base: number, top: number, color: string) => {
+    const b = Math.round(base * 100) / 100;
+    parts.push({ ring: ring.map(P.toLL), base: b, top: Math.max(b + 0.02, Math.round(top * 100) / 100), color });
+  };
   const r2 = radiusM * radiusM;
   const near = (p: Pt, extra = 0) => p[0] * p[0] + p[1] * p[1] <= (radiusM + extra) ** 2;
   const toM = (rings: Ring[]) => rings.map((r) => r.map(P.toM));
@@ -240,6 +261,8 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
   // Gebäude ----------------------------------------------------------------------
   const seenB = new Set<string>();
   const bGrid = new Grid<Ring>(40);
+  /** Wohnhäuser (für Gärten): Mitte, ungefährer Radius, Schlüssel für den Zufall. */
+  const houses: { c: Pt; rad: number; key: string }[] = [];
   let buildings = 0;
   for (const b of input.buildings) {
     if (!roughlyNear(b.rings)) continue;
@@ -264,6 +287,7 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
     const wallTop = Math.max(2.4, h0 * k);
     const wall = state === 'burnt' ? pick(r, SOOT) : pick(r, WALLS);
     const simple = ring.length <= 9 && inRing(c, ring);
+    if (minH === 0 && simple && area >= 30 && area <= 280 && state !== 'ruin') houses.push({ c, rad: Math.sqrt(area / Math.PI), key });
     add(ring, minH * k, wallTop, wall);
     // Sockel: dunkler Streifen unten, das Haus steht damit sichtbar auf dem Boden
     if (minH === 0 && simple && area < 450) add(scaleRing(ring, c, 1.04), 0, 0.55, PLINTH);
@@ -372,7 +396,7 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
     }
   }
   const freeSpot = (p: Pt) => {
-    for (const ring of bGrid.near(p)) {
+    for (const ring of bGrid.around(p, 3.5)) {
       if (inRing(p, ring)) return false;
       for (let i = 0; i < ring.length - 1; i++) if (distToSeg(p, ring[i], ring[i + 1]) < 3.5) return false;
     }
@@ -545,5 +569,210 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
     poles++;
   }
 
-  return { parts, trees: specs, counts: { buildings, trees: trees.length, cars } };
+  // Straßenmöbel im Ort ------------------------------------------------------------
+  const houseWithin = (p: Pt, d: number) =>
+    bGrid.around(p, d).some((ring) => {
+      for (let i = 0; i < ring.length - 1; i++) if (distToSeg(p, ring[i], ring[i + 1]) < d) return true;
+      return false;
+    });
+  // Laternen, Mülltonnen, Schilder, Bänke, Briefkästen, Container, Absperrungen:
+  // nur an Straßen mit Häusern in der Nähe, je Rasterzelle höchstens eins.
+  const furnCell = 18;
+  const furnBest = new Map<string, { d: number; p: Pt; ang: number }>();
+  for (const m of roadsM) {
+    for (let i = 0; i < m.length - 1; i++) {
+      const a = m[i];
+      const b = m[i + 1];
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      for (let t = 0; t < len; t += 6) {
+        const p: Pt = [a[0] + ((b[0] - a[0]) * t) / len, a[1] + ((b[1] - a[1]) * t) / len];
+        if (!near(p) || !houseWithin(p, 22)) continue;
+        const ll = P.toLL(p);
+        const gx = Math.floor(ll[0] / (furnCell * degLon));
+        const gy = Math.floor(ll[1] / (furnCell * degLat));
+        const key = `${gx}:${gy}`;
+        const r = rngFrom('moebel', key);
+        if (r() > 0.8) continue;
+        const target = P.toM([(gx + r()) * furnCell * degLon, (gy + r()) * furnCell * degLat]);
+        const d = Math.hypot(p[0] - target[0], p[1] - target[1]);
+        const cur = furnBest.get(key);
+        if (!cur || d < cur.d) furnBest.set(key, { d, p, ang });
+      }
+    }
+  }
+  let street = 0;
+  // Die nächsten zuerst, damit das Limit nicht zufällig in der Nähe etwas wegschneidet
+  const furnList = [...furnBest].sort((a, b) => a[1].p[0] ** 2 + a[1].p[1] ** 2 - (b[1].p[0] ** 2 + b[1].p[1] ** 2));
+  for (const [key, { p, ang }] of furnList) {
+    if (street >= DECOR_LIMITS.street) break;
+    const r = rngFrom('moebelform', key);
+    const side = r() < 0.5 ? -1 : 1;
+    const off = side * (4.3 + r() * 0.9);
+    // nx/ny: Richtung von der Straße weg
+    const nx = -Math.sin(ang) * side;
+    const ny = Math.cos(ang) * side;
+    const x = p[0] - Math.sin(ang) * off;
+    const y = p[1] + Math.cos(ang) * off;
+    if (bGrid.near([x, y]).some((ring) => inRing([x, y], ring))) continue;
+    const roll = r();
+    if (roll < 0.3) {
+      // Laterne mit Arm zur Straße hin
+      add(box(x, y, 0.18, 0.18, ang), 0, 5.2, LAMP);
+      add(box(x - nx * 0.6, y - ny * 0.6, 1.3, 0.14, ang + Math.PI / 2), 5.0, 5.14, LAMP);
+      add(box(x - nx * 1.15, y - ny * 1.15, 0.6, 0.32, ang), 4.8, 5.0, LAMP_HEAD);
+    } else if (roll < 0.48) {
+      // Mülltonnen, eine bis drei nebeneinander
+      const n = 1 + Math.floor(r() * 3);
+      for (let k = 0; k < n; k++) {
+        const bx = x + Math.cos(ang) * (k - (n - 1) / 2) * 0.75;
+        const by = y + Math.sin(ang) * (k - (n - 1) / 2) * 0.75;
+        const tilt = r() < 0.15 ? 1.2 : 0;
+        add(box(bx, by, 0.6, 0.7, ang + tilt), 0, tilt ? 0.6 : 1.05, pick(r, BINS));
+      }
+    } else if (roll < 0.6) {
+      // Verkehrsschild
+      add(box(x, y, 0.08, 0.08, ang), 0, 2.3, LAMP);
+      add(box(x, y, 0.7, 0.06, ang), 2.0, 2.65, pick(r, SIGN));
+    } else if (roll < 0.7) {
+      // Bank mit Lehne, Blick zur Straße
+      add(box(x, y, 1.7, 0.45, ang), 0.42, 0.5, pick(r, WOOD));
+      add(box(x + nx * 0.22, y + ny * 0.22, 1.7, 0.08, ang), 0.5, 0.9, pick(r, WOOD));
+      add(box(x, y, 1.5, 0.3, ang), 0, 0.42, LAMP);
+    } else if (roll < 0.76) {
+      // gelber Briefkasten
+      add(box(x, y, 0.1, 0.1, ang), 0, 0.9, LAMP);
+      add(box(x, y, 0.42, 0.34, ang), 0.9, 1.5, '#d8b030');
+    } else if (roll < 0.84) {
+      // Container (Altglas, Kleider, Bauschutt)
+      add(box(x + nx * 0.6, y + ny * 0.6, 1.9, 1.3, ang), 0, 1.45, pick(r, ['#5a6b4a', '#6e5a3a', '#4a5a6a', '#8a5a3a']));
+    } else if (roll < 0.93) {
+      // Absperrung aus Betonblöcken, manchmal mit Reifen
+      for (let k = 0; k < 2; k++) add(box(x + Math.cos(ang) * (k - 0.5) * 2.5, y + Math.sin(ang) * (k - 0.5) * 2.5, 2.3, 0.6, ang + (r() - 0.5) * 0.3), 0, 0.85, pick(r, STONE));
+      if (r() < 0.5) add(ngon(x + nx * 0.9, y + ny * 0.9, 0.38, 10, 0), 0, 0.5, '#2a2826');
+    } else {
+      // Bushaltestelle: Dach, Rückwand, Bank
+      add(box(x + nx * 0.5, y + ny * 0.5, 3.2, 0.08, ang), 0, 2.3, '#8aa0a6');
+      add(box(x, y, 3.4, 1.5, ang), 2.3, 2.42, '#5b5f5c');
+      add(box(x + nx * 0.25, y + ny * 0.25, 1.8, 0.4, ang), 0.42, 0.5, LAMP);
+    }
+    street++;
+  }
+
+  // Gärten hinter und neben Wohnhäusern -----------------------------------------------
+  // Nur wo Platz ist: nicht im Haus, nicht auf der Straße, nicht im Wasser.
+  let gardens = 0;
+  houses.sort((a, b) => a.c[0] ** 2 + a.c[1] ** 2 - (b.c[0] ** 2 + b.c[1] ** 2));
+  for (const hs of houses) {
+    if (gardens >= DECOR_LIMITS.gardens) break;
+    const r = rngFrom('garten', hs.key);
+    if (r() > 0.85) continue;
+    const n = 2 + Math.floor(r() * 3);
+    const placed: Pt[] = [];
+    for (let i = 0; i < n * 3 && placed.length < n; i++) {
+      const a = r() * Math.PI * 2;
+      const dist = hs.rad + 3 + r() * 7;
+      const p: Pt = [hs.c[0] + Math.cos(a) * dist, hs.c[1] + Math.sin(a) * dist];
+      if (!near(p) || !freeSpot(p) || !dry(p) || placed.some((q) => Math.hypot(q[0] - p[0], q[1] - p[1]) < 3.5)) continue;
+      placed.push(p);
+      const [x, y] = p;
+      // tangential = quer zur Richtung vom Haus weg (für Hecken und Zäune)
+      const tan = a + Math.PI / 2;
+      const roll = r();
+      if (roll < 0.12) {
+        // Gartenhaus
+        add(box(x, y, 2.4, 2.0, tan), 0, 2.1, pick(r, WOOD));
+        add(box(x, y, 2.8, 2.4, tan), 2.1, 2.45, pick(r, ['#5e5b58', '#5a6b4a', '#7a5a42']));
+      } else if (roll < 0.27) {
+        // Hochbeet mit Grünzeug
+        add(box(x, y, 2.2, 1.0, tan), 0, 0.6, pick(r, WOOD));
+        add(box(x, y, 2.0, 0.8, tan), 0.6, 0.64, SOIL);
+        for (let k = 0; k < 3; k++) add(ngon(x + Math.cos(tan) * (k - 1) * 0.6, y + Math.sin(tan) * (k - 1) * 0.6, 0.22, 6, k), 0.64, 0.9, pick(r, BUSH));
+      } else if (roll < 0.34) {
+        // Trampolin
+        for (let k = 0; k < 4; k++) add(box(x + Math.cos(k * 1.57) * 1.5, y + Math.sin(k * 1.57) * 1.5, 0.1, 0.1, 0), 0, 0.75, LAMP);
+        add(ngon(x, y, 1.8, 14, 0), 0.75, 0.88, '#2f3a3a');
+      } else if (roll < 0.41) {
+        // Schaukel
+        for (const k of [-1, 1]) add(box(x + Math.cos(tan) * k * 1.2, y + Math.sin(tan) * k * 1.2, 0.14, 0.9, tan), 0, 2.2, pick(r, WOOD));
+        add(box(x, y, 2.6, 0.12, tan), 2.1, 2.24, pick(r, WOOD));
+        add(box(x, y, 0.5, 0.2, tan), 0.5, 0.56, '#3a3c40');
+      } else if (roll < 0.52) {
+        // Gartentisch mit zwei Stühlen
+        const c = pick(r, PLASTIC);
+        add(box(x, y, 1.2, 0.8, tan), 0.7, 0.78, c);
+        add(box(x, y, 0.15, 0.15, tan), 0, 0.7, c);
+        for (const k of [-1, 1]) {
+          const cx = x + Math.cos(tan) * k * 1.0;
+          const cy = y + Math.sin(tan) * k * 1.0;
+          add(box(cx, cy, 0.45, 0.45, tan), 0, 0.45, c);
+          add(box(cx + Math.cos(tan) * k * 0.2, cy + Math.sin(tan) * k * 0.2, 0.08, 0.45, tan), 0.45, 0.9, c);
+        }
+      } else if (roll < 0.6) {
+        // Regentonne
+        add(ngon(x, y, 0.42, 9, 0), 0, 1.0, pick(r, ['#3a5a3a', '#30506a', '#4a4440']));
+      } else if (roll < 0.67) {
+        // Komposter
+        add(box(x, y, 1.0, 1.0, tan), 0, 0.9, '#3a3f35');
+      } else if (roll < 0.76) {
+        // Wäscheleine mit Wäsche
+        for (const k of [-1, 1]) add(box(x + Math.cos(tan) * k * 2, y + Math.sin(tan) * k * 2, 0.08, 0.08, tan), 0, 1.9, LAMP);
+        add(box(x, y, 4, 0.04, tan), 1.85, 1.9, '#d8d2c4');
+        for (let k = 0; k < 3; k++) add(box(x + Math.cos(tan) * (k - 1) * 1.1, y + Math.sin(tan) * (k - 1) * 1.1, 0.55, 0.05, tan), 1.2 + r() * 0.3, 1.85, pick(r, LAUNDRY));
+      } else if (roll < 0.9) {
+        // Hecke
+        add(box(x, y, 4 + r() * 4, 0.8, tan), 0, 1.2 + r() * 0.5, pick(r, HEDGE));
+      } else if (roll < 0.96) {
+        // Gartenzaun
+        add(box(x, y, 5 + r() * 3, 0.08, tan), 0, 1.0, pick(r, ['#8a7a62', '#c8c2b0', '#6e6a62']));
+      } else {
+        // Sandkasten
+        add(box(x, y, 1.8, 1.8, tan), 0, 0.25, pick(r, WOOD));
+        add(box(x, y, 1.6, 1.6, tan), 0.25, 0.27, '#d8c9a0');
+      }
+      gardens++;
+    }
+  }
+
+  // Wald: liegende Stämme, Baumstümpfe, Reisighaufen ------------------------------------
+  const fCell = 16;
+  const fCands: { p: Pt; key: string }[] = [];
+  const seenF = new Set<string>();
+  for (const poly of input.forests) {
+    if (!roughlyNear(poly.rings)) continue;
+    const rings = toM(poly.rings);
+    const llb = bbox(poly.rings[0]);
+    for (let gx = Math.floor(llb.x0 / (fCell * degLon)); gx <= Math.ceil(llb.x1 / (fCell * degLon)); gx++) {
+      for (let gy = Math.floor(llb.y0 / (fCell * degLat)); gy <= Math.ceil(llb.y1 / (fCell * degLat)); gy++) {
+        const key = `${gx}:${gy}`;
+        if (seenF.has(key)) continue;
+        const r = rngFrom('waldboden', key);
+        if (r() > 0.22) continue;
+        const p = P.toM([(gx + 0.1 + 0.8 * r()) * fCell * degLon, (gy + 0.1 + 0.8 * r()) * fCell * degLat]);
+        if (!near(p) || !inPolygon(p, rings) || !offPath(p) || !dry(p)) continue;
+        seenF.add(key);
+        fCands.push({ p, key });
+      }
+    }
+  }
+  fCands.sort((a, b) => a.p[0] ** 2 + a.p[1] ** 2 - (b.p[0] ** 2 + b.p[1] ** 2));
+  const forest = Math.min(fCands.length, DECOR_LIMITS.forest);
+  for (const { p, key } of fCands.slice(0, forest)) {
+    const r = rngFrom('waldform', key);
+    const [x, y] = p;
+    const a = r() * Math.PI;
+    const roll = r();
+    if (roll < 0.45) {
+      // liegender Stamm
+      add(box(x, y, 3 + r() * 3, 0.5, a), 0, 0.5, pick(r, LOG));
+    } else if (roll < 0.8) {
+      // Baumstumpf
+      add(ngon(x, y, 0.3 + r() * 0.2, 7, a), 0, 0.35 + r() * 0.3, pick(r, LOG));
+    } else {
+      // Reisighaufen
+      for (let k = 0; k < 3; k++) add(box(x + (r() - 0.5), y + (r() - 0.5), 1.8, 0.12, a + (r() - 0.5) * 1.2), k * 0.1, k * 0.1 + 0.15, pick(r, LOG));
+    }
+  }
+
+  return { parts, trees: specs, counts: { buildings, trees: trees.length, cars, street, gardens, forest } };
 }
