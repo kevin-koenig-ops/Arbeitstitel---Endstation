@@ -29,6 +29,7 @@ import { Joystick, useButton } from '../joystick';
 import { append, clear, h, svgEl } from '../dom';
 import { openPackPanel, type PackTab } from '../game/packPanel';
 import { getBasePlace } from '../../services/basePlace';
+import { music } from '../../services/music';
 import { seasonOf } from '../../services/settings';
 import { openBattle } from '../game/battle';
 import { AmbienceController, ambienceEffects, currentAmbience, guardSightM, PHASE_NAMES, WEATHER_NAMES, type Ambience } from '../game/ambience';
@@ -1215,6 +1216,7 @@ export function gameScreen(app: App): Screen {
   const closeOverlay = () => {
     overlay?.remove();
     overlay = null;
+    music.setPlace('map');
   };
 
   // --- Kampf ------------------------------------------------------------------------
@@ -1311,12 +1313,14 @@ export function gameScreen(app: App): Screen {
       });
       return;
     }
+    music.setPlace('home');
     overlay = openBaseView(app, overlayHost, {
       getFix: () => fix,
       phase: () => currentAmbience().phase,
       weather: () => currentAmbience().weather,
       onClose: () => {
         overlay = null;
+        music.setPlace('map');
         refreshBaseMarker();
       },
       onChanged: () => {

@@ -6,7 +6,7 @@ import type { App } from './app';
 import { h, svgEl } from './dom';
 import { flagSvg, LANGUAGES } from './flags';
 
-type Cat = 'general' | 'map' | 'control' | 'graphics' | 'test' | 'account';
+type Cat = 'general' | 'map' | 'control' | 'graphics' | 'sound' | 'test' | 'account';
 /** Zuletzt offener Bereich (bleibt beim nächsten Öffnen). */
 let lastCat: Cat = 'general';
 
@@ -42,6 +42,23 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
   const waterToggle = h('input', { id: 'set-water', type: 'checkbox', class: 'toggle', onchange: () => s.set({ waterMotion: waterToggle.checked }) });
   waterToggle.checked = s.get().waterMotion;
 
+
+  // Musiklautstärke: Regler 0–100, ändert sich sofort beim Schieben
+  const volValue = h('output', { class: 'range-value', for: 'set-vol' });
+  const volSlider = h('input', {
+    id: 'set-vol',
+    type: 'range',
+    class: 'range',
+    min: '0',
+    max: '100',
+    step: '5',
+    oninput: () => {
+      volValue.textContent = `${volSlider.value} %`;
+      s.set({ musicVolume: Number(volSlider.value) / 100 });
+    },
+  });
+  volSlider.value = String(Math.round(s.get().musicVolume * 100));
+  volValue.textContent = `${volSlider.value} %`;
 
   const select = <K extends 'testPhase' | 'testWeather' | 'testSeason'>(key: K, id: string, options: [Settings[K], string][]) => {
     const sel = h('select', { id, class: 'select', onchange: () => s.set({ [key]: sel.value } as Partial<Settings>) }, options.map(([v, label]) => h('option', { value: String(v) }, label)));
@@ -189,6 +206,22 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
             ['shoulder', 'Schulter'],
           ]),
         ),
+      ],
+    ],
+    [
+      'sound',
+      'Klang',
+      [
+        row(
+          h('div', { class: 'set-label', id: 'lbl-music' }, 'Musik', h('small', null, 'Dauerschleife: Musik läuft ohne Pause. Ab und zu: ein Stück, dann ein paar Minuten Stille, dann das nächste.')),
+          segmented('music', 'lbl-music', [
+            ['loop', 'Dauerschleife'],
+            ['sometimes', 'Ab und zu'],
+            ['off', 'Aus'],
+          ]),
+        ),
+        row(lbl('set-vol', 'Lautstärke', 'Nur die Musik'), h('div', { class: 'range-wrap' }, volSlider, volValue)),
+        h('p', { class: 'note' }, 'Im Hauptmenü, zu Hause und auf der Karte läuft jeweils eigene Musik.'),
       ],
     ],
     [

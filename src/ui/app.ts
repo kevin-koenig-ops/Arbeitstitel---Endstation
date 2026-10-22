@@ -3,6 +3,7 @@
 import { GAME_TITLE, WORLD_SEED } from '../config';
 import { GuestAuth } from '../services/auth';
 import { LocalBackend, type GameBackend } from '../services/backend';
+import { music } from '../services/music';
 import { isNativeApp } from '../services/native';
 import { SettingsStore } from '../services/settings';
 import { h, reducedMotion } from './dom';
@@ -58,6 +59,7 @@ export async function createApp(root: HTMLElement) {
   let current: Screen | null = null;
 
   const settings = new SettingsStore();
+  music.attach(settings);
 
   const app: App = {
     backend: new LocalBackend(new GuestAuth(), WORLD_SEED),
@@ -69,6 +71,8 @@ export async function createApp(root: HTMLElement) {
       next.el.classList.add('screen-enter');
       stage.append(next.el);
       prev?.destroy?.();
+      // Musik passend zum Bildschirm: Spiel = Karte, alles andere = Hauptmenü
+      music.setPlace(name === 'game' ? 'map' : 'menu');
       if (prev) {
         prev.el.classList.add('screen-leave');
         setTimeout(() => prev.el.remove(), reducedMotion() ? 0 : 260);

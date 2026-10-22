@@ -48,13 +48,17 @@ export interface Settings {
   gait: 'fast' | 'quiet';
   /** Kampfansicht: von der Seite oder über die Schulter (Versuch). */
   battleView: 'side' | 'shoulder';
+  /** Musik: Dauerschleife, ab und zu ein Stück (dazwischen Stille) oder aus. */
+  music: 'loop' | 'sometimes' | 'off';
+  /** Lautstärke der Musik, 0 bis 1. */
+  musicVolume: number;
   /** Letzter bekannter Standort, nur auf diesem Gerät gespeichert. */
   lastPos?: LatLon;
 }
 
 const KEY = 'endstation.settings';
 
-const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', testSeason: 'auto', control: 'tap', lootGames: 'on', fullscreen: true, language: 'de', waterMotion: true, gait: 'fast', battleView: 'side' } as const;
+const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', testSeason: 'auto', control: 'tap', lootGames: 'on', fullscreen: true, language: 'de', waterMotion: true, gait: 'fast', battleView: 'side', music: 'loop', musicVolume: 0.8 } as const;
 const DEFAULTS: Settings = IS_PREVIEW ? { ...COMMON, map: 'demo', location: 'sim' } : { ...COMMON, map: 'real', location: 'gps' };
 
 export class SettingsStore {
