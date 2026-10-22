@@ -129,6 +129,7 @@ export class GameMap {
   private figScale = 0;
   private target: Marker | null = null;
   private baseMarker: Marker | null = null;
+  private homeState: { p: LatLon; tier: number } | null = null;
   private lastMarkerTap = 0;
   private loaded = false;
   private errorShown = false;
@@ -259,6 +260,7 @@ export class GameMap {
       if (!this.map) return;
       this.trees = new TreeLayer(DECOR_MINZOOM);
       this.map.addLayer(this.trees, this.map.getLayer('street-names') ? 'street-names' : undefined);
+      if (this.homeState) this.trees.setHome(this.homeState.p, this.homeState.tier);
       // Details neu aufbauen, jetzt mit echten Bäumen statt Klötzchen
       this.decorCenter = null;
       this.scheduleDecor();
@@ -365,12 +367,14 @@ export class GameMap {
     return this.map.getBearing();
   }
 
-  /** Das eigene Zuhause auf der Karte (nur für dich sichtbar). */
-  setBase(p: LatLon | null) {
+  /** Das eigene Zuhause auf der Karte (nur für dich sichtbar), als 3D-Modell je nach Stufe. */
+  setBase(p: LatLon | null, tier = 0) {
+    this.homeState = p ? { p, tier } : null;
+    this.trees?.setHome(p, tier);
     this.baseMarker?.remove();
     this.baseMarker = null;
     if (!p) return;
-    const el = h('button', { class: 'base-marker', type: 'button', 'aria-label': 'Dein Zuhause' }, h('span', { class: 'base-sign' }, 'H'), h('span', { class: 'base-pole' }));
+    const el = h('button', { class: 'base-marker', type: 'button', 'aria-label': 'Dein Zuhause' }, h('span', { class: 'base-sign' }, svgEl(icon('home', 20))), h('span', { class: 'base-pole' }));
     el.addEventListener('click', (ev) => {
       ev.stopPropagation();
       this.lastMarkerTap = Date.now();

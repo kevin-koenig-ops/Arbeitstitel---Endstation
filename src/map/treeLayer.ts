@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { LatLon } from '../core/types';
 import type { TreeKind, TreeSpec } from './decor';
+import { buildHome } from './homeModel';
 import { buildHouses, type HouseSpec, type MatKey } from './houseMesh';
 import type { PropSpec } from './landmarks';
 import { drawSign } from './signArt';
@@ -106,6 +107,9 @@ export class TreeLayer implements CustomLayerInterface {
   private pendingHouses: { houses: HouseSpec[]; center: LatLon; props: PropSpec[] } | null = null;
   private signMats = new Map<string, THREE.Material>();
   private houses = new THREE.Group();
+  /** Dein Zuhause (eigene Gruppe, liegt an seinem Ort, nicht an der Mitte der Details) */
+  private home = new THREE.Group();
+  private homeAt: { pos: LatLon; tier: number } | null = null;
   private houseMats = new Map<MatKey | 'shadow', THREE.Material>();
   private textures: THREE.Texture[] = [];
   private geos = new Map<TreeKind, Part[]>();
@@ -122,6 +126,41 @@ export class TreeLayer implements CustomLayerInterface {
     this.scene.add(sun);
     this.scene.add(this.group);
     this.scene.add(this.houses);
+    this.scene.add(this.home);
+  }
+
+  /** Dein Zuhause zeigen (oder entfernen); das Modell hängt von der Stufe ab. */
+  setHome(pos: LatLon | null, tier: number) {
+    const same = this.homeAt && pos && this.homeAt.tier === tier && this.homeAt.pos.lat === pos.lat && this.homeAt.pos.lon === pos.lon;
+    this.homeAt = pos ? { pos, tier } : null;
+    if (!this.map || same) return;
+    for (const child of [...this.home.children]) {
+      this.home.remove(child);
+      (child as THREE.Mesh).geometry.dispose();
+    }
+    if (!pos) return this.map.triggerRepaint();
+    if (!this.origin) this.setOrigin(pos);
+    const { plain, roof } = buildHome(tier);
+    for (const [key, m] of [
+      ['plain', plain],
+      ['roof', roof],
+    ] as const) {
+      if (!m.pos.length) continue;
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(m.pos, 3));
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(m.uv, 2));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(m.col.map(toLinear), 3));
+      this.home.add(new THREE.Mesh(geo, this.houseMaterial(key)));
+    }
+    this.placeHome();
+    this.map.triggerRepaint();
+  }
+
+  private placeHome() {
+    if (!this.homeAt || !this.origin) return;
+    const c = this.pendingHouses?.center ?? this.pending?.center ?? this.homeAt.pos;
+    const kx = 111320 * Math.cos((c.lat * Math.PI) / 180);
+    this.home.position.set((this.homeAt.pos.lon - c.lon) * kx, 0, -(this.homeAt.pos.lat - c.lat) * 111320);
   }
 
   onAdd(map: MLMap, gl: WebGLRenderingContext | WebGL2RenderingContext) {
@@ -130,6 +169,11 @@ export class TreeLayer implements CustomLayerInterface {
     this.renderer.autoClear = false;
     if (this.pending) this.setTrees(this.pending.trees, this.pending.center);
     if (this.pendingHouses) this.setHouses(this.pendingHouses.houses, this.pendingHouses.center, this.pendingHouses.props);
+    if (this.homeAt) {
+      const h = this.homeAt;
+      this.homeAt = null;
+      this.setHome(h.pos, h.tier);
+    }
   }
 
   /** Alle Häuser neu setzen (nach jedem Neuaufbau der Details, gleiche Mitte wie die Bäume). */
@@ -209,6 +253,7 @@ export class TreeLayer implements CustomLayerInterface {
   private setOrigin(center: LatLon) {
     this.origin = maplibregl.MercatorCoordinate.fromLngLat([center.lon, center.lat], 0);
     this.meterScale = this.origin.meterInMercatorCoordinateUnits();
+    this.placeHome();
   }
 
   /** Alle Bäume neu setzen (nach jedem Neuaufbau der Details). */
@@ -275,7 +320,7 @@ export class TreeLayer implements CustomLayerInterface {
   }
 
   render(_gl: WebGLRenderingContext | WebGL2RenderingContext, args: CustomRenderMethodInput) {
-    if (!this.renderer || !this.origin || !this.map || (!this.group.children.length && !this.houses.children.length)) return;
+    if (!this.renderer || !this.origin || !this.map || (!this.group.children.length && !this.houses.children.length && !this.home.children.length)) return;
     if (this.map.getZoom() < this.minZoom) return;
     const raw = (args as unknown as { defaultProjectionData?: { mainMatrix: ArrayLike<number> } }).defaultProjectionData?.mainMatrix ?? args.modelViewProjectionMatrix;
     const s = this.meterScale;

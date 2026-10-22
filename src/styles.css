@@ -811,9 +811,9 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 /* --- Zuhause (Basis) --------------------------------------------------------------- */
 .iconbtn.home { grid-area: home; position: relative; }
 .home-badge { position: absolute; top: -4px; right: -4px; width: 20px; height: 20px; border-radius: 50%; background: var(--amber); color: var(--ink); font: 800 15px/20px var(--font-ui); text-align: center; box-shadow: 0 0 0 2px var(--ink); }
-.base-marker { position: relative; width: 40px; height: 64px; padding: 0; border: 0; background: none; cursor: pointer; }
-.base-sign { position: absolute; left: 2px; top: 0; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: #2f6b3c; color: #e6c13a; font: 800 22px/1 var(--font-ui); box-shadow: 0 0 0 3px #e6c13a, 0 0 0 5px #15130f, 0 0 22px rgba(230, 193, 58, 0.6); }
-.base-pole { position: absolute; left: 18.5px; top: 38px; width: 3px; height: 24px; background: #15130f; }
+.base-marker { position: relative; width: 40px; height: 90px; padding: 0; border: 0; background: none; cursor: pointer; }
+.base-sign { position: absolute; left: 2px; top: 0; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: #ffb22e; color: #2a1d14; font: 800 22px/1 var(--font-ui); box-shadow: 0 0 0 3px #e6c13a, 0 0 0 5px #15130f, 0 0 22px rgba(230, 193, 58, 0.6); }
+.base-pole { position: absolute; left: 18.5px; top: 38px; width: 3px; height: 50px; background: #15130f; }
 
 .overlay.base-view { padding: 0; overflow: hidden; background: #14110e; }
 /* Himmel hinter der Halle, passend zur echten Tageszeit */

@@ -5,7 +5,7 @@ import { CACHE, ENEMIES, FOE_TACTICS, GEAR, HINT_NAMES, MAX_HEALTH, PATROL, REGI
 import { ExploredView, SECTOR_LEVELS, sectorOf } from '../../core/explore';
 import { bearingDeg, distanceM, formatDistance, offsetM } from '../../core/geo';
 import { rankOf } from '../../core/progress';
-import { currentHealth, dayNumber, packCount, pendingHarvest, readyAt, readyParts, regionTier, searchRangeM, spotKey } from '../../core/rules';
+import { baseTier, currentHealth, dayNumber, packCount, pendingHarvest, readyAt, readyParts, regionTier, searchRangeM, spotKey } from '../../core/rules';
 import type { Cache, FoeKind, LatLon, Opening, RegionId, Spot, WorldEvent } from '../../core/types';
 import { classifyRegion, hearRangeM, sightRangeM } from '../../core/terrain';
 import { dropSpot, eventCenter } from '../../core/worldEvents';
@@ -1242,7 +1242,8 @@ export function gameScreen(app: App): Screen {
   // --- Zuhause -------------------------------------------------------------------
   const refreshBaseMarker = () => {
     const place = getBasePlace();
-    gm?.setBase(place?.pos ?? null);
+    const st = app.backend.current();
+    gm?.setBase(place?.pos ?? null, st ? baseTier(st) : 0);
     homeBadge.hidden = !!place;
     if (!place) {
       homeBadge.textContent = '+';
