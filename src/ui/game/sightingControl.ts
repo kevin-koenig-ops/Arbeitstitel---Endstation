@@ -145,7 +145,8 @@ export class SightingControl {
     if (!fresh.length) return;
     if (this.first) {
       this.first = false;
-      this.o.app.toast(`Funk-Radar: ${views.length === 1 ? 'eine Sichtung' : `${views.length} Sichtungen`} in der Nähe.`);
+      const count = views.length === 1 ? 'eine Sichtung' : views.length + ' Sichtungen';
+      this.o.app.toast(`Funk-Radar: ${count} in der Nähe.`);
       return;
     }
     const best = fresh.sort((a, b) => RANK[b.rarity] - RANK[a.rarity])[0];
@@ -153,7 +154,9 @@ export class SightingControl {
     if (!v) return;
     const big = RANK[best.rarity] >= 2;
     this.vibrate(big ? [60, 50, 60, 50, 120] : [40]);
-    this.o.app.toast(`Funkspruch: ${SIGHTING_NAMES[v.s.kind]}, ${formatDistance(v.d)} Richtung ${compassWord(bearingDeg(this.o.fix()!.pos, v.pos))}.${big ? ` Es glänzt ${best.rarity === 'legendary' ? 'golden' : 'violett'}!` : ''}`, big ? 'good' : undefined);
+    const glow = best.rarity === 'legendary' ? ' Es glänzt golden!' : big ? ' Es glänzt violett!' : '';
+    const where = formatDistance(v.d) + ' Richtung ' + compassWord(bearingDeg(this.o.fix()!.pos, v.pos));
+    this.o.app.toast('Funkspruch: ' + SIGHTING_NAMES[v.s.kind] + ', ' + where + '.' + glow, big ? 'good' : undefined);
   }
 
   private renderChip() {
