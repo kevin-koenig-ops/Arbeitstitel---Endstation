@@ -66,7 +66,7 @@ export interface PatrolHost {
 }
 
 const TICK_MS = 200;
-const CHASE_SPEED = 1.15;
+const CHASE_SPEED = 0.95;
 
 export class PatrolControl {
   private live = new Map<string, LivePatrol>();
