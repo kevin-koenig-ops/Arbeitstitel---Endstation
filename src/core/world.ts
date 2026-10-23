@@ -178,7 +178,7 @@ export function classifyPoi(cls?: string, subclass?: string): SpotKind | null {
 }
 
 /** Kartenorte in Fundstellen umwandeln; doppelte (z. B. beide Haltestellenseiten) zusammenfassen. */
-export function poiSpots(seed: string, candidates: PoiCandidate[]): Spot[] {
+export function poiSpots(_seed: string, candidates: PoiCandidate[]): Spot[] {
   const out: Spot[] = [];
   for (const c of candidates) {
     const kind = classifyPoi(c.cls, c.subclass);
@@ -186,7 +186,8 @@ export function poiSpots(seed: string, candidates: PoiCandidate[]): Spot[] {
     if (out.some((s) => s.kind === kind && distanceM(s.pos, c.pos) < 35)) continue;
     const id = c.id !== undefined && c.id !== '' ? `p:${c.id}` : `p:${kind}:${c.pos.lat.toFixed(5)}:${c.pos.lon.toFixed(5)}`;
     const name =
-      POI_NAMES[c.subclass || c.cls || ''] || pick(rngFrom(seed, id), SPOT_KINDS[kind].names);
+      // Echte Orte heißen immer, was sie sind (Kevin 23.10.: „eine Apotheke soll immer eine Apotheke sein“)
+      POI_NAMES[c.subclass || c.cls || ''] || SPOT_KINDS[kind].names[0];
     out.push({ id, kind, source: 'poi', pos: c.pos, name });
   }
   return out;

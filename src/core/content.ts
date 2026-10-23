@@ -233,7 +233,7 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     mementoChance: 0,
   },
   market: {
-    names: ['Geplünderter Supermarkt', 'Dorfladen', 'Bäckerei mit Vorratskeller'],
+    names: ['Laden'],
     hint: 'Viel Nahrung und Wasser, dazu Kunststoff und Glas',
     cooldownMin: 180,
     loot: [
@@ -249,7 +249,8 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     mementoChance: 0.12,
   },
   pharmacy: {
-    names: ['Apotheke', 'Drogerie', 'Sanitätshaus'],
+    // Echte Orte heißen nach ihrer genauen Art (POI_NAMES); dies ist nur der Name, falls die fehlt
+    names: ['Apotheke'],
     hint: 'Medikamente und Verbandszeug',
     cooldownMin: 180,
     loot: [
@@ -264,7 +265,7 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     mementoChance: 0.12,
   },
   hardware: {
-    names: ['Baumarkt', 'Kfz-Werkstatt', 'Gartencenter'],
+    names: ['Baumarkt'],
     hint: 'Holz, Metall, Schrauben, Kleber. Hier gibt es alles zum Bauen.',
     cooldownMin: 180,
     loot: [
@@ -282,7 +283,7 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     mementoChance: 0.1,
   },
   fuel: {
-    names: ['Tankstelle', 'Rasthof-Shop'],
+    names: ['Tankstelle'],
     hint: 'Snacks, Getränke, Ersatzteile',
     cooldownMin: 180,
     loot: [
@@ -298,7 +299,7 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     mementoChance: 0.1,
   },
   well: {
-    names: ['Trinkbrunnen', 'Alte Wasserpumpe', 'Dorfbrunnen'],
+    names: ['Brunnen'],
     hint: 'Sauberes Wasser',
     cooldownMin: 120,
     loot: [
@@ -311,7 +312,7 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     mementoChance: 0.04,
   },
   stop: {
-    names: ['Bushaltestelle', 'Wartehäuschen'],
+    names: ['Bushaltestelle'],
     hint: 'Wer hier gewartet hat, hat etwas zurückgelassen',
     cooldownMin: 120,
     loot: [
@@ -804,32 +805,29 @@ export const POI_KINDS: readonly (readonly [SpotKind, readonly string[]])[] = [
 
 /** Anzeigenamen für echte Orte, nach OSM-Wert. */
 export const POI_NAMES: Record<string, string> = {
-  supermarket: 'Geplünderter Supermarkt',
+  // Kevin 23.10.: Jedes echte Gebäude heißt nur, was es ist (wie auf seinem Schild)
+  supermarket: 'Supermarkt',
   convenience: 'Kiosk',
   kiosk: 'Kiosk',
   grocery: 'Lebensmittelladen',
   bakery: 'Bäckerei',
   butcher: 'Metzgerei',
-  greengrocer: 'Gemüseladen',
-  deli: 'Feinkostladen',
+  greengrocer: 'Obst & Gemüse',
+  deli: 'Feinkost',
   beverages: 'Getränkemarkt',
   farm: 'Hofladen',
   pharmacy: 'Apotheke',
   chemist: 'Drogerie',
-  hospital: 'Krankenhaus',
-  doctors: 'Arztpraxis',
-  dentist: 'Zahnarztpraxis',
-  clinic: 'Klinik',
-  hardware: 'Eisenwarenladen',
+  hardware: 'Eisenwaren',
   doityourself: 'Baumarkt',
-  car_repair: 'Kfz-Werkstatt',
-  car_parts: 'Autoteile-Lager',
+  car_repair: 'Werkstatt',
+  car_parts: 'Autoteile',
   garden_centre: 'Gartencenter',
-  trade: 'Baustoffhandel',
+  trade: 'Großhandel',
   fuel: 'Tankstelle',
   drinking_water: 'Trinkbrunnen',
-  water_point: 'Wasserstelle',
-  water_well: 'Alte Wasserpumpe',
+  water_point: 'Wasserpumpe',
+  water_well: 'Ziehbrunnen',
   fountain: 'Dorfbrunnen',
   bus_stop: 'Bushaltestelle',
   bus_station: 'Busbahnhof',

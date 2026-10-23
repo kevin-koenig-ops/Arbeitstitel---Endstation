@@ -40,6 +40,13 @@ describe('Welt', () => {
     expect(classifyPoi('fuel', 'charging_station')).toBeNull();
     expect(classifyPoi('grocery', 'department_store')).toBeNull();
     expect(classifyPoi('doctors', 'doctors')).toBeNull();
+    // Echte Orte heißen immer, was sie sind
+    const named = poiSpots(SEED, [
+      { pos: HOME, cls: 'pharmacy', subclass: 'pharmacy', id: 1 },
+      { pos: offsetM(HOME, 200, 0), cls: 'shop', subclass: 'bakery', id: 2 },
+      { pos: offsetM(HOME, 400, 0), cls: 'grocery', subclass: 'supermarket', id: 3 },
+    ]);
+    expect(named.map((x) => x.name)).toEqual(['Apotheke', 'Bäckerei', 'Supermarkt']);
     const spots = poiSpots(SEED, [
       { pos: HOME, cls: 'bus', subclass: 'bus_stop' },
       { pos: offsetM(HOME, 15, 0), cls: 'bus', subclass: 'bus_stop' },
