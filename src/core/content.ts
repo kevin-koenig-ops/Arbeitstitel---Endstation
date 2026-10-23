@@ -1063,6 +1063,8 @@ export const WEAPONS: Record<WeaponId, WeaponDef> = {
   axe: { name: 'Axt', range: 'melee', dmg: 5, dur: 26, cost: {}, level: 0, rarity: 'rare', where: 'Scheunen, Hofläden, Baumärkte', art: 'axt', desc: 'Schwer und langsam, aber wer getroffen wird, bleibt liegen.' },
   golfclub: { name: 'Golfschläger', range: 'ranged', dmg: 3, dur: 24, cost: {}, level: 0, rarity: 'rare', where: 'Autos, Garagen, Sichtungen', art: 'golfschlaeger', desc: 'Reicht weit, trifft auch Gegner hinten.' },
   slingshot: { name: 'Schleuder', range: 'ranged', dmg: 2, dur: 30, cost: {}, level: 0, rarity: 'rare', where: 'Kioske, Rucksäcke, Sichtungen', art: 'schleuder', desc: 'Kostet keine Kraft, einmal pro Runde.' },
+  lid: { name: 'Tonnendeckel', range: 'melee', dmg: 2, dur: 24, cost: {}, level: 0, rarity: 'common', where: 'Container, Haltestellen', art: 'tonnendeckel', desc: 'Verbeult, aber er hält. Mehr Schild als Waffe.' },
+  extinguisher: { name: 'Feuerlöscher', range: 'melee', dmg: 3, dur: 22, cost: {}, level: 0, rarity: 'epic', where: 'Tankstellen, Werkstätten', art: 'feuerloescher', desc: 'Schwer genug zum Zuschlagen, und der Löschnebel blendet alle.' },
   machete: { name: 'Machete', range: 'melee', dmg: 3, dur: 26, cost: {}, level: 0, rarity: 'rare', where: 'Schuppen, Kleingärten, Baumärkte', art: 'machete', desc: 'Eigentlich für Brombeeren. Jeder Hieb gibt Schwung für den nächsten.' },
   sledgehammer: { name: 'Vorschlaghammer', range: 'melee', dmg: 8, dur: 20, cost: {}, level: 0, rarity: 'legendary', where: 'Sichtungen (Kisten und Wracks)', art: 'vorschlaghammer', desc: 'Schwer und langsam, aber jeder Treffer haut um.' },
   pitchfork: { name: 'Mistgabel', range: 'melee', dmg: 3, dur: 28, cost: {}, level: 0, rarity: 'common', where: 'Hofläden, Schuppen, Scheunen', art: 'mistgabel', desc: 'Hält dir die Meute vom Leib: stößt alle vorne zurück.' },
@@ -1071,7 +1073,7 @@ export const WEAPONS: Record<WeaponId, WeaponDef> = {
 };
 export const RANGE_NAMES: Record<WeaponDef['range'], string> = { melee: 'Nahkampf', ranged: 'Fernkampf' };
 /** Waffen, die man nur findet (Sammelbuch). */
-export const FOUND_WEAPONS: WeaponId[] = ['shovel', 'pitchfork', 'axe', 'machete', 'golfclub', 'slingshot', 'nailgun', 'bow', 'sledgehammer'];
+export const FOUND_WEAPONS: WeaponId[] = ['shovel', 'pitchfork', 'lid', 'axe', 'machete', 'golfclub', 'slingshot', 'nailgun', 'extinguisher', 'bow', 'sledgehammer'];
 
 export const START_WEAPONS: Weapon[] = [{ kind: 'crowbar', dur: WEAPONS.crowbar.dur }];
 
@@ -1155,11 +1157,11 @@ export type { FoeKind };
 export type CardId =
   // Grundkarten und Waffenkarten
   | 'punch' | 'throw' | 'dodge' | 'kick' | 'pry' | 'swing' | 'homerun' | 'bolt' | 'aim' | 'bandage'
-  | 'spade' | 'chop' | 'drive' | 'pellet' | 'nail' | 'salvo' | 'prong' | 'fend' | 'arrow' | 'drawbow' | 'cleave' | 'hack' | 'swath' | 'sledge' | 'heave'
+  | 'spade' | 'chop' | 'drive' | 'pellet' | 'nail' | 'salvo' | 'prong' | 'fend' | 'arrow' | 'drawbow' | 'cleave' | 'hack' | 'swath' | 'sledge' | 'heave' | 'lidup' | 'lidbash' | 'foam' | 'extbash'
   // Einmal-Karten (nach dem Ausspielen weg)
-  | 'molotov' | 'smoke' | 'caltrops' | 'firecracker' | 'lure' | 'pepper' | 'tinder' | 'tripwire' | 'alarm' | 'dressing' | 'adrenaline' | 'flare' | 'oilcan' | 'flashbang' | 'grenade'
+  | 'molotov' | 'smoke' | 'caltrops' | 'firecracker' | 'lure' | 'pepper' | 'tinder' | 'tripwire' | 'alarm' | 'dressing' | 'adrenaline' | 'flare' | 'oilcan' | 'painkiller' | 'flashbang' | 'fireworks' | 'grenade'
   // Fähigkeiten (dauerhaft, aus Sichtungen; mit Stufen)
-  | 'counter' | 'steady' | 'breath' | 'spark' | 'pitcher' | 'followup' | 'sweep' | 'sneak' | 'scavenger' | 'embers' | 'trapper' | 'distract' | 'rage' | 'radio' | 'secondwind' | 'wildfire' | 'packleader' | 'laststand';
+  | 'counter' | 'steady' | 'breath' | 'spark' | 'pitcher' | 'followup' | 'headbutt' | 'cover' | 'roll' | 'sweep' | 'sneak' | 'scavenger' | 'embers' | 'trapper' | 'distract' | 'rage' | 'retaliate' | 'firstaid' | 'radio' | 'secondwind' | 'wildfire' | 'packleader' | 'laststand';
 
 /** Grundkarte, Waffenkarte, Einmal-Karte oder Fähigkeit. */
 export type CardKind = 'base' | 'weapon' | 'once' | 'skill';
@@ -1221,6 +1223,8 @@ export interface CardDef {
   bonus?: number;
   /** Schwung: Dein nächster Angriff in dieser Runde macht so viel mehr Schaden. */
   momentum?: number;
+  /** Betäubt nur, wenn der Gegner gerade ausholt (Kopfnuss). */
+  stunIfWindup?: boolean;
   /** Höchstens so oft pro Runde. */
   perTurn?: number;
   /** Fähigkeit, die von selbst wirkt (kommt nicht ins Deck). */
@@ -1258,6 +1262,10 @@ export const CARDS: Record<CardId, CardDef> = {
   drive: { name: 'Abschlag', kind: 'weapon', cost: 1, target: 'any', dmg: 3, weapon: 'golfclub', art: 'golfschlaeger', desc: '3 Schaden, trifft auch Gegner hinten.' },
   pellet: { name: 'Stahlkugel', kind: 'weapon', cost: 0, target: 'any', dmg: 2, perTurn: 1, weapon: 'slingshot', art: 'schleuder', desc: '2 Schaden ohne Kraft, trifft auch hinten. Einmal pro Runde.' },
   nail: { name: 'Nagel', kind: 'weapon', cost: 1, target: 'any', dmg: 2, chain: true, pierce: true, weapon: 'nailgun', art: 'nagelpistole', desc: '2 Schaden an einem Gegner und noch einem zweiten. Geht durch Rüstung.' },
+  lidup: { name: 'Deckel hoch', kind: 'weapon', cost: 1, target: 'self', block: 4, weapon: 'lid', art: 'tonnendeckel', desc: 'Fängt 4 Schaden ab, bis zu deiner nächsten Runde.' },
+  lidbash: { name: 'Deckelstoß', kind: 'weapon', cost: 1, target: 'near', dmg: 2, push: true, weapon: 'lid', art: 'tonnendeckel', desc: '2 Schaden und stößt zurück.' },
+  foam: { name: 'Löschnebel', kind: 'weapon', cost: 2, target: 'self', area: 'all', blind: 1, weapon: 'extinguisher', art: 'feuerloescher', desc: 'Alle Gegner sind geblendet: Ihr nächster Angriff geht daneben.' },
+  extbash: { name: 'Löscherhieb', kind: 'weapon', cost: 1, target: 'near', dmg: 3, push: true, weapon: 'extinguisher', art: 'feuerloescher', desc: '3 Schaden und stößt zurück.' },
   cleave: { name: 'Spalten', kind: 'weapon', cost: 1, target: 'near', dmg: 3, pierce: true, weapon: 'axe', art: 'axt', desc: '3 Schaden, geht durch Rüstung.' },
   hack: { name: 'Hieb', kind: 'weapon', cost: 1, target: 'near', dmg: 3, momentum: 2, weapon: 'machete', art: 'machete', desc: '3 Schaden vorne. Schwung: Dein nächster Angriff in dieser Runde macht 2 mehr.' },
   swath: { name: 'Schneise', kind: 'weapon', cost: 2, target: 'self', area: 'near', dmg: 3, weapon: 'machete', art: 'machete', desc: '3 Schaden an allen vorne.' },
@@ -1282,13 +1290,18 @@ export const CARDS: Record<CardId, CardDef> = {
   tripwire: { name: 'Stolperdraht', kind: 'once', cost: 1, target: 'self', trap: 3, rarity: 'common', where: 'Werktisch, Baumärkte, Hochsitze', craft: { copper: 1, screws: 2 }, art: 'stolperdraht', desc: 'Falle: Wer als Nächstes nach vorn kommt, stürzt. 3 Schaden, und er setzt eine Runde aus.' },
   alarm: { name: 'Wecker', kind: 'once', cost: 1, target: 'self', area: 'far', pull: true, rarity: 'common', where: 'Pakete, Rucksäcke', art: 'wecker', desc: 'Alle hinten kommen sofort nach vorn, auch der Heuler.' },
   oilcan: { name: 'Ölkanister', kind: 'once', cost: 1, target: 'self', area: 'all', burn: 2, rarity: 'rare', where: 'Tankstellen, Fässer, Zeltlager', art: 'oelkanister', desc: 'Alle Gegner brennen 2 Runden, vorne und hinten.' },
+  painkiller: { name: 'Schmerzmittel', kind: 'once', cost: 1, target: 'self', block: 6, rarity: 'rare', where: 'Apotheken, Notlazarett-Kisten', art: 'schmerzmittel', desc: 'Fängt 6 Schaden ab, bis zu deiner nächsten Runde.' },
   flashbang: { name: 'Blendgranate', kind: 'once', cost: 1, target: 'self', area: 'all', stun: true, rarity: 'epic', where: 'Konvoi-Wracks', art: 'blendgranate', desc: 'Alle Gegner setzen eine Runde aus.' },
+  fireworks: { name: 'Feuerwerksbatterie', kind: 'once', cost: 1, target: 'self', area: 'all', dmg: 1, blind: 1, silence: 3, rarity: 'epic', where: 'Kioske, Zeltlager, Sichtungen', art: 'feuerwerk', desc: 'Alle Gegner: 1 Schaden und geblendet, Heuler verstummen 3 Runden.' },
   grenade: { name: 'Granate', kind: 'once', cost: 2, target: 'self', area: 'all', dmg: 6, rarity: 'legendary', where: 'Konvoi-Wracks, Hilfsabwürfe', art: 'granate', desc: '6 Schaden an allen Gegnern.' },
   // Fähigkeiten
   counter: { name: 'Konter', kind: 'skill', cost: 1, target: 'self', block: 2, thorns: 2, scale: { block: 1, thorns: 1 }, rarity: 'common', where: 'Notizbücher', art: 'konter', desc: 'Fängt 2 ab. Wer dich bis zur nächsten Runde trifft, nimmt 2 Schaden.' },
   steady: { name: 'Ruhige Hand', kind: 'skill', cost: 0, target: 'self', focus: 2, scale: { focus: 1 }, rarity: 'common', where: 'Notizbücher', art: 'ruhige-hand', desc: 'Der nächste Wurf oder Fernangriff macht 2 mehr Schaden.' },
   breath: { name: 'Atem holen', kind: 'skill', cost: 0, target: 'self', draw: 2, scale: { draw: 1 }, rarity: 'common', where: 'Notizbücher', art: 'atem-holen', desc: 'Ziehe 2 Karten.' },
   followup: { name: 'Nachsetzen', kind: 'skill', cost: 1, target: 'near', dmg: 2, momentum: 2, scale: { momentum: 1 }, rarity: 'common', where: 'Notizbücher', art: 'nachsetzen', desc: '2 Schaden vorne. Schwung: Dein nächster Angriff in dieser Runde macht 2 mehr.' },
+  headbutt: { name: 'Kopfnuss', kind: 'skill', cost: 1, target: 'near', dmg: 1, stunIfWindup: true, scale: { dmg: 1 }, rarity: 'common', where: 'Notizbücher', art: 'kopfnuss', desc: '1 Schaden vorne. Holt der Gegner gerade aus, setzt er eine Runde aus.' },
+  cover: { name: 'Deckung', kind: 'skill', cost: 0, target: 'self', block: 2, scale: { block: 1 }, rarity: 'common', where: 'Notizbücher', art: 'deckung', desc: 'Fängt 2 Schaden ab, kostet keine Kraft.' },
+  roll: { name: 'Ausweichrolle', kind: 'skill', cost: 1, target: 'self', block: 3, draw: 1, scale: { block: 1 }, rarity: 'common', where: 'Notizbücher', art: 'ausweichrolle', desc: 'Fängt 3 Schaden ab, und du ziehst 1 Karte.' },
   sweep: { name: 'Rundumschlag', kind: 'skill', cost: 1, target: 'self', area: 'near', dmg: 2, scale: { dmg: 1 }, rarity: 'rare', where: 'Notizbücher, Alpha-Wandler', art: 'rundumschlag', desc: '2 Schaden an allen vorne.' },
   spark: { name: 'Funkenschlag', kind: 'skill', cost: 1, target: 'near', dmg: 1, burn: 2, scale: { burn: 1 }, rarity: 'common', where: 'Notizbücher', art: 'funkenschlag', desc: '1 Schaden vorne, der Gegner brennt 2 Runden.' },
   pitcher: { name: 'Werferin', kind: 'skill', cost: 0, target: 'self', passive: true, bonus: 1, scale: { bonus: 1 }, rarity: 'common', where: 'Notizbücher', art: 'werferin', desc: 'Wirkt von selbst: Steinwurf und Pfeil machen 1 Schaden mehr.' },
@@ -1298,6 +1311,8 @@ export const CARDS: Record<CardId, CardDef> = {
   trapper: { name: 'Fallensteller', kind: 'skill', cost: 0, target: 'self', passive: true, bonus: 1, scale: { bonus: 1 }, rarity: 'rare', where: 'Notizbücher', art: 'fallensteller', desc: 'Wirkt von selbst: Verlangsamte Gegner nehmen 1 Schaden mehr, und deine Fallen treffen härter.' },
   distract: { name: 'Ablenken', kind: 'skill', cost: 1, target: 'near', push: true, slow: 1, scale: { slow: 1 }, rarity: 'rare', where: 'Notizbücher', art: 'ablenken', desc: 'Ein Gegner vorne muss nach hinten und ist 1 Runde verlangsamt.' },
   rage: { name: 'Wut', kind: 'skill', cost: 0, target: 'self', passive: true, bonus: 2, scale: { bonus: 1 }, rarity: 'rare', where: 'Notizbücher', art: 'wut', desc: 'Wirkt von selbst: Hast du nur noch 3 Gesundheit oder weniger, machen deine Angriffe 2 mehr.' },
+  retaliate: { name: 'Zurückschlagen', kind: 'skill', cost: 0, target: 'self', passive: true, bonus: 2, scale: { bonus: 1 }, rarity: 'rare', where: 'Notizbücher', art: 'zurueckschlagen', desc: 'Wirkt von selbst: Fängst du einen Angriff ganz ab, nimmt der Angreifer 2 Schaden.' },
+  firstaid: { name: 'Erste Hilfe', kind: 'skill', cost: 0, target: 'self', passive: true, bonus: 2, scale: { bonus: 1 }, rarity: 'rare', where: 'Notizbücher, Notlazarett-Kisten', art: 'erste-hilfe', desc: 'Wirkt von selbst: Das erste Verbinden im Kampf kostet keine Medizin und heilt 2 mehr.' },
   radio: { name: 'Funker', kind: 'skill', cost: 1, target: 'any', stun: true, silence: 9, rarity: 'epic', where: 'Notizbücher (an hohen Punkten häufiger)', art: 'funker', desc: 'Ein Gegner verliert seine Runde. Ein Heuler ruft in diesem Kampf keine Hilfe mehr.' },
   secondwind: { name: 'Zweiter Atem', kind: 'skill', cost: 0, target: 'self', passive: true, heal: 4, scale: { heal: 2 }, rarity: 'epic', where: 'Alpha-Wandler', art: 'zweiter-atem', desc: 'Wirkt von selbst, einmal pro Kampf: Fällst du unter 3 Gesundheit, heilst du 4.' },
   wildfire: { name: 'Lauffeuer', kind: 'skill', cost: 0, target: 'self', passive: true, burn: 2, scale: { burn: 1 }, rarity: 'epic', where: 'Notizbücher', art: 'lauffeuer', desc: 'Wirkt von selbst: Fällt ein brennender Gegner, fängt der nächste Feuer und brennt 2 Runden.' },
@@ -1306,8 +1321,8 @@ export const CARDS: Record<CardId, CardDef> = {
 };
 
 /** Sammelkarten in der Reihenfolge des Sammelbuchs. */
-export const ONCE_CARDS: CardId[] = ['molotov', 'smoke', 'caltrops', 'firecracker', 'lure', 'pepper', 'tinder', 'tripwire', 'alarm', 'dressing', 'adrenaline', 'flare', 'oilcan', 'flashbang', 'grenade'];
-export const SKILL_CARDS: CardId[] = ['counter', 'steady', 'breath', 'spark', 'pitcher', 'followup', 'sweep', 'sneak', 'scavenger', 'embers', 'trapper', 'distract', 'rage', 'radio', 'secondwind', 'wildfire', 'packleader', 'laststand'];
+export const ONCE_CARDS: CardId[] = ['molotov', 'smoke', 'caltrops', 'firecracker', 'lure', 'pepper', 'tinder', 'tripwire', 'alarm', 'dressing', 'adrenaline', 'flare', 'oilcan', 'painkiller', 'flashbang', 'fireworks', 'grenade'];
+export const SKILL_CARDS: CardId[] = ['counter', 'steady', 'breath', 'spark', 'pitcher', 'followup', 'headbutt', 'cover', 'roll', 'sweep', 'sneak', 'scavenger', 'embers', 'trapper', 'distract', 'rage', 'retaliate', 'firstaid', 'radio', 'secondwind', 'wildfire', 'packleader', 'laststand'];
 /** Höchstens so viele Einmal-Karten je Sorte stecken in der Tasche. */
 export const ONCE_CARRY = 3;
 /** Die Tasche für Einmal-Karten hat so viele Plätze (je Platz eine Sorte). */
@@ -1330,21 +1345,21 @@ export function cardStat(id: CardId, stat: CardStat, level = 1): number {
  * Höchstens eins pro Suche. „w:…“ ist eine Waffe.
  */
 export const CARD_LOOT: Partial<Record<SpotKind, [CardId | `w:${WeaponId}`, number][]>> = {
-  fuel: [['molotov', 0.22], ['oilcan', 0.06], ['flare', 0.03]],
+  fuel: [['molotov', 0.22], ['oilcan', 0.06], ['flare', 0.03], ['w:extinguisher', 0.015]],
   car: [['molotov', 0.05], ['w:golfclub', 0.02], ['flare', 0.02]],
-  hardware: [['smoke', 0.1], ['caltrops', 0.1], ['tripwire', 0.08], ['w:machete', 0.01], ['w:shovel', 0.05], ['w:axe', 0.03], ['w:nailgun', 0.015]],
-  market: [['lure', 0.12], ['firecracker', 0.08], ['w:slingshot', 0.015], ['w:pitchfork', 0.01]],
-  pharmacy: [['pepper', 0.1], ['dressing', 0.05], ['adrenaline', 0.025]],
+  hardware: [['smoke', 0.1], ['caltrops', 0.1], ['tripwire', 0.08], ['w:machete', 0.01], ['w:shovel', 0.05], ['w:axe', 0.03], ['w:nailgun', 0.015], ['w:extinguisher', 0.01]],
+  market: [['lure', 0.12], ['firecracker', 0.08], ['fireworks', 0.01], ['w:slingshot', 0.015], ['w:pitchfork', 0.01]],
+  pharmacy: [['pepper', 0.1], ['painkiller', 0.06], ['dressing', 0.05], ['adrenaline', 0.025]],
   shed: [['tinder', 0.08], ['caltrops', 0.05], ['w:shovel', 0.05], ['w:pitchfork', 0.04], ['w:axe', 0.02], ['w:machete', 0.015]],
   hide: [['tripwire', 0.06]],
   parcel: [['alarm', 0.08]],
   barrel: [['oilcan', 0.05]],
-  camp: [['tinder', 0.2], ['oilcan', 0.06]],
+  camp: [['tinder', 0.2], ['oilcan', 0.06], ['fireworks', 0.02]],
   backpack: [['firecracker', 0.04], ['alarm', 0.04], ['dressing', 0.03], ['w:slingshot', 0.02]],
-  container: [['pepper', 0.03], ['lure', 0.03]],
-  stop: [['flare', 0.04], ['firecracker', 0.03]],
+  container: [['pepper', 0.03], ['lure', 0.03], ['w:lid', 0.03]],
+  stop: [['flare', 0.04], ['firecracker', 0.03], ['w:lid', 0.03]],
   convoy: [['flare', 0.35], ['flashbang', 0.12], ['grenade', 0.04]],
-  heli: [['dressing', 0.2], ['adrenaline', 0.1], ['grenade', 0.03]],
+  heli: [['dressing', 0.2], ['painkiller', 0.1], ['adrenaline', 0.1], ['grenade', 0.03]],
   bunker: [['flashbang', 0.15], ['grenade', 0.05], ['adrenaline', 0.1]],
   airdrop: [['dressing', 0.25], ['adrenaline', 0.15], ['grenade', 0.05]],
 };
@@ -1359,6 +1374,8 @@ export const WEAPON_CARDS: Record<WeaponId, CardId[]> = {
   shovel: ['spade', 'spade', 'spade'],
   axe: ['chop', 'chop', 'cleave'],
   machete: ['hack', 'hack', 'swath'],
+  lid: ['lidup', 'lidup', 'lidbash'],
+  extinguisher: ['foam', 'extbash', 'extbash'],
   sledgehammer: ['sledge', 'sledge', 'heave'],
   golfclub: ['drive', 'drive'],
   slingshot: ['pellet', 'pellet', 'pellet'],
@@ -1378,6 +1395,11 @@ export const TACTICS = {
   maxFoes: 3,
   /** So oft heult ein Heuler höchstens */
   maxHowls: 2,
+  /** Lange Kämpfe locken an: ab dieser Runde kommt alle paar Runden ein Wandler dazu (0 = nie). */
+  lureFrom: 0,
+  lureEvery: 2,
+  /** Höchstens so viele kommen so dazu. */
+  lureMax: 2,
 };
 
 export type IntentKind = 'attack' | 'windup' | 'smash' | 'grab' | 'advance' | 'howl' | 'lurk' | 'stunned' | 'stare' | 'fade' | 'pounce';

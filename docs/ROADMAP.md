@@ -100,6 +100,8 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 2. **Kartenplan:** 75 Karten für Version 1.0 in fünf Spielstilen, ausgewogen nach dem Vorbild von Slay the Spire (Plan im Doc, Reiter „Kartenplan“). Feuer, Fallen und Abstand sowie Schwung sind drin, als Nächstes Schutz, dann Rudel
 3. Danach: eine Woche nichts Neues, draußen testen, Akku und Tempo, Einstieg schleifen
 
+Erledigt am 23.10. (Karten, vierter Stil): Schutz mit Tonnendeckel, Feuerlöscher, Kopfnuss (betäubt beim Ausholen), Deckung, Ausweichrolle, Zurückschlagen, Erste Hilfe (erstes Verbinden ohne Medizin), Schmerzmittel, Feuerwerksbatterie. Labor: Schutz nimmt deutlich weniger Schaden, Kämpfe dauern doppelt so lang. Regel „Lange Kämpfe locken Wandler an“ ist eingebaut, aber aus (Entscheidung offen).
+
 Erledigt am 23.10. (Karten, dritter Stil): Schwung mit Machete (Hieb, Schneise), Vorschlaghammer (Wuchtschlag, Ausholen; statt Kettensäge), Nachsetzen, Wut, Spalten für die Axt. Im Labor solide überall, schnellste Kämpfe, keine Ausreißer. Als Nächstes: Schutz (Tonnendeckel, Feuerlöscher, Kopfnuss, Deckung, Ausweichrolle, Zurückschlagen, Erste Hilfe, Schmerzmittel), dann Rudel.
 
 Erledigt am 23.10. (Karten, zweiter Stil): Fallen und Abstand mit Stolperdraht (Falle), Wecker (holt nach vorn), Mistgabel, Sportbogen, Fallensteller, Ablenken, Werferin; im Labor gegen Feuer und den Allround-Stand verglichen (Fallen stark gegen Borkenmann und Wächter, schwächer gegen Gruppen). Nächster Stil: Schwung (Machete, Nachsetzen, Wut, Vorschlaghammer). Die Kettensäge ist raus (Kevin: zu blutig, lieber geerdet).

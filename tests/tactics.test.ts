@@ -624,3 +624,73 @@ describe('Schwung', () => {
     expect(playCard(st, 0, b.id).find((e) => e.type === 'hit')).toMatchObject({ dmg: 3 });
   });
 });
+
+describe('Schutz', () => {
+  it('Kopfnuss betäubt nur, wenn er ausholt', () => {
+    const st = withHand(start(['brute'], { kit: { skills: { headbutt: 1 } } }), 'headbutt', 'headbutt');
+    const b = aliveFoes(st)[0];
+    b.row = 'near';
+    b.stunned = false;
+    b.intent = { kind: 'attack', dmg: 3 };
+    st.energy = 3;
+    expect(playCard(st, 0, b.id).some((e) => e.type === 'stun')).toBe(false);
+    b.intent = { kind: 'windup' };
+    expect(playCard(st, 0, b.id).some((e) => e.type === 'stun')).toBe(true);
+    expect(b.stunned).toBe(true);
+  });
+
+  it('Zurückschlagen: ganz abgefangen, gleich zurück', () => {
+    const st = withHand(start(['walker'], { kit: { skills: { retaliate: 2 } }, weapons: [{ kind: 'lid', dur: 10 }] }), 'lidup');
+    const w = aliveFoes(st)[0];
+    w.row = 'near';
+    w.stunned = false;
+    w.step = 0;
+    w.intent = intentOf(w);
+    const hp0 = w.hp;
+    playCard(st, 0);
+    expect(st.block).toBe(4);
+    const ev = endTurn(st);
+    expect(ev.some((e) => e.type === 'retaliate' && e.dmg === 3)).toBe(true);
+    expect(w.hp).toBe(hp0 - 3);
+  });
+
+  it('Erste Hilfe: das erste Verbinden ohne Medizin und kräftiger', () => {
+    const st = start(['walker'], { medicine: 0, health: 3, kit: { skills: { firstaid: 1 } } });
+    expect([...st.hand, ...st.draw].filter((c) => c === 'bandage').length).toBe(1);
+    withHand(st, 'bandage', 'bandage');
+    const ev = playCard(st, 0);
+    expect(ev).toContainEqual({ type: 'heal', amount: 6 });
+    expect(st.usedMedicine).toBe(0);
+    expect(playCard(st, 0)).toEqual([{ type: 'denied', reason: 'medicine' }]);
+  });
+
+  it('Feuerlöscher blendet alle, Schmerzmittel fängt viel ab', () => {
+    const st = withHand(start(['walker', 'walker'], { weapons: [{ kind: 'extinguisher', dur: 10 }], kit: { pouch: { painkiller: 1 } } }), 'foam');
+    st.energy = 3;
+    playCard(st, 0);
+    expect(aliveFoes(st).every((f) => f.blind === 1)).toBe(true);
+    playPouch(st, 'painkiller');
+    expect(st.block).toBe(6);
+  });
+});
+
+describe('Lange Kämpfe (Regel zum Ausprobieren)', () => {
+  it('lockt ab der eingestellten Runde Wandler an, höchstens zwei', () => {
+    const before = TACTICS.lureFrom;
+    TACTICS.lureFrom = 2;
+    try {
+      const st = start(['brute']);
+      aliveFoes(st)[0].hp = 999;
+      let lured = 0;
+      for (let i = 0; i < 8 && !st.over; i++) {
+        st.hand = [];
+        st.block = 99;
+        lured += endTurn(st).filter((e) => e.type === 'lured').length;
+      }
+      expect(lured).toBe(2);
+      expect(st.foes.filter((f) => f.kind === 'walker').length).toBe(2);
+    } finally {
+      TACTICS.lureFrom = before;
+    }
+  });
+});

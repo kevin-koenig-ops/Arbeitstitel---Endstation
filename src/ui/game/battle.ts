@@ -12,7 +12,7 @@ import { CARDS, CLIMATE, FOE_TACTICS, KRAM, KRAM_ORDER, MAX_HEALTH, RESOURCE_ORD
 import { isCold, isHot } from '../../core/terrain';
 import { seasonOf } from '../../services/settings';
 import { currentRegion } from './worldState';
-import { aliveFoes, canHowl, createTactics, endTurn, flee, fleeCost, foeById, playable, playCard, playPouch, targetsFor, type Intent, type TacticsState, type TEvent } from '../../core/tactics';
+import { aliveFoes, canHowl, createTactics, endTurn, flee, fleeCost, foeById, lacksMedicine, playable, playCard, playPouch, targetsFor, type Intent, type TacticsState, type TEvent } from '../../core/tactics';
 import { battleWeapons, bestWeapon, cardKit, currentHealth } from '../../core/rules';
 import { artUrl, CARD_ICON, cardEffect } from '../cards';
 import type { DayPhase } from '../../core/sun';
@@ -250,7 +250,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
       if (btn) shake(btn);
       return setInfo('Nicht genug Kraft. Runde beenden für neue.');
     }
-    if (def.medicine && st.medicine < 1) {
+    if (lacksMedicine(st, card)) {
       if (btn) shake(btn);
       return setInfo('Keine Medizin mehr dabei.');
     }
@@ -313,7 +313,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
             if (c === 'flare') fx('flare');
             if (c === 'tinder') fx('fire');
             await wait(c === 'bolt' ? 160 : 300);
-          } else if (c === 'dodge' || c === 'counter') scene?.shieldUp();
+          } else if (c === 'dodge' || c === 'counter' || c === 'lidup' || c === 'cover' || c === 'roll' || c === 'painkiller') scene?.shieldUp();
           else if (c === 'bandage' || c === 'dressing' || c === 'adrenaline' || c === 'secondwind') scene?.heal();
           else if (c === 'aim' || c === 'steady' || c === 'drawbow' || c === 'heave') scene?.focus();
           else if (c === 'tripwire') await wait(160);
@@ -322,8 +322,8 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
             vibrate([20, 20, 20, 20, 20]);
             await wait(300);
           }
-          else if (c === 'molotov' || c === 'oilcan' || c === 'grenade' || c === 'flashbang' || c === 'smoke' || c === 'firecracker' || c === 'caltrops' || c === 'radio') {
-            fx(c === 'molotov' || c === 'oilcan' ? 'fire' : c === 'grenade' ? 'blast' : c === 'flashbang' ? 'flash' : c === 'smoke' ? 'smoke' : c === 'firecracker' ? 'spark' : c === 'radio' ? 'radio' : 'dust');
+          else if (c === 'molotov' || c === 'oilcan' || c === 'grenade' || c === 'flashbang' || c === 'smoke' || c === 'foam' || c === 'firecracker' || c === 'fireworks' || c === 'caltrops' || c === 'radio') {
+            fx(c === 'molotov' || c === 'oilcan' ? 'fire' : c === 'grenade' ? 'blast' : c === 'flashbang' ? 'flash' : c === 'smoke' || c === 'foam' ? 'smoke' : c === 'firecracker' || c === 'fireworks' ? 'spark' : c === 'radio' ? 'radio' : 'dust');
             vibrate(c === 'grenade' ? [40, 30, 90] : 30);
             await wait(c === 'grenade' ? 420 : 300);
           } else if (c === 'breath' || c === 'packleader') {
@@ -331,13 +331,14 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           } else {
             if (c === 'pepper') fx('smoke');
             if (c === 'spark' || c === 'salvo') fx('spark');
-            scene?.act(c === 'homerun' || c === 'chop' || c === 'sweep' || c === 'salvo' || c === 'sledge' || c === 'swath' ? 'power' : c === 'kick' || c === 'spade' || c === 'pepper' || c === 'fend' || c === 'distract' ? 'shove' : 'swing', id);
+            scene?.act(c === 'homerun' || c === 'chop' || c === 'sweep' || c === 'salvo' || c === 'sledge' || c === 'swath' ? 'power' : c === 'kick' || c === 'spade' || c === 'pepper' || c === 'fend' || c === 'distract' || c === 'lidbash' || c === 'extbash' || c === 'headbutt' ? 'shove' : 'swing', id);
             await wait(c === 'homerun' || c === 'chop' ? 260 : 150);
           }
           break;
         }
         case 'burn':
         case 'thorns':
+        case 'retaliate':
         case 'ally': {
           const f = sfoe(e.id);
           if (f) {
@@ -345,7 +346,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
             if (e.kill) f.alive = false;
           }
           scene?.hitFoe(e.id, e.dmg, e.kill, false);
-          floatAt(e.id, e.type === 'burn' ? `🔥${e.dmg}` : e.type === 'ally' ? `Hund ${e.dmg}` : `Konter ${e.dmg}`, e.type === 'burn' ? 'power' : 'dmg');
+          floatAt(e.id, e.type === 'burn' ? `🔥${e.dmg}` : e.type === 'ally' ? `Hund ${e.dmg}` : e.type === 'retaliate' ? `Zurück ${e.dmg}` : `Konter ${e.dmg}`, e.type === 'burn' ? 'power' : 'dmg');
           if (e.kill) {
             vibrate(40);
             scene?.setFoes(shownList());
@@ -580,6 +581,14 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           say('Der Heuler ruft einen Wandler!', 'bad');
           vibrate([20, 30, 20, 30, 20]);
           await wait(800);
+          break;
+        }
+        case 'lured': {
+          const nf = foeById(st, e.id);
+          if (nf) shown.foes.set(nf.id, { id: nf.id, kind: nf.kind, row: 'far', alive: nf.hp > 0, stunned: false, raised: false, hp: nf.hp, maxHp: nf.maxHp, block: 0, intent: nf.intent, acted: true });
+          scene?.setFoes(shownList(), [e.id]);
+          say('Der Lärm lockt einen Wandler an!', 'bad');
+          await wait(700);
           break;
         }
         case 'turn':

@@ -41,6 +41,10 @@ export const CARD_ICON: Record<CardId, string> = {
   nail: 'nailgun',
   salvo: 'salvo',
   cleave: 'axe',
+  lidup: 'lid',
+  lidbash: 'shove',
+  foam: 'smoke',
+  extbash: 'extinguisher',
   hack: 'machete',
   swath: 'sweep',
   sledge: 'sledgehammer',
@@ -57,6 +61,8 @@ export const CARD_ICON: Record<CardId, string> = {
   pepper: 'pepper',
   tinder: 'tinder',
   oilcan: 'oilcan',
+  painkiller: 'painkiller',
+  fireworks: 'fireworks',
   tripwire: 'tripwire',
   alarm: 'alarm',
   dressing: 'dressing',
@@ -72,6 +78,11 @@ export const CARD_ICON: Record<CardId, string> = {
   wildfire: 'wildfire',
   pitcher: 'pitcher',
   followup: 'followup',
+  headbutt: 'headbutt',
+  cover: 'cover',
+  roll: 'roll',
+  retaliate: 'retaliate',
+  firstaid: 'firstaid',
   rage: 'rage',
   trapper: 'trapper',
   distract: 'distract',
@@ -84,7 +95,7 @@ export const CARD_ICON: Record<CardId, string> = {
   laststand: 'laststand',
 };
 
-export const WEAPON_ICON: Record<WeaponId, string> = { crowbar: 'crowbar', bat: 'bat', crossbow: 'bolt', shovel: 'shovel', axe: 'axe', golfclub: 'golfclub', slingshot: 'slingshot', nailgun: 'nailgun', pitchfork: 'pitchfork', bow: 'bow', machete: 'machete', sledgehammer: 'sledgehammer' };
+export const WEAPON_ICON: Record<WeaponId, string> = { crowbar: 'crowbar', bat: 'bat', crossbow: 'bolt', shovel: 'shovel', axe: 'axe', golfclub: 'golfclub', slingshot: 'slingshot', nailgun: 'nailgun', pitchfork: 'pitchfork', bow: 'bow', machete: 'machete', sledgehammer: 'sledgehammer', lid: 'lid', extinguisher: 'extinguisher' };
 
 export const ROMAN = ['', 'I', 'II', 'III'];
 
@@ -179,6 +190,7 @@ export function cardEffect(id: CardId, level = 1): { main: string; tag: string }
   if (c.push && main !== 'Stößt weg') tags.push('stößt weg');
   if (c.trap) tags.push('setzt aus');
   if (c.stun && main !== 'Betäubt') tags.push('betäubt');
+  if (c.stunIfWindup) tags.push('betäubt beim Ausholen');
   if (c.burn && !c.passive && !main.startsWith('Brennt')) tags.push(`brennt ${v('burn')}`);
   if (c.blind && main !== 'Blendet') tags.push('blendet');
   if (c.slow && main !== 'Bremst') tags.push('bremst');

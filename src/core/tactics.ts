@@ -73,6 +73,8 @@ export interface TacticsState {
   /** Verbleibende Haltbarkeit je Waffe (die beste ihrer Art). */
   weaponDur: Partial<Record<WeaponId, number>>;
   kills: number;
+  /** So viele Wandler hat der lange Kampf schon angelockt. */
+  lured: number;
   over: null | 'won' | 'lost' | 'fled';
   /** Konter: wer dich bis zu deiner nächsten Runde trifft, nimmt so viel Schaden. */
   thorns: number;
@@ -106,6 +108,11 @@ export interface TacticsState {
   momentum: number;
   /** Wut: Bei höchstens 3 Gesundheit machen Angriffe so viel mehr (0 = hast du nicht). */
   rage: number;
+  /** Zurückschlagen: Wer einen ganz abgefangenen Angriff macht, nimmt so viel Schaden. */
+  retaliate: number;
+  /** Erste Hilfe: Das erste Verbinden kostet keine Medizin und heilt so viel mehr (0 = hast du nicht). */
+  firstAid: number;
+  firstAidUsed: boolean;
 }
 
 /** Was du an Sammelkarten mitbringst: Einmal-Karten in der Tasche (Anzahl) und Fähigkeiten (Stufe). */
@@ -134,6 +141,7 @@ export type TEvent =
   | { type: 'windup'; id: number }
   | { type: 'lurk'; id: number; block: number }
   | { type: 'summon'; by: number; id: number; kind: FoeKind }
+  | { type: 'lured'; id: number }
   | { type: 'weaponBroke'; weapon: WeaponId }
   | { type: 'turn'; turn: number }
   | { type: 'burn'; id: number; dmg: number; kill: boolean }
@@ -146,6 +154,7 @@ export type TEvent =
   | { type: 'ally'; id: number; dmg: number; kill: boolean }
   | { type: 'allyIn'; rounds: number }
   | { type: 'thorns'; id: number; dmg: number; kill: boolean }
+  | { type: 'retaliate'; id: number; dmg: number; kill: boolean }
   | { type: 'draw'; n: number }
   | { type: 'gain'; amount: number }
   | { type: 'secondWind'; amount: number }
@@ -177,7 +186,9 @@ export function deckFor(weapons: Weapon[], medicine: number, kit: CardKit = {}):
   const deck: CardId[] = [...BASE_DECK];
   const kinds = new Set(weapons.filter((w) => w.dur > 0).map((w) => w.kind));
   for (const k of kinds) deck.push(...WEAPON_CARDS[k]);
-  for (let i = 0; i < Math.min(TACTICS.maxBandages, medicine); i++) deck.push('bandage');
+  // Verbinden nur mit Medizin; mit Erster Hilfe ist eins immer dabei
+  const bandages = Math.min(TACTICS.maxBandages, Math.max(medicine, (kit.skills?.firstaid ?? 0) > 0 ? 1 : 0));
+  for (let i = 0; i < bandages; i++) deck.push('bandage');
   for (const [id, lvl] of Object.entries(kit.skills ?? {}) as [CardId, number][]) {
     if (CARDS[id]?.kind === 'skill' && !CARDS[id].passive && lvl > 0) deck.push(id);
   }
@@ -259,6 +270,7 @@ export function createTactics(o: {
     wear: {},
     weaponDur: {},
     kills: 0,
+    lured: 0,
     over: null,
     thorns: 0,
     ally: null,
@@ -277,6 +289,9 @@ export function createTactics(o: {
     trapper: lvl('trapper') ? cardStat('trapper', 'bonus', lvl('trapper')) : 0,
     momentum: 0,
     rage: lvl('rage') ? cardStat('rage', 'bonus', lvl('rage')) : 0,
+    retaliate: lvl('retaliate') ? cardStat('retaliate', 'bonus', lvl('retaliate')) : 0,
+    firstAid: lvl('firstaid') ? cardStat('firstaid', 'bonus', lvl('firstaid')) : 0,
+    firstAidUsed: false,
   };
   for (const w of o.weapons) if (w.dur > 0) st.weaponDur[w.kind] = Math.max(st.weaponDur[w.kind] ?? 0, w.dur);
   st.draw = shuffle(st, deckFor(o.weapons, o.medicine, kit));
@@ -461,12 +476,18 @@ export function playPouch(st: TacticsState, card: CardId, target?: number): TEve
   });
 }
 
+/** Fehlt für diese Karte Medizin? (Erste Hilfe: das erste Verbinden ist frei) */
+export function lacksMedicine(st: TacticsState, card: CardId): boolean {
+  if (!CARDS[card].medicine || st.medicine > 0) return false;
+  return !(st.firstAid && !st.firstAidUsed);
+}
+
 /** Kann diese Karte gerade gespielt werden? (Kraft, Medizin, Ziel …) */
 export function playable(st: TacticsState, card: CardId): boolean {
   const def = CARDS[card];
   return (
     def.cost <= st.energy &&
-    (!def.medicine || st.medicine > 0) &&
+    !lacksMedicine(st, card) &&
     (!def.heal || !!def.gain || st.hp < st.maxHp) &&
     (!def.perTurn || (st.turnPlays[card] ?? 0) < def.perTurn) &&
     (def.target === 'self' ? !def.area || !!areaFoes(st, def.area).length || !!def.block || !!def.heal : targetsFor(st, card).length > 0)
@@ -478,7 +499,7 @@ function resolve(st: TacticsState, card: CardId, target: number | undefined, tak
   const events: TEvent[] = [];
   const def = CARDS[card];
   if (st.energy < def.cost) return [{ type: 'denied', reason: 'energy' }];
-  if (def.medicine && st.medicine < 1) return [{ type: 'denied', reason: 'medicine' }];
+  if (lacksMedicine(st, card)) return [{ type: 'denied', reason: 'medicine' }];
   if (def.heal && !def.gain && st.hp >= st.maxHp) return [{ type: 'denied', reason: 'full' }];
   if (def.perTurn && (st.turnPlays[card] ?? 0) >= def.perTurn) return [{ type: 'denied', reason: 'limit' }];
   let foe: TFoe | undefined;
@@ -527,9 +548,13 @@ function resolve(st: TacticsState, card: CardId, target: number | undefined, tak
     st.block += block;
     events.push({ type: 'block', amount: block });
   }
-  const heal = def.passive ? 0 : stat(st, card, 'heal');
+  let heal = def.passive ? 0 : stat(st, card, 'heal');
   if (heal) {
-    if (def.medicine) {
+    if (def.medicine && st.firstAid && !st.firstAidUsed) {
+      // Erste Hilfe: ohne Medizin und kräftiger
+      st.firstAidUsed = true;
+      heal += st.firstAid;
+    } else if (def.medicine) {
       st.medicine -= 1;
       st.usedMedicine += 1;
     }
@@ -602,7 +627,9 @@ function applyEffects(st: TacticsState, card: CardId, f: TFoe, events: TEvent[])
     if (f.hp > 0) f.intent = intentOf(f);
     if (f.hp <= 0) return;
   }
-  if (def.stun) {
+  // Kopfnuss: betäubt nur, wenn er gerade ausholt
+  const stunNow = def.stun || (def.stunIfWindup && (f.intent.kind === 'windup' || f.intent.kind === 'smash'));
+  if (stunNow) {
     // Niemand lässt sich zweimal hintereinander betäuben (sonst ginge es endlos)
     if (f.steady) events.push({ type: 'status', id: f.id, status: 'steady' });
     else {
@@ -719,6 +746,13 @@ export function endTurn(st: TacticsState): TEvent[] {
         }
         st.hp = Math.max(0, st.hp - dmg);
         events.push({ type: 'hurt', by: f.id, dmg, absorbed });
+        // Zurückschlagen: ganz abgefangen, also gleich zurück
+        if (st.retaliate && raw > 0 && absorbed >= raw && f.hp > 0) {
+          const before = st.kills;
+          const extra: TEvent[] = [];
+          damageFoe(st, f, st.retaliate, extra);
+          events.push({ type: 'retaliate', id: f.id, dmg: st.retaliate, kill: st.kills > before }, ...extra.filter((e) => e.type !== 'hit'));
+        }
         // Konter: wer zuschlägt, nimmt Schaden
         if (st.thorns > 0 && f.hp > 0) {
           const before = st.kills;
@@ -775,6 +809,13 @@ export function endTurn(st: TacticsState): TEvent[] {
     }
   }
   if (!st.over && !aliveFoes(st).length) st.over = 'won';
+  // Lange Kämpfe machen Lärm: Ab einer Runde kommt ab und zu ein Wandler dazu
+  if (!st.over && TACTICS.lureFrom && st.turn >= TACTICS.lureFrom && (st.turn - TACTICS.lureFrom) % TACTICS.lureEvery === 0 && st.lured < TACTICS.lureMax && aliveFoes(st).length < TACTICS.maxFoes) {
+    st.lured += 1;
+    const nf = makeFoe(st, 'walker', 'far');
+    st.foes.push(nf);
+    events.push({ type: 'lured', id: nf.id });
+  }
   if (!st.over) startTurn(st, events);
   return events;
 }

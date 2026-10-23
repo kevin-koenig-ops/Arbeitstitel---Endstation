@@ -5,7 +5,7 @@
 // Rein und vorhersagbar wie der Kampf selbst: gleicher Kampf, gleiche Züge.
 
 import { CARDS, FOE_TACTICS, type CardId } from './content';
-import { aliveFoes, endTurn, flee, playCard, playPouch, targetsFor, type TacticsState, type TFoe } from './tactics';
+import { aliveFoes, endTurn, flee, lacksMedicine, playCard, playPouch, targetsFor, type TacticsState, type TFoe } from './tactics';
 
 export interface AutopilotOptions {
   /** Einmal-Karten aus der Tasche: klug einsetzen, nur im Notfall oder nie. */
@@ -64,6 +64,7 @@ function score(st: TacticsState, card: CardId, target?: TFoe): number {
     if (dmg >= f.hp) v += 2 + (f.intent.dmg ?? 0); // Erledigt: keine Gefahr mehr
     const threat = f.intent.dmg ?? 0;
     if (d.stun && !f.stunned && !f.steady) v += 1 + threat;
+    if (d.stunIfWindup && !f.steady && (f.intent.kind === 'windup' || f.intent.kind === 'smash')) v += 2 + threat;
     if ((d.push || d.interrupt) && f.row === 'near' && (f.intent.kind === 'smash' || f.intent.kind === 'windup')) v += 4;
     // Wegstoßen lohnt, wenn danach Pfeile fliegen können
     if (d.push && f.row === 'near' && st.hand.some((c) => CARDS[c].farBonus)) v += 2;
@@ -91,7 +92,7 @@ function options(st: TacticsState, pouch: boolean): Play[] {
     const d = CARDS[card];
     if (d.cost > st.energy) return;
     if (d.perTurn && (st.turnPlays[card] ?? 0) >= d.perTurn) return;
-    if (d.medicine && st.medicine < 1) return;
+    if (lacksMedicine(st, card)) return;
     if (d.target === 'self') out.push({ ...p });
     else for (const f of targetsFor(st, card)) out.push({ ...p, target: f.id });
   };
@@ -134,7 +135,7 @@ export function autopilotTurn(st: TacticsState, o: AutopilotOptions = {}): void 
     if (smasher) {
       const p = pick(opts, (x) => {
         const d = CARDS[x.card];
-        return (x.target === smasher.id && (d.push || d.stun || d.interrupt)) || (d.area && (d.stun || d.interrupt)) ? 10 - d.cost : 0;
+        return (x.target === smasher.id && (d.push || d.stun || d.interrupt || d.stunIfWindup)) || (d.area && (d.stun || d.interrupt)) ? 10 - d.cost : 0;
       });
       if (p && play(st, p)) continue;
     }
