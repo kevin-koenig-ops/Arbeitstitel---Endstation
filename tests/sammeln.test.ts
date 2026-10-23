@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { cellFree, type PlotIndex } from '../src/core/building';
-import { CARDS, skillLevel, SKILL_SLOTS } from '../src/core/content';
+import { CARDS, ONCE_CARDS, SKILL_CARDS, skillLevel, SKILL_SLOTS } from '../src/core/content';
 import { applyAction, battleWeapons, cardKit, createPlayer, plotIndexOf, pouchKit, SCHEMA_VERSION, skillOf } from '../src/core/rules';
 import { migrate } from '../src/core/save';
 import { SIGHT, sightingById, sightingsNear, type Sighting } from '../src/core/sightings';
@@ -46,6 +46,13 @@ const claim = (st: PlayerState, s: Sighting, at: number, candidate = 0, pos = s.
   act(st, { type: 'claimSighting', id: s.id, candidate, at: pos, accuracyM: 5 }, at);
 
 describe('Sammelkarten', () => {
+  it('jede Fähigkeit und jede Einmal-Karte steht in ihrer Liste (Sammelbuch, Lager)', () => {
+    for (const [id, c] of Object.entries(CARDS)) {
+      if (c.kind === 'skill') expect(SKILL_CARDS, id).toContain(id);
+      if (c.kind === 'once') expect(ONCE_CARDS, id).toContain(id);
+    }
+  });
+
   it('neue Spieler haben ein leeres Sammelbuch', () => {
     const s = createPlayer('p', hero, T0);
     expect(s.book).toEqual({});

@@ -1434,7 +1434,7 @@ export function styleOf(id: CardId): CardStyle | undefined {
 
 /** Sammelkarten in der Reihenfolge des Sammelbuchs. */
 export const ONCE_CARDS: CardId[] = ['molotov', 'smoke', 'caltrops', 'firecracker', 'lure', 'pepper', 'tinder', 'tripwire', 'alarm', 'lath', 'marblesack', 'motionlamp', 'boombox', 'dressing', 'adrenaline', 'flare', 'oilcan', 'painkiller', 'tape', 'fencer', 'flashbang', 'fireworks', 'grenade'];
-export const SKILL_CARDS: CardId[] = ['counter', 'steady', 'breath', 'spark', 'pitcher', 'followup', 'headbutt', 'cover', 'roll', 'pockets', 'pickstones', 'breathe', 'grit', 'fullforce', 'charger', 'sweep', 'sneak', 'scavenger', 'embers', 'trapper', 'distract', 'rage', 'retaliate', 'firstaid', 'tinkerbox', 'toolroll', 'trueaim', 'unleash', 'innercalm', 'radio', 'secondwind', 'wildfire', 'packleader', 'laststand'];
+export const SKILL_CARDS: CardId[] = ['counter', 'steady', 'breath', 'spark', 'pitcher', 'followup', 'headbutt', 'cover', 'roll', 'pockets', 'pickstones', 'breathe', 'grit', 'fullforce', 'charger', 'sweep', 'sneak', 'scavenger', 'embers', 'trapper', 'distract', 'rage', 'retaliate', 'firstaid', 'tinkerbox', 'toolroll', 'trueaim', 'unleash', 'innercalm', 'radio', 'secondwind', 'wildfire', 'laststrike', 'frenzy', 'packleader', 'laststand'];
 /** Höchstens so viele Einmal-Karten je Sorte stecken in der Tasche. */
 export const ONCE_CARRY = 3;
 /** Die Tasche für Einmal-Karten hat so viele Plätze (je Platz eine Sorte). */
