@@ -1053,9 +1053,9 @@ export const FIST_DAMAGE = 1;
 export const WEAPON_ORDER: WeaponId[] = ['crowbar', 'bat', 'crossbow'];
 
 export const WEAPONS: Record<WeaponId, WeaponDef> = {
-  crowbar: { name: 'Brechstange', dmg: 2, dur: 28, cost: { metal: 3 }, level: 1, desc: 'Öffnet Türen und Schädel.' },
-  bat: { name: 'Nagelschläger', dmg: 3, dur: 32, cost: { wood: 3, metal: 2 }, level: 1, desc: 'Ein Baseballschläger mit ein paar Nägeln.' },
-  crossbow: { name: 'Armbrust', dmg: 4, dur: 24, cost: { wood: 3, metal: 2, springs: 2, screws: 2, glue: 1 }, level: 2, desc: 'Leise und kräftig. Die Bolzen nutzen sich ab.' },
+  crowbar: { name: 'Brechstange', dmg: 2, dur: 28, cost: { metal: 3 }, level: 1, art: 'brechstange', desc: 'Öffnet Türen und Schädel.' },
+  bat: { name: 'Nagelschläger', dmg: 3, dur: 32, cost: { wood: 3, metal: 2 }, level: 1, art: 'nagelschlaeger', desc: 'Ein Baseballschläger mit ein paar Nägeln.' },
+  crossbow: { name: 'Armbrust', dmg: 4, dur: 24, cost: { wood: 3, metal: 2, springs: 2, screws: 2, glue: 1 }, level: 2, art: 'armbrust', desc: 'Leise und kräftig. Die Bolzen nutzen sich ab.' },
   // Nur zu finden (Fundorte und Sichtungen)
   shovel: { name: 'Spaten', dmg: 3, dur: 30, cost: {}, level: 0, rarity: 'common', where: 'Kleingärten, Baumärkte, Schuppen', art: 'spaten', desc: 'Gräbt und stößt Gegner zurück.' },
   axe: { name: 'Axt', dmg: 5, dur: 26, cost: {}, level: 0, rarity: 'rare', where: 'Scheunen, Hofläden, Baumärkte', art: 'axt', desc: 'Schwer und langsam, aber wer getroffen wird, bleibt liegen.' },
@@ -1221,17 +1221,17 @@ export interface CardDef {
 }
 
 export const CARDS: Record<CardId, CardDef> = {
-  punch: { name: 'Faustschlag', kind: 'base', cost: 1, target: 'near', dmg: 2, desc: '2 Schaden an einem Gegner vorne.' },
-  throw: { name: 'Steinwurf', kind: 'base', cost: 1, target: 'any', dmg: 1, silence: 1, desc: '1 Schaden, trifft auch Gegner hinten. Ein getroffener Heuler bleibt 1 Runde still.' },
-  dodge: { name: 'Ausweichen', kind: 'base', cost: 1, target: 'self', block: 3, desc: 'Fängt 3 Schaden ab, bis zu deiner nächsten Runde.' },
-  kick: { name: 'Tritt', kind: 'base', cost: 1, target: 'near', dmg: 1, push: true, desc: '1 Schaden. Stößt den Gegner nach hinten und unterbricht sein Ausholen.' },
-  bandage: { name: 'Verbinden', kind: 'base', cost: 1, target: 'self', heal: 3, medicine: true, desc: 'Heilt 3 Gesundheit, kostet 1 Medizin.' },
+  punch: { name: 'Faustschlag', kind: 'base', cost: 1, target: 'near', dmg: 2, art: 'faustschlag', desc: '2 Schaden an einem Gegner vorne.' },
+  throw: { name: 'Steinwurf', kind: 'base', cost: 1, target: 'any', dmg: 1, silence: 1, art: 'steinwurf', desc: '1 Schaden, trifft auch Gegner hinten. Ein getroffener Heuler bleibt 1 Runde still.' },
+  dodge: { name: 'Ausweichen', kind: 'base', cost: 1, target: 'self', block: 3, art: 'ausweichen', desc: 'Fängt 3 Schaden ab, bis zu deiner nächsten Runde.' },
+  kick: { name: 'Tritt', kind: 'base', cost: 1, target: 'near', dmg: 1, push: true, art: 'tritt', desc: '1 Schaden. Stößt den Gegner nach hinten und unterbricht sein Ausholen.' },
+  bandage: { name: 'Verbinden', kind: 'base', cost: 1, target: 'self', heal: 3, medicine: true, art: 'verbinden', desc: 'Heilt 3 Gesundheit, kostet 1 Medizin.' },
   // Waffen
-  pry: { name: 'Hebelhieb', kind: 'weapon', cost: 1, target: 'near', dmg: 3, weapon: 'crowbar', desc: '3 Schaden mit der Brechstange.' },
-  swing: { name: 'Schwinger', kind: 'weapon', cost: 1, target: 'near', dmg: 4, weapon: 'bat', desc: '4 Schaden mit dem Nagelschläger.' },
-  homerun: { name: 'Volltreffer', kind: 'weapon', cost: 2, target: 'near', dmg: 6, stun: true, weapon: 'bat', desc: '6 Schaden, der Gegner setzt eine Runde aus.' },
-  bolt: { name: 'Bolzen', kind: 'weapon', cost: 1, target: 'any', dmg: 4, weapon: 'crossbow', desc: '4 Schaden, trifft auch Gegner hinten.' },
-  aim: { name: 'Zielen', kind: 'weapon', cost: 0, target: 'self', focus: 3, desc: 'Der nächste Bolzen oder Wurf macht 3 mehr Schaden.' },
+  pry: { name: 'Hebelhieb', kind: 'weapon', cost: 1, target: 'near', dmg: 3, weapon: 'crowbar', art: 'brechstange', desc: '3 Schaden mit der Brechstange.' },
+  swing: { name: 'Schwinger', kind: 'weapon', cost: 1, target: 'near', dmg: 4, weapon: 'bat', art: 'nagelschlaeger', desc: '4 Schaden mit dem Nagelschläger.' },
+  homerun: { name: 'Volltreffer', kind: 'weapon', cost: 2, target: 'near', dmg: 6, stun: true, weapon: 'bat', art: 'nagelschlaeger', desc: '6 Schaden, der Gegner setzt eine Runde aus.' },
+  bolt: { name: 'Bolzen', kind: 'weapon', cost: 1, target: 'any', dmg: 4, weapon: 'crossbow', art: 'armbrust', desc: '4 Schaden, trifft auch Gegner hinten.' },
+  aim: { name: 'Zielen', kind: 'weapon', cost: 0, target: 'self', focus: 3, art: 'armbrust', desc: 'Der nächste Bolzen oder Wurf macht 3 mehr Schaden.' },
   spade: { name: 'Spatenstich', kind: 'weapon', cost: 1, target: 'near', dmg: 3, push: true, weapon: 'shovel', art: 'spaten', desc: '3 Schaden und stößt zurück.' },
   chop: { name: 'Axthieb', kind: 'weapon', cost: 2, target: 'near', dmg: 6, stun: true, weapon: 'axe', art: 'axt', desc: '6 Schaden, der Gegner setzt eine Runde aus.' },
   drive: { name: 'Abschlag', kind: 'weapon', cost: 1, target: 'any', dmg: 3, weapon: 'golfclub', art: 'golfschlaeger', desc: '3 Schaden, trifft auch Gegner hinten.' },
