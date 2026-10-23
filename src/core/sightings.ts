@@ -35,15 +35,15 @@ export const SIGHT = {
   /** Größe eines Kartenfelds (Grad): etwa 500 × 500 m. */
   cellLat: 0.0045,
   cellLon: 0.0072,
-  /** Chance auf eine Sichtung je Feld und Zeitfenster (so kommt im Umkreis von 500 m etwa alle 10 Minuten eine). */
-  chance: 0.33,
+  /** Chance auf eine Sichtung je Feld und Zeitfenster (Kevin 23.10.: weniger; im Umkreis von 500 m etwa alle 20 bis 25 Minuten eine). */
+  chance: 0.15,
   /** So lange bleibt eine Sichtung (Minuten). */
   lifeMin: 18,
   lifeMax: 30,
   /** So nah muss man ran (Meter, dazu die GPS-Genauigkeit bis 25 m). */
   rangeM: 35,
   /** Funk-Radar: so weit hört man Sichtungen (Meter). */
-  radarM: 700,
+  radarM: 500,
   candidates: 6,
   /** Glück mit Netz: spätestens nach so vielen Sichtungen etwas Seltenes bzw. Legendäres. */
   pityRare: 20,

@@ -94,7 +94,7 @@ export interface SpotKindDef {
  * Nachts und bei Nebel oder Staub kürzer, in offenen Gegenden und von Hügeln weiter.
  */
 export const SIGHT = {
-  baseM: 150,
+  baseM: 110,
   nightFactor: 0.65,
   fogFactor: 0.55,
   smallKinds: ['mushrooms', 'backpack', 'barrel', 'parcel', 'hide'] as readonly SpotKind[],
@@ -1960,8 +1960,8 @@ export const PATROL = {
   watcherChance: 0.2,
   /** Bei Frost ist so ein Teil der Wandler erstarrt (Erstarrte). */
   frostChance: 0.5,
-  /** So weit siehst du Trupps auf der Karte (Tag, klare Sicht). */
-  showM: 170,
+  /** So weit siehst du Trupps auf der Karte (Tag, klare Sicht; Kevin 23.10.: etwas weniger). */
+  showM: 125,
   /** Im Schnee: Spuren, die jünger sind, verraten dich (Minuten). */
   trackMin: 3,
   /** Was ein Trupp dabeihat (je Gegner etwas davon). */
@@ -2019,8 +2019,8 @@ export const WORLD_EVENT = {
   zoom: 14,
   /** Runde in Stunden (weltweit gleich getaktet). */
   windowH: 3,
-  /** Chance pro Gegend und Runde. */
-  chance: 0.35,
+  /** Chance pro Gegend und Runde (Kevin 23.10.: weniger Ereignisse). */
+  chance: 0.2,
   /** So viele mögliche Mitten (die erste, die nicht an einem heiklen Ort liegt, gilt). */
   candidates: 5,
   /** Bis zu dieser Entfernung erfährt man davon (Meter; weiter weg fehlen oft noch die Kartendaten). */

@@ -34,7 +34,7 @@ import { seasonOf } from '../../services/settings';
 import { openBattle } from '../game/battle';
 import { AmbienceController, ambienceEffects, currentAmbience, guardSightM, PHASE_NAMES, WEATHER_NAMES, type Ambience } from '../game/ambience';
 import { Particles } from '../game/dust';
-import { compassWord, SpotSheet } from '../game/spotSheet';
+import { compassWord, SpotSheet, type Arrive } from '../game/spotSheet';
 import { Pointers, type PointerTarget } from '../../map/pointers';
 import { goalChip, openProgressPanel } from '../game/progressPanel';
 import { icon } from '../icons';
@@ -43,6 +43,19 @@ import { menuItem } from './menu';
 import { LOADING_TIPS, REJECT_TEXT } from '../texts';
 import { artStyle, LOADING_ART } from '../art';
 
+
+/** Windrose für den Kompass-Knopf: helles Zifferblatt, Norden rot. */
+const COMPASS_ROSE =
+  '<svg viewBox="0 0 48 48" aria-hidden="true">' +
+  '<defs><radialGradient id="rose-face" cx="45%" cy="38%" r="65%"><stop offset="0" stop-color="#f6ecd2"/><stop offset="1" stop-color="#c9b48a"/></radialGradient></defs>' +
+  '<circle cx="24" cy="24" r="24" fill="url(#rose-face)"/>' +
+  '<circle cx="24" cy="24" r="19.5" fill="none" stroke="#8a6a44" stroke-width="0.9"/>' +
+  '<path d="M24 5.5v3M24 39.5v3M5.5 24h3M39.5 24h3" stroke="#5a4028" stroke-width="1.3" stroke-linecap="round"/>' +
+  '<path d="M24 24l7.5-7.5-2.6 7.5zM24 24l-7.5-7.5 7.5 2.6zM24 24l7.5 7.5-7.5-2.6zM24 24l-7.5 7.5 2.6-7.5z" fill="#9c8058"/>' +
+  '<path d="M24 7l3.2 17h-6.4z" fill="#cf3d27"/><path d="M24 41l3.2-17h-6.4z" fill="#3b2a1b"/>' +
+  '<path d="M41 24l-17 3.2v-6.4zM7 24l17 3.2v-6.4z" fill="#5b4430"/>' +
+  '<circle cx="24" cy="24" r="2.6" fill="#3b2a1b"/><circle cx="24" cy="24" r="1.1" fill="#f6ecd2"/>' +
+  '</svg>';
 export function gameScreen(app: App): Screen {
   const initial = app.settings.get();
   const mapMode = IS_PREVIEW ? 'demo' : initial.map;
@@ -82,8 +95,9 @@ export function gameScreen(app: App): Screen {
   const sectorChip = h('button', { class: 'env-chip sector-chip', type: 'button', onclick: () => explainSector() });
   // Neuland: wo du kaum warst, ist die Beute besser
   const tierChip = h('button', { class: 'env-chip tier-chip', type: 'button', hidden: true, onclick: () => explainTier() });
-  // Kompass: Nadel zeigt nach Norden. Antippen: Karte nach Norden, nochmal: Karte dreht sich mit deiner Blickrichtung
-  const needle = h('span', { class: 'compass-needle', 'aria-hidden': 'true' }, h('i', null, 'N'));
+  // Kompass: Windrose oben in der Reihe, Norden (rot) zeigt nach Norden.
+  // Antippen: Karte nach Norden, nochmal: Karte dreht sich mit deiner Blickrichtung
+  const needle = svgEl(COMPASS_ROSE, 'compass-rose');
   const compassBtn = h('button', { class: 'iconbtn compass', type: 'button', 'aria-label': 'Kompass', onclick: () => toggleCompass() }, needle);
   // Höhe über dem Meer (aus den Höhendaten der Karte), klein unter dem Kompass
   const altChip = h('button', {
@@ -103,7 +117,7 @@ export function gameScreen(app: App): Screen {
       altChip.setAttribute('aria-label', `Höhe: ${Math.round(m)} Meter über dem Meer`);
     });
   };
-  const envChip = h('button', { class: 'env-chip', type: 'button', onclick: () => app.toast(ambienceEffects(currentAmbience())) });
+  const envChip = h('button', { class: 'env-chip weather-chip', type: 'button', onclick: () => app.toast(ambienceEffects(currentAmbience())) });
   // Gegend: nur ein kleines Symbol; antippen zeigt, was hier leicht und was schwer ist
   const regionTip = h('div', { class: 'region-tip', role: 'tooltip', hidden: true });
   let regionTipTimer = 0;
@@ -196,14 +210,13 @@ export function gameScreen(app: App): Screen {
         radarSlot,
         cacheChip,
         tierChip,
+        h('span', { class: 'compass-wrap' }, compassBtn, altChip),
         sectorChip,
         regionWrap,
         envChip,
         h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Menü', onclick: () => openPause() }, svgEl(icon('menu', 20))),
       ),
     ),
-    compassBtn,
-    altChip,
     banners,
     // Unten rechts: Rucksack als Hauptknopf in der Ecke, darüber Zentrieren
     h('div', { class: 'hud-bottom' }, locChip, homeBtn, gaitBtn, h('div', { class: 'hud-br' }, locateBtn, packBtn)),
@@ -243,7 +256,7 @@ export function gameScreen(app: App): Screen {
     getSpot: (id) => spots.get(id),
     getFix: () => fix,
     isSim: () => provider?.kind === 'sim',
-    walkTo: (p) => walkTo(p),
+    walkTo: (p, arrive) => walkTo(p, arrive),
     onFight: (spot) => startFight(spot),
     onAmbush: () => openFight(),
     flyTarget: () => packBtn,
@@ -767,8 +780,26 @@ export function gameScreen(app: App): Screen {
     return pNet.net;
   };
 
-  const walkTo = (p: LatLon) => {
+  /** „Hinlaufen“: Sobald du in Reichweite bist, bleibst du stehen, und es geht gleich los. */
+  let arrival: { pos: LatLon; reachM: number; run: () => void } | null = null;
+  const stopWalking = () => {
+    if (provider instanceof SimulatedLocation) provider.halt();
+    gm?.setRoute(null);
+    gm?.setTarget(null);
+    routeOff = [];
+  };
+  const checkArrival = (f: Fix) => {
+    if (!arrival || overlay || distanceM(f.pos, arrival.pos) > arrival.reachM) return;
+    const run = arrival.run;
+    arrival = null;
+    stopWalking();
+    run();
+  };
+
+  const walkTo = (p: LatLon, arrive?: Arrive) => {
     if (!(provider instanceof SimulatedLocation)) return;
+    // Ein neues Ziel ersetzt das alte, ein Tippen auf die Karte löst nichts aus
+    arrival = arrive ? { pos: p, reachM: arrive.reachM, run: arrive.run } : null;
     const from = provider.position;
     const n = walkNet(from, distanceM(from, p));
     const gait = app.settings.get().gait;
@@ -1223,6 +1254,7 @@ export function gameScreen(app: App): Screen {
         routeOff = [];
       }
     }
+    checkArrival(f);
     // Der Rest (Suchradius, Fundstellen, Nebel) höchstens ein paar Mal pro Sekunde
     const now = performance.now();
     clearTimeout(heavyTimer);
@@ -1292,6 +1324,9 @@ export function gameScreen(app: App): Screen {
 
   // --- Kampf ------------------------------------------------------------------------
   const openFight = () => {
+    // Nach dem Kampf geht es nicht von selbst weiter: Die Figur bleibt stehen, bis du neu tippst
+    arrival = null;
+    stopWalking();
     sheet.close();
     closeOverlay();
     overlay = openBattle(app, overlayHost, currentAmbience().phase, (end) => {
@@ -1768,7 +1803,7 @@ export function gameScreen(app: App): Screen {
         fix: () => fix,
         net: (p) => walkNet(p),
         isSim: () => provider?.kind === 'sim',
-        walkTo: (p) => walkTo(p),
+        walkTo: (p, arrive) => walkTo(p, arrive),
         host: overlayHost,
         onChanged: () => {
           renderHud();

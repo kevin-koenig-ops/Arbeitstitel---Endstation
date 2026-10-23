@@ -61,6 +61,7 @@ const P: Record<string, string> = {
   // Oberfläche
   bus: '<rect x="3" y="3.5" width="18" height="14" rx="2.5"/><path d="M3 11h18M7 17.5v2.5M17 17.5v2.5M8 3.5v7.5M16 3.5v7.5"/><circle cx="7" cy="14.3" r="1"/><circle cx="17" cy="14.3" r="1"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  chevron: '<path d="M9.5 5.5L16 12l-6.5 6.5"/>',
   locate: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/>',
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
   back: '<path d="M15 5l-7 7 7 7"/>',

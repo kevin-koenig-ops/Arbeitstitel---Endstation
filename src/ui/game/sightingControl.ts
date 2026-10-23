@@ -18,7 +18,7 @@ import { h, svgEl } from '../dom';
 import { icon } from '../icons';
 import { REJECT_TEXT } from '../texts';
 import { showCardReveal } from './cardReveal';
-import { compassWord } from './spotSheet';
+import { compassWord, type Arrive } from './spotSheet';
 
 const RANK: Record<CardRarity, number> = { common: 0, rare: 1, epic: 2, legendary: 3 };
 /** Funksprüche höchstens so oft (ms), damit nichts nervt. */
@@ -69,7 +69,7 @@ export class SightingControl {
       fix: () => Fix | null;
       net: (p: LatLon) => WalkNet | null;
       isSim: () => boolean;
-      walkTo: (p: LatLon) => void;
+      walkTo: (p: LatLon, arrive?: Arrive) => void;
       host: HTMLElement;
       onChanged: () => void;
       /** Gerade ein Fenster offen (Kampf, Zuhause …)? Dann keine Meldungen. */
@@ -292,7 +292,7 @@ export class SightingControl {
       ...sights.map((v) =>
         row(SIGHTING_ICON[v.s.kind], SIGHTING_NAMES[v.s.kind], `${dir(v.pos)} · noch ${Math.max(1, Math.ceil((v.s.until - now) / 60_000))} Min.`, v.s.rarity, () => {
           this.focusSighting(v.s.id);
-          if (this.o.isSim()) this.o.walkTo(v.pos);
+          if (this.o.isSim()) this.walkToSighting(v.s.id);
         }),
       ),
       hints.length ? h('p', { class: 'radar-sec' }, 'Am Horizont') : null,
@@ -302,9 +302,16 @@ export class SightingControl {
           if (this.o.isSim()) this.o.walkTo(x.pos);
         }),
       ),
-      h('p', { class: 'radar-foot' }, 'Alle 10 Minuten taucht in der Gegend etwas Neues auf.'),
+      h('p', { class: 'radar-foot' }, 'Ab und zu taucht in der Gegend etwas Neues auf.'),
     ];
     this.pop.replaceChildren(...parts.filter((x): x is HTMLElement => !!x));
+  }
+
+  /** Hinlaufen: Angekommen, wird die Sichtung gleich eingesammelt. */
+  private walkToSighting(id: string) {
+    const v = this.live.get(id);
+    if (!v) return;
+    this.o.walkTo(v.pos, { reachM: SIGHT.rangeM - 3, run: () => void this.tap(id) });
   }
 
   /** Sichtung angetippt: einsammeln, wenn nah genug, sonst Weg und Restzeit. */
@@ -317,7 +324,7 @@ export class SightingControl {
     if (d > reach) {
       const min = Math.ceil((v.s.until - this.o.app.backend.now()) / 60_000);
       this.o.app.toast(`${SIGHTING_NAMES[v.s.kind]} (${RARITY_NAMES[v.s.rarity]}): ${formatDistance(d)} Richtung ${compassWord(bearingDeg(f.pos, v.pos))}, noch ${min} Min. Was drin ist, siehst du erst vor Ort.`);
-      if (this.o.isSim()) this.o.walkTo(v.pos);
+      if (this.o.isSim()) this.walkToSighting(id);
       return;
     }
     this.busy = true;

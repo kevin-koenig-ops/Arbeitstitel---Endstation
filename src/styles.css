@@ -2018,3 +2018,263 @@ button.base-res { align-items: center; padding: 3px 6px 3px 4px; border: 1px sol
 .radio-msg-go { flex: none; padding: 4px 9px; border-radius: 9px; background: var(--amber); color: #1b1915; font: 800 12px/1 var(--font-ui); }
 .radio-msg[data-tone="epic"] { border-color: #b07ce8; box-shadow: 0 0 14px rgba(176, 124, 232, 0.45), 0 8px 22px rgba(0, 0, 0, 0.45); }
 .radio-msg[data-tone="legendary"] { border-color: #ffc43d; box-shadow: 0 0 16px rgba(255, 196, 61, 0.5), 0 8px 22px rgba(0, 0, 0, 0.45); }
+
+/* =====================================================================================
+   Neuer Look nach Kevins Vorlagen (23.10.): Karte und Zuhause.
+   Warme dunkle Pillen mit Kupferrand, farbige runde Knöpfe mit Metallrand,
+   kräftige schmale Schrift (Barlow Condensed) für Titel und große Knöpfe.
+   ===================================================================================== */
+:root {
+  --font-head: 'Barlow Condensed', 'Barlow Semi Condensed', 'Arial Narrow', sans-serif;
+  --nl-cream: #f7ebd2;
+  --nl-orange: #f8a53a;
+  --nl-green: #86c548;
+  --nl-body: linear-gradient(180deg, #46331f 0%, #2e2116 52%, #221811 100%);
+  --nl-copper: linear-gradient(155deg, #e7a96b 0%, #a3653a 28%, #5f381b 52%, #b97a44 78%, #6a3f1f 100%);
+  --nl-steel: linear-gradient(155deg, #dcd8d0 0%, #8b8781 30%, #4f4c48 55%, #b1aca5 80%, #5f5c58 100%);
+  --nl-green-rim: linear-gradient(155deg, #d8f5b0 0%, #7fc35f 35%, #3d6a25 60%, #a8de7e 100%);
+  --nl-red-rim: linear-gradient(155deg, #ffc2a6 0%, #d8603a 35%, #7d2a14 60%, #e88a62 100%);
+  --nl-inner: inset 0 1px 0 rgba(255, 226, 186, 0.2), inset 0 -3px 6px rgba(0, 0, 0, 0.35);
+  --nl-drop: 0 2px 0 rgba(0, 0, 0, 0.4), 0 6px 14px rgba(0, 0, 0, 0.45);
+  --nl-text-shadow: 0 1px 1px rgba(0, 0, 0, 0.65);
+}
+
+/* --- Karte: Grundform aller Anzeigen und Knöpfe ---------------------------------------- */
+.hud .env-chip, .gait-btn, .loc-chip, .alt-chip, .hud .iconbtn, .who {
+  border: 2.5px solid transparent;
+  background: var(--nl-body) padding-box, var(--nl-copper) border-box;
+  color: var(--nl-cream);
+  box-shadow: var(--nl-inner), var(--nl-drop);
+  text-shadow: var(--nl-text-shadow);
+}
+.hud .iconbtn:hover { background: var(--nl-body) padding-box, var(--nl-copper) border-box; filter: brightness(1.08); }
+.hud .svg svg { filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.45)); }
+.hud-top { align-items: center; padding-block: calc(var(--safe-t) + 10px) 0; }
+.hud-tl { gap: 10px; }
+.hud-tr { gap: 8px; }
+
+/* Du: Porträt mit dickem Gesundheitsring */
+.who { width: 70px; height: 70px; border-width: 3px; }
+.who-face, .who-face svg, .who-face img, .who-face canvas { width: 50px; height: 50px; }
+.who-ring { width: 100%; height: 100%; }
+.who-ring circle { stroke: #b0321f; stroke-width: 4.2; }
+.who-ring circle.on { stroke: var(--nl-green); }
+.who-ring[data-low="true"] circle.on { stroke: #f08a2a; }
+
+/* Nächstes Ziel als Banner */
+.goal-chip { max-width: min(400px, 46vw); }
+.hud .goal-chip { height: 44px; padding: 0 20px 0 15px; border-radius: 12px; gap: 10px; font: 700 19px/1 var(--font-ui); }
+.hud .goal-chip .svg { color: var(--nl-orange); }
+.hud .goal-chip .svg svg { width: 22px; height: 22px; }
+.hud .goal-chip b { color: var(--nl-cream); }
+.hud .goal-chip[data-ready="true"] { background: linear-gradient(180deg, #ffd65a, #f5a922) padding-box, var(--nl-copper) border-box; color: #3a2208; text-shadow: none; }
+.hud .goal-chip[data-ready="true"] .svg { color: #3a2208; }
+.hud .goal-chip[data-ready="true"] .svg svg { filter: none; }
+
+/* Oben rechts (Kevins zweite Vorlage): Kompass, Erkundung, Gegend, Wetter, Menü.
+   Alles dunkel mit Kupferrand, die Symbole tragen die Farbe. */
+.hud .env-chip { height: 44px; padding: 0 15px; border-radius: 22px; gap: 7px; font: 700 19px/1 var(--font-ui); }
+.hud .env-chip .svg svg { width: 21px; height: 21px; }
+.hud .sector-chip { padding-left: 5px; gap: 7px; }
+.hud .sector-chip > .svg, .hud .sector-chip[data-level] > .svg { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; color: #e2734a; background: radial-gradient(circle at 45% 35%, #3c2a1d, #24180f); box-shadow: inset 0 0 0 2px #b2532e, 0 1px 0 rgba(255, 255, 255, 0.08); }
+.hud .sector-chip > .svg svg { width: 19px; height: 19px; }
+.hud .region-chip { width: 44px; height: 44px; border: 2.5px solid transparent; background: var(--nl-body) padding-box, var(--nl-copper) border-box; color: #8fc552; box-shadow: var(--nl-inner), var(--nl-drop); }
+.hud .region-chip svg { width: 24px; height: 24px; stroke-width: 2; }
+.hud .weather-chip .svg, .hud .weather-chip[data-phase] .svg { color: #86b9e6; }
+.hud .weather-chip .temp { color: var(--nl-cream); }
+.hud-tr > .iconbtn { width: 46px; height: 46px; color: var(--nl-orange); }
+.hud-tr > .iconbtn svg { width: 24px; height: 24px; stroke-width: 2.4; }
+/* Kompass als Windrose oben in der Reihe, die Höhe direkt darunter */
+.compass-wrap { position: relative; display: inline-flex; flex: none; }
+.hud .compass { position: relative; top: auto; right: auto; width: 46px !important; height: 46px !important; overflow: hidden; }
+.hud .compass[data-mode="heading"] { box-shadow: 0 0 0 2px var(--amber), 0 0 14px var(--amber-glow), var(--nl-drop); }
+.compass-rose { display: block; width: 100%; height: 100%; transition: transform 0.2s ease-out; }
+.compass-rose svg { display: block; width: 100%; height: 100%; }
+.compass-wrap .alt-chip { position: absolute; top: calc(100% + 8px); left: 50%; right: auto; transform: translateX(-50%); white-space: nowrap; }
+/* Sonderanzeigen behalten ihre Signalfarben */
+.hud .radar-chip[data-rarity="rare"] { background: var(--nl-body) padding-box, linear-gradient(155deg, #cfe6ff, #3d7fc0 45%, #1f4a78) border-box; }
+.hud .radar-chip[data-rarity="epic"] { background: var(--nl-body) padding-box, linear-gradient(155deg, #ead8ff, #9a63d8 45%, #52307e) border-box; box-shadow: var(--nl-inner), var(--nl-drop), 0 0 12px rgba(176, 124, 232, 0.55); }
+.hud .radar-chip[data-rarity="legendary"] { background: var(--nl-body) padding-box, linear-gradient(155deg, #fff0b8, #ffc43d 45%, #a5730c) border-box; box-shadow: var(--nl-inner), var(--nl-drop), 0 0 14px rgba(255, 196, 61, 0.6); }
+.hud .cache-chip[data-heat="cold"] { color: #9fd4ff; }
+.hud .cache-chip[data-heat="warm"] { color: #ffb070; }
+.hud .cache-chip[data-heat="hot"] { background: linear-gradient(180deg, #ffd65a, #f5a922) padding-box, var(--nl-copper) border-box; color: #3a2208; text-shadow: none; }
+.hud .tier-chip { color: #ffd27a; }
+.hud .tier-chip[data-tier="2"] { background: linear-gradient(180deg, #ffd77a, #f0b443) padding-box, var(--nl-copper) border-box; color: #3a2208; text-shadow: none; }
+.hud .event-chip[data-inside="true"] { background: var(--nl-body) padding-box, var(--nl-red-rim) border-box; }
+.radar-pop { top: calc(var(--safe-t) + 64px); border: 2px solid #8a5a32; background: rgba(40, 29, 20, 0.97); }
+.region-tip { border-color: #8a5a32; }
+
+.alt-chip { height: 32px; padding: 0 12px; border-radius: 16px; gap: 6px; font: 700 16px/1 var(--font-ui); }
+.alt-chip svg { width: 16px; height: 16px; }
+
+/* Hinweis über den Knöpfen unten */
+.loc-chip { bottom: calc(100% + 12px); height: 42px; padding: 0 18px 0 14px; border-radius: 21px; gap: 9px; font: 600 17px/1 var(--font-ui); color: var(--nl-cream); }
+.loc-chip svg { width: 20px; height: 20px; }
+
+/* Unten: Zuhause, Gangart, Zentrieren, Rucksack */
+.hud-bottom { grid-template-columns: 76px 1fr 76px; padding-block: 0 calc(var(--safe-b) + 12px); }
+.hud .iconbtn.home { width: 64px; height: 64px; border-width: 3px; color: var(--nl-orange); }
+.hud .iconbtn.home svg { width: 32px; height: 32px; stroke-width: 2.2; }
+.gait-btn { height: 48px; padding: 0 22px 0 16px; border-radius: 24px; gap: 10px; font: 800 22px/1 var(--font-head); letter-spacing: 0.05em; }
+.gait-btn svg { width: 26px; height: 26px; }
+.gait-btn[data-gait="fast"] .svg { color: #f8c02e; }
+.gait-btn[data-gait="quiet"] { background: var(--nl-body) padding-box, var(--nl-green-rim) border-box; }
+.hud .iconbtn.locate { width: 54px; height: 54px; border-width: 3px; }
+.hud .iconbtn.locate svg { width: 28px; height: 28px; }
+.hud .iconbtn.locate.lost { border-color: var(--amber); color: var(--amber); }
+.pack-btn { width: 76px; height: 76px; border: 3px solid #2a1a0c; background: radial-gradient(circle at 45% 28%, #ffdc62, #f8b52a 55%, #dc8c12); color: #1d140c; box-shadow: inset 0 3px 0 rgba(255, 246, 205, 0.6), inset 0 -5px 0 rgba(160, 86, 4, 0.5), 0 0 0 3px #eaa21e, 0 0 0 5px #2a1a0c, 0 7px 16px rgba(0, 0, 0, 0.5); }
+.pack-btn svg { width: 38px; height: 38px; stroke-width: 2; }
+.hud-br { gap: 14px; }
+
+/* Einblendungen überall im selben Stil */
+.toast { border: 2.5px solid transparent; background: linear-gradient(180deg, rgba(70, 51, 31, 0.97), rgba(34, 24, 17, 0.97)) padding-box, var(--nl-copper) border-box; color: var(--nl-cream); box-shadow: var(--nl-inner), 0 8px 22px rgba(0, 0, 0, 0.45); }
+.toast-good { background: linear-gradient(180deg, rgba(56, 70, 32, 0.97), rgba(28, 36, 16, 0.97)) padding-box, var(--nl-green-rim) border-box; color: #e2f2c4; }
+.toast-warn { background: linear-gradient(180deg, rgba(80, 40, 24, 0.97), rgba(40, 20, 12, 0.97)) padding-box, var(--nl-red-rim) border-box; color: #ffd0b6; }
+
+/* --- Zuhause ------------------------------------------------------------------------------ */
+.base-head { gap: 8px; padding-block: calc(var(--safe-t) + 10px) 0; }
+.base-title .sign-title {
+  font: 800 50px/0.9 var(--font-head);
+  letter-spacing: 0.01em;
+  background: linear-gradient(180deg, #ffc95e 0%, #f99a30 52%, #e1661a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: 1.3px #3a1d08;
+  text-shadow: none;
+  filter: drop-shadow(0 2px 0 #1e1006) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.55));
+}
+.base-site { margin-top: 3px; font: 700 18px/1.1 var(--font-ui); color: var(--nl-cream); text-shadow: 0 1px 0 #1a0f06, 0 2px 6px rgba(0, 0, 0, 0.85); }
+.base-info { flex-direction: column; align-items: flex-start; gap: 8px; max-width: calc(100% - 116px); }
+
+/* Gemütlichkeit und Lager: dunkle Tafeln mit Metallrahmen */
+.base-view .comfort, .base-view .base-res {
+  position: relative;
+  border: 3px solid transparent;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #36332f, #22201d) padding-box, var(--nl-steel) border-box;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -3px 6px rgba(0, 0, 0, 0.4), 0 2px 0 rgba(0, 0, 0, 0.45), 0 6px 14px rgba(0, 0, 0, 0.45);
+}
+.base-view .comfort { height: 48px; padding: 0 16px; gap: 10px; color: var(--nl-cream); text-shadow: var(--nl-text-shadow); }
+.base-view .comfort::before { content: ''; position: absolute; inset: 3px; border-radius: 8px; pointer-events: none; background: radial-gradient(circle, #d6d1c8 0 1.4px, transparent 2px) 0 0 / 6px 6px no-repeat, radial-gradient(circle, #d6d1c8 0 1.4px, transparent 2px) 100% 0 / 6px 6px no-repeat, radial-gradient(circle, #d6d1c8 0 1.4px, transparent 2px) 0 100% / 6px 6px no-repeat, radial-gradient(circle, #d6d1c8 0 1.4px, transparent 2px) 100% 100% / 6px 6px no-repeat; }
+.base-view .comfort-label { color: var(--nl-cream); font: 800 19px/1 var(--font-head); letter-spacing: 0.04em; }
+.base-view .comfort-label::after { content: ':'; }
+.base-view .comfort b { font: 800 26px/1 var(--font-head); color: var(--nl-orange); }
+.base-view .comfort-tier { font: 700 18px/1 var(--font-ui); }
+.comfort-flame { color: var(--nl-orange); }
+.base-view .comfort .mini-bar { width: 64px; height: 10px; border-radius: 5px; background: #141210; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.08); }
+.base-view .comfort .mini-bar span { border-radius: 5px; background: linear-gradient(90deg, #ee6a28, #ffb63c); }
+.base-view .comfort-rooms { border-left-color: rgba(255, 255, 255, 0.15); color: #cbbfa8; }
+
+.base-view .base-res { display: inline-flex; flex-wrap: nowrap; align-items: stretch; gap: 0; max-width: 100%; padding: 0; overflow: hidden; }
+.base-res-label { flex: none; display: inline-flex; align-items: center; gap: 7px; height: 46px; padding: 0 12px; border: 0; background: linear-gradient(180deg, #5d564d, #3c3731); color: #ffd79c; font: 800 22px/1 var(--font-head); letter-spacing: 0.05em; text-transform: uppercase; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); cursor: pointer; }
+.base-res-label .svg { color: #ffc36a; }
+.res-chevron { transition: transform 0.2s ease; }
+.base-res[data-open="true"] .res-chevron { transform: rotate(180deg); }
+.base-res-chips { display: none; align-items: center; flex-wrap: nowrap; gap: 5px; min-width: 0; overflow-x: auto; overscroll-behavior: contain; scrollbar-width: none; touch-action: pan-x; padding: 6px 9px; border: 0; border-left: 2px solid #141210; background: transparent; color: var(--nl-cream); cursor: pointer; font: inherit; text-align: left; }
+.base-res[data-open="true"] .base-res-chips { display: flex; animation: res-open 0.2s ease-out; }
+@keyframes res-open { from { opacity: 0; transform: translateX(-8px); } }
+.base-res-chips::-webkit-scrollbar { display: none; }
+.base-res-chips .cost-chip { flex: none; height: 32px; padding: 0 9px 0 6px; gap: 5px; border-radius: 9px; background: rgba(0, 0, 0, 0.36); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.06); font: 700 18px/1 var(--font-ui); color: var(--nl-cream); }
+.base-res-chips .cost-chip.zero { opacity: 0.55; }
+.res-sep { flex: none; width: 2px; height: 26px; margin: 0 3px; border-radius: 1px; background: linear-gradient(#141210, #5a544b); }
+
+/* Arbeit und Ernte als Pillen */
+.base-view .work-chip { height: 42px; padding: 0 16px 0 13px; border-radius: 21px; border: 2.5px solid transparent; background: var(--nl-body) padding-box, var(--nl-copper) border-box; color: var(--nl-cream); font: 700 17px/1 var(--font-ui); box-shadow: var(--nl-inner), var(--nl-drop); text-shadow: var(--nl-text-shadow); }
+.base-view .work-chip.ready { background: linear-gradient(180deg, #47722f, #2b4b1d) padding-box, var(--nl-green-rim) border-box; color: #eaffd8; }
+
+/* Zur Karte: Wappenschild oben rechts */
+.base-exit {
+  position: absolute;
+  top: calc(var(--safe-t) + 6px);
+  right: var(--gutter-r);
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 1px;
+  width: 104px;
+  height: 120px;
+  padding: 14px 6px 0;
+  border-radius: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 112'%3E%3Cdefs%3E%3ClinearGradient id='m' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23e2ded6'/%3E%3Cstop offset='.3' stop-color='%238e8a83'/%3E%3Cstop offset='.55' stop-color='%234d4a46'/%3E%3Cstop offset='.8' stop-color='%23aba69e'/%3E%3Cstop offset='1' stop-color='%235c5955'/%3E%3C/linearGradient%3E%3ClinearGradient id='r' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23d8683c'/%3E%3Cstop offset='.5' stop-color='%23a33f22'/%3E%3Cstop offset='1' stop-color='%236c2313'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M8 2h84a6 6 0 0 1 6 6v54c0 22-20 38-48 48C22 100 2 84 2 62V8a6 6 0 0 1 6-6z' fill='url%28%23m%29' stroke='%231c140e' stroke-width='2.5'/%3E%3Cpath d='M14 9h72a3 3 0 0 1 3 3v49c0 18-16 31-39 40C27 92 11 79 11 61V12a3 3 0 0 1 3-3z' fill='url%28%23r%29' stroke='%233a140a' stroke-width='1.6'/%3E%3Cpath d='M14 9h72a3 3 0 0 1 3 3v16H11V12a3 3 0 0 1 3-3z' fill='%23fff' opacity='.09'/%3E%3Cpath d='M24 70l8-3M66 26l7 4M20 40l5 1M75 64l-6 3' stroke='%234a170b' stroke-width='1.2' opacity='.6'/%3E%3Cg fill='%23d9d4cb' stroke='%232a221b' stroke-width='.9'%3E%3Ccircle cx='7.5' cy='7.5' r='2.1'/%3E%3Ccircle cx='92.5' cy='7.5' r='2.1'/%3E%3Ccircle cx='6' cy='60' r='2.1'/%3E%3Ccircle cx='94' cy='60' r='2.1'/%3E%3C/g%3E%3C/svg%3E") center / 100% 100% no-repeat;
+  box-shadow: none;
+  filter: drop-shadow(0 5px 6px rgba(0, 0, 0, 0.55));
+  color: var(--nl-cream);
+  font: 800 17px/1 var(--font-head);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 2px 0 #3a1408, 0 0 4px rgba(0, 0, 0, 0.7);
+  transition: transform 0.1s ease;
+}
+.base-exit:hover { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 112'%3E%3Cdefs%3E%3ClinearGradient id='m' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23e2ded6'/%3E%3Cstop offset='.3' stop-color='%238e8a83'/%3E%3Cstop offset='.55' stop-color='%234d4a46'/%3E%3Cstop offset='.8' stop-color='%23aba69e'/%3E%3Cstop offset='1' stop-color='%235c5955'/%3E%3C/linearGradient%3E%3ClinearGradient id='r' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23d8683c'/%3E%3Cstop offset='.5' stop-color='%23a33f22'/%3E%3Cstop offset='1' stop-color='%236c2313'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M8 2h84a6 6 0 0 1 6 6v54c0 22-20 38-48 48C22 100 2 84 2 62V8a6 6 0 0 1 6-6z' fill='url%28%23m%29' stroke='%231c140e' stroke-width='2.5'/%3E%3Cpath d='M14 9h72a3 3 0 0 1 3 3v49c0 18-16 31-39 40C27 92 11 79 11 61V12a3 3 0 0 1 3-3z' fill='url%28%23r%29' stroke='%233a140a' stroke-width='1.6'/%3E%3Cpath d='M14 9h72a3 3 0 0 1 3 3v16H11V12a3 3 0 0 1 3-3z' fill='%23fff' opacity='.09'/%3E%3Cpath d='M24 70l8-3M66 26l7 4M20 40l5 1M75 64l-6 3' stroke='%234a170b' stroke-width='1.2' opacity='.6'/%3E%3Cg fill='%23d9d4cb' stroke='%232a221b' stroke-width='.9'%3E%3Ccircle cx='7.5' cy='7.5' r='2.1'/%3E%3Ccircle cx='92.5' cy='7.5' r='2.1'/%3E%3Ccircle cx='6' cy='60' r='2.1'/%3E%3Ccircle cx='94' cy='60' r='2.1'/%3E%3C/g%3E%3C/svg%3E") center / 100% 100% no-repeat; filter: brightness(1.08) drop-shadow(0 5px 6px rgba(0, 0, 0, 0.55)); }
+.base-exit:active { transform: scale(0.96); }
+.base-exit .exit-art svg { width: 46px; height: 40px; filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.5)); }
+
+/* Bauen: großer gelber Knopf unten rechts */
+.build-toggle {
+  height: 64px;
+  padding: 0 30px 0 22px;
+  gap: 12px;
+  border-radius: 32px;
+  border: 3px solid #2a1a0c;
+  background: linear-gradient(180deg, #ffdb52 0%, #fcc12c 45%, #eea31a 100%);
+  color: #1d140c;
+  font: 800 32px/1 var(--font-head);
+  letter-spacing: 0.05em;
+  text-shadow: 0 1px 0 rgba(255, 240, 190, 0.6);
+  box-shadow: inset 0 3px 0 rgba(255, 246, 205, 0.65), inset 0 -5px 0 rgba(176, 102, 6, 0.55), 0 4px 0 #2a1a0c, 0 9px 18px rgba(0, 0, 0, 0.5);
+}
+.build-toggle svg { width: 32px; height: 32px; stroke-width: 2.4; }
+.build-toggle:active { transform: translateY(2px); }
+
+/* Ansicht: farbige Knöpfe mit Beschriftung unten links */
+.base-view .base-cam, .base-view[data-build="on"] .base-cam, .base-view[data-build="on"][data-focus="on"] .base-cam, .base-view[data-workshop="on"] .base-cam {
+  left: var(--gutter-l);
+  right: auto;
+  top: auto;
+  bottom: calc(var(--safe-b) + 8px);
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 2px;
+}
+.cam-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 68px; padding: 0; border: 0; background: none; color: var(--nl-cream); cursor: pointer; }
+.cam-disc { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; border: 3px solid transparent; background: var(--disc) padding-box, var(--nl-copper) border-box; color: #fff7e8; box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.3), inset 0 -4px 6px rgba(0, 0, 0, 0.35), 0 3px 0 rgba(0, 0, 0, 0.4), 0 6px 12px rgba(0, 0, 0, 0.45); transition: transform 0.1s ease; }
+.cam-disc svg { width: 26px; height: 26px; stroke-width: 2.3; filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.45)); }
+.cam-btn:active .cam-disc { transform: scale(0.93); }
+.cam-label { font: 700 14px/1.05 var(--font-ui); text-align: center; text-shadow: 0 1px 0 #000, 0 0 4px rgba(0, 0, 0, 0.9), 0 0 9px rgba(0, 0, 0, 0.7); }
+.cam-btn.c-red { --disc: radial-gradient(circle at 45% 30%, #ef7f5e, #c4442b 60%, #8e2b19); }
+.cam-btn.c-blue { --disc: radial-gradient(circle at 45% 30%, #94adc1, #5b7489 60%, #3d5163); }
+.cam-btn.c-orange { --disc: radial-gradient(circle at 45% 30%, #ffc15e, #ec8a24 60%, #b95e10); }
+.cam-btn.c-rose { --disc: radial-gradient(circle at 45% 30%, #eda193, #c0675a 60%, #8c4136); }
+.cam-btn.c-green { --disc: radial-gradient(circle at 45% 30%, #a2c873, #64903c 60%, #446a25); }
+.cam-btn[aria-pressed="true"] .cam-disc, .cam-btn[data-view="low"] .cam-disc, .cam-btn[data-view="full"] .cam-disc { box-shadow: 0 0 0 3px #ffc43d, 0 0 16px rgba(255, 196, 61, 0.75), inset 0 2px 0 rgba(255, 255, 255, 0.3); }
+/* Die schwebende Leiste (Auswahl, Bestätigen) sitzt über den Knöpfen */
+.base-view .base-ctx { bottom: calc(var(--safe-b) + 94px); }
+.base-view[data-build="on"] .base-head { right: calc(var(--panel-w) + var(--panel-r) + 12px); }
+.base-view[data-build="on"] .base-info { max-width: 100%; }
+/* Mit Joystick: Ansichtsknöpfe oben (unten links sitzt der Joystick), Bauen unter dem Schild */
+.base-view[data-control="joystick"] .base-cam { left: auto; right: calc(var(--gutter-r) + 114px); top: calc(var(--safe-t) + 10px); bottom: auto; }
+.base-view[data-control="joystick"][data-build="on"] .base-cam { left: auto; right: calc(var(--panel-w) + var(--panel-r) + 10px); top: calc(var(--safe-t) + 10px); bottom: auto; flex-direction: column; }
+.base-view[data-control="joystick"][data-build="on"][data-focus="on"] .base-cam { right: calc(var(--gutter-r) + 10px); }
+.base-view[data-control="joystick"] .cam-label { display: none; }
+.base-view[data-control="joystick"] .cam-btn { width: auto; }
+.base-view[data-control="joystick"] .cam-disc { width: 44px; height: 44px; }
+.base-view[data-control="joystick"] .build-toggle { top: calc(var(--safe-t) + 128px); height: 50px; padding: 0 20px 0 16px; font-size: 24px; }
+/* Kleine Bildschirme: alles etwas kleiner */
+@media (max-height: 380px) {
+  .base-title .sign-title { font-size: 42px; }
+  .base-site { font-size: 16px; }
+  .base-view .comfort { height: 44px; }
+  .base-res-label { height: 40px; }
+  .cam-disc { width: 46px; height: 46px; }
+  .cam-btn { width: 62px; }
+  .cam-label { font-size: 13px; }
+  .base-view .base-ctx { bottom: calc(var(--safe-b) + 86px); }
+  .build-toggle { height: 56px; font-size: 28px; }
+  .base-exit { width: 94px; height: 108px; padding-top: 12px; font-size: 16px; }
+  .base-exit .exit-art svg { width: 42px; height: 36px; }
+  .who { width: 64px; height: 64px; }
+  .who-face, .who-face svg, .who-face img, .who-face canvas { width: 45px; height: 45px; }
+  .pack-btn { width: 70px; height: 70px; }
+}
+.hud .home-badge { top: -5px; right: -5px; width: 24px; height: 24px; font: 800 15px/24px var(--font-ui); text-shadow: none; }

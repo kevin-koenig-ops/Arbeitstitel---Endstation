@@ -41,13 +41,19 @@ export function formatWait(ms: number): string {
   return rest ? `${hrs} Std. ${rest} Min.` : `${hrs} Std.`;
 }
 
+/** Beim Hinlaufen: so nah heran, dann stehen bleiben und das ausführen. */
+export interface Arrive {
+  reachM: number;
+  run: () => void;
+}
+
 interface Ctx {
   app: App;
   host: HTMLElement;
   getSpot: (id: string) => Spot | undefined;
   getFix: () => Fix | null;
   isSim: () => boolean;
-  walkTo: (p: LatLon) => void;
+  walkTo: (p: LatLon, arrive?: Arrive) => void;
   onChanged: () => void;
   /** Kampf an einer bewachten Fundstelle beginnen. */
   onFight: (spot: Spot) => void;
@@ -91,6 +97,24 @@ export class SpotSheet {
     this.ctx.host.classList.toggle('has-receipt', on);
   }
 
+  /** Mit „Hinlaufen“ angekommen: gleich durchsuchen (bei Wachen: kämpfen). Geht das nicht, bleibt nur die Karte offen. */
+  arrive(id: string) {
+    if (this.busy) return;
+    this.open(id);
+    const { app } = this.ctx;
+    const state = app.backend.current();
+    const spot = this.ctx.getSpot(id);
+    const fix = this.ctx.getFix();
+    if (!state || !spot || !fix) return;
+    const now = app.backend.now();
+    if (distanceM(fix.pos, spot.pos) > searchRangeM(state) || readyAt(state, spot) > now) return;
+    if (app.backend.guardFor(spot)) {
+      if (currentHealth(state, now) >= MIN_HEALTH_TO_FIGHT) this.ctx.onFight(spot);
+      return;
+    }
+    void this.search(spot);
+  }
+
   /** Bei neuem Standort aufrufen, damit Entfernung und Knopf aktuell bleiben. */
   refresh() {
     if (this.openId && !this.busy && this.mode === 'info') this.render();
@@ -132,7 +156,8 @@ export class SpotSheet {
       button = h('button', { class: 'btn wide', type: 'button', onclick: () => this.search(spot) }, 'Durchsuchen');
     } else if (this.ctx.isSim()) {
       status = `${formatDistance(dist)} entfernt`;
-      button = h('button', { class: 'btn wide', type: 'button', onclick: () => this.ctx.walkTo(spot.pos) }, 'Hinlaufen');
+      // Angekommen: gleich durchsuchen (oder bei Wachen kämpfen), ohne noch einmal zu tippen
+      button = h('button', { class: 'btn wide', type: 'button', onclick: () => this.ctx.walkTo(spot.pos, { reachM: Math.max(10, range - 4), run: () => this.arrive(spot.id) }) }, 'Hinlaufen');
     } else {
       status = fix ? `${formatDistance(dist)} entfernt` : 'Warte auf GPS …';
       button = h('button', { class: 'btn wide', type: 'button', disabled: true }, fix ? `Noch ${formatDistance(Math.max(0, dist - range))} näher ran` : 'Kein Standort');

@@ -58,6 +58,21 @@ import { openLager, unpack } from './lager';
 
 export { openSitePicker };
 
+/** Merkt sich auf diesem Gerät, ob das Lager oben aufgeklappt ist. */
+const LAGER_OPEN_KEY = 'endstation.lagerOpen';
+
+/** Bunte gefaltete Karte mit Stecknadel für das Schild „Zur Karte“. */
+const MAP_ART =
+  '<svg viewBox="0 0 48 42" width="44" height="38" aria-hidden="true">' +
+  '<path d="M3 9.5l13-5 15 5 14-5v28l-14 5-15-5-13 5z" fill="#2a1a0e"/>' +
+  '<path d="M5 10.8l11-4.2v26.5L5 37.3z" fill="#8fc6df"/>' +
+  '<path d="M16 6.6l15 5v26.5l-15-5z" fill="#efe1b4"/>' +
+  '<path d="M31 11.6l12-4.3v26.5l-12 4.3z" fill="#86b863"/>' +
+  '<path d="M7 18c3 1 5-1 8 0M18 15l11 5M19 27c4-2 7 1 10 0M33 21c3-1 5 1 8-1" fill="none" stroke="#fff6dc" stroke-width="1.3" stroke-linecap="round" opacity="0.85"/>' +
+  '<path d="M33 1.5c-4.2 0-7.3 3.1-7.3 7 0 4.9 7.3 12.3 7.3 12.3s7.3-7.4 7.3-12.3c0-3.9-3.1-7-7.3-7z" fill="#e2412b" stroke="#2a1a0e" stroke-width="1.4"/>' +
+  '<circle cx="33" cy="8.4" r="2.6" fill="#fff3df"/>' +
+  '</svg>';
+
 const SOURCE_NAMES: Partial<Record<SpotKind, string>> = {
   stop: 'Bushaltestellen',
   hardware: 'Baumärkten',
@@ -152,7 +167,39 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
       app.toast(`${have.length ? `Deine Vorteile: ${have.join(' ')}` : 'Noch keine Vorteile.'}${next ? ` Nächste Stufe: ${next.desc}` : ''}`);
     },
   });
-  const resEl = h('button', { class: 'base-res', type: 'button', 'aria-label': 'Lager öffnen', title: 'Lager öffnen', onclick: () => openStore() });
+  // Lager: zugeklappt nur das Schild, aufgeklappt alle Rohstoffe. Die Zahlen antippen öffnet das Lager.
+  const resToggle = h('button', { class: 'base-res-label', type: 'button', onclick: () => setLager(!lagerOpen) });
+  // Eine Zeile zum Wischen (kein <button>, darin scrollt es nicht überall); Antippen öffnet das Lager
+  const resChips = h('div', {
+    class: 'base-res-chips',
+    role: 'button',
+    tabindex: '0',
+    'aria-label': 'Lager öffnen',
+    title: 'Lager öffnen',
+    onclick: () => openStore(),
+    onkeydown: (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') openStore();
+    },
+  });
+  const resEl = h('div', { class: 'base-res' }, resToggle, resChips);
+  let lagerOpen = false;
+  try {
+    lagerOpen = localStorage.getItem(LAGER_OPEN_KEY) === '1';
+  } catch {
+    // Kein Speicher (privates Fenster): bleibt zu
+  }
+  const setLager = (open: boolean) => {
+    lagerOpen = open;
+    resEl.dataset.open = String(open);
+    resToggle.setAttribute('aria-expanded', String(open));
+    resToggle.setAttribute('aria-label', open ? 'Lager zuklappen' : 'Lager aufklappen');
+    try {
+      localStorage.setItem(LAGER_OPEN_KEY, open ? '1' : '0');
+    } catch {
+      // egal, dann eben nur für jetzt
+    }
+  };
+  setLager(lagerOpen);
   const workChip = h('button', { class: 'work-chip', type: 'button', hidden: true, onclick: () => openWork() });
   const harvestChip = h('button', { class: 'work-chip ready', type: 'button', hidden: true, onclick: () => void harvestAll() });
   const packCard = h('button', { class: 'pack-card', type: 'button', hidden: true, onclick: () => void doUnpack() });
@@ -160,7 +207,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   const head = h(
     'header',
     { class: 'base-head' },
-    h('div', { class: 'base-title-row' }, titleEl, h('button', { class: 'base-exit', type: 'button', onclick: () => close() }, svgEl(icon('map', 18)), h('span', null, 'Zur Karte'))),
+    h('div', { class: 'base-title-row' }, titleEl, h('button', { class: 'base-exit', type: 'button', onclick: () => close() }, svgEl(MAP_ART, 'exit-art'), h('span', null, 'Zur Karte'))),
     h('div', { class: 'base-info' }, comfortEl, resEl, workChip, harvestChip),
     packCard,
     away,
@@ -176,16 +223,20 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   const ctx = h('div', { class: 'base-ctx' });
   const buildToggle = h('button', { class: 'build-toggle', type: 'button', onclick: () => setBuilding(true) }, svgEl(icon('hammer', 22)), h('span', null, 'Bauen'));
   const controls = h('div', { class: 'base-controls' });
-  const roofBtn = h('button', { class: 'iconbtn small', type: 'button', 'aria-label': 'Dächer zeigen', 'aria-pressed': 'false' }, svgEl(icon('roof', 18)));
-  const wallBtn = h('button', { class: 'iconbtn small', type: 'button', 'aria-label': 'Wände: Ausschnitt' }, svgEl(icon('cutaway', 18)));
+  // Ansicht: farbige runde Knöpfe mit Beschriftung, unten links
+  const camBtn = (color: string, ic: string, label: string, aria: string, onClick?: () => void) =>
+    h('button', { class: `cam-btn ${color}`, type: 'button', 'aria-label': aria, title: aria, onclick: onClick }, h('span', { class: 'cam-disc' }, svgEl(icon(ic, 22))), h('span', { class: 'cam-label' }, label));
+  const roofBtn = camBtn('c-orange', 'roof', 'Dächer', 'Dächer zeigen');
+  roofBtn.setAttribute('aria-pressed', 'false');
+  const wallBtn = camBtn('c-rose', 'cutaway', 'Wände', 'Wände: Ausschnitt');
   const cam = h(
     'div',
     { class: 'base-cam' },
-    h('button', { class: 'iconbtn small', type: 'button', 'aria-label': 'Ansicht nach links drehen', onclick: () => scene.rotateStep(-1) }, svgEl(icon('rotl', 18))),
-    h('button', { class: 'iconbtn small', type: 'button', 'aria-label': 'Ansicht nach rechts drehen', onclick: () => scene.rotateStep(1) }, svgEl(icon('rotr', 18))),
+    camBtn('c-red', 'rotl', 'Links drehen', 'Ansicht nach links drehen', () => scene.rotateStep(-1)),
+    camBtn('c-blue', 'rotr', 'Rechts drehen', 'Ansicht nach rechts drehen', () => scene.rotateStep(1)),
     roofBtn,
     wallBtn,
-    h('button', { class: 'iconbtn small', type: 'button', 'aria-label': 'Ganzes Gelände zeigen', onclick: () => scene.fitPlot() }, svgEl(icon('fit', 18))),
+    camBtn('c-green', 'fit', 'Übersicht', 'Ganzes Gelände zeigen', () => scene.fitPlot()),
   );
   const el = h('div', { class: 'overlay base-view', role: 'dialog', 'aria-label': 'Dein Zuhause' }, stage, head, cam, controls, buildToggle, ctx, panel);
   host.append(el);
@@ -264,12 +315,18 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
       h('span', { class: 'comfort-label' }, 'Gemütlichkeit'),
       h('b', null, String(c.value)),
       h('span', { class: 'comfort-tier' }, tier.name),
+      svgEl(icon('flame', 18), 'comfort-flame'),
       h('span', { class: 'mini-bar' }, h('span', { style: `width:${tier.next ? Math.min(100, (c.value / tier.next) * 100) : 100}%` })),
       c.rooms ? h('span', { class: 'comfort-rooms' }, `${c.rooms} ${c.rooms === 1 ? 'Raum' : 'Räume'}`) : null,
     ]);
-    clear(resEl);
-    resEl.append(h('span', { class: 'base-res-label' }, svgEl(icon('home', 14)), 'Lager'));
-    for (const r of MATERIAL_ORDER) resEl.append(h('span', { class: 'cost-chip' + (s.inventory[r] ? '' : ' zero'), title: RESOURCES[r].name }, svgEl(resIcon(r, 14)), String(s.inventory[r])));
+    clear(resToggle);
+    resToggle.append(svgEl(icon('home', 16)), h('span', null, 'Lager'), svgEl(icon('chevron', 16), 'res-chevron'));
+    clear(resChips);
+    // In Sechsergruppen: Grundstoffe, Bauteile, Seltenes
+    MATERIAL_ORDER.forEach((r, i) => {
+      if (i && i % 6 === 0) resChips.append(h('span', { class: 'res-sep', 'aria-hidden': 'true' }));
+      resChips.append(h('span', { class: 'cost-chip' + (s.inventory[r] ? '' : ' zero'), title: RESOURCES[r].name }, svgEl(resIcon(r, 16)), String(s.inventory[r])));
+    });
     const ready = readyParts(s, app.backend.now()).count;
     const running = s.workshop.jobs.length - ready;
     workChip.hidden = !s.workshop.jobs.length;

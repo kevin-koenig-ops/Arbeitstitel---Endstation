@@ -11,7 +11,7 @@ import { rngFrom } from '../core/rng';
 import type { LatLon } from '../core/types';
 
 /** Was du gerade siehst, ist immer frei. */
-const SIGHT_RADIUS_M = 140;
+const SIGHT_RADIUS_M = 100;
 /** Unterhalb dieser Zoomstufe (ganzes Land) gibt es keinen Nebel mehr. */
 const MIN_ZOOM = 8;
 /** Größe einer Kachel der Nebeltextur in Weltpixeln bei Zoom 16 (sie wandert mit der Karte mit). */

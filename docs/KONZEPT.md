@@ -177,7 +177,7 @@ Jede Gegend bekommt eigene Aufträge, weil sie aus der echten Karte entstehen: w
 
 ### Sammelkarten und Sichtungen (seit 22.10.2026)
 
-- **Sichtungen:** Alle 10 Minuten taucht in der Gegend etwas auf (Notizbuch, Kiste, Notlazarett-Kiste, Konvoi-Wrack) und bleibt 18 bis 30 Minuten. Für alle Spieler gleich. Immer an einem Weg, nie an heiklen Orten. Hingehen, antippen, Karte umdrehen.
+- **Sichtungen:** Ab und zu (im Umkreis von 500 m etwa alle 20 bis 25 Minuten) taucht in der Gegend etwas auf (Notizbuch, Kiste, Notlazarett-Kiste, Konvoi-Wrack) und bleibt 18 bis 30 Minuten. Für alle Spieler gleich. Immer an einem Weg, nie an heiklen Orten. Hingehen, antippen, Karte umdrehen.
 - **Sammelkarten:** 23 Einmal-Karten (Brandflasche bis Granate), 12 Waffen zum Finden, 36 Fähigkeiten mit Stufen I bis III. Der ganze Plan steht im Doc, Reiter „Kartenplan“. Seit 23.10. im Spiel, in acht Spielstilen: Feuer (Zunder, Ölkanister, Funkenschlag, Glut, Lauffeuer), Fallen und Abstand (Stolperdraht, Wecker, Mistgabel, Sportbogen, Fallensteller, Ablenken, Werferin), Schwung (Machete, Vorschlaghammer, Nachsetzen, Wut, Spalten für die Axt; ein Treffer lädt den nächsten Angriff derselben Runde auf), Schutz (Tonnendeckel, Feuerlöscher, Kopfnuss, Deckung, Ausweichrolle, Zurückschlagen, Erste Hilfe, Schmerzmittel, Feuerwerksbatterie), Tüftler (Bewegungsmelder-Lampe, Kofferradio, Weidezaungerät als Geräte, die ein paar Runden lang jede Runde wirken; Ladegerät, Bastelkiste), Raubbau (Rohrzange, Zaunlatte als Notwaffe für einen Kampf, Panzertape repariert, Mit voller Wucht nutzt die Waffe schneller ab, Werkzeugrolle repariert nach dem Kampf, Letzter Schlag trifft doppelt, wenn die Waffe bricht), Kleinkram (Sack Murmeln, Hosentaschen, Steine aufsammeln: Karten, die kleine Wurfkarten für 0 Kraft erzeugen, die am Rundenende verfallen; Zielwasser macht jeden dritten Wurf doppelt; Werferin und Schleuder passen dazu) sowie Ruhe und Wut (zwei Haltungen: ruhig machen Treffer 1 weniger, und beim Verlassen der Ruhe gibt es 2 Kraft, rasend trifft man härter und nimmt mehr Schaden; Durchatmen, Zähne zusammenbeißen, Aus der Ruhe, Innere Ruhe, Raserei).
 - **Stil-Zeichen (seit 23.10.):** Jede Karte mit Stil trägt ein kleines Zeichen (Flamme für Feuer, Draht für Fallen und Abstand, Schwung-Pfeil, Schild für Schutz, Batterie für Tüftler, Schraubenschlüssel für Raubbau, Murmel für Kleinkram, Puls für Ruhe und Wut), jeder Stil in eigener Farbe. Rudel ruht, bis der Hund eine Rolle spielt (Kevin, 23.10.). Ein Stil ist nichts, was man „hat“: Man sammelt einzelne Karten und mischt frei; Karten eines Stils machen sich gegenseitig stärker. Im Sammelbuch lässt sich nach Stil filtern, und jede Karte sagt, wozu sie passt.
 - **Tasche und Fähigkeiten-Plätze (seit 23.10.):** Einmal-Karten liegen im Kampf nicht im Stapel, sondern in der Tasche über der Hand: 3 Sorten, je bis zu 3 Stück, jederzeit spielbar, danach weg. Dazu gehen höchstens 4 Fähigkeiten mit (später ab Stufe 10 fünf, ab 20 sechs) und je eine Nahkampf- und Fernkampfwaffe (sonst automatisch die stärkste). Der Stapel bleibt so bei etwa 11 Karten am Anfang und 16 bis 20 später. Beides wählt man zu Hause im Lager unter „Für den Kampf“; Neues rückt von selbst in einen freien Platz. Nach einer Niederlage sind nur die Einmal-Karten weg, die man dabeihatte. Seltenheit gewöhnlich, selten, episch, legendär; ganz selten glänzend. „Glück mit Netz“: spätestens nach 20 Sichtungen etwas Seltenes, nach 100 etwas Legendäres.
@@ -257,7 +257,7 @@ Drei Dinge wecken ihn: Man sieht etwas, weiß aber nicht, was es ist. Etwas füh
 - **Neuland:** Wo man noch kaum war, ist die Beute besser (Neuland +10 %, fernes Land +30 %, öfter Seltenes). Bewusst nicht nach Abstand zum Zuhause gerechnet, dessen Ort bleibt privat.
 - **Fundbuch der Orte:** Jeder Ortstyp zählt beim ersten Fund (mit kleinem Bonus). Fehlende stehen als Fragezeichen mit Hinweis drin („Am Waldrand, mit Blick aufs Feld“).
 - **Orte erzählen:** Jede Fundstelle hat einen Satz zur Stimmung; an manchen steht bei Tag: „Komm nachts wieder“.
-- **Kompass:** Nadel oben rechts. Antippen: Norden oben; nochmal: Die Karte dreht sich mit der Blickrichtung des Handys.
+- **Kompass:** Windrose oben rechts in der Reihe, die Höhe steht direkt darunter. Antippen: Norden oben; nochmal: Die Karte dreht sich mit der Blickrichtung des Handys.
 - **Pilzstellen:** nur im Wald, wandern wie die anderen kleinen Fundstellen etwa einmal am Tag weiter. Im Herbst gibt es viele, im Winter kaum welche. Sie geben Nahrung, selten Medizin, und sind nie bewacht.
 
 ### Naturkunde: Pilze, Kräuter und Beeren bestimmen (Idee, 22.10.2026)
@@ -311,7 +311,7 @@ Beim ersten Fund einer Art wird sie bestimmt, wie in einem Bestimmungsbuch. Alle
 
 ## Karte freilaufen, Tageszeit, Wetter
 
-- **Nebel:** Unbekanntes Gebiet liegt unter Nebel. Was du gerade siehst (~140 m), ist frei. Wo du gegangen bist (~55 m Umkreis), bleibt dauerhaft aufgedeckt.
+- **Nebel:** Unbekanntes Gebiet liegt unter Nebel. Was du gerade siehst (~100 m), ist frei. Wo du gegangen bist (~55 m Umkreis), bleibt dauerhaft aufgedeckt.
 - **Sektoren** (~750 m × 750 m): Bei 25 % aufgedeckt gilt ein Sektor als *erkundet*, bei 50 % als *gesichert*. Beides gibt einmalig eine Belohnung.
 - **Echte Tageszeit** aus dem Sonnenstand: Tag, Dämmerung, Nacht. Nachts mehr Wächter, dafür 30 % mehr Beute, dazu Taschenlampe und glühende Funken.
 - **Echtes Wetter** (Open-Meteo, Position auf ~10 km gerundet): bei Nebel, Regen und nachts sind Wandler zäher (+2 Gesundheit), in praller Sonne träge (−2), bei Nebel sieht man Wächter erst aus der Nähe, Gewitter mit Blitzen.
@@ -384,7 +384,7 @@ Das Gelände ist ein Werkzeug, nicht nur Kulisse: Straßen sind schnell, aber ma
 
 Welche Kreaturen wo häufiger sind, folgt der Lore (Wandler in Wäldern und Dörfern, Heuler und Brüller in Städten, Kriecher in Ruinen und Gräben, Borkenmänner in alten Wäldern, Schläfer und Leithammel auf dem Land, Kalkköpfe und Hünen in den Bergen, Erstarrte bei Frost). **Kälte** (Frost, Schnee, Winternacht ohne Wetterdaten): ohne Wärme 3 in der ersten Kampfrunde eine Karte weniger (Mütze und Regenjacke geben zusammen 2). **Hitze** (ab 28 °C oder Wüste am Tag): ohne Wasser in der ersten Runde 1 Kraft weniger.
 
-**Weltereignisse:** Pro Gegend (~1,5 km) und Runde (3 Stunden) passiert manchmal etwas für ein bis drei Stunden, für alle Spieler gleich. Man erfährt es per Funk (bis gut 1 km), oben rechts steht das nächste.
+**Weltereignisse:** Pro Gegend (~1,5 km) und Runde (3 Stunden) passiert ab und zu etwas (Chance 20 %, seit 23.10. seltener) für ein bis drei Stunden, für alle Spieler gleich. Man erfährt es per Funk (bis gut 1 km), oben rechts steht das nächste.
 - **Staubsturm:** zieht langsam weiter. Im Staub schlafen Keime: Durchsuchen nur mit Staubmaske oder Gasmaske. Dafür sehen dich die Trupps kaum.
 - **Horde:** mehrere Trupps zu dritt in der Zone.
 - **Sperrgebiet:** Landstreifer brennen eine Fiebergrube aus. Absperrband, Fundstellen darin sind tabu, beim Laufen per Tippen kommt man nicht hinein (hinaus schon).
