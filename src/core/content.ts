@@ -1510,7 +1510,29 @@ export const TACTICS = {
   maxHowls: 2,
 };
 
-export type IntentKind = 'attack' | 'windup' | 'smash' | 'grab' | 'advance' | 'howl' | 'lurk' | 'stunned' | 'stare' | 'fade' | 'pounce';
+export type IntentKind =
+  | 'attack'
+  | 'windup'
+  | 'smash'
+  | 'grab'
+  | 'advance'
+  | 'howl'
+  | 'lurk'
+  | 'stunned'
+  | 'stare'
+  | 'fade'
+  | 'pounce'
+  // Wirte aus dem Bestiarium
+  | 'routine' // Gewohnheitstier: geht seiner Wege, solange ihn keiner stört
+  | 'sleep' // Schläfer: liegt reglos
+  | 'ambush' // Schläfer: aufgewacht, Überfall
+  | 'frozen' // Erstarrter: steif vor Kälte
+  | 'charge' // Kalkkopf: senkt den Kopf
+  | 'ram' // Kalkkopf: Rammstoß (du bist benommen)
+  | 'reel' // Kalkkopf: taumelt nach dem Stoß, der Kalkhelm hilft nicht
+  | 'hurl' // Hüne: packt und wirft dich (nächste Runde 1 Kraft weniger)
+  | 'guard' // Hamsterer: hockt auf seinem Haufen (Abwehr)
+  | 'roar'; // Brüller: Gebrüll, die anderen schlagen härter
 
 export interface FoeTactic {
   name: string;
@@ -1520,9 +1542,32 @@ export interface FoeTactic {
   /** Bleibt hinten (heult nur). */
   stayBack?: boolean;
   /** Was er der Reihe nach vorhat (beginnt an zufälliger Stelle). */
-  pattern: { kind: IntentKind; dmg?: number }[];
+  pattern: { kind: IntentKind; dmg?: number; block?: number }[];
   desc: string;
+  /** Tut nichts, bis ihn ein Treffer stört (Gewohnheitstier). */
+  calm?: boolean;
+  /** Schläft so viele Runden; Treffer wecken ihn (doppelter Schaden). Danach: Überfall mit so viel Schaden. */
+  sleeps?: number;
+  ambush?: number;
+  /** Steif vor Kälte für so viele Runden (spröde: Treffer machen mehr). Feuer taut ihn auf und macht ihn wütend. */
+  frozen?: number;
+  /** Zu schwer: lässt sich weder wegstoßen noch heranholen. */
+  heavy?: boolean;
+  /** Solange er steht, schlagen die anderen so viel stärker (Leithammel). */
+  aura?: number;
+  /** Fällt er, laufen die anderen planlos auseinander (setzen eine Runde aus). */
+  scatter?: boolean;
 }
+
+/** Regeln der Wirte aus dem Bestiarium. */
+export const FOE_RULES = {
+  /** Erstarrt: Treffer machen so viel mehr (spröde vor Kälte). */
+  brittle: 1,
+  /** Aufgetaut durch Feuer: schlägt so viel härter. */
+  thawed: 2,
+  /** Nach dem Gebrüll des Brüllers: der nächste Angriff der anderen macht so viel mehr. */
+  roused: 1,
+};
 
 export const FOE_TACTICS: Record<FoeKind, FoeTactic> = {
   walker: {
@@ -1561,6 +1606,96 @@ export const FOE_TACTICS: Record<FoeKind, FoeTactic> = {
     pattern: [{ kind: 'stare' }, { kind: 'attack', dmg: 5 }, { kind: 'fade' }, { kind: 'pounce', dmg: 8 }],
     desc: 'Nur nachts. Sein Blick lähmt: nächste Runde eine Karte und eine Kraft weniger. Dann weicht er ins Dunkel zurück und springt dich an. Solange er hinten lauert, treffen ihn nur Wurf und Bolzen; gegen den Sprung hilft Ausweichen.',
   },
+  // --- Wirte aus dem Bestiarium (Welle 1) ---
+  habit: {
+    name: 'Gewohnheitstier',
+    hp: 14,
+    armor: 0,
+    calm: true,
+    pattern: [{ kind: 'attack', dmg: 4 }, { kind: 'grab', dmg: 3 }, { kind: 'attack', dmg: 4 }],
+    desc: 'Das Fieber hat das Denken ausgebrannt, nicht die Gewohnheit: Er läuft jeden Tag zur selben Zeit dieselbe Runde. Lässt du ihn in Ruhe, tut er nichts. Wer ihn stört, macht ihn wütend, und dann schlägt er hart zu. Er trägt noch, was er früher dabeihatte.',
+  },
+  leader: {
+    name: 'Leithammel',
+    hp: 9,
+    armor: 0,
+    aura: 1,
+    scatter: true,
+    pattern: [{ kind: 'attack', dmg: 2 }, { kind: 'attack', dmg: 3 }, { kind: 'grab', dmg: 2 }],
+    desc: 'Die anderen folgen ihm wie Schafe. Solange er steht, schlagen alle 1 stärker zu. Fällt er, laufen sie planlos auseinander und setzen eine Runde aus.',
+  },
+  giant: {
+    name: 'Hüne',
+    hp: 24,
+    armor: 0,
+    heavy: true,
+    pattern: [{ kind: 'attack', dmg: 4 }, { kind: 'windup' }, { kind: 'hurl', dmg: 7 }],
+    desc: 'Bei ihm ist das Wachstum entgleist: über zwei Meter, riesige Hände. Zu schwer zum Wegtreten. Holt er aus, packt er dich und wirft dich: 7 Schaden, nächste Runde 1 Kraft weniger. Ausweichen, betäuben oder Fallen helfen.',
+  },
+  sleeper: {
+    name: 'Schläfer',
+    hp: 9,
+    armor: 0,
+    sleeps: 1,
+    ambush: 5,
+    pattern: [{ kind: 'attack', dmg: 2 }, { kind: 'attack', dmg: 3 }],
+    desc: 'Liegt reglos wie ein Bündel alter Kleider. Wer ihn im Schlaf trifft, trifft doppelt. Wacht er auf, kommt zuerst ein Überfall (5 Schaden), danach ist er schwach.',
+  },
+  ramhead: {
+    name: 'Kalkkopf',
+    hp: 12,
+    armor: 2,
+    pattern: [{ kind: 'charge' }, { kind: 'ram', dmg: 7 }, { kind: 'reel' }],
+    desc: 'Die Kalkplatten wachsen nur am Schädel, wie ein Helm (Rüstung 2). Er senkt den Kopf und rammt: 7 Schaden, und du bist benommen (eine Karte weniger). Wegtreten unterbricht den Anlauf. Danach taumelt er: Dann hilft ihm der Helm nicht.',
+  },
+  frozen: {
+    name: 'Erstarrter',
+    hp: 16,
+    armor: 0,
+    frozen: 1,
+    pattern: [{ kind: 'attack', dmg: 4 }, { kind: 'grab', dmg: 3 }, { kind: 'attack', dmg: 4 }],
+    desc: 'Nur bei Frost: steif wie eine Statue, die erste Runde lang. So lange ist er spröde, jeder Treffer macht 1 mehr. Feuer taut ihn sofort auf und macht ihn wütend (2 Schaden mehr). Im Winter also: kein Feuer!',
+  },
+  hoarder: {
+    name: 'Hamsterer',
+    hp: 18,
+    armor: 0,
+    pattern: [{ kind: 'attack', dmg: 4 }, { kind: 'guard', block: 5 }, { kind: 'attack', dmg: 4 }],
+    desc: 'Sammelt, was ihm früher wichtig war, und hockt auf seinem Haufen. Verteidigt ihn verbissen. Wer gewinnt, darf den Haufen durchsuchen: viel Kram auf einmal.',
+  },
+  bellower: {
+    name: 'Brüller',
+    hp: 5,
+    armor: 0,
+    stayBack: true,
+    pattern: [{ kind: 'howl' }, { kind: 'attack', dmg: 2 }, { kind: 'roar' }],
+    desc: 'Ein alter Heuler mit riesigem Brustkorb. Bleibt hinten, ruft Wandler und brüllt: Danach schlägt jeder andere beim nächsten Angriff 1 stärker zu. Still-Karten bringen ihn zum Schweigen.',
+  },
+};
+
+/** Was Wirte dabeihaben (zusätzlich zur Beute des Trupps). */
+export const FOE_LOOT: Partial<Record<FoeKind, { kram: readonly (readonly [KramId, number])[]; n: number }>> = {
+  // Was er früher jeden Tag dabeihatte
+  habit: { kram: [['keyring', 3], ['wallet', 2], ['lunchbox', 2], ['thermos', 2], ['umbrella', 1], ['readingGlasses', 1], ['magazines', 1]], n: 1 },
+  // Sein ganzer Haufen
+  hoarder: { kram: [['tinCans', 2], ['radio', 1], ['toaster', 1], ['gardenGnome', 1], ['cuckooClock', 1], ['magazines', 2], ['boardGame', 1], ['snowGlobe', 1], ['batteries', 2], ['candles', 2], ['photoAlbum', 1]], n: 3 },
+};
+
+/**
+ * Gewohnheitstiere: Sie laufen jeden Tag zur selben (Sonnen-)Uhrzeit dieselbe Runde. Pro
+ * Rasterzelle (Zoom 16, ~380 m) würfelt der Weltstartwert einmal, ob dort eines wohnt, wann es
+ * losläuft und wo seine Runde ist. Alle Spieler sehen dasselbe, jeden Tag wieder.
+ */
+export const HABIT = {
+  zoom: 16,
+  /** Chance pro Zelle, dass dort eines wohnt (nur in Orten). */
+  chance: { city: 0.12, town: 0.14, village: 0.12, coast: 0.08 } as Partial<Record<RegionId, number>>,
+  /** Frühester und spätester Start (Stunde, Sonnenzeit). */
+  startH: [6, 20] as [number, number],
+  /** So lange ist es unterwegs (Minuten). */
+  durationMin: 40,
+  lengthM: [350, 700] as [number, number],
+  speed: 0.75,
 };
 
 // --- Durchsuchen: Geschick, Erstfund, Weiter wühlen --------------------------------
@@ -1647,6 +1782,10 @@ export const REGIONS: Record<RegionId, RegionDef> = {
       [['walker', 'walker'], 20],
       [['crawler', 'crawler'], 15],
       [['brute', 'walker'], 15],
+      [['bellower', 'walker', 'walker'], 12],
+      [['giant'], 8],
+      [['leader', 'walker', 'walker'], 8],
+      [['hoarder'], 5],
     ],
   },
   town: {
@@ -1661,6 +1800,11 @@ export const REGIONS: Record<RegionId, RegionDef> = {
       [['walker', 'screamer'], 15],
       [['crawler', 'walker'], 20],
       [['brute'], 10],
+      [['leader', 'walker', 'walker'], 8],
+      [['ramhead', 'walker'], 8],
+      [['hoarder'], 6],
+      [['sleeper', 'walker'], 5],
+      [['giant'], 4],
     ],
   },
   village: {
@@ -1674,6 +1818,10 @@ export const REGIONS: Record<RegionId, RegionDef> = {
       [['walker', 'walker'], 30],
       [['crawler', 'walker'], 20],
       [['brute'], 15],
+      [['sleeper'], 10],
+      [['leader', 'walker', 'walker'], 10],
+      [['hoarder'], 6],
+      [['ramhead'], 6],
     ],
   },
   wild: {
@@ -1687,6 +1835,9 @@ export const REGIONS: Record<RegionId, RegionDef> = {
       [['crawler', 'crawler'], 25],
       [['crawler', 'walker'], 25],
       [['brute'], 25],
+      [['ramhead'], 10],
+      [['sleeper', 'crawler'], 8],
+      [['leader', 'walker', 'walker'], 6],
     ],
   },
   mountain: {
@@ -1700,6 +1851,8 @@ export const REGIONS: Record<RegionId, RegionDef> = {
       [['crawler', 'crawler'], 25],
       [['brute'], 25],
       [['walker', 'crawler'], 25],
+      [['ramhead'], 12],
+      [['giant'], 8],
     ],
   },
   coast: {
@@ -1712,6 +1865,8 @@ export const REGIONS: Record<RegionId, RegionDef> = {
       [['walker'], 35],
       [['walker', 'walker'], 35],
       [['crawler', 'walker'], 30],
+      [['sleeper'], 8],
+      [['leader', 'walker', 'walker'], 8],
     ],
   },
   desert: {
@@ -1726,6 +1881,8 @@ export const REGIONS: Record<RegionId, RegionDef> = {
       [['walker', 'walker'], 30],
       [['brute'], 20],
       [['crawler', 'crawler'], 20],
+      [['sleeper'], 15],
+      [['giant'], 8],
     ],
   },
   snow: {
@@ -1739,6 +1896,8 @@ export const REGIONS: Record<RegionId, RegionDef> = {
       [['walker'], 30],
       [['brute'], 30],
       [['walker', 'walker'], 40],
+      [['frozen', 'frozen'], 25],
+      [['frozen', 'walker'], 20],
     ],
   },
 };
@@ -1799,6 +1958,8 @@ export const PATROL = {
   nightExtra: 0.15,
   /** Nachts zieht manchmal der Bleiche Wächter allein umher. */
   watcherChance: 0.2,
+  /** Bei Frost ist so ein Teil der Wandler erstarrt (Erstarrte). */
+  frostChance: 0.5,
   /** So weit siehst du Trupps auf der Karte (Tag, klare Sicht). */
   showM: 170,
   /** Im Schnee: Spuren, die jünger sind, verraten dich (Minuten). */

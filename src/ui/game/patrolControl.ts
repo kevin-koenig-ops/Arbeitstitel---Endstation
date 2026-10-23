@@ -66,6 +66,8 @@ export interface PatrolHost {
   viewBonus: () => number;
   /** Liegt Schnee (Spuren verraten dich)? */
   snowy: () => boolean;
+  /** Friert es (Erstarrte unterwegs)? */
+  frost: () => boolean;
   onSpotted: (p: LivePatrol) => void;
   onTrack: (p: LivePatrol) => void;
   /** Kein Trupp folgt dir mehr. quiet: ohne Meldung (z. B. du bist zu Hause angekommen). */
@@ -196,7 +198,8 @@ export class PatrolControl {
   /** Strecke eines Trupps: Wegpunkte mit aufsummierter Länge. */
   private makePath(plan: PatrolPlan, net: WalkNet | null) {
     if (!net?.wayCount) return null;
-    const r = rngFrom(this.host.app.backend.seed, 'trupp-weg', plan.id);
+    // Gewohnheitstiere laufen jeden Tag dieselbe Strecke
+    const r = rngFrom(this.host.app.backend.seed, 'trupp-weg', plan.pathKey ?? plan.id);
     const pts = net.patrolPath(plan.anchor, plan.lengthM, r);
     if (!pts || pts.length < 2) return null;
     const cum = [0];
@@ -254,7 +257,7 @@ export class PatrolControl {
     const s = this.host.app.backend.current();
     if (!s) return;
     const night = dayPhase(pos, now) === 'night';
-    const plans = this.host.app.backend.patrolsNear(pos, 600, this.host.region(), night, this.host.events());
+    const plans = this.host.app.backend.patrolsNear(pos, 600, this.host.region(), night, this.host.events(), this.host.frost());
     const keep = new Set<string>();
     const net = this.host.patrolNet(pos);
     for (const plan of plans) {

@@ -27,6 +27,8 @@ export interface ShownFoe {
   stunned: boolean;
   /** Hat ausgeholt: als Nächstes kommt der schwere Schlag. */
   raised: boolean;
+  /** Liegt und schläft (Schläfer) oder steht steif vor Kälte (Erstarrter). */
+  still?: 'sleep' | 'frozen' | null;
 }
 
 interface FoeView {
@@ -289,19 +291,20 @@ export class TacticsScene {
       if (!v) {
         const rig = new ZombieRig(f.kind);
         this.scene.add(rig.root);
-        const big = f.kind === 'brute' ? 1.3 : f.kind === 'screamer' ? 1.1 : 1;
+        const big = f.kind === 'giant' ? 1.55 : f.kind === 'brute' ? 1.3 : f.kind === 'screamer' || f.kind === 'bellower' ? 1.1 : 1;
         const ring = new THREE.Mesh(new THREE.RingGeometry(0.58 * big, 0.72 * big, 40), new THREE.MeshBasicMaterial({ color: '#ffb22e', transparent: true, opacity: 0, depthWrite: false }));
         ring.rotation.x = -Math.PI / 2;
         ring.renderOrder = 2;
         this.scene.add(ring);
         const start = enter.includes(f.id) ? target.clone().add(new THREE.Vector3(7, 0, -0.5)) : target.clone();
-        v = { rig, pos: start, target: target.clone(), kick: new THREE.Vector2(), ring, height: f.kind === 'brute' ? 2.5 : f.kind === 'crawler' ? 1.1 : 2, fast: 0, alive: true };
+        v = { rig, pos: start, target: target.clone(), kick: new THREE.Vector2(), ring, height: f.kind === 'giant' ? 2.9 : f.kind === 'brute' ? 2.5 : f.kind === 'crawler' ? 1.1 : 2, fast: 0, alive: true };
         this.foes.set(f.id, v);
       }
       v.target.copy(target);
       if (v.alive && !f.alive) v.rig.pose = 'dead';
       v.alive = f.alive;
-      if (f.alive) v.rig.pose = f.stunned ? 'stagger' : f.raised ? 'windup' : f.kind === 'screamer' && v.rig.pose === 'scream' ? 'scream' : 'walk';
+      if (f.alive)
+        v.rig.pose = f.still === 'sleep' ? 'sleep' : f.still === 'frozen' ? 'frozen' : f.stunned ? 'stagger' : f.raised ? 'windup' : (f.kind === 'screamer' || f.kind === 'bellower') && v.rig.pose === 'scream' ? 'scream' : 'walk';
       v.rig.windup = f.raised ? 1 : 0;
     }
   }

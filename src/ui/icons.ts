@@ -65,6 +65,8 @@ const P: Record<string, string> = {
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
   back: '<path d="M15 5l-7 7 7 7"/>',
   clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  // Schläft (Zz)
+  sleep: '<path d="M4 10h5l-5 6h5M12 4.5h7l-7 9h7"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   lock: '<rect x="5" y="11" width="14" height="9.5" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   memento: '<rect x="4.5" y="3" width="15" height="18" rx="1"/><rect x="7" y="5.5" width="10" height="9.5"/>',

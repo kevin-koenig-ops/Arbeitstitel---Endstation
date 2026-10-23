@@ -6,10 +6,14 @@
 // aus, ebenfalls nur aus dem Startwert. Alle Spieler sehen also dieselben Trupps.
 //
 // Die Kennung ist "t:<x>:<y>:<runde>" (Zelle und Runde), bei einer Horde
-// "t:h:<ereignis>:<nr>:<runde>". Die Gegend steht bewusst nicht darin: Wechselt sie,
-// bleibt ein Trupp derselbe (und ein besiegter bleibt besiegt).
+// "t:h:<ereignis>:<nr>:<runde>", bei einem Gewohnheitstier "t:g:<x>:<y>:<tag>". Die Gegend
+// steht bewusst nicht darin: Wechselt sie, bleibt ein Trupp derselbe (und ein besiegter
+// bleibt besiegt).
+//
+// Gewohnheitstiere laufen jeden Tag zur selben Sonnenzeit dieselbe Runde (gleicher Startpunkt,
+// gleiche Strecke). Bei Frost sind manche Wandler erstarrt.
 
-import { PATROL, REGIONS, WORLD_EVENT } from './content';
+import { HABIT, PATROL, REGIONS, WORLD_EVENT } from './content';
 import { fromTile, offsetM, toTile, distanceM } from './geo';
 import { pickWeighted, rngFrom } from './rng';
 import type { FoeKind, LatLon, RegionId, WorldEvent } from './types';
@@ -31,26 +35,37 @@ export interface PatrolPlan {
   until: number;
   /** Gehört zu einer Horde (Weltereignis). */
   horde?: boolean;
+  /** Für die Strecke (sonst die Kennung): Gewohnheitstiere laufen jeden Tag dieselbe. */
+  pathKey?: string;
 }
 
-/** Wer zu diesem Trupp gehört: passend zur Gegend, nachts manchmal der Bleiche Wächter allein. */
-export function patrolGroup(seed: string, id: string, night: boolean, region: RegionId): FoeKind[] {
+/**
+ * Wer zu diesem Trupp gehört: passend zur Gegend, nachts manchmal der Bleiche Wächter allein.
+ * frost: Bei Frost ist ein Teil der Wandler erstarrt.
+ */
+export function patrolGroup(seed: string, id: string, night: boolean, region: RegionId, frost = false): FoeKind[] {
+  let g: FoeKind[];
+  if (id.startsWith('t:g:')) return ['habit'];
   if (id.startsWith('t:h:')) {
     // Horde: drei zusammen, oft mit einem Heuler, der weitere herbeiruft
     const roll = rngFrom(seed, 'trupp-gruppe', id)();
-    return roll < 0.4 ? ['walker', 'walker', 'screamer'] : roll < 0.7 ? ['walker', 'walker', 'walker'] : ['crawler', 'walker', 'walker'];
-  }
-  // Eigener Zufall für den Wächter: Tag und Nacht ändern sonst die ganze Gruppe
-  if (night && rngFrom(seed, 'trupp-waechter', id)() < PATROL.watcherChance) return ['watcher'];
-  return [...pickWeighted(rngFrom(seed, 'trupp-gruppe', id), REGIONS[region].groups)];
+    g = roll < 0.4 ? ['walker', 'walker', 'screamer'] : roll < 0.7 ? ['walker', 'walker', 'walker'] : ['crawler', 'walker', 'walker'];
+  } else if (night && rngFrom(seed, 'trupp-waechter', id)() < PATROL.watcherChance) {
+    // Eigener Zufall für den Wächter: Tag und Nacht ändern sonst die ganze Gruppe
+    return ['watcher'];
+  } else g = [...pickWeighted(rngFrom(seed, 'trupp-gruppe', id), REGIONS[region].groups)];
+  if (!frost) return g;
+  // Eigener Zufall für den Frost, damit sich sonst nichts ändert
+  const r = rngFrom(seed, 'trupp-frost', id);
+  return g.map((k) => (k === 'walker' && r() < PATROL.frostChance ? 'frozen' : k));
 }
 
-function plan(seed: string, id: string, anchor: LatLon, from: number, night: boolean, region: RegionId, horde = false): PatrolPlan {
+function plan(seed: string, id: string, anchor: LatLon, from: number, night: boolean, region: RegionId, horde = false, frost = false): PatrolPlan {
   const r = rngFrom(seed, 'trupp-plan', id);
   return {
     id,
     anchor,
-    group: patrolGroup(seed, id, night, region),
+    group: patrolGroup(seed, id, night, region, frost),
     speed: PATROL.speed[0] + r() * (PATROL.speed[1] - PATROL.speed[0]),
     lengthM: Math.round(PATROL.lengthM[0] + r() * (PATROL.lengthM[1] - PATROL.lengthM[0])),
     from,
@@ -63,14 +78,48 @@ function plan(seed: string, id: string, anchor: LatLon, from: number, night: boo
  * Der Trupp einer Zelle in einer Runde, oder null. Ob es ihn gibt, hängt von der Gegend ab
  * (in der Stadt mehr), wo er läuft aber nicht: Der Zufall dafür ist für alle Gegenden gleich.
  */
-function cellPatrol(seed: string, region: RegionId, x: number, y: number, win: number, night: boolean): PatrolPlan | null {
+function cellPatrol(seed: string, region: RegionId, x: number, y: number, win: number, night: boolean, frost = false): PatrolPlan | null {
   const r = rngFrom(seed, 'trupp', x, y, win);
   const chance = REGIONS[region].patrolChance + (night ? PATROL.nightExtra : 0);
   if (r() >= chance) return null;
   const anchor = fromTile(x + 0.15 + r() * 0.7, y + 0.15 + r() * 0.7, PATROL.zoom);
   // Nicht alle starten zur vollen halben Stunde
   const from = win * WINDOW_MS + Math.floor(r() * 5) * MIN;
-  return plan(seed, `t:${x}:${y}:${win}`, anchor, from, night, region);
+  return plan(seed, `t:${x}:${y}:${win}`, anchor, from, night, region, false, frost);
+}
+
+const DAY_MS = 24 * 60 * MIN;
+/** Sonnenzeit: so viel früher oder später als UTC ist es hier (ms, 4 Minuten je Längengrad). */
+const solarOffset = (lon: number) => Math.round(lon * 4 * MIN);
+
+/**
+ * Das Gewohnheitstier einer Zelle (Zoom 16) an einem Tag, oder null. Wohnort, Startzeit
+ * und Strecke hängen nur von der Zelle ab, sind also jeden Tag gleich.
+ */
+function habitPatrol(seed: string, region: RegionId, x: number, y: number, day: number): PatrolPlan | null {
+  const chance = HABIT.chance[region] ?? 0;
+  if (!chance) return null;
+  const r = rngFrom(seed, 'gewohnheit', x, y);
+  if (r() >= chance) return null;
+  const anchor = fromTile(x + 0.2 + r() * 0.6, y + 0.2 + r() * 0.6, HABIT.zoom);
+  const startMin = HABIT.startH[0] * 60 + Math.floor(r() * (((HABIT.startH[1] - HABIT.startH[0]) * 60) / 15)) * 15;
+  const lengthM = Math.round(HABIT.lengthM[0] + r() * (HABIT.lengthM[1] - HABIT.lengthM[0]));
+  const from = day * DAY_MS + startMin * MIN - solarOffset(anchor.lon);
+  return {
+    id: `t:g:${x}:${y}:${day}`,
+    anchor,
+    group: ['habit'],
+    speed: HABIT.speed,
+    lengthM,
+    from,
+    until: from + HABIT.durationMin * MIN,
+    pathKey: `g:${x}:${y}`,
+  };
+}
+
+/** Welcher Tag (Sonnenzeit) ist hier gerade? */
+function solarDay(now: number, lon: number): number {
+  return Math.floor((now + solarOffset(lon)) / DAY_MS);
 }
 
 /** Ein Trupp einer Horde (k-ter, Runde win). */
@@ -87,9 +136,10 @@ function hordePatrol(seed: string, ev: WorldEvent, k: number, win: number, night
 
 /**
  * Alle Trupps, die gerade im Umkreis unterwegs sind.
- * region: die Gegend um den Spieler; events: laufende Weltereignisse (Horden bringen mehr Trupps).
+ * region: die Gegend um den Spieler; events: laufende Weltereignisse (Horden bringen mehr Trupps);
+ * frost: es friert (manche Wandler sind erstarrt).
  */
-export function patrolsAround(seed: string, center: LatLon, radiusM: number, now: number, region: RegionId, night: boolean, events: WorldEvent[] = []): PatrolPlan[] {
+export function patrolsAround(seed: string, center: LatLon, radiusM: number, now: number, region: RegionId, night: boolean, events: WorldEvent[] = [], frost = false): PatrolPlan[] {
   const t = toTile(center, PATROL.zoom);
   const cellM = (40075016 * Math.cos((center.lat * Math.PI) / 180)) / 2 ** PATROL.zoom;
   const span = Math.ceil(radiusM / cellM) + 1;
@@ -98,7 +148,17 @@ export function patrolsAround(seed: string, center: LatLon, radiusM: number, now
   for (let x = Math.floor(t.x) - span; x <= Math.floor(t.x) + span; x++)
     for (let y = Math.floor(t.y) - span; y <= Math.floor(t.y) + span; y++)
       for (const w of [win - 1, win]) {
-        const p = cellPatrol(seed, region, x, y, w, night);
+        const p = cellPatrol(seed, region, x, y, w, night, frost);
+        if (p && p.from <= now && now < p.until && distanceM(center, p.anchor) <= radiusM + p.lengthM) out.push(p);
+      }
+  // Gewohnheitstiere: jeden Tag zur selben Zeit dieselbe Runde
+  const tg = toTile(center, HABIT.zoom);
+  const gspan = Math.ceil(radiusM / (cellM * 2)) + 1;
+  const day = solarDay(now, center.lon);
+  for (let x = Math.floor(tg.x) - gspan; x <= Math.floor(tg.x) + gspan; x++)
+    for (let y = Math.floor(tg.y) - gspan; y <= Math.floor(tg.y) + gspan; y++)
+      for (const d of [day - 1, day]) {
+        const p = habitPatrol(seed, region, x, y, d);
         if (p && p.from <= now && now < p.until && distanceM(center, p.anchor) <= radiusM + p.lengthM) out.push(p);
       }
   // Horden: mehrere Trupps in der Zone, jede halbe Stunde neu verteilt
@@ -118,11 +178,17 @@ export function patrolsAround(seed: string, center: LatLon, radiusM: number, now
  * region: die Gegend, die das Gerät meldet (prüft später der Server mit eigenen Kartendaten).
  * Gibt null zurück bei erfundenen, abgelaufenen oder nicht passend geschriebenen Kennungen.
  */
-export function resolvePatrol(seed: string, id: string, now: number, night: boolean, region: RegionId): PatrolPlan | null {
+export function resolvePatrol(seed: string, id: string, now: number, night: boolean, region: RegionId, frost = false): PatrolPlan | null {
   const slack = 5 * MIN;
   const m = /^t:(-?\d+):(-?\d+):(-?\d+)$/.exec(id);
   if (m) {
-    const p = cellPatrol(seed, region, Number(m[1]), Number(m[2]), Number(m[3]), night);
+    const p = cellPatrol(seed, region, Number(m[1]), Number(m[2]), Number(m[3]), night, frost);
+    if (!p || p.id !== id || now < p.from || now >= p.until + slack) return null;
+    return p;
+  }
+  const g = /^t:g:(-?\d+):(-?\d+):(-?\d+)$/.exec(id);
+  if (g) {
+    const p = habitPatrol(seed, region, Number(g[1]), Number(g[2]), Number(g[3]));
     if (!p || p.id !== id || now < p.from || now >= p.until + slack) return null;
     return p;
   }

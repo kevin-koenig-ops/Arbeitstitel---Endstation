@@ -6,6 +6,11 @@
 // (Angriff mit Schaden, Ausholen, Heulen …). Wer vorne steht, kann zuschlagen; wer hinten
 // steht, kommt erst nach vorne (außer dem Heuler, der bleibt hinten und ruft Verstärkung).
 // Der Bleiche Wächter (nur nachts) starrt dich an, weicht ins Dunkel zurück und springt dich an.
+// Wirte aus dem Bestiarium: Das Gewohnheitstier tut nichts, bis man es stört; der Leithammel
+// treibt die anderen an; der Hüne lässt sich nicht wegtreten und wirft dich; der Schläfer schläft
+// (Treffer doppelt) und überfällt dich beim Aufwachen; der Kalkkopf rammt und taumelt danach;
+// der Erstarrte ist steif vor Kälte (Feuer taut ihn auf); der Hamsterer verteidigt seinen Haufen;
+// der Brüller ruft und brüllt die anderen stark.
 // Dazu kommen Einmal-Karten (Brandflasche, Granate …) und Fähigkeiten (Konter, Rundumschlag …,
 // mit Stufen I–III; manche wirken von selbst). Einmal-Karten liegen nicht im Stapel, sondern in
 // der Tasche (3 Plätze): Man kann sie jederzeit spielen, danach sind sie weg. Zustände der Gegner:
@@ -15,13 +20,15 @@
 // Alles hier ist rein und vorhersagbar: gleicher Startwert, gleiche Züge, gleiches Ergebnis.
 // Dadurch kann es später auch der Server nachrechnen.
 
-import { BASE_DECK, CARDS, cardStat, DEVICES, FOE_TACTICS, MAX_DEVICES, ONCE_CARRY, POUCH_SLOTS, STANCE, TACTICS, WEAPON_CARDS, type CardId, type CardStat, type DeviceId, type IntentKind, type Stance } from './content';
+import { BASE_DECK, CARDS, cardStat, DEVICES, FOE_RULES, FOE_TACTICS, MAX_DEVICES, ONCE_CARRY, POUCH_SLOTS, STANCE, TACTICS, WEAPON_CARDS, type CardId, type CardStat, type DeviceId, type IntentKind, type Stance } from './content';
 import { hashString } from './rng';
 import type { FoeKind, Opening, Weapon, WeaponId } from './types';
 
 export interface Intent {
   kind: IntentKind;
   dmg?: number;
+  /** Abwehr, die er sich verschafft (Hamsterer auf seinem Haufen). */
+  block?: number;
 }
 
 export interface TFoe {
@@ -45,6 +52,18 @@ export interface TFoe {
   blind: number;
   slow: number;
   silence: number;
+  /** Gewohnheitstier: geht noch seiner Wege (bis ihn ein Treffer stört). */
+  calm: boolean;
+  /** Schläfer: schläft noch so viele Runden. */
+  sleep: number;
+  /** Schläfer: gerade aufgewacht, als Nächstes kommt der Überfall. */
+  ambush: boolean;
+  /** Erstarrter: noch so viele Runden steif vor Kälte. */
+  frozen: number;
+  /** Durch Feuer aufgetaut und wütend (schlägt härter). */
+  thawed: boolean;
+  /** Vom Brüller aufgestachelt: der nächste Angriff macht mehr. */
+  roused: boolean;
 }
 
 export interface TacticsState {
@@ -168,6 +187,14 @@ export type TEvent =
   | { type: 'stance'; stance: Stance }
   | { type: 'made'; card: CardId; n: number; to: 'hand' | 'draw' }
   | { type: 'status'; id: number; status: 'burn' | 'blind' | 'slow' | 'silence' | 'interrupt' | 'steady' }
+  | { type: 'wake'; id: number }
+  | { type: 'riled'; id: number }
+  | { type: 'thaw'; id: number }
+  | { type: 'scatter'; by: number }
+  | { type: 'roar'; by: number }
+  | { type: 'guard'; id: number; block: number }
+  | { type: 'charge'; id: number }
+  | { type: 'dazed'; by: number }
   | { type: 'miss'; id: number }
   | { type: 'ally'; id: number; dmg: number; kill: boolean }
   | { type: 'allyIn'; rounds: number }
@@ -227,21 +254,66 @@ export function pouchFor(kit: CardKit = {}): Partial<Record<CardId, number>> {
 
 function makeFoe(st: TacticsState, kind: FoeKind, row: 'near' | 'far'): TFoe {
   const def = FOE_TACTICS[kind];
-  const f: TFoe = { id: st.nextId++, kind, hp: def.hp, maxHp: def.hp, block: 0, row: def.stayBack ? 'far' : row, step: Math.floor(next(st) * def.pattern.length), intent: { kind: 'advance' }, stunned: false, steady: false, howls: 0, burn: 0, blind: 0, slow: 0, silence: 0 };
-  f.intent = intentOf(f);
+  // Wer ein festes Muster mit Anlauf hat (Kalkkopf), beginnt immer vorn im Muster
+  const start = def.pattern[0]?.kind === 'charge' ? 0 : Math.floor(next(st) * def.pattern.length);
+  const f: TFoe = {
+    id: st.nextId++,
+    kind,
+    hp: def.hp,
+    maxHp: def.hp,
+    block: 0,
+    row: def.stayBack ? 'far' : row,
+    step: start,
+    intent: { kind: 'advance' },
+    stunned: false,
+    steady: false,
+    howls: 0,
+    burn: 0,
+    blind: 0,
+    slow: 0,
+    silence: 0,
+    calm: !!def.calm,
+    sleep: def.sleeps ?? 0,
+    ambush: false,
+    frozen: def.frozen ?? 0,
+    thawed: false,
+    roused: false,
+  };
+  f.intent = intentOf(f, st);
   return f;
 }
 
-/** Was der Gegner als Nächstes tut (wird angezeigt). */
-export function intentOf(f: TFoe): Intent {
+/** Absichten, die dich treffen (Schaden). */
+export const HITS: readonly IntentKind[] = ['attack', 'smash', 'grab', 'pounce', 'ram', 'hurl', 'ambush'];
+/** Angekündigte schwere Schläge (Ausholen, Anlauf): lassen sich unterbrechen oder betäuben. */
+const TELEGRAPHED: readonly IntentKind[] = ['windup', 'smash', 'charge', 'ram', 'hurl'];
+
+/** Was der Gegner als Nächstes tut (wird angezeigt). st: für Wirkungen anderer (Leithammel). */
+export function intentOf(f: TFoe, st?: TacticsState): Intent {
+  const base = baseIntent(f);
+  if (!base.dmg || !HITS.includes(base.kind)) return base;
+  let dmg = base.dmg;
+  if (f.thawed) dmg += FOE_RULES.thawed;
+  if (f.roused) dmg += FOE_RULES.roused;
+  // Leithammel: Solange er steht, schlagen die anderen härter
+  if (st) for (const x of st.foes) if (x.id !== f.id && x.hp > 0) dmg += FOE_TACTICS[x.kind].aura ?? 0;
+  return { ...base, dmg };
+}
+
+function baseIntent(f: TFoe): Intent {
   const def = FOE_TACTICS[f.kind];
   if (f.stunned) return { kind: 'stunned' };
+  if (f.sleep > 0) return { kind: 'sleep' };
+  if (f.frozen > 0) return { kind: 'frozen' };
+  if (f.calm) return { kind: 'routine' };
+  // Aufgewacht: Überfall, notfalls mit einem Satz von hinten
+  if (f.ambush) return { kind: 'ambush', dmg: def.ambush ?? 3 };
   const p = def.pattern[f.step % def.pattern.length];
   // Der Sprung kommt von hinten: dafür muss er nicht erst nach vorne
   if (f.row === 'far' && !def.stayBack && p.kind !== 'pounce') return { kind: 'advance' };
   if (f.row === 'near' && p.kind === 'pounce') return { kind: 'attack', dmg: p.dmg };
   if (p.kind === 'howl' && f.howls >= TACTICS.maxHowls) return { kind: 'attack', dmg: 1 };
-  return { kind: p.kind, dmg: p.dmg };
+  return { kind: p.kind, dmg: p.dmg, block: p.block };
 }
 
 /**
@@ -334,7 +406,7 @@ export function createTactics(o: {
   if (o.opening === 'surprise') {
     for (const f of st.foes) {
       f.stunned = true;
-      f.intent = intentOf(f);
+      f.intent = intentOf(f, st);
     }
     st.energy += 1;
   } else if (o.opening === 'spotted') st.energy = Math.max(1, st.energy - 1);
@@ -342,7 +414,7 @@ export function createTactics(o: {
   if (lvl('sneak') && o.opening !== 'spotted') {
     for (const f of st.foes) {
       f.stunned = true;
-      f.intent = intentOf(f);
+      f.intent = intentOf(f, st);
     }
     if (lvl('sneak') >= 2) st.energy += 1;
   }
@@ -409,7 +481,7 @@ function startTurn(st: TacticsState, events: TEvent[]) {
   // Innere Ruhe: ruhig ziehst du mehr
   drawCards(st, Math.max(2, TACTICS.hand - st.dazed) + (st.stance === 'calm' ? st.innerCalm : 0));
   st.dazed = 0;
-  for (const f of aliveFoes(st)) f.intent = intentOf(f);
+  for (const f of aliveFoes(st)) f.intent = intentOf(f, st);
   events.push({ type: 'turn', turn: st.turn });
 }
 
@@ -420,11 +492,19 @@ function removeWeaponCards(st: TacticsState, w: WeaponId) {
   st.discard = drop(st.discard);
 }
 
+/** Rüstung gerade: Der Kalkkopf taumelt nach dem Rammen, dann hilft ihm sein Kalkhelm nicht. */
+export function armorNow(f: TFoe): number {
+  return f.intent.kind === 'reel' ? 0 : FOE_TACTICS[f.kind].armor;
+}
+
 /** Schaden an einem Gegner: erst Rüstung (außer pierce), dann seine Abwehr. */
 function damageFoe(st: TacticsState, f: TFoe, raw: number, events: TEvent[], pierce = false) {
   // Fallensteller: Verlangsamte trifft es härter
   if (raw > 0 && f.slow > 0) raw += st.trapper;
-  const afterArmor = pierce ? raw : Math.max(raw > 0 ? 1 : 0, raw - FOE_TACTICS[f.kind].armor);
+  // Im Schlaf trifft es doppelt, steif vor Kälte ist er spröde
+  if (raw > 0 && f.sleep > 0) raw *= 2;
+  if (raw > 0 && f.frozen > 0) raw += FOE_RULES.brittle;
+  const afterArmor = pierce ? raw : Math.max(raw > 0 ? 1 : 0, raw - armorNow(f));
   const absorbed = Math.min(f.block, afterArmor);
   f.block -= absorbed;
   const dmg = afterArmor - absorbed;
@@ -432,7 +512,39 @@ function damageFoe(st: TacticsState, f: TFoe, raw: number, events: TEvent[], pie
   const kill = f.hp === 0;
   if (kill) st.kills += 1;
   events.push({ type: 'hit', id: f.id, dmg, absorbed, kill });
-  if (kill) spreadFire(st, f, events);
+  if (kill) {
+    spreadFire(st, f, events);
+    scatterFrom(st, f, events);
+    return;
+  }
+  if (raw <= 0) return;
+  // Wer schläft, wacht auf (und überfällt dich); wer seiner Wege ging, wird wütend
+  if (f.sleep > 0) {
+    f.sleep = 0;
+    f.ambush = true;
+    f.intent = intentOf(f, st);
+    events.push({ type: 'wake', id: f.id });
+  }
+  if (f.calm) {
+    f.calm = false;
+    f.intent = intentOf(f, st);
+    events.push({ type: 'riled', id: f.id });
+  }
+}
+
+/** Leithammel gefallen: Die anderen laufen planlos auseinander (setzen eine Runde aus). */
+function scatterFrom(st: TacticsState, dead: TFoe, events: TEvent[]) {
+  if (!FOE_TACTICS[dead.kind].scatter) return;
+  const rest = aliveFoes(st).filter((x) => x.id !== dead.id);
+  if (!rest.length) return;
+  events.push({ type: 'scatter', by: dead.id });
+  for (const x of rest) {
+    x.stunned = true;
+    x.intent = intentOf(x, st);
+    events.push({ type: 'stun', id: x.id });
+  }
+  // Ohne ihn schlagen die anderen nicht mehr härter
+  for (const x of rest) x.intent = intentOf(x, st);
 }
 
 /**
@@ -452,7 +564,7 @@ function arriveNear(st: TacticsState, f: TFoe, events: TEvent[]): boolean {
   damageFoe(st, f, dmg + st.trapper, events);
   if (f.hp > 0 && !f.steady) {
     f.stunned = true;
-    f.intent = intentOf(f);
+    f.intent = intentOf(f, st);
     events.push({ type: 'stun', id: f.id });
   }
   return true;
@@ -491,6 +603,13 @@ function setStance(st: TacticsState, stance: Stance, events: TEvent[]) {
 function setBurn(st: TacticsState, f: TFoe, rounds: number, events: TEvent[]) {
   f.burn = Math.max(f.burn, rounds + st.burnBonus);
   events.push({ type: 'status', id: f.id, status: 'burn' });
+  // Erstarrter: Feuer taut ihn sofort auf und macht ihn wütend
+  if (FOE_TACTICS[f.kind].frozen && !f.thawed && f.hp > 0) {
+    f.frozen = 0;
+    f.thawed = true;
+    f.intent = intentOf(f, st);
+    events.push({ type: 'thaw', id: f.id });
+  }
 }
 
 /** Lauffeuer: Ein brennender Gegner fällt, der nächste fängt Feuer (vorne zuerst). */
@@ -507,12 +626,12 @@ function spreadFire(st: TacticsState, dead: TFoe, events: TEvent[]) {
 
 // --- Züge ----------------------------------------------------------------------------
 
-/** Ausholen unterbrechen: Der Gegner fängt sein Muster von vorne an. */
-function interrupt(f: TFoe) {
+/** Ausholen (oder Anlauf) unterbrechen: Der Gegner fängt sein Muster von vorne an. */
+function interrupt(st: TacticsState, f: TFoe) {
   const pattern = FOE_TACTICS[f.kind].pattern;
   const p = pattern[f.step % pattern.length];
-  if (p.kind === 'windup' || p.kind === 'smash') f.step = 0;
-  f.intent = intentOf(f);
+  if (TELEGRAPHED.includes(p.kind)) f.step = 0;
+  f.intent = intentOf(f, st);
 }
 
 /** Eine Karte aus der Hand spielen (target: Gegner-id bei Karten mit Zielwahl). */
@@ -731,31 +850,33 @@ function resolve(st: TacticsState, card: CardId, target: number | undefined, tak
 function applyEffects(st: TacticsState, card: CardId, f: TFoe, events: TEvent[]) {
   if (f.hp <= 0) return;
   const def = CARDS[card];
-  const pushIt = (def.push || (def.vs?.push && f.kind === def.vs.kind)) && f.row === 'near';
+  // Der Hüne ist zu schwer: lässt sich weder wegtreten noch heranholen
+  const heavy = !!FOE_TACTICS[f.kind].heavy;
+  const pushIt = (def.push || (def.vs?.push && f.kind === def.vs.kind)) && f.row === 'near' && !heavy;
   if (pushIt) {
     f.row = 'far';
-    interrupt(f);
+    interrupt(st, f);
     events.push({ type: 'push', id: f.id });
   }
   if (def.interrupt) {
-    interrupt(f);
+    interrupt(st, f);
     events.push({ type: 'status', id: f.id, status: 'interrupt' });
   }
   // Wecker: von hinten nach vorn holen (Fallen lösen dabei aus)
-  if (def.pull && f.row === 'far') {
+  if (def.pull && f.row === 'far' && !heavy) {
     events.push({ type: 'pulled', id: f.id });
     arriveNear(st, f, events);
-    if (f.hp > 0) f.intent = intentOf(f);
+    if (f.hp > 0) f.intent = intentOf(f, st);
     if (f.hp <= 0) return;
   }
   // Kopfnuss: betäubt nur, wenn er gerade ausholt
-  const stunNow = def.stun || (def.stunIfWindup && (f.intent.kind === 'windup' || f.intent.kind === 'smash'));
+  const stunNow = def.stun || (def.stunIfWindup && TELEGRAPHED.includes(f.intent.kind));
   if (stunNow) {
     // Niemand lässt sich zweimal hintereinander betäuben (sonst ginge es endlos)
     if (f.steady) events.push({ type: 'status', id: f.id, status: 'steady' });
     else {
       f.stunned = true;
-      f.intent = intentOf(f);
+      f.intent = intentOf(f, st);
       events.push({ type: 'stun', id: f.id });
     }
   }
@@ -827,7 +948,7 @@ export function endTurn(st: TacticsState): TEvent[] {
     if (f.slow > 0) f.slow -= 1;
     const silenced = f.silence > 0;
     if (f.silence > 0) f.silence -= 1;
-    const intent = intentOf(f);
+    const intent = intentOf(f, st);
     f.block = 0;
     if (f.stunned) {
       f.stunned = false;
@@ -835,6 +956,20 @@ export function endTurn(st: TacticsState): TEvent[] {
       continue;
     }
     f.steady = false;
+    // Zustände statt Züge: schläft, steif vor Kälte, geht seiner Wege (das Muster läuft nicht weiter)
+    if (intent.kind === 'sleep') {
+      f.sleep -= 1;
+      if (f.sleep <= 0) {
+        f.ambush = true;
+        events.push({ type: 'wake', id: f.id });
+      }
+      continue;
+    }
+    if (intent.kind === 'frozen') {
+      f.frozen -= 1;
+      continue;
+    }
+    if (intent.kind === 'routine') continue;
     if (intent.kind === 'advance') {
       if (slowed) {
         events.push({ type: 'status', id: f.id, status: 'slow' });
@@ -847,17 +982,24 @@ export function endTurn(st: TacticsState): TEvent[] {
       continue;
     }
     const def = FOE_TACTICS[f.kind];
-    f.step = (f.step + 1) % def.pattern.length;
+    // Der Überfall nach dem Aufwachen gehört nicht zum Muster
+    if (intent.kind === 'ambush') f.ambush = false;
+    else f.step = (f.step + 1) % def.pattern.length;
     switch (intent.kind) {
       case 'pounce':
       case 'attack':
       case 'smash':
-      case 'grab': {
-        if (intent.kind === 'pounce') {
-          // Aus dem Dunkel nach vorne gesprungen, dann zugeschlagen (in eine Falle gesprungen: nicht)
+      case 'grab':
+      case 'ram':
+      case 'hurl':
+      case 'ambush': {
+        if (intent.kind === 'pounce' || (intent.kind === 'ambush' && f.row === 'far')) {
+          // Aus dem Dunkel (oder aus dem Gras) nach vorne gesprungen, dann zugeschlagen (in eine Falle gesprungen: nicht)
           events.push({ type: 'pounce', id: f.id });
           if (arriveNear(st, f, events)) break;
         }
+        // Aufgestachelt vom Brüller: gilt für diesen einen Angriff
+        f.roused = false;
         // Geblendet: Der Angriff geht daneben
         if (f.blind > 0) {
           f.blind -= 1;
@@ -893,9 +1035,15 @@ export function endTurn(st: TacticsState): TEvent[] {
           damageFoe(st, f, st.thorns, extra);
           events.push({ type: 'thorns', id: f.id, dmg: st.thorns, kill: st.kills > before }, ...extra.filter((e) => e.type !== 'hit'));
         }
-        if (intent.kind === 'grab') {
+        // Gepackt (oder vom Hünen geworfen): nächste Runde 1 Kraft weniger
+        if (intent.kind === 'grab' || intent.kind === 'hurl') {
           st.grabbed = 1;
           events.push({ type: 'grabbed', by: f.id });
+        }
+        // Gerammt: benommen, nächste Runde eine Karte weniger
+        if (intent.kind === 'ram') {
+          st.dazed = 1;
+          events.push({ type: 'dazed', by: f.id });
         }
         // Zweiter Atem: einmal pro Kampf, wenn es knapp wird
         if (st.hp > 0 && st.hp < 3 && st.secondWind && !st.secondWindUsed) {
@@ -910,6 +1058,25 @@ export function endTurn(st: TacticsState): TEvent[] {
       case 'windup':
         events.push({ type: 'windup', id: f.id });
         break;
+      case 'charge':
+        events.push({ type: 'charge', id: f.id });
+        break;
+      case 'reel':
+        break;
+      case 'guard':
+        f.block = intent.block ?? 3;
+        events.push({ type: 'guard', id: f.id, block: f.block });
+        break;
+      case 'roar': {
+        if (silenced) {
+          events.push({ type: 'status', id: f.id, status: 'silence' });
+          break;
+        }
+        // Alle anderen schlagen beim nächsten Angriff härter
+        for (const x of aliveFoes(st)) if (x.id !== f.id) x.roused = true;
+        events.push({ type: 'roar', by: f.id });
+        break;
+      }
       case 'lurk':
         f.block = 2;
         events.push({ type: 'lurk', id: f.id, block: 2 });
@@ -957,7 +1124,9 @@ export function fleeHits(st: TacticsState): { id: number; dmg: number }[] {
     if (f.row !== 'near' || f.stunned || f.blind > 0) continue;
     const k = f.intent.kind;
     const attacks = FOE_TACTICS[f.kind].pattern.filter((p) => (p.dmg ?? 0) > 0).map((p) => p.dmg!);
-    const dmg = (k === 'attack' || k === 'smash' || k === 'grab' || k === 'pounce') && f.intent.dmg ? f.intent.dmg : attacks.length ? Math.min(...attacks) : 0;
+    // Wer schläft, steif ist oder seiner Wege geht, schlägt beim Weglaufen nicht zu
+    if (k === 'sleep' || k === 'frozen' || k === 'routine') continue;
+    const dmg = HITS.includes(k) && f.intent.dmg ? f.intent.dmg : attacks.length ? Math.min(...attacks) : 0;
     if (dmg > 0) out.push({ id: f.id, dmg });
   }
   return out;

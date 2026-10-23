@@ -4,8 +4,8 @@
 //
 // Rein und vorhersagbar wie der Kampf selbst: gleicher Kampf, gleiche Züge.
 
-import { CARDS, FOE_TACTICS, STANCE, type CardId, type DeviceId } from './content';
-import { aliveFoes, endTurn, flee, lacksMedicine, playCard, playPouch, targetsFor, type TacticsState, type TFoe } from './tactics';
+import { CARDS, FOE_RULES, FOE_TACTICS, STANCE, type CardId, type DeviceId } from './content';
+import { aliveFoes, armorNow, endTurn, flee, HITS, lacksMedicine, playCard, playPouch, targetsFor, type TacticsState, type TFoe } from './tactics';
 
 export interface AutopilotOptions {
   /** Einmal-Karten aus der Tasche: klug einsetzen, nur im Notfall oder nie. */
@@ -20,9 +20,8 @@ export function incoming(st: TacticsState): number {
   for (const f of aliveFoes(st)) {
     if (f.stunned || f.blind > 0) continue;
     const k = f.intent.kind;
-    const hits = k === 'attack' || k === 'smash' || k === 'grab' || k === 'pounce';
-    if (!hits) continue;
-    if (!(f.row === 'near' || k === 'pounce' || FOE_TACTICS[f.kind].stayBack)) continue;
+    if (!HITS.includes(k)) continue;
+    if (!(f.row === 'near' || k === 'pounce' || k === 'ambush' || FOE_TACTICS[f.kind].stayBack)) continue;
     let d = f.intent.dmg ?? 0;
     if (d > 0 && st.stance === 'calm') d = Math.max(0, d - STANCE.calmGuard);
     else if (d > 0 && st.stance === 'wrath') d += STANCE.wrathTaken;
@@ -31,8 +30,11 @@ export function incoming(st: TacticsState): number {
   return n;
 }
 
-const armorOf = (f: TFoe) => FOE_TACTICS[f.kind].armor;
 const isHowler = (f: TFoe) => FOE_TACTICS[f.kind].pattern.some((p) => p.kind === 'howl');
+/** Schwere angekündigte Schläge (Wuchtschlag, Rammstoß, Wurf des Hünen). */
+const isBigHit = (f: TFoe) => f.intent.kind === 'smash' || f.intent.kind === 'ram' || f.intent.kind === 'hurl';
+/** Was es bringt, ihn zu erledigen, für die anderen: der Leithammel treibt sie an, fällt er, setzen sie aus. */
+const leaderValue = (st: TacticsState, f: TFoe) => (FOE_TACTICS[f.kind].scatter ? aliveFoes(st).filter((x) => x.id !== f.id).reduce((a, x) => a + 1 + (x.intent.dmg ?? 0), 0) : 0);
 
 /** Schaden, der wirklich ankommt (Rüstung, Abwehr, Zielen). */
 function effDmg(st: TacticsState, card: CardId, f: TFoe, first = true): number {
@@ -48,7 +50,10 @@ function effDmg(st: TacticsState, card: CardId, f: TFoe, first = true): number {
   if (first && st.stance === 'wrath') raw += STANCE.wrathDmg;
   if (first && d.weapon && st.overdrive) raw += st.overdrive.dmg;
   if (st.rage && st.hp <= 3) raw += st.rage;
-  const after = d.pierce ? raw : Math.max(1, raw - armorOf(f));
+  // Schlafend doppelt, erstarrt spröde
+  if (f.sleep > 0) raw *= 2;
+  if (f.frozen > 0) raw += FOE_RULES.brittle;
+  const after = d.pierce ? raw : Math.max(1, raw - armorNow(f));
   return Math.max(0, after - f.block);
 }
 
@@ -67,17 +72,20 @@ function score(st: TacticsState, card: CardId, target?: TFoe): number {
   for (const f of foes) {
     const dmg = effDmg(st, card, f, f === foes[0]);
     v += Math.min(dmg, f.hp);
-    if (dmg >= f.hp) v += 2 + (f.intent.dmg ?? 0); // Erledigt: keine Gefahr mehr
+    if (dmg >= f.hp) v += 2 + (f.intent.dmg ?? 0) + leaderValue(st, f); // Erledigt: keine Gefahr mehr
+    // Den Leithammel zuerst: jeder Treffer bringt ihn dem Fall näher
+    if (FOE_TACTICS[f.kind].scatter) v += Math.min(dmg, f.hp) * 0.5;
     const threat = f.intent.dmg ?? 0;
     if (d.stun && !f.stunned && !f.steady) v += 1 + threat;
-    if (d.stunIfWindup && !f.steady && (f.intent.kind === 'windup' || f.intent.kind === 'smash')) v += 2 + threat;
-    if ((d.push || d.interrupt) && f.row === 'near' && (f.intent.kind === 'smash' || f.intent.kind === 'windup')) v += 4;
+    if (d.stunIfWindup && !f.steady && (f.intent.kind === 'windup' || f.intent.kind === 'charge' || isBigHit(f))) v += 2 + threat;
+    if ((d.push || d.interrupt) && f.row === 'near' && !FOE_TACTICS[f.kind].heavy && (isBigHit(f) || f.intent.kind === 'windup' || f.intent.kind === 'charge')) v += 4;
     // Wegstoßen lohnt, wenn danach Pfeile fliegen können
     if (d.push && f.row === 'near' && st.hand.some((c) => CARDS[c].farBonus)) v += 2;
     if (d.blind && threat) v += threat;
-    if (d.burn) v += Math.min(f.hp, (d.burn ?? 0) * (f.kind === 'walker' ? 2 : 1)) * 0.8;
+    // Feuer auf einen Erstarrten taut ihn auf und macht ihn wütend: lieber nicht
+    if (d.burn) v += FOE_TACTICS[f.kind].frozen && !f.thawed ? -6 : Math.min(f.hp, (d.burn ?? 0) * (f.kind === 'walker' ? 2 : 1)) * 0.8;
     if (d.slow && f.row === 'far') v += 1.5;
-    if (d.silence && isHowler(f) && f.howls < 2) v += 3;
+    if (d.silence && isHowler(f) && (f.howls < 2 || f.intent.kind === 'roar')) v += 3;
   }
   // Schwung lohnt, wenn danach noch ein Angriff kommt
   const mom = (d.momentum ?? 0) + Math.max(0, (st.levels[card] ?? 1) - 1) * (d.scale?.momentum ?? 0);
@@ -118,7 +126,7 @@ export function autopilotTurn(st: TacticsState, o: AutopilotOptions = {}): void 
   for (let guard = 0; guard < 16 && !st.over; guard++) {
     const foes = aliveFoes(st);
     const danger = incoming(st) - st.block;
-    const risky = foes.length >= 2 || foes.some((f) => f.kind === 'brute' || f.kind === 'watcher') || st.hp <= 5;
+    const risky = foes.length >= 2 || foes.some((f) => f.kind === 'brute' || f.kind === 'watcher' || f.kind === 'giant' || f.kind === 'ramhead') || st.hp <= 5;
     const usePouch = pouchMode === 'smart' ? risky : pouchMode === 'emergency' ? danger >= st.hp || st.hp <= 3 : false;
     const opts = options(st, usePouch);
     if (!opts.length) return;
@@ -137,11 +145,12 @@ export function autopilotTurn(st: TacticsState, o: AutopilotOptions = {}): void 
       return best;
     };
     // 1. Wuchtschlag oder Sprung abwenden
-    const smasher = foes.find((f) => f.row === 'near' && f.intent.kind === 'smash' && !f.stunned);
+    const smasher = foes.find((f) => f.row === 'near' && isBigHit(f) && !f.stunned);
     if (smasher) {
+      const heavy = !!FOE_TACTICS[smasher.kind].heavy;
       const p = pick(opts, (x) => {
         const d = CARDS[x.card];
-        return (x.target === smasher.id && (d.push || d.stun || d.interrupt || d.stunIfWindup)) || (d.area && (d.stun || d.interrupt)) ? 10 - d.cost : 0;
+        return (x.target === smasher.id && ((d.push && !heavy) || d.stun || d.interrupt || d.stunIfWindup)) || (d.area && (d.stun || d.interrupt)) ? 10 - d.cost : 0;
       });
       if (p && play(st, p)) continue;
     }
@@ -158,8 +167,8 @@ export function autopilotTurn(st: TacticsState, o: AutopilotOptions = {}): void 
       });
       if (p && play(st, p)) continue;
     }
-    // 3. Heuler, die gleich rufen: zum Schweigen bringen
-    const howler = foes.find((f) => isHowler(f) && f.intent.kind === 'howl' && f.silence <= 0 && f.howls < 2);
+    // 3. Heuler, die gleich rufen (oder brüllen): zum Schweigen bringen
+    const howler = foes.find((f) => isHowler(f) && ((f.intent.kind === 'howl' && f.howls < 2) || f.intent.kind === 'roar') && f.silence <= 0);
     if (howler) {
       const p = pick(opts, (x) => (x.target === howler.id && (CARDS[x.card].dmg || CARDS[x.card].silence || CARDS[x.card].stun) ? 5 + effDmg(st, x.card, howler) : 0));
       if (p && play(st, p)) continue;

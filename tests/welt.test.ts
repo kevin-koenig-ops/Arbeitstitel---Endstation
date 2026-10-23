@@ -146,6 +146,48 @@ describe('Trupps', () => {
     expect(city).toBeGreaterThan(wild);
   });
 
+  it('bei Frost sind manche Wandler erstarrt, sonst bleibt alles gleich', () => {
+    const plain = patrolsAround(seed, HOME, 1500, T0, 'town', false);
+    const frost = patrolsAround(seed, HOME, 1500, T0, 'town', false, [], true);
+    expect(frost.map((p) => p.id)).toEqual(plain.map((p) => p.id));
+    expect(plain.some((p) => p.group.includes('frozen'))).toBe(false);
+    expect(frost.some((p) => p.group.includes('frozen'))).toBe(true);
+    for (const p of frost) expect(resolvePatrol(seed, p.id, T0, false, 'town', true)).toEqual(p);
+  });
+
+  it('Gewohnheitstiere laufen jeden Tag zur selben Zeit dieselbe Runde', () => {
+    const DAY = 24 * 3_600_000;
+    const found = new Map<string, ReturnType<typeof patrolsAround>[number]>();
+    for (let t = T0; t < T0 + DAY; t += 15 * 60_000)
+      for (const p of patrolsAround(seed, HOME, 2500, t, 'town', false)) if (p.group[0] === 'habit') found.set(p.id, p);
+    expect(found.size).toBeGreaterThan(0);
+    for (const p of found.values()) {
+      expect(p.group).toEqual(['habit']);
+      expect(patrolGroup(seed, p.id, false, 'town')).toEqual(['habit']);
+      expect(resolvePatrol(seed, p.id, p.from + 60_000, false, 'town')).toEqual(p);
+      // Am nächsten Tag: dieselbe Strecke, 24 Stunden später
+      const next = patrolsAround(seed, HOME, 2500, p.from + DAY + 60_000, 'town', false).find((q) => q.pathKey === p.pathKey);
+      expect(next).toBeDefined();
+      expect(next!.id).not.toBe(p.id);
+      expect(next!.anchor).toEqual(p.anchor);
+      expect(next!.lengthM).toBe(p.lengthM);
+      expect(next!.from - p.from).toBe(DAY);
+    }
+    // In der Wildnis wohnt keins
+    expect(patrolsAround(seed, HOME, 2500, [...found.values()][0].from + 60_000, 'wild', false).some((p) => p.group[0] === 'habit')).toBe(false);
+  });
+
+  it('Hamsterer und Gewohnheitstier bringen eigenen Kram mit', () => {
+    const ctx: RuleContext = { now: T0, worldSeed: seed };
+    for (const [kind, n] of [['hoarder', 3], ['habit', 1]] as const) {
+      const s = fresh(T0 - 3_600_000);
+      s.combat = { spot: { id: 'w:t:1:2:3', kind: 'hide', source: 'grid', pos: HOME, name: 'Trupp' }, enemy: 'walker', group: [kind], window: 0, wild: true, patrol: `t:1:2:${kind.length}` };
+      const won = applyAction(s, { type: 'battleResult', outcome: 'won', health: 8, kills: 1, usedMedicine: 0 }, ctx);
+      const loot = won.events.find((e) => e.type === 'loot');
+      expect(loot && loot.type === 'loot' && Object.values(loot.kramMore ?? {}).reduce((a, b) => a + (b ?? 0), 0)).toBe(n);
+    }
+  });
+
   it('Überraschungsangriff, Sieg, Beute, und der Trupp ist weg', () => {
     const p = patrolsAround(seed, HOME, 600, T0, 'village', false)[0];
     const ctx: RuleContext = { now: T0, worldSeed: seed };

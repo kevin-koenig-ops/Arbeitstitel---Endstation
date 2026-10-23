@@ -952,6 +952,13 @@ export function gameScreen(app: App): Screen {
     return [...n].map(([name, c]) => `${c} ${name}`).join(', ');
   };
 
+  /** Friert es gerade? Dann sind manche Wandler erstarrt (echtes Wetter, Schneegebiet oder Test-Winter mit Schnee). */
+  const frostNow = () => {
+    const a = currentAmbience();
+    const st = app.settings.get();
+    return currentRegion() === 'snow' || (a.tempC !== null && a.tempC <= 0) || (st.testSeason === 'winter' && a.weather === 'snow');
+  };
+
   const startPatrolFight = async (id: string, opening: Opening) => {
     const f = fix;
     if (!f) return;
@@ -961,7 +968,7 @@ export function gameScreen(app: App): Screen {
       app.toast('Testereignis: nur Anzeige, diese Gegner kämpfen nicht.');
       return;
     }
-    const res = await app.backend.dispatch({ type: 'patrolFight', patrol: id, at: f.pos, accuracyM: f.accuracyM, opening, region: currentRegion() });
+    const res = await app.backend.dispatch({ type: 'patrolFight', patrol: id, at: f.pos, accuracyM: f.accuracyM, opening, region: currentRegion(), frost: frostNow() });
     const ev = res.events[0];
     hideBanner('patrol');
     if (ev.type === 'rejected') {
@@ -1531,6 +1538,15 @@ export function gameScreen(app: App): Screen {
         ['Borkenmann', ['brute']],
         ['Wandler mit Heuler', ['walker', 'walker', 'screamer']],
         ['Alles auf einmal', ['watcher', 'brute', 'screamer']],
+        // Wirte aus dem Bestiarium
+        ['Gewohnheitstier', ['habit']],
+        ['Leithammel mit Wandlern', ['leader', 'walker', 'walker']],
+        ['Hüne', ['giant']],
+        ['Schläfer und Wandler', ['sleeper', 'walker']],
+        ['Kalkkopf und Wandler', ['ramhead', 'walker']],
+        ['Zwei Erstarrte', ['frozen', 'frozen']],
+        ['Hamsterer', ['hoarder']],
+        ['Brüller mit Wandlern', ['bellower', 'walker', 'walker']],
       ];
       body.append(
         h('button', { class: 'btn ghost small back-link', type: 'button', onclick: showMain }, svgEl(icon('back', 16)), 'Zurück'),
@@ -1736,6 +1752,7 @@ export function gameScreen(app: App): Screen {
           const a = currentAmbience();
           return a.weather === 'snow' || currentRegion() === 'snow' || (seasonOf(st) === 'winter' && (st.testSeason === 'winter' || (a.tempC !== null && a.tempC <= 1)));
         },
+        frost: () => frostNow(),
         onSpotted,
         onTrack: () => app.toast('Ein Trupp hat deine Spur im Schnee gefunden und folgt ihr!', 'warn'),
         onLost: (_p, quiet) => {

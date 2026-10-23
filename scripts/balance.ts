@@ -62,9 +62,32 @@ const GROUPS: FoeKind[][] = [
   ['brute'],
   ['brute', 'walker'],
   ['watcher'],
+  // Wirte aus dem Bestiarium
+  ['habit'],
+  ['leader', 'walker', 'walker'],
+  ['giant'],
+  ['sleeper', 'walker'],
+  ['ramhead', 'walker'],
+  ['frozen', 'frozen'],
+  ['hoarder'],
+  ['bellower', 'walker', 'walker'],
 ];
 
-const NAMES: Record<FoeKind, string> = { walker: 'Wandler', crawler: 'Kriecher', brute: 'Borkenmann', screamer: 'Heuler', watcher: 'Wächter' } as Record<FoeKind, string>;
+const NAMES: Record<FoeKind, string> = {
+  walker: 'Wandler',
+  crawler: 'Kriecher',
+  brute: 'Borkenmann',
+  screamer: 'Heuler',
+  watcher: 'Wächter',
+  habit: 'Gewohnheitstier',
+  leader: 'Leithammel',
+  giant: 'Hüne',
+  sleeper: 'Schläfer',
+  ramhead: 'Kalkkopf',
+  frozen: 'Erstarrter',
+  hoarder: 'Hamsterer',
+  bellower: 'Brüller',
+};
 const groupName = (g: FoeKind[]) => g.map((k) => NAMES[k]).join(' + ');
 const pct = (x: number) => `${Math.round(x * 100)} %`;
 const f1 = (x: number) => x.toFixed(1).replace('.', ',');

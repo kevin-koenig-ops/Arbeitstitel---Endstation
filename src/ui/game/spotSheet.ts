@@ -313,6 +313,7 @@ export class SpotSheet {
         ev.perk ? h('p', { class: 'receipt-note' }, `${perkBg}: +1 ${RESOURCES[ev.perk].name} extra`) : null,
         note ? h('p', { class: 'receipt-note' }, note) : null,
         ev.kram ? kramCard(ev.kram) : null,
+        ev.kramMore ? (Object.keys(ev.kramMore) as KramId[]).map((k) => kramCard(k, ev.kramMore![k])) : null,
         ev.card || ev.weapon ? cardNote(state, ev) : null,
         state.stats.searches <= 4 && RESOURCE_ORDER.some((r) => ev.items[r] && isMaterial(r))
           ? h('p', { class: 'receipt-note' }, 'Rohstoffe und Kram kommen in den Rucksack. Zu Hause packst du aus.')
@@ -552,8 +553,8 @@ function findCard(tone: 'kram' | 'blue' | 'gold' | 'clue', art: HTMLElement, tit
   );
 }
 
-function kramCard(id: KramId) {
-  return findCard('kram', thingThumb(id, 44), `Kram: ${KRAM[id].name}`, h('span', { class: 'junk-parts' }, 'Enthält ', partsChips(id)));
+function kramCard(id: KramId, n = 1) {
+  return findCard('kram', thingThumb(id, 44), `Kram: ${KRAM[id].name}${n > 1 ? ` ×${n}` : ''}`, h('span', { class: 'junk-parts' }, 'Enthält ', partsChips(id)));
 }
 
 /** Großer gelber Knopf unten: alles in den Rucksack. */

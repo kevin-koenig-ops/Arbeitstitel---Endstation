@@ -801,3 +801,208 @@ describe('Ruhe und Wut', () => {
     expect(st.hp).toBe(hp - 5);
   });
 });
+
+describe('Wirte aus dem Bestiarium', () => {
+  /** Ein Gegner vorne, bereit (nicht betäubt). */
+  const ready = (st: TacticsState, i = 0) => {
+    const f = st.foes[i];
+    f.row = 'near';
+    f.stunned = false;
+    f.intent = intentOf(f, st);
+    return f;
+  };
+
+  it('Gewohnheitstier: tut nichts, bis man es stört, dann schlägt es hart zu', () => {
+    const st = start(['habit']);
+    const g = ready(st);
+    expect(g.intent.kind).toBe('routine');
+    st.hand = [];
+    const hp = st.hp;
+    endTurn(st);
+    expect(st.hp).toBe(hp);
+    expect(g.intent.kind).toBe('routine');
+    withHand(st, 'punch');
+    const ev = playCard(st, 0, g.id);
+    expect(ev.some((e) => e.type === 'riled')).toBe(true);
+    expect(g.calm).toBe(false);
+    expect(['attack', 'grab']).toContain(g.intent.kind);
+    expect(g.intent.dmg).toBeGreaterThanOrEqual(3);
+  });
+
+  it('Leithammel: die anderen schlagen 1 stärker; fällt er, laufen sie auseinander', () => {
+    const st = start(['leader', 'walker']);
+    const l = ready(st, 0);
+    const w = ready(st, 1);
+    w.step = 0;
+    w.intent = intentOf(w, st);
+    expect(w.intent).toMatchObject({ kind: 'attack', dmg: 3 });
+    l.hp = 1;
+    withHand(st, 'punch');
+    const ev = playCard(st, 0, l.id);
+    expect(ev.some((e) => e.type === 'scatter')).toBe(true);
+    expect(w.stunned).toBe(true);
+    // Ohne ihn: wieder normaler Schaden
+    w.stunned = false;
+    expect(intentOf(w, st)).toMatchObject({ kind: 'attack', dmg: 2 });
+  });
+
+  it('Hüne: lässt sich nicht wegtreten; sein Wurf kostet dich nächste Runde Kraft', () => {
+    const st = start(['giant']);
+    const g = ready(st);
+    withHand(st, 'kick');
+    playCard(st, 0, g.id);
+    expect(g.row).toBe('near');
+    g.step = 2;
+    g.intent = intentOf(g, st);
+    expect(g.intent).toMatchObject({ kind: 'hurl', dmg: 7 });
+    st.hand = [];
+    st.block = 0;
+    const hp = st.hp;
+    const ev = endTurn(st);
+    expect(st.hp).toBe(hp - 7);
+    expect(ev.some((e) => e.type === 'grabbed')).toBe(true);
+    expect(st.energy).toBe(TACTICS.energy - 1);
+  });
+
+  it('Schläfer: im Schlaf trifft es doppelt, aufgeweckt kommt der Überfall', () => {
+    const st = start(['sleeper']);
+    const s = ready(st);
+    expect(s.intent.kind).toBe('sleep');
+    withHand(st, 'punch');
+    const ev = playCard(st, 0, s.id);
+    expect(ev.find((e) => e.type === 'hit')).toMatchObject({ dmg: 4 });
+    expect(ev.some((e) => e.type === 'wake')).toBe(true);
+    expect(s.intent).toMatchObject({ kind: 'ambush', dmg: 5 });
+    st.hand = [];
+    st.block = 0;
+    const hp = st.hp;
+    endTurn(st);
+    expect(st.hp).toBe(hp - 5);
+    // Danach ist er schwach
+    expect(s.intent.dmg).toBeLessThanOrEqual(3);
+  });
+
+  it('Schläfer: von selbst wach nach einer Runde', () => {
+    const st = start(['sleeper']);
+    const s = ready(st);
+    st.hand = [];
+    endTurn(st);
+    expect(s.intent.kind).toBe('ambush');
+  });
+
+  it('Kalkkopf: Helm schluckt Schaden, außer wenn er taumelt; der Rammstoß macht benommen', () => {
+    const st = start(['ramhead']);
+    const k = ready(st);
+    k.hp = 50;
+    expect(k.intent.kind).toBe('charge');
+    withHand(st, 'punch');
+    expect(playCard(st, 0, k.id).find((e) => e.type === 'hit')).toMatchObject({ dmg: 1 });
+    st.hand = [];
+    endTurn(st);
+    expect(k.intent).toMatchObject({ kind: 'ram', dmg: 7 });
+    st.hand = [];
+    st.block = 0;
+    const hp = st.hp;
+    const ev = endTurn(st);
+    expect(st.hp).toBe(hp - 7);
+    expect(ev.some((e) => e.type === 'dazed')).toBe(true);
+    expect(st.hand.length).toBe(TACTICS.hand - 1);
+    expect(k.intent.kind).toBe('reel');
+    st.hand = ['punch'];
+    st.energy = 3;
+    expect(playCard(st, 0, k.id).find((e) => e.type === 'hit')).toMatchObject({ dmg: 2 });
+  });
+
+  it('Kalkkopf: Wegtreten unterbricht den Anlauf', () => {
+    const st = start(['ramhead']);
+    const k = ready(st);
+    k.hp = 50;
+    k.step = 1;
+    k.intent = intentOf(k, st);
+    expect(k.intent.kind).toBe('ram');
+    withHand(st, 'kick');
+    playCard(st, 0, k.id);
+    expect(k.row).toBe('far');
+    expect(k.step).toBe(0);
+  });
+
+  it('Erstarrter: steif und spröde, Feuer taut ihn auf und macht ihn wütend', () => {
+    const st = start(['frozen'], { kit: { pouch: { molotov: 1 } } });
+    const e = ready(st);
+    expect(e.intent.kind).toBe('frozen');
+    withHand(st, 'punch');
+    // Spröde vor Kälte: 2 + 1
+    expect(playCard(st, 0, e.id).find((x) => x.type === 'hit')).toMatchObject({ dmg: 3 });
+    const ev = playPouch(st, 'molotov');
+    expect(ev.some((x) => x.type === 'thaw')).toBe(true);
+    expect(e.frozen).toBe(0);
+    expect(e.thawed).toBe(true);
+    expect(['attack', 'grab']).toContain(e.intent.kind);
+    const base = FOE_TACTICS.frozen.pattern[e.step % FOE_TACTICS.frozen.pattern.length].dmg!;
+    expect(e.intent.dmg).toBe(base + 2);
+  });
+
+  it('Erstarrter ohne Feuer: die erste Runde steif, dann normal', () => {
+    const st = start(['frozen']);
+    const e = ready(st);
+    expect(e.intent.kind).toBe('frozen');
+    st.hand = [];
+    const hp = st.hp;
+    endTurn(st);
+    expect(st.hp).toBe(hp);
+    expect(['attack', 'grab']).toContain(e.intent.kind);
+  });
+
+  it('Hamsterer: hockt auf seinem Haufen und wehrt ab', () => {
+    const st = start(['hoarder']);
+    const h = ready(st);
+    h.step = 1;
+    h.intent = intentOf(h, st);
+    expect(h.intent).toMatchObject({ kind: 'guard', block: 5 });
+    st.hand = [];
+    const ev = endTurn(st);
+    expect(ev.find((x) => x.type === 'guard')).toMatchObject({ block: 5 });
+    expect(h.block).toBe(5);
+  });
+
+  it('Brüller: Gebrüll macht die anderen stärker, Still verhindert es', () => {
+    const st = start(['walker', 'bellower']);
+    const w = ready(st, 0);
+    const b = st.foes[1];
+    b.stunned = false;
+    b.step = 2;
+    b.intent = intentOf(b, st);
+    expect(b.intent.kind).toBe('roar');
+    w.hp = 50;
+    w.step = 0;
+    st.hand = [];
+    endTurn(st);
+    expect(w.roused).toBe(true);
+    const base = FOE_TACTICS.walker.pattern[w.step % 3].dmg ?? 0;
+    if (base) expect(w.intent.dmg).toBe(base + 1);
+    // Mit Still: kein Gebrüll
+    const st2 = start(['walker', 'bellower']);
+    const w2 = ready(st2, 0);
+    const b2 = st2.foes[1];
+    b2.stunned = false;
+    b2.step = 2;
+    b2.silence = 2;
+    w2.hp = 50;
+    st2.hand = [];
+    endTurn(st2);
+    expect(w2.roused).toBe(false);
+  });
+
+  it('Autopilot schafft die neuen Wirte meistens (Woche-1-Ausrüstung)', () => {
+    const groups: FoeKind[][] = [['habit'], ['leader', 'walker', 'walker'], ['giant'], ['sleeper', 'walker'], ['ramhead', 'walker'], ['frozen', 'frozen'], ['hoarder'], ['bellower', 'walker', 'walker']];
+    for (const g of groups) {
+      let won = 0;
+      for (let i = 0; i < 60; i++) {
+        const st = start(g, { seed: `wirt-${g.join('-')}-${i}`, weapons: [{ kind: 'crowbar', dur: 30 }, { kind: 'crossbow', dur: 24 }], medicine: 1 });
+        autopilotFight(st);
+        if (st.over === 'won') won++;
+      }
+      expect(won / 60, g.join('+')).toBeGreaterThan(0.45);
+    }
+  });
+});

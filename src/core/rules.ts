@@ -6,6 +6,8 @@
 // entscheidet, ob man nah genug dran war und was man findet.
 
 import {
+  ENEMIES,
+  FOE_LOOT,
   BACKGROUNDS,
   BASE_SEARCH_RANGE_M,
   CACHE,
@@ -703,8 +705,8 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       const window = Math.floor(ctx.now / 60_000);
       const spot: Spot = { id: `w:test:${window}`, kind: 'hide', source: 'grid', pos: action.at, name: 'Testkampf' };
       state.dig = null;
-      state.combat = { spot, enemy: group[0] === 'screamer' ? 'walker' : group[0], group, window, ambush: true, wild: true };
-      events.push({ type: 'wild', group }, { type: 'combatStarted', enemy: state.combat.enemy });
+      state.combat = { spot, enemy: leadEnemy(group), group, window, ambush: true, wild: true };
+      events.push({ type: 'wild', group }, { type: 'combatStarted', enemy: leadEnemy(group) });
       break;
     }
 
@@ -721,12 +723,13 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       if (r() >= chance) break;
       const roll = r();
       // Nachts kann auch der Bleiche Wächter durchs Unterholz streifen
-      const group: FoeKind[] = night && roll < 0.25 ? ['watcher'] : roll < 0.12 ? ['brute'] : roll < 0.42 ? ['crawler', 'walker'] : night ? ['walker', 'walker'] : ['walker'];
+      // Dazu Kalkköpfe auf Waldwegen und Schläfer im Gras
+      const group: FoeKind[] = night && roll < 0.25 ? ['watcher'] : roll < 0.12 ? ['brute'] : roll < 0.2 ? ['ramhead'] : roll < 0.26 ? ['sleeper'] : roll < 0.48 ? ['crawler', 'walker'] : night ? ['walker', 'walker'] : ['walker'];
       const spot: Spot = { id: `w:${window}`, kind: 'hide', source: 'grid', pos: action.at, name: 'Unterholz' };
       state.wildAt = ctx.now;
       state.dig = null;
-      state.combat = { spot, enemy: group[0] === 'screamer' ? 'walker' : group[0], group, window, ambush: true, wild: true };
-      events.push({ type: 'wild', group }, { type: 'combatStarted', enemy: state.combat.enemy });
+      state.combat = { spot, enemy: leadEnemy(group), group, window, ambush: true, wild: true };
+      events.push({ type: 'wild', group }, { type: 'combatStarted', enemy: leadEnemy(group) });
       break;
     }
 
@@ -739,7 +742,7 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       const night = dayPhase(action.at, ctx.now) === 'night';
       const region: RegionId = action.region in REGIONS ? action.region : 'village';
       // Den Trupp aus seiner Kennung neu berechnen: erfundene oder abgelaufene gibt es nicht
-      const plan = resolvePatrol(ctx.worldSeed, action.patrol, ctx.now, night, region);
+      const plan = resolvePatrol(ctx.worldSeed, action.patrol, ctx.now, night, region, !!action.frost);
       if (state.combat || !plan || state.patrols[action.patrol]) return reject('nothing');
       // Man muss in der Nähe seiner Strecke sein (Strecke, Weg zum nächsten Pfad, Verfolgung)
       if (action.accuracyM > 120 || distanceM(action.at, plan.anchor) > plan.lengthM + PATROL.reachSlackM) return reject('too_far');
@@ -748,7 +751,7 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       const group = plan.group;
       const window = Math.floor(ctx.now / 60_000);
       const spot: Spot = { id: `w:${action.patrol}`, kind: 'hide', source: 'grid', pos: action.at, name: group.length > 2 ? 'Horde' : 'Trupp' };
-      const enemy: EnemyId = group.find((k): k is EnemyId => k !== 'screamer') ?? 'walker';
+      const enemy = leadEnemy(group);
       state.wildAt = ctx.now;
       state.dig = null;
       state.combat = { spot, enemy, group, window, wild: true, patrol: action.patrol, opening: action.opening === 'surprise' ? 'surprise' : 'spotted' };
@@ -1444,6 +1447,11 @@ function watcherBonus(state: PlayerState, loot: Extract<GameEvent, { type: 'loot
   }
 }
 
+/** Der Haupt-Gegner einer Gruppe für Meldungen und Erinnerungsstücke (die Wirte zählen als Wandler). */
+export function leadEnemy(group: FoeKind[]): EnemyId {
+  return group.find((k): k is EnemyId => k in ENEMIES) ?? 'walker';
+}
+
 export function encounter(seed: string, playerId: string, spot: Spot, window: number, enemy: EnemyId, night: boolean): FoeKind[] {
   const r = rngFrom(seed, playerId, 'gruppe', spot.id, window);
   const g: FoeKind[] = [enemy];
@@ -1766,6 +1774,18 @@ function patrolLoot(state: PlayerState, c: Combat, ctx: RuleContext, kills: numb
     state.packKram[kram] = (state.packKram[kram] ?? 0) + 1;
     loot.kram = kram;
   }
+  // Wirte mit eigener Beute: das Gewohnheitstier trägt, was es früher dabeihatte; der Hamsterer hat seinen Haufen
+  const extra: Partial<Record<KramId, number>> = {};
+  for (const k of new Set(c.group)) {
+    const fl = FOE_LOOT[k];
+    if (!fl) continue;
+    for (let i = 0; i < fl.n; i++) {
+      const kram = pickWeighted(r, fl.kram);
+      state.packKram[kram] = (state.packKram[kram] ?? 0) + 1;
+      extra[kram] = (extra[kram] ?? 0) + 1;
+    }
+  }
+  if (Object.keys(extra).length) loot.kramMore = extra;
   return loot;
 }
 

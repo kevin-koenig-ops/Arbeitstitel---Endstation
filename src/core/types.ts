@@ -366,8 +366,11 @@ export type EnemyId = 'walker' | 'crawler' | 'brute' | 'watcher';
 export type WeaponId = 'crowbar' | 'bat' | 'crossbow' | 'shovel' | 'axe' | 'golfclub' | 'slingshot' | 'nailgun' | 'pitchfork' | 'bow' | 'machete' | 'sledgehammer' | 'lid' | 'extinguisher' | 'pipewrench';
 /** Wie gut ein Geschicklichkeits-Moment lief (Mini-Spiel beim Durchsuchen). Kommt vom Client, wirkt nur begrenzt. */
 export type Quality = 'miss' | 'good' | 'perfect';
-/** Gegner im Kampf (der Heuler kommt nur im Kampf vor, nie als Wache). */
-export type FoeKind = EnemyId | 'screamer';
+/**
+ * Gegner im Kampf (der Heuler kommt nur im Kampf vor, nie als Wache). Dazu die Wirte aus dem
+ * Bestiarium: Gewohnheitstier, Leithammel, Hüne, Schläfer, Kalkkopf, Erstarrter, Hamsterer, Brüller.
+ */
+export type FoeKind = EnemyId | 'screamer' | 'habit' | 'leader' | 'giant' | 'sleeper' | 'ramhead' | 'frozen' | 'hoarder' | 'bellower';
 
 /** Eintrag im Sammelbuch. */
 export interface BookEntry {
@@ -685,7 +688,7 @@ export type Action =
   /** Abseits der Wege unterwegs (Meter seit der letzten Meldung). Im Wald kann dir etwas begegnen. */
   | { type: 'roam'; at: LatLon; accuracyM: number; meters: number; terrain: 'forest' }
   /** Kampf mit einem Trupp auf der Karte: du greifst aus dem Versteck an (surprise) oder er hat dich entdeckt (spotted). */
-  | { type: 'patrolFight'; patrol: string; at: LatLon; accuracyM: number; opening: Opening; region: RegionId }
+  | { type: 'patrolFight'; patrol: string; at: LatLon; accuracyM: number; opening: Opening; region: RegionId; /** Es friert (das Gerät meldet das Wetter): Erstarrte sind unterwegs. */ frost?: boolean }
   /** Nur im Testmodus (Simulation): sofort ein Kampf gegen diese Gegner. Der Server nimmt das später nicht an. */
   | { type: 'testFight'; at: LatLon; group: FoeKind[] }
   /** Ertrag einer Anlage (Regentonne, Hochbeet) abholen. */
@@ -772,7 +775,7 @@ export type RejectReason =
   | 'already';
 
 export type GameEvent =
-  | { type: 'loot'; spotId: string; items: Partial<Inventory>; card?: CardId; weapon?: WeaponId; kram?: KramId; collectible?: CollectibleId; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: BlueprintId; gear?: GearId; site?: SiteId; quality?: Quality; first?: boolean; canDig?: boolean; cart?: boolean; fed?: boolean; clue?: string; newKind?: boolean; discovery?: boolean; tier?: number }
+  | { type: 'loot'; spotId: string; items: Partial<Inventory>; card?: CardId; weapon?: WeaponId; kram?: KramId; /** Mehr Kram auf einmal (Haufen des Hamsterers, Taschen des Gewohnheitstiers). */ kramMore?: Partial<Record<KramId, number>>; collectible?: CollectibleId; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: BlueprintId; gear?: GearId; site?: SiteId; quality?: Quality; first?: boolean; canDig?: boolean; cart?: boolean; fed?: boolean; clue?: string; newKind?: boolean; discovery?: boolean; tier?: number }
   | { type: 'siteChosen'; site: SiteId; first: boolean }
   | { type: 'reclaimed'; section: string; cost: Partial<Inventory> }
   | { type: 'obstacleCleared'; id: string; kind: ObstacleKind; reward: Partial<Inventory> }

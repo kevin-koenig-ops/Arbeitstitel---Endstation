@@ -12,7 +12,7 @@ import { CARDS, DEVICE_NAMES, styleOf, CLIMATE, FOE_TACTICS, KRAM, KRAM_ORDER, M
 import { isCold, isHot } from '../../core/terrain';
 import { seasonOf } from '../../services/settings';
 import { currentRegion } from './worldState';
-import { aliveFoes, canHowl, createTactics, endTurn, flee, fleeCost, foeById, lacksMedicine, playable, playCard, playPouch, targetsFor, type Intent, type TacticsState, type TEvent } from '../../core/tactics';
+import { aliveFoes, canHowl, createTactics, endTurn, flee, fleeCost, foeById, lacksMedicine, playable, playCard, playPouch, targetsFor, type Intent, type TacticsState, type TEvent, type TFoe } from '../../core/tactics';
 import { battleWeapons, bestWeapon, cardKit, currentHealth } from '../../core/rules';
 import { artUrl, CARD_ICON, cardEffect, styleMark } from '../cards';
 import type { DayPhase } from '../../core/sun';
@@ -57,7 +57,20 @@ const INTENT: Record<Intent['kind'], { icon: string; label: string; tone: string
   stare: { icon: 'eye', label: 'Starrt dich an', tone: 'grab' },
   fade: { icon: 'moon', label: 'Weicht ins Dunkel', tone: 'calm' },
   pounce: { icon: 'leap', label: 'Sprung', tone: 'worst' },
+  routine: { icon: 'clock', label: 'Geht seiner Wege', tone: 'calm' },
+  sleep: { icon: 'sleep', label: 'Schläft', tone: 'calm' },
+  ambush: { icon: 'leap', label: 'Überfall', tone: 'worst' },
+  frozen: { icon: 'snow', label: 'Steif vor Kälte', tone: 'calm' },
+  charge: { icon: 'headbutt', label: 'Senkt den Kopf', tone: 'warn' },
+  ram: { icon: 'headbutt', label: 'Rammstoß', tone: 'worst' },
+  reel: { icon: 'stun', label: 'Taumelt, ohne Helm', tone: 'calm' },
+  hurl: { icon: 'smash', label: 'Packt und wirft', tone: 'worst' },
+  guard: { icon: 'shield', label: 'Hockt auf dem Haufen', tone: 'calm' },
+  roar: { icon: 'howl', label: 'Brüllt', tone: 'warn' },
 };
+
+/** Schwere Schläge, vor denen er ausgeholt hat (Figur mit erhobenen Armen). */
+const RAISED = new Set(['smash', 'ram', 'hurl']);
 
 /** Der Teil des Zustands, den man sieht (hinkt beim Abspielen der Gegnerzüge kurz hinterher). */
 interface Shown {
@@ -100,12 +113,14 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
   const wait = (ms: number) => sleep(fast ? Math.min(ms, 80) : ms);
 
   // --- Anzeige-Zustand ----------------------------------------------------------------------
+  /** Liegt er (Schläfer) oder steht er steif (Erstarrter)? */
+  const stillOf = (f: TFoe): 'sleep' | 'frozen' | null => (f.stunned ? null : f.sleep > 0 ? 'sleep' : f.frozen > 0 ? 'frozen' : null);
   const shown: Shown = { hp: st.hp, block: 0, foes: new Map() };
   const syncShown = () => {
     shown.hp = st.hp;
     shown.block = st.block;
     for (const f of st.foes) {
-      shown.foes.set(f.id, { id: f.id, kind: f.kind, row: f.row, alive: f.hp > 0, stunned: f.stunned, raised: f.intent.kind === 'smash', hp: f.hp, maxHp: f.maxHp, block: f.block, intent: f.intent, acted: false });
+      shown.foes.set(f.id, { id: f.id, kind: f.kind, row: f.row, alive: f.hp > 0, stunned: f.stunned, raised: RAISED.has(f.intent.kind), still: stillOf(f), hp: f.hp, maxHp: f.maxHp, block: f.block, intent: f.intent, acted: false });
     }
   };
   syncShown();
@@ -225,6 +240,15 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     if (st.turn === 1 && cold) return `Kalt: Ohne warme Sachen (Wärme ${CLIMATE.warmthNeeded}) hast du in der ersten Runde eine Karte weniger.`;
     if (st.turn === 1 && thirst) return 'Hitze und kein Wasser dabei: In der ersten Runde hast du 1 Kraft weniger.';
     if (foes.some((f) => f.row === 'near' && f.intent.kind === 'smash')) return 'Achtung, Wuchtschlag! Ausweichen oder ihn wegtreten.';
+    if (foes.some((f) => f.intent.kind === 'hurl')) return 'Der Hüne packt gleich zu! Wegtreten geht nicht: ausweichen, betäuben oder schnell erledigen.';
+    if (foes.some((f) => f.intent.kind === 'charge' || f.intent.kind === 'ram')) return 'Der Kalkkopf nimmt Anlauf! Wegtreten unterbricht ihn, Ausweichen fängt ab.';
+    if (foes.some((f) => f.intent.kind === 'reel')) return 'Der Kalkkopf taumelt: Jetzt hilft ihm sein Helm nicht.';
+    if (foes.some((f) => f.intent.kind === 'sleep')) return 'Er schläft noch: Wer ihn jetzt trifft, trifft doppelt. Wacht er auf, kommt ein Überfall.';
+    if (foes.some((f) => f.intent.kind === 'ambush')) return 'Aufgewacht! Gleich kommt der Überfall: abwehren!';
+    if (foes.some((f) => f.intent.kind === 'frozen')) return st.pouch.molotov || st.pouch.oilcan || st.pouch.tinder ? 'Steif vor Kälte und spröde: Treffer machen mehr. Kein Feuer, das taut ihn auf!' : 'Steif vor Kälte und spröde: Jetzt zuschlagen, Treffer machen mehr.';
+    if (foes.some((f) => f.intent.kind === 'routine')) return 'Er geht nur seiner Wege. Willst du ihn stören? Der erste Schlag ist frei, danach wird er wütend.';
+    if (foes.some((f) => FOE_TACTICS[f.kind].aura)) return 'Der Leithammel treibt die anderen an (1 Schaden mehr). Fällt er, laufen sie auseinander.';
+    if (foes.some((f) => f.kind === 'bellower')) return 'Der Brüller ruft Verstärkung und brüllt die anderen stark. Steinwurf bringt ihn zum Schweigen.';
     if (st.turn === 1 && mood && foes.some((f) => f.kind === 'walker')) return mood === 'strong' ? 'Nacht, Nebel oder Regen: Die Wandler sind zäher als sonst.' : 'Pralle Sonne: Die Wandler sind träge.';
     if (foes.some((f) => f.kind === 'screamer')) return 'Der Heuler ruft Verstärkung. Erst ihn ausschalten, mit Wurf oder Bolzen.';
     if (st.energy === 0) return 'Keine Kraft mehr: Runde beenden.';
@@ -606,6 +630,75 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           await wait(800);
           break;
         }
+        case 'wake': {
+          const f = sfoe(e.id);
+          if (f) {
+            f.still = null;
+            f.intent = foeById(st, e.id)?.intent ?? f.intent;
+          }
+          scene?.setFoes(shownList());
+          floatAt(e.id, 'Aufgewacht!', 'crit');
+          vibrate(30);
+          await wait(360);
+          break;
+        }
+        case 'riled': {
+          const f = sfoe(e.id);
+          if (f) f.intent = foeById(st, e.id)?.intent ?? f.intent;
+          floatAt(e.id, 'Gestört! Jetzt wird er wütend', 'crit');
+          await wait(300);
+          break;
+        }
+        case 'thaw': {
+          const f = sfoe(e.id);
+          if (f) {
+            f.still = null;
+            f.intent = foeById(st, e.id)?.intent ?? f.intent;
+          }
+          scene?.setFoes(shownList());
+          floatAt(e.id, 'Aufgetaut und wütend!', 'power');
+          await wait(360);
+          break;
+        }
+        case 'scatter':
+          say('Der Leithammel fällt: Die anderen laufen planlos auseinander!', 'good', 1800);
+          vibrate([20, 30, 20]);
+          await wait(400);
+          break;
+        case 'roar': {
+          const f = sfoe(e.by);
+          if (f) f.acted = true;
+          scene?.howl(e.by);
+          say('Gebrüll! Die anderen schlagen härter zu.', 'bad');
+          vibrate([30, 20, 50]);
+          await wait(700);
+          break;
+        }
+        case 'guard': {
+          const f = sfoe(e.id);
+          if (f) {
+            f.acted = true;
+            f.block = e.block;
+          }
+          floatAt(e.id, `Hockt auf seinem Haufen (${e.block})`, 'miss');
+          await wait(360);
+          break;
+        }
+        case 'charge': {
+          const f = sfoe(e.id);
+          if (f) {
+            f.acted = true;
+            f.raised = true;
+          }
+          scene?.setFoes(shownList());
+          floatAt(e.id, 'Senkt den Kopf!', 'crit');
+          await wait(420);
+          break;
+        }
+        case 'dazed':
+          floatAt(-1, 'Benommen! −1 Karte', 'hurt');
+          await wait(260);
+          break;
         case 'turn':
           syncShown();
           scene?.setFoes(shownList());
@@ -658,6 +751,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     renderAll(true);
     if (st.over) void finish();
     else if (events.some((e) => e.type === 'stare')) setInfo('Wie gelähmt: diese Runde 1 Karte und 1 Kraft weniger.');
+    else if (events.some((e) => e.type === 'dazed')) setInfo('Benommen vom Rammstoß: diese Runde 1 Karte weniger.');
     else if (st.grabbed === 0 && st.energy < TACTICS.energy) setInfo('Gepackt: diese Runde 1 Kraft weniger.');
   };
 
@@ -783,7 +877,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
         v.intent.dataset.tone = it.tone;
         v.intent.classList.toggle('done', f.acted);
         // Bei einem normalen Angriff reicht die Zahl, alles andere bekommt ein Wort dazu
-        append(v.intent, [svgEl(icon(it.icon, 16)), f.intent.dmg ? h('b', null, String(f.intent.dmg)) : null, f.intent.kind === 'attack' ? null : h('small', null, it.label)]);
+        append(v.intent, [svgEl(icon(it.icon, 16)), f.intent.dmg ? h('b', null, String(f.intent.dmg)) : f.intent.block ? h('b', null, String(f.intent.block)) : null, f.intent.kind === 'attack' ? null : h('small', null, it.label)]);
         v.intent.title = it.label;
         v.intent.classList.remove('pop');
         void v.intent.offsetWidth;
@@ -928,6 +1022,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
         h('li', null, h('b', null, 'Über jedem Gegner '), 'steht, was er als Nächstes tut. Plane danach.'),
         h('li', null, h('b', null, 'Vorne und hinten: '), 'Schläge treffen nur Gegner vorne. Würfe und Bolzen auch hinten.'),
         h('li', null, h('b', null, 'Holt einer aus, '), 'kommt ein Wuchtschlag: ausweichen oder wegtreten.'),
+        h('li', null, h('b', null, 'Neuer Gegner? '), 'Tipp ihn an: Dann steht da, was er kann und was gegen ihn hilft.'),
         h('li', null, h('b', null, 'Runde beenden: '), 'Die Gegner handeln, dann ziehst du 4 neue Karten.'),
         h('li', null, h('b', null, 'Tasche: '), 'Einmal-Karten liegen über deiner Hand. Du kannst sie jederzeit spielen, danach sind sie weg.'),
         h('li', null, h('b', null, 'Fliehen '), 'geht immer und rettet dich. Aber wer vorne steht, schlägt beim Weglaufen noch einmal zu.'),

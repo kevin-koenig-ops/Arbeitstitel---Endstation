@@ -576,7 +576,7 @@ export class GameMap {
       seen.add(p.id);
       let m = this.patrolMarkers.get(p.id);
       if (!m) {
-        const el = h('button', { class: 'patrol', type: 'button', 'data-id': p.id }, h('span', { class: 'patrol-badge' }, svgEl(icon(p.group.includes('watcher') ? 'eye' : 'patrol', 18)), h('b', null, String(p.group.length))), h('span', { class: 'patrol-alert', 'aria-hidden': 'true' }));
+        const el = h('button', { class: 'patrol', type: 'button', 'data-id': p.id }, h('span', { class: 'patrol-badge' }, svgEl(icon(p.group.includes('watcher') ? 'eye' : p.group.includes('habit') ? 'clock' : 'patrol', 18)), h('b', null, String(p.group.length))), h('span', { class: 'patrol-alert', 'aria-hidden': 'true' }));
         el.addEventListener('click', (ev) => {
           ev.stopPropagation();
           this.lastMarkerTap = Date.now();

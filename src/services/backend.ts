@@ -43,7 +43,7 @@ export interface GameBackend {
   /** Weltereignisse im Umkreis (laufende und die, die in soonMs beginnen). Im Mehrspieler vom Server. */
   eventsNear(center: LatLon, radiusM: number, soonMs?: number): WorldEvent[];
   /** Trupps, die gerade im Umkreis unterwegs sind. */
-  patrolsNear(center: LatLon, radiusM: number, region: RegionId, night: boolean, events: WorldEvent[]): PatrolPlan[];
+  patrolsNear(center: LatLon, radiusM: number, region: RegionId, night: boolean, events: WorldEvent[], frost?: boolean): PatrolPlan[];
   /** Weltstartwert (für Zufall, den alle Spieler gleich sehen, z. B. die Strecken der Trupps). */
   readonly seed: string;
   now(): number;
@@ -139,8 +139,8 @@ export class LocalBackend implements GameBackend {
     return eventsAround(this.worldSeed, center, radiusM, this.clock(), a ?? undefined, soonMs, drop);
   }
 
-  patrolsNear(center: LatLon, radiusM: number, region: RegionId, night: boolean, events: WorldEvent[]) {
-    return patrolsAround(this.worldSeed, center, radiusM, this.clock(), region, night, events);
+  patrolsNear(center: LatLon, radiusM: number, region: RegionId, night: boolean, events: WorldEvent[], frost = false) {
+    return patrolsAround(this.worldSeed, center, radiusM, this.clock(), region, night, events, frost);
   }
 
   specialsNear(center: LatLon, radiusM: number) {
