@@ -338,6 +338,15 @@ Die Häuser stehen schon als einfache Klötze in echter Höhe auf der Karte. Ech
   - Waffen nutzen sich pro gespielter Waffenkarte ab.
 - **Überfall:** Wer beim Wühlen zu laut ist, wird angegriffen. Danach gibt es nur, was die Gegner dabeihatten.
 - **Bleicher Wächter (nur nachts):** Jagt allein, bewacht nachts manchmal Fundstellen oder streift durchs Unterholz. Sein Blick lähmt (nächste Runde eine Karte und eine Kraft weniger), dann weicht er ins Dunkel zurück (hinten, nur Wurf und Bolzen treffen) und springt dich an (Ausweichen hilft). Beute: Dinge aus den Kellern (Medizin, Elektronik, eine Taschenlampe), beim ersten Sieg sein Kellertagebuch als besonderes Erinnerungsstück. Eigenes 3D-Modell (von Kevin), Bewegung per Code.
+- **Neue Wirte (Bestiarium, Welle 1, seit 23.10.):** Jeder hat eine Regel, wie man ihn schlägt.
+  - **Gewohnheitstier:** läuft jeden Tag zur selben Sonnenzeit dieselbe Runde (Uhr-Symbol auf der Karte), greift erst an, wenn man ihn trifft. Beute aus seinem Alltag (Schlüsselbund, Brotdose …).
+  - **Leithammel:** Solange er steht, schlagen alle anderen 1 stärker. Fällt er, setzen sie eine Runde aus.
+  - **Hüne:** 24 Leben, zu schwer zum Wegtreten, holt aus und wirft dich (7 Schaden, nächste Runde 1 Kraft weniger).
+  - **Schläfer:** liegt am Wegrand; Treffer im Schlaf zählen doppelt, aufgeweckt überfällt er dich (5).
+  - **Kalkkopf:** Kalkhelm schluckt 2 pro Treffer; nimmt Anlauf und rammt (7, nächste Runde eine Karte weniger), danach taumelt er ohne Helmschutz. Wegtreten unterbricht den Anlauf.
+  - **Erstarrter:** nur bei echtem Frost oder Schnee, ersetzt dort Wandler. In der ersten Runde steif und spröde (+1 pro Treffer); Feuer taut ihn auf, dann schlägt er 2 stärker.
+  - **Hamsterer:** hockt auf seinem Haufen (fängt 5 ab); wer gewinnt, bekommt 3 Stück Kram extra.
+  - **Brüller:** bleibt hinten, ruft Wandler und brüllt die anderen stark (nächster Angriff +1). Steinwurf und Kofferradio machen ihn still.
 - **Unterholz:** Abseits der Wege im Wald geht es langsamer, und manchmal kommt dir etwas entgegen (danach ein paar Minuten Ruhe, nie wenn du erschöpft bist). Erst im Testmodus, mit echtem GPS später.
 - **Testmodus:** Im Menü „Test: Angriff“ löst einen Kampf gegen Gegner nach Wahl aus. Dort läuft die Figur im Ort nur über Straßen und Wege; die geplante Strecke ist als Linie zu sehen (gepunktet quer durchs Gelände).
 - **Niederlage (seit 22.10., Kevin):** Alles aus dem Rucksack ist weg (Rohstoffe und Kram), Lager, Waffen und Ausrüstung bleiben. Du kommst zu Hause wieder zu dir (beim Laufen per Tippen stehst du dort, mit GPS öffnet sich dein Zuhause). Die Gesundheit kommt von selbst zurück. **Fliehen geht immer** und rettet dich (mindestens 1 Gesundheit bleibt), aber wer vorne steht, schlägt beim Weglaufen noch einmal zu (seit 23.10.). Deshalb lohnt es sich, Gutes öfter heimzubringen.
@@ -373,7 +382,7 @@ Das Gelände ist ein Werkzeug, nicht nur Kulisse: Straßen sind schnell, aber ma
 | Wüste und Steppe | du siehst Trupps von Weitem | sie dich auch, Hitze (Wasser dabeihaben) |
 | Schnee und Eis | du siehst Trupps früh | Kälte (warme Kleidung), Spuren |
 
-Welche Kreaturen wo häufiger sind, folgt der Lore (Wandler in Wäldern und Dörfern, Heuler in Städten, Kriecher in Ruinen und Gräben, Borkenmänner in alten Wäldern). **Kälte** (Frost, Schnee, Winternacht ohne Wetterdaten): ohne Wärme 3 in der ersten Kampfrunde eine Karte weniger (Mütze und Regenjacke geben zusammen 2). **Hitze** (ab 28 °C oder Wüste am Tag): ohne Wasser in der ersten Runde 1 Kraft weniger.
+Welche Kreaturen wo häufiger sind, folgt der Lore (Wandler in Wäldern und Dörfern, Heuler und Brüller in Städten, Kriecher in Ruinen und Gräben, Borkenmänner in alten Wäldern, Schläfer und Leithammel auf dem Land, Kalkköpfe und Hünen in den Bergen, Erstarrte bei Frost). **Kälte** (Frost, Schnee, Winternacht ohne Wetterdaten): ohne Wärme 3 in der ersten Kampfrunde eine Karte weniger (Mütze und Regenjacke geben zusammen 2). **Hitze** (ab 28 °C oder Wüste am Tag): ohne Wasser in der ersten Runde 1 Kraft weniger.
 
 **Weltereignisse:** Pro Gegend (~1,5 km) und Runde (3 Stunden) passiert manchmal etwas für ein bis drei Stunden, für alle Spieler gleich. Man erfährt es per Funk (bis gut 1 km), oben rechts steht das nächste.
 - **Staubsturm:** zieht langsam weiter. Im Staub schlafen Keime: Durchsuchen nur mit Staubmaske oder Gasmaske. Dafür sehen dich die Trupps kaum.
