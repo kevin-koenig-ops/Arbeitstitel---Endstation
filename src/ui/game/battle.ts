@@ -118,12 +118,13 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
   const meBlock = h('span', { class: 't-block', hidden: true });
   const meFocus = h('span', { class: 't-focus', hidden: true });
   const meTrap = h('span', { class: 't-focus t-trap', hidden: true, title: 'Gelegte Fallen' });
+  const meMomentum = h('span', { class: 't-focus t-momentum', hidden: true, title: 'Schwung für den nächsten Angriff' });
   const weaponLine = h('small', { class: 't-weapon' });
   const meFrame = h(
     'div',
     { class: 'battle-me' },
     faceEl(s0.character.look, 44, 'battle-face'),
-    h('div', { class: 'battle-me-main' }, h('b', null, s0.character.name, meBlock, meFocus, meTrap), h('div', { class: 'bar me' }, meHp, meHpText), weaponLine),
+    h('div', { class: 'battle-me-main' }, h('b', null, s0.character.name, meBlock, meFocus, meTrap, meMomentum), h('div', { class: 'bar me' }, meHp, meHpText), weaponLine),
   );
   const fleeBtn = h('button', { class: 'btn ghost small battle-flee', type: 'button' }, svgEl(icon('flee', 16)), 'Fliehen');
   const helpBtn = h('button', { class: 'iconbtn small t-help-btn', type: 'button', 'aria-label': 'So geht der Kampf' }, '?');
@@ -314,7 +315,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
             await wait(c === 'bolt' ? 160 : 300);
           } else if (c === 'dodge' || c === 'counter') scene?.shieldUp();
           else if (c === 'bandage' || c === 'dressing' || c === 'adrenaline' || c === 'secondwind') scene?.heal();
-          else if (c === 'aim' || c === 'steady' || c === 'drawbow') scene?.focus();
+          else if (c === 'aim' || c === 'steady' || c === 'drawbow' || c === 'heave') scene?.focus();
           else if (c === 'tripwire') await wait(160);
           else if (c === 'alarm') {
             fx('spark');
@@ -330,7 +331,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           } else {
             if (c === 'pepper') fx('smoke');
             if (c === 'spark' || c === 'salvo') fx('spark');
-            scene?.act(c === 'homerun' || c === 'chop' || c === 'sweep' || c === 'salvo' ? 'power' : c === 'kick' || c === 'spade' || c === 'pepper' || c === 'fend' || c === 'distract' ? 'shove' : 'swing', id);
+            scene?.act(c === 'homerun' || c === 'chop' || c === 'sweep' || c === 'salvo' || c === 'sledge' || c === 'swath' ? 'power' : c === 'kick' || c === 'spade' || c === 'pepper' || c === 'fend' || c === 'distract' ? 'shove' : 'swing', id);
             await wait(c === 'homerun' || c === 'chop' ? 260 : 150);
           }
           break;
@@ -470,6 +471,9 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           break;
         case 'focus':
           floatAt(-1, `Zielen +${e.amount}`, 'power');
+          break;
+        case 'momentum':
+          floatAt(-1, `Schwung +${e.amount}`, 'power');
           break;
         case 'weaponBroke':
           say(`${WEAPONS[e.weapon].name} zerbrochen!`, 'bad');
@@ -687,6 +691,9 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     meTrap.hidden = st.traps.length <= 0;
     clear(meTrap);
     meTrap.append(svgEl(icon('tripwire', 13)), String(st.traps.length));
+    meMomentum.hidden = st.momentum <= 0;
+    clear(meMomentum);
+    meMomentum.append(svgEl(icon('momentum', 13)), `+${st.momentum}`);
     const kinds = (Object.keys(st.weaponDur) as (keyof typeof WEAPONS)[]).filter((k) => (st.weaponDur[k] ?? 0) > 0);
     weaponLine.textContent = kinds.length ? kinds.map((k) => `${WEAPONS[k].name} ${st.weaponDur[k]}`).join(' · ') : 'Keine Waffe: Fäuste und Steine';
   };

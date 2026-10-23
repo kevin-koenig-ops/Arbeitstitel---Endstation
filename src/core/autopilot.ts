@@ -40,6 +40,8 @@ function effDmg(st: TacticsState, card: CardId, f: TFoe, first = true): number {
   if (d.vs && f.kind === d.vs.kind) raw += d.vs.dmg;
   if (d.farBonus && f.row === 'far') raw += d.farBonus;
   if (d.thrown) raw += st.pitcher;
+  if (first) raw += st.momentum;
+  if (st.rage && st.hp <= 3) raw += st.rage;
   const after = d.pierce ? raw : Math.max(1, raw - armorOf(f));
   return Math.max(0, after - f.block);
 }
@@ -70,6 +72,9 @@ function score(st: TacticsState, card: CardId, target?: TFoe): number {
     if (d.slow && f.row === 'far') v += 1.5;
     if (d.silence && isHowler(f) && f.howls < 2) v += 3;
   }
+  // Schwung lohnt, wenn danach noch ein Angriff kommt
+  const mom = (d.momentum ?? 0) + Math.max(0, (st.levels[card] ?? 1) - 1) * (d.scale?.momentum ?? 0);
+  if (mom && st.energy - d.cost >= 1 && st.hand.some((c) => c !== card && CARDS[c].dmg && CARDS[c].cost <= st.energy - d.cost)) v += mom * 0.8;
   if (d.chain && target) {
     const other = aliveFoes(st).filter((x) => x.id !== target.id)[0];
     if (other) v += Math.min(effDmg(st, card, other, false), other.hp);
@@ -183,7 +188,7 @@ export function autopilotTurn(st: TacticsState, o: AutopilotOptions = {}): void 
       if (p && st.energy - CARDS[p.card].cost >= 1 && play(st, p)) continue;
     }
     // 7. Angreifen: das Beste pro Kraft
-    const att = pick(opts, (x) => (CARDS[x.card].dmg || CARDS[x.card].burn || CARDS[x.card].stun || CARDS[x.card].blind || CARDS[x.card].slow ? score(st, x.card, get(x.target)) : 0));
+    const att = pick(opts, (x) => (CARDS[x.card].dmg || CARDS[x.card].burn || CARDS[x.card].stun || CARDS[x.card].blind || CARDS[x.card].slow || CARDS[x.card].momentum ? score(st, x.card, get(x.target)) : 0));
     if (att && play(st, att)) continue;
     // 8. Sonstiges: Karten ziehen, Hund, Kraft
     const misc = opts.find((x) => x.from === 'hand' && (CARDS[x.card].draw || CARDS[x.card].ally || CARDS[x.card].gain));

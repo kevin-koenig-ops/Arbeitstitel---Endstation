@@ -102,6 +102,10 @@ export interface TacticsState {
   pitcher: number;
   /** Fallensteller: Verlangsamte nehmen so viel mehr, Fallen treffen so viel härter. */
   trapper: number;
+  /** Schwung: Der nächste Angriff in dieser Runde macht so viel mehr (verfällt am Rundenende). */
+  momentum: number;
+  /** Wut: Bei höchstens 3 Gesundheit machen Angriffe so viel mehr (0 = hast du nicht). */
+  rage: number;
 }
 
 /** Was du an Sammelkarten mitbringst: Einmal-Karten in der Tasche (Anzahl) und Fähigkeiten (Stufe). */
@@ -120,6 +124,7 @@ export type TEvent =
   | { type: 'push'; id: number }
   | { type: 'stun'; id: number }
   | { type: 'focus'; amount: number }
+  | { type: 'momentum'; amount: number }
   | { type: 'hurt'; by: number; dmg: number; absorbed: number }
   | { type: 'grabbed'; by: number }
   | { type: 'stare'; by: number }
@@ -270,6 +275,8 @@ export function createTactics(o: {
     traps: [],
     pitcher: lvl('pitcher') ? cardStat('pitcher', 'bonus', lvl('pitcher')) : 0,
     trapper: lvl('trapper') ? cardStat('trapper', 'bonus', lvl('trapper')) : 0,
+    momentum: 0,
+    rage: lvl('rage') ? cardStat('rage', 'bonus', lvl('rage')) : 0,
   };
   for (const w of o.weapons) if (w.dur > 0) st.weaponDur[w.kind] = Math.max(st.weaponDur[w.kind] ?? 0, w.dur);
   st.draw = shuffle(st, deckFor(o.weapons, o.medicine, kit));
@@ -355,6 +362,7 @@ function startTurn(st: TacticsState, events: TEvent[]) {
   st.turn += 1;
   st.block = 0;
   st.thorns = 0;
+  st.momentum = 0;
   st.turnPlays = {};
   st.energy = Math.max(1, TACTICS.energy - st.grabbed);
   st.grabbed = 0;
@@ -490,6 +498,12 @@ function resolve(st: TacticsState, card: CardId, target: number | undefined, tak
   for (const f of targets) {
     let raw = stat(st, card, 'dmg');
     if (raw && def.thrown) raw += st.pitcher;
+    // Schwung aus dem letzten Schlag und Wut: auf den ersten Treffer dieses Angriffs
+    if (first && raw && st.momentum) {
+      raw += st.momentum;
+      st.momentum = 0;
+    }
+    if (raw && st.rage && st.hp <= 3) raw += st.rage;
     if (raw && def.farBonus && f.row === 'far') raw += def.farBonus;
     // Zielen: für den nächsten Fernangriff (Wurf, Bolzen, Pfeil)
     if (first && (def.target === 'any' || def.target === 'far') && raw && st.focus) {
@@ -533,6 +547,11 @@ function resolve(st: TacticsState, card: CardId, target: number | undefined, tak
     const before = st.hand.length;
     drawCards(st, draw);
     events.push({ type: 'draw', n: st.hand.length - before });
+  }
+  const momentum = stat(st, card, 'momentum');
+  if (momentum) {
+    st.momentum += momentum;
+    events.push({ type: 'momentum', amount: momentum });
   }
   const focus = stat(st, card, 'focus');
   if (focus) {

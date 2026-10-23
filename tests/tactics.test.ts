@@ -576,3 +576,51 @@ describe('Fallen und Abstand', () => {
     expect(b.row).toBe('far');
   });
 });
+
+describe('Schwung', () => {
+  it('Hieb gibt Schwung für den nächsten Angriff, der verfällt am Rundenende', () => {
+    const st = withHand(start(['brute'], { weapons: [{ kind: 'machete', dur: 10 }] }), 'hack', 'hack', 'punch');
+    const b = aliveFoes(st)[0];
+    b.row = 'near';
+    // 3 - 1 Rüstung = 2
+    expect(playCard(st, 0, b.id).find((e) => e.type === 'hit')).toMatchObject({ dmg: 2 });
+    expect(st.momentum).toBe(2);
+    // 3 + 2 Schwung - 1 = 4, danach wieder Schwung 2
+    expect(playCard(st, 0, b.id).find((e) => e.type === 'hit')).toMatchObject({ dmg: 4 });
+    expect(st.momentum).toBe(2);
+    st.hand = [];
+    b.hp = 99;
+    endTurn(st);
+    expect(st.momentum).toBe(0);
+  });
+
+  it('Vorschlaghammer: Ausholen und Wuchtschlag, der Gegner fliegt zurück', () => {
+    const st = withHand(start(['walker'], { weapons: [{ kind: 'sledgehammer', dur: 10 }] }), 'heave', 'sledge');
+    const w = aliveFoes(st)[0];
+    w.row = 'near';
+    w.hp = 20;
+    playCard(st, 0);
+    const ev = playCard(st, 0, w.id);
+    expect(ev.find((e) => e.type === 'hit')).toMatchObject({ dmg: 11 });
+    expect(w.row).toBe('far');
+  });
+
+  it('Nachsetzen wächst mit der Stufe, Wut wirkt erst, wenn es knapp ist', () => {
+    const st = withHand(start(['walker'], { kit: { skills: { followup: 3, rage: 1 } } }), 'followup', 'punch');
+    const w = aliveFoes(st)[0];
+    w.row = 'near';
+    w.hp = 30;
+    playCard(st, 0, w.id);
+    expect(st.momentum).toBe(4);
+    st.hp = 3;
+    // Faustschlag 2 + Schwung 4 + Wut 2
+    expect(playCard(st, 0, w.id).find((e) => e.type === 'hit')).toMatchObject({ dmg: 8 });
+  });
+
+  it('Spalten geht durch die Rüstung des Borkenmanns', () => {
+    const st = withHand(start(['brute'], { weapons: [{ kind: 'axe', dur: 10 }] }), 'cleave');
+    const b = aliveFoes(st)[0];
+    b.row = 'near';
+    expect(playCard(st, 0, b.id).find((e) => e.type === 'hit')).toMatchObject({ dmg: 3 });
+  });
+});

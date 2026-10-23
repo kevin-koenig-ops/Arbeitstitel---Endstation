@@ -363,7 +363,7 @@ export type BackgroundId = 'rescue' | 'workshop' | 'farm' | 'courier';
 
 // --- Kampf ---------------------------------------------------------------------
 export type EnemyId = 'walker' | 'crawler' | 'brute' | 'watcher';
-export type WeaponId = 'crowbar' | 'bat' | 'crossbow' | 'shovel' | 'axe' | 'golfclub' | 'slingshot' | 'nailgun' | 'pitchfork' | 'bow';
+export type WeaponId = 'crowbar' | 'bat' | 'crossbow' | 'shovel' | 'axe' | 'golfclub' | 'slingshot' | 'nailgun' | 'pitchfork' | 'bow' | 'machete' | 'sledgehammer';
 /** Wie gut ein Geschicklichkeits-Moment lief (Mini-Spiel beim Durchsuchen). Kommt vom Client, wirkt nur begrenzt. */
 export type Quality = 'miss' | 'good' | 'perfect';
 /** Gegner im Kampf (der Heuler kommt nur im Kampf vor, nie als Wache). */

@@ -41,6 +41,8 @@ if (args.has('--stile')) {
     { name: 'Woche 1 Feuer', weapons: ['crowbar', 'golfclub'], medicine: 2, pouch: { molotov: 2, tinder: 1 }, skills: { spark: 1, embers: 1 } },
     { name: 'Später Fallen', weapons: ['pitchfork', 'bow'], medicine: 3, pouch: { tripwire: 3, caltrops: 2, alarm: 1 }, skills: { trapper: 2, distract: 1, pitcher: 1, steady: 1 } },
     { name: 'Später Feuer', weapons: ['crowbar', 'crossbow'], medicine: 3, pouch: { molotov: 3, oilcan: 1, tinder: 2 }, skills: { spark: 2, embers: 1, wildfire: 1, counter: 1 } },
+    { name: 'Woche 1 Schwung', weapons: ['machete', 'golfclub'], medicine: 2, pouch: { adrenaline: 1, molotov: 1 }, skills: { followup: 1, sweep: 1 } },
+    { name: 'Später Schwung', weapons: ['sledgehammer', 'nailgun'], medicine: 3, pouch: { adrenaline: 2, grenade: 1 }, skills: { followup: 2, rage: 1, sweep: 1, counter: 1 } },
   );
 }
 

@@ -161,6 +161,11 @@ const P: Record<string, string> = {
   warning: '<path d="M12 3.5l9.5 17h-19z"/><path d="M12 10v5M12 17.6v.3"/>',
   // Sammelkarten: Einmal-Karten
   molotov: '<path d="M9 11h6v8.5a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 19.5z"/><path d="M10.5 11V7.5h3V11M9 15h6"/><path d="M12 7.5C10.3 6.2 11 4 12.6 2.5c-.1 1.6 1.9 2.2 1 5"/>',
+  machete: '<path d="M4.5 19.5l2-2"/><path d="M6.5 17.5L18 6c1.5-1.5 3-1.5 3 0 0 2-3 4.5-7.5 8.5l-4 3.5z"/><path d="M3 21l2.5-1.5"/>',
+  sledgehammer: '<path d="M10.5 13.5L5 19"/><path d="M4 20l1.5-1.5"/><rect x="11" y="4" width="9" height="6" rx="1" transform="rotate(45 15.5 7)"/>',
+  momentum: '<path d="M3 15c3-6 9-8 15-5"/><path d="M15 6.5l3.5 3.5-4 2"/><path d="M4 19h4M6 21h4"/>',
+  followup: '<path d="M5 12h9M10 7l5 5-5 5"/><path d="M17 6c2 2 2 10 0 12"/>',
+  rage: '<path d="M12 21c-4 0-6.5-2.5-6.5-6 0-4 3.5-5 3.5-9 2 1.5 3 3 3 5 1-1 1.5-2 1.5-3.5 2.5 2 5 4.5 5 7.5 0 3.5-2.5 6-6.5 6z"/><path d="M10 15l1.5 1.5L14 14"/>',
   tripwire: '<path d="M4 20V11M20 20V11M3 20h3M18 20h3"/><path d="M4 15.5h16" stroke-dasharray="2 1.5"/><path d="M10 15.5l2 2.5 2-2.5"/>',
   alarm: '<circle cx="12" cy="13" r="6.5"/><path d="M12 9.5V13l2.5 1.5"/><path d="M4.5 5.5l3-2M19.5 5.5l-3-2M8 19.5L6.5 21.5M16 19.5l1.5 2"/>',
   pitchfork: '<path d="M12 21V10"/><path d="M7 3v4a5 5 0 0 0 10 0V3M12 3v7"/>',

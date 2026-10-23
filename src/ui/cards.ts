@@ -40,6 +40,11 @@ export const CARD_ICON: Record<CardId, string> = {
   pellet: 'slingshot',
   nail: 'nailgun',
   salvo: 'salvo',
+  cleave: 'axe',
+  hack: 'machete',
+  swath: 'sweep',
+  sledge: 'sledgehammer',
+  heave: 'momentum',
   prong: 'pitchfork',
   fend: 'shove',
   arrow: 'arrow',
@@ -66,6 +71,8 @@ export const CARD_ICON: Record<CardId, string> = {
   embers: 'embers',
   wildfire: 'wildfire',
   pitcher: 'pitcher',
+  followup: 'followup',
+  rage: 'rage',
   trapper: 'trapper',
   distract: 'distract',
   sweep: 'sweep',
@@ -77,7 +84,7 @@ export const CARD_ICON: Record<CardId, string> = {
   laststand: 'laststand',
 };
 
-export const WEAPON_ICON: Record<WeaponId, string> = { crowbar: 'crowbar', bat: 'bat', crossbow: 'bolt', shovel: 'shovel', axe: 'axe', golfclub: 'golfclub', slingshot: 'slingshot', nailgun: 'nailgun', pitchfork: 'pitchfork', bow: 'bow' };
+export const WEAPON_ICON: Record<WeaponId, string> = { crowbar: 'crowbar', bat: 'bat', crossbow: 'bolt', shovel: 'shovel', axe: 'axe', golfclub: 'golfclub', slingshot: 'slingshot', nailgun: 'nailgun', pitchfork: 'pitchfork', bow: 'bow', machete: 'machete', sledgehammer: 'sledgehammer' };
 
 export const ROMAN = ['', 'I', 'II', 'III'];
 
@@ -150,6 +157,7 @@ export function cardEffect(id: CardId, level = 1): { main: string; tag: string }
   else if (v('block')) main = `Blockt ${v('block')}`;
   else if (v('heal') && !c.gain) main = `Heilt ${v('heal')}`;
   else if (v('focus')) main = `+${v('focus')} Schaden`;
+  else if (v('momentum')) main = `+${v('momentum')} Schwung`;
   else if (c.gain) main = `+${v('gain')} Kraft`;
   else if (v('draw')) main = `${v('draw')} Karten`;
   else if (c.ally) main = `Hund ${v('allyDmg')} × ${c.ally.rounds}`;
@@ -180,6 +188,7 @@ export function cardEffect(id: CardId, level = 1): { main: string; tag: string }
   if (c.chain) tags.push('zwei Ziele');
   if (c.pierce) tags.push('durch Rüstung');
   if (c.farBonus) tags.push(`hinten +${c.farBonus}`);
+  if (c.momentum && c.dmg) tags.push(`Schwung +${v('momentum')}`);
   if (c.perTurn) tags.push('1× pro Runde');
   if (c.focus) tags.push('nächster Wurf');
   if (c.medicine) tags.push('1 Medizin');
