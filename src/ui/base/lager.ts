@@ -2,10 +2,11 @@
 // (Tasche und Fähigkeiten), Rohstoffe und Kram ansehen, Kram zum Werktisch geben,
 // Sammelstücke aufstellen.
 
-import { CARDS, COLLECTIBLE_ORDER, COLLECTIBLES, KRAM, KRAM_ORDER, MATERIAL_ORDER, ONCE_CARDS, POUCH_SLOTS, RESOURCES, SKILL_CARDS, type CardId } from '../../core/content';
-import { collectiblePlaced, hasWorkbench, kramCount, onceOwned, packCount, skillOf, skillSlots, workbenchSlots } from '../../core/rules';
+import { CARDS, COLLECTIBLE_ORDER, COLLECTIBLES, KRAM, KRAM_ORDER, MATERIAL_ORDER, ONCE_CARDS, POUCH_SLOTS, RANGE_NAMES, RESOURCES, SKILL_CARDS, WEAPON_CARDS, WEAPONS, type CardId } from '../../core/content';
+import { battleWeapons, collectiblePlaced, hasWorkbench, kramCount, onceOwned, packCount, skillOf, skillSlots, workbenchSlots } from '../../core/rules';
+import type { WeaponId } from '../../core/types';
 import type { Action, CollectibleId, PlayerState } from '../../core/types';
-import { cardFace } from '../cards';
+import { cardCounts, cardFace, WEAPON_ICON } from '../cards';
 import type { App } from '../app';
 import { clear, h, svgEl } from '../dom';
 import { icon, resIcon } from '../icons';
@@ -174,7 +175,8 @@ export function openLager(app: App, host: HTMLElement, opts: Opts): { el: HTMLEl
     const lo = s.loadout;
     const once = ONCE_CARDS.filter((id) => onceOwned(s, id) > 0 || lo.pouch.includes(id));
     const skills = SKILL_CARDS.filter((id) => skillOf(s, id) > 0);
-    if (!once.length && !skills.length) return;
+    const kinds = [...new Set(s.weapons.filter((w) => w.dur > 0).map((w) => w.kind))];
+    if (!once.length && !skills.length && !kinds.length) return;
     const slots = skillSlots(s);
     const toggle = async (id: CardId) => {
       const isOnce = CARDS[id].kind === 'once';
@@ -213,6 +215,43 @@ export function openLager(app: App, host: HTMLElement, opts: Opts): { el: HTMLEl
     body.append(
       h('h3', { class: 'ws-sec' }, 'Für den Kampf', h('small', null, 'Antippen: mitnehmen oder hierlassen')),
     );
+    // Waffen: je eine für Nahkampf und Fernkampf
+    if (kinds.length) {
+      const inFight = new Set(battleWeapons(s).map((w) => w.kind));
+      const pick = async (range: 'melee' | 'ranged', kind: WeaponId) => {
+        if (inFight.has(kind)) return;
+        if (await dispatch(range === 'melee' ? { type: 'setLoadout', melee: kind } : { type: 'setLoadout', ranged: kind })) render();
+      };
+      body.append(h('h4', { class: 'loadout-head' }, 'Waffen', h('small', null, 'Je eine für vorne und für hinten')));
+      for (const range of ['melee', 'ranged'] as const) {
+        const list = kinds.filter((k) => WEAPONS[k].range === range);
+        body.append(
+          h(
+            'div',
+            { class: 'loadout-weapons' },
+            h('small', { class: 'loadout-range' }, RANGE_NAMES[range]),
+            list.length
+              ? h('div', { class: 'loadout-weapon-list' }, list.map((k) => {
+                  const on = inFight.has(k);
+                  const dur = Math.max(...s.weapons.filter((w) => w.kind === k).map((w) => w.dur));
+                  return h(
+                    'button',
+                    {
+                      class: `loadout-weapon${on ? ' on' : ''}`,
+                      type: 'button',
+                      'aria-pressed': String(on),
+                      title: `${WEAPONS[k].desc} Im Kampf: ${cardCounts(WEAPON_CARDS[k] ?? [])}.`,
+                      onclick: () => void pick(range, k),
+                    },
+                    svgEl(icon(WEAPON_ICON[k], 20)),
+                    h('span', null, h('b', null, WEAPONS[k].name), h('small', null, `${dur} Haltbarkeit`)),
+                  );
+                }))
+              : h('span', { class: 'ws-empty' }, range === 'ranged' ? 'Noch keine. Bis dahin trifft dein Steinwurf auch hinten.' : 'Noch keine. Du kämpfst mit den Fäusten.'),
+          ),
+        );
+      }
+    }
     if (once.length)
       body.append(
         h('h4', { class: 'loadout-head' }, 'Tasche', h('small', null, `${lo.pouch.length} von ${POUCH_SLOTS} Sorten, je bis zu 3 Stück`)),

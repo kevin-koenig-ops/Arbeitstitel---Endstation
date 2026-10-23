@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { cellFree, type PlotIndex } from '../src/core/building';
 import { CARDS, skillLevel, SKILL_SLOTS } from '../src/core/content';
-import { applyAction, cardKit, createPlayer, plotIndexOf, pouchKit, SCHEMA_VERSION, skillOf } from '../src/core/rules';
+import { applyAction, battleWeapons, cardKit, createPlayer, plotIndexOf, pouchKit, SCHEMA_VERSION, skillOf } from '../src/core/rules';
 import { migrate } from '../src/core/save';
 import { SIGHT, sightingById, sightingsNear, type Sighting } from '../src/core/sightings';
 import { gridSpotsAround } from '../src/core/world';
@@ -177,6 +177,32 @@ describe('Für den Kampf packen (Tasche und Fähigkeiten)', () => {
     expect(r.events[0]).toMatchObject({ type: 'unpacked' });
     expect(r.state.packCards).toEqual({ molotov: 3 });
     expect(r.state.stash).toEqual({ molotov: 2, pepper: 1 });
+  });
+
+  it('Waffen: je eine für Nahkampf und Fernkampf, sonst die stärkste', () => {
+    const s = createPlayer('p', hero, T0);
+    s.weapons = [
+      { kind: 'crowbar', dur: 20 },
+      { kind: 'bat', dur: 30 },
+      { kind: 'axe', dur: 5 },
+      { kind: 'golfclub', dur: 10 },
+      { kind: 'slingshot', dur: 30 },
+    ];
+    expect(battleWeapons(s).map((w) => w.kind)).toEqual(['axe', 'golfclub']);
+    expect(ev(s, { type: 'setLoadout', ranged: 'crowbar' })).toEqual({ type: 'rejected', reason: 'not_found' });
+    expect(ev(s, { type: 'setLoadout', melee: 'crossbow' })).toEqual({ type: 'rejected', reason: 'not_found' });
+    let r = act(s, { type: 'setLoadout', melee: 'crowbar', ranged: 'slingshot' });
+    expect(battleWeapons(r.state).map((w) => w.kind)).toEqual(['crowbar', 'slingshot']);
+    // Gewählte kaputt: dann die stärkste ihrer Art
+    r.state.weapons = r.state.weapons.filter((w) => w.kind !== 'crowbar');
+    expect(battleWeapons(r.state).map((w) => w.kind)).toEqual(['axe', 'slingshot']);
+    // null: wieder automatisch
+    r = act(r.state, { type: 'setLoadout', ranged: null });
+    expect(r.state.loadout.ranged).toBeUndefined();
+    expect(battleWeapons(r.state).map((w) => w.kind)).toEqual(['axe', 'golfclub']);
+    // Ohne Fernkampfwaffe: nur die Nahkampfwaffe
+    const start = createPlayer('p', hero, T0);
+    expect(battleWeapons(start).map((w) => w.kind)).toEqual(['crowbar']);
   });
 
   it('Plündererin wirkt nur, wenn man sie mitnimmt', () => {

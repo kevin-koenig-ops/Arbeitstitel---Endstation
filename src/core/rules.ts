@@ -152,7 +152,7 @@ import { resolvePatrol } from './patrols';
 import { resolveDropSpot, zonesAt } from './worldEvents';
 import { GOALS } from './progress';
 
-export const SCHEMA_VERSION = 17;
+export const SCHEMA_VERSION = 18;
 
 /** Startausrüstung: alles gefunden und angezogen. */
 export function startGear(now: number): GearState {
@@ -273,9 +273,35 @@ export function nextHealthIn(state: PlayerState, now: number): number {
 
 /** Die beste noch heile Waffe, oder null (dann Fäuste). */
 export function bestWeapon(state: PlayerState): Weapon | null {
+  return battleWeapons(state)[0] ?? null;
+}
+
+const RARITY_RANK: Record<string, number> = { common: 1, rare: 2, epic: 3, legendary: 4 };
+
+/** Die stärkste heile Waffe einer Art (Nahkampf oder Fernkampf); bei Gleichstand die seltenere, dann die heilere. */
+export function strongestWeapon(state: PlayerState, range: 'melee' | 'ranged'): Weapon | null {
   let best: Weapon | null = null;
-  for (const w of state.weapons) if (w.dur > 0 && (!best || WEAPONS[w.kind].dmg > WEAPONS[best.kind].dmg)) best = w;
+  const score = (w: Weapon) => WEAPONS[w.kind].dmg * 100 + (RARITY_RANK[WEAPONS[w.kind].rarity ?? ''] ?? 0) * 10;
+  for (const w of state.weapons) {
+    if (w.dur <= 0 || WEAPONS[w.kind].range !== range) continue;
+    if (!best || score(w) > score(best) || (score(w) === score(best) && w.dur > best.dur)) best = w;
+  }
   return best;
+}
+
+/**
+ * Die Waffen für den Kampf: eine für den Nahkampf, eine für den Fernkampf. Gewählt wird zu Hause;
+ * ist die gewählte kaputt oder nicht gewählt, nimmt das Spiel die stärkste heile ihrer Art.
+ */
+export function battleWeapons(state: PlayerState): Weapon[] {
+  const out: Weapon[] = [];
+  for (const range of ['melee', 'ranged'] as const) {
+    const want = state.loadout[range];
+    const chosen = want ? state.weapons.filter((w) => w.kind === want && w.dur > 0).sort((a, b) => b.dur - a.dur)[0] : undefined;
+    const w = chosen ?? strongestWeapon(state, range);
+    if (w) out.push(w);
+  }
+  return out;
 }
 
 export function guardWindow(spot: Spot, now: number): number {
@@ -918,11 +944,23 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       if (pouch.some((id) => CARDS[id]?.kind !== 'once' || !state.book[id])) return reject('not_found');
       if (skills.some((id) => CARDS[id]?.kind !== 'skill' || !skillOf(state, id))) return reject('not_found');
       if (pouch.length > POUCH_SLOTS || skills.length > skillSlots(state)) return reject('too_many');
+      // Waffen: null = wieder automatisch die stärkste; sonst eine heile Waffe der passenden Art
+      const weapon = (range: 'melee' | 'ranged'): WeaponId | undefined | false => {
+        const v = action[range];
+        if (v === undefined) return state.loadout[range];
+        if (v === null) return undefined;
+        return WEAPONS[v]?.range === range && state.weapons.some((w) => w.kind === v && w.dur > 0) ? v : false;
+      };
+      const melee = weapon('melee');
+      const ranged = weapon('ranged');
+      if (melee === false || ranged === false) return reject('not_found');
       state.loadout = { pouch, skills };
+      if (melee) state.loadout.melee = melee;
+      if (ranged) state.loadout.ranged = ranged;
       for (const [k, n] of Object.entries(state.packCards) as [CardId, number][]) state.stash[k] = (state.stash[k] ?? 0) + n;
       state.packCards = {};
       refillPackCards(state);
-      events.push({ type: 'loadoutSet', pouch: [...pouch], skills: [...skills] });
+      events.push({ type: 'loadoutSet', pouch: [...pouch], skills: [...skills], ...(melee ? { melee } : {}), ...(ranged ? { ranged } : {}) });
       break;
     }
 

@@ -165,6 +165,7 @@ export function cardEffect(id: CardId, level = 1): { main: string; tag: string }
   if (c.thorns) tags.push(`Konter ${v('thorns')}`);
   if (c.heal && c.gain) tags.push(`+${v('heal')} Gesundheit`);
   if (c.chain) tags.push('zwei Ziele');
+  if (c.pierce) tags.push('durch Rüstung');
   if (c.perTurn) tags.push('1× pro Runde');
   if (c.focus) tags.push('nächster Wurf');
   if (c.medicine) tags.push('1 Medizin');

@@ -11,6 +11,11 @@ import type { PlayerState } from './types';
 type Raw = Record<string, unknown> & { schema?: number };
 
 const MIGRATIONS: Record<number, (s: Raw) => void> = {
+  // Version 17 -> 18: je eine Nahkampf- und Fernkampfwaffe im Kampf. Nichts gewählt = automatisch die stärkste.
+  17: (s) => {
+    const lo = (s.loadout ?? {}) as { pouch?: unknown; skills?: unknown };
+    s.loadout = { pouch: Array.isArray(lo.pouch) ? lo.pouch : [], skills: Array.isArray(lo.skills) ? lo.skills : [] };
+  },
   // Version 16 -> 17: Tasche (3 Sorten Einmal-Karten) und Fähigkeiten-Plätze (4). Vorbelegt mit
   // den Sorten, von denen man am meisten hat, und den seltensten Fähigkeiten.
   16: (s) => {

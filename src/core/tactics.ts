@@ -357,9 +357,9 @@ function removeWeaponCards(st: TacticsState, w: WeaponId) {
   st.discard = drop(st.discard);
 }
 
-/** Schaden an einem Gegner: erst Rüstung, dann seine Abwehr. */
-function damageFoe(st: TacticsState, f: TFoe, raw: number, events: TEvent[]) {
-  const afterArmor = Math.max(raw > 0 ? 1 : 0, raw - FOE_TACTICS[f.kind].armor);
+/** Schaden an einem Gegner: erst Rüstung (außer pierce), dann seine Abwehr. */
+function damageFoe(st: TacticsState, f: TFoe, raw: number, events: TEvent[], pierce = false) {
+  const afterArmor = pierce ? raw : Math.max(raw > 0 ? 1 : 0, raw - FOE_TACTICS[f.kind].armor);
   const absorbed = Math.min(f.block, afterArmor);
   f.block -= absorbed;
   const dmg = afterArmor - absorbed;
@@ -460,14 +460,14 @@ function resolve(st: TacticsState, card: CardId, target: number | undefined, tak
       st.focus = 0;
     }
     if (def.vs && f.kind === def.vs.kind) raw += def.vs.dmg;
-    if (raw > 0) damageFoe(st, f, raw, events);
+    if (raw > 0) damageFoe(st, f, raw, events, !!def.pierce);
     applyEffects(st, card, f, events);
     // Nagel: trifft noch einen zweiten
     if (first && def.chain) {
       const other = aliveFoes(st)
         .filter((x) => x.id !== f.id)
         .sort((x, y) => (x.row === y.row ? 0 : x.row === 'near' ? -1 : 1))[0];
-      if (other) damageFoe(st, other, stat(st, card, 'dmg'), events);
+      if (other) damageFoe(st, other, stat(st, card, 'dmg'), events, !!def.pierce);
     }
     first = false;
   }

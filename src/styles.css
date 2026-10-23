@@ -1875,6 +1875,14 @@ button.base-res { align-items: center; padding: 3px 6px 3px 4px; border: 1px sol
 .loadout-cell.on { background: rgba(255, 178, 46, 0.16); }
 .loadout-mark { font: 700 10px var(--font-ui); letter-spacing: 0.06em; text-transform: uppercase; color: var(--dust); }
 .loadout-cell.on .loadout-mark { color: var(--amber); }
+.loadout-weapons { display: grid; grid-template-columns: 76px 1fr; align-items: center; gap: 6px; }
+.loadout-weapon-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.loadout-range { font: 600 11px var(--font-ui); color: var(--dust); text-transform: uppercase; letter-spacing: 0.05em; }
+.loadout-weapon { display: flex; gap: 8px; align-items: center; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.04); color: var(--bone); cursor: pointer; text-align: left; font-family: var(--font-ui); filter: grayscale(0.6) brightness(0.75); }
+.loadout-weapon > span { display: flex; flex-direction: column; align-items: flex-start; }
+.loadout-weapon b { font: 700 12px var(--font-ui); }
+.loadout-weapon small { font: 400 10px var(--font-ui); color: var(--dust); }
+.loadout-weapon.on { filter: none; border-color: var(--amber); background: rgba(255, 178, 46, 0.14); }
 .cbook-cell:focus-visible { outline: 2px solid var(--amber); }
 .cbook-detail { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 12px; border-radius: 12px; background: var(--steel-2); }
 .cbook-lines { width: 100%; }

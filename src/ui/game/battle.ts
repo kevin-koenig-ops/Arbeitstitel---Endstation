@@ -13,7 +13,7 @@ import { isCold, isHot } from '../../core/terrain';
 import { seasonOf } from '../../services/settings';
 import { currentRegion } from './worldState';
 import { aliveFoes, canHowl, createTactics, endTurn, flee, foeById, playable, playCard, playPouch, targetsFor, type Intent, type TacticsState, type TEvent } from '../../core/tactics';
-import { bestWeapon, cardKit, currentHealth } from '../../core/rules';
+import { battleWeapons, bestWeapon, cardKit, currentHealth } from '../../core/rules';
 import { artUrl, CARD_ICON, cardEffect } from '../cards';
 import type { DayPhase } from '../../core/sun';
 import type { EnemyId, GameEvent, Inventory, KramBag, Spot } from '../../core/types';
@@ -81,7 +81,8 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
   const st: TacticsState = createTactics({
     seed: `${WORLD_SEED}|${s0.playerId}|${spot.id}|${combat.window}|${combat.ambush ? 'u' : 'w'}`,
     group: combat.group?.length ? combat.group : [combat.enemy],
-    weapons: s0.weapons,
+    // Je eine Nahkampf- und Fernkampfwaffe (zu Hause gewählt, sonst die stärkste)
+    weapons: battleWeapons(s0),
     medicine: s0.inventory.medicine,
     health: currentHealth(s0, now0),
     maxHealth: MAX_HEALTH,

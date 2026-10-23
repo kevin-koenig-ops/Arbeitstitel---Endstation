@@ -549,8 +549,11 @@ export interface PlayerState {
   sightings: Record<string, number>;
   /** Glück mit Netz: Sichtungen seit dem letzten seltenen bzw. legendären Fund. */
   pity: { rare: number; legendary: number };
-  /** Zu Hause gewählt: welche Sorten in die Tasche kommen (3) und welche Fähigkeiten mitgehen (4). */
-  loadout: { pouch: CardId[]; skills: CardId[] };
+  /**
+   * Zu Hause gewählt: welche Sorten in die Tasche kommen (3), welche Fähigkeiten mitgehen (4) und
+   * welche Nahkampf- und Fernkampfwaffe (leer = automatisch die stärkste).
+   */
+  loadout: { pouch: CardId[]; skills: CardId[]; melee?: WeaponId; ranged?: WeaponId };
   /** Wann „Letztes Gefecht“ zuletzt gerettet hat (einmal am Tag). */
   lastStandAt?: number;
   /** Gefundene Sammelstücke: id -> Fundzeitpunkt. */
@@ -697,7 +700,7 @@ export type Action =
   /** Nur zum Testen: eine Sammelkarte oder Waffe bekommen. */
   | { type: 'testGift'; card?: CardId; weapon?: WeaponId }
   /** Zu Hause: Tasche und Fähigkeiten für den Kampf wählen. */
-  | { type: 'setLoadout'; pouch?: CardId[]; skills?: CardId[] }
+  | { type: 'setLoadout'; pouch?: CardId[]; skills?: CardId[]; melee?: WeaponId | null; ranged?: WeaponId | null }
   | { type: 'craft'; weapon: WeaponId }
   | { type: 'heal' }
   /** Ein Teil anziehen (ersetzt, was an diesem Platz war). */
@@ -793,7 +796,7 @@ export type GameEvent =
   | { type: 'crafted'; weapon?: WeaponId; card?: CardId }
   | { type: 'sightingClaimed'; id: string; card?: CardId; weapon?: WeaponId; repaired?: boolean; rarity: CardRarity; shiny: boolean; level?: number; levelUp?: boolean; pity?: boolean }
   | { type: 'gifted'; card?: CardId; weapon?: WeaponId; repaired?: boolean; level?: number; levelUp?: boolean }
-  | { type: 'loadoutSet'; pouch: CardId[]; skills: CardId[] }
+  | { type: 'loadoutSet'; pouch: CardId[]; skills: CardId[]; melee?: WeaponId; ranged?: WeaponId }
   | { type: 'healed'; amount: number }
   | { type: 'equipped'; slot: GearSlot; gear: GearId | null }
   | { type: 'dismantleQueued'; kram: KramId; endsAt: number }

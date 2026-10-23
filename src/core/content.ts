@@ -1035,6 +1035,8 @@ export const GUARD_MEMENTO_BONUS = 0.12;
 
 export interface WeaponDef {
   name: string;
+  /** Nahkampf oder Fernkampf (trifft auch hinten). In den Kampf geht je eine davon. */
+  range: 'melee' | 'ranged';
   dmg: number;
   dur: number;
   cost: Partial<Inventory>;
@@ -1053,16 +1055,17 @@ export const FIST_DAMAGE = 1;
 export const WEAPON_ORDER: WeaponId[] = ['crowbar', 'bat', 'crossbow'];
 
 export const WEAPONS: Record<WeaponId, WeaponDef> = {
-  crowbar: { name: 'Brechstange', dmg: 2, dur: 28, cost: { metal: 3 }, level: 1, art: 'brechstange', desc: 'Öffnet Türen und Schädel.' },
-  bat: { name: 'Nagelschläger', dmg: 3, dur: 32, cost: { wood: 3, metal: 2 }, level: 1, art: 'nagelschlaeger', desc: 'Ein Baseballschläger mit ein paar Nägeln.' },
-  crossbow: { name: 'Armbrust', dmg: 4, dur: 24, cost: { wood: 3, metal: 2, springs: 2, screws: 2, glue: 1 }, level: 2, art: 'armbrust', desc: 'Leise und kräftig. Die Bolzen nutzen sich ab.' },
+  crowbar: { name: 'Brechstange', range: 'melee', dmg: 2, dur: 28, cost: { metal: 3 }, level: 1, art: 'brechstange', desc: 'Öffnet Türen und Schädel.' },
+  bat: { name: 'Nagelschläger', range: 'melee', dmg: 3, dur: 32, cost: { wood: 3, metal: 2 }, level: 1, art: 'nagelschlaeger', desc: 'Ein Baseballschläger mit ein paar Nägeln.' },
+  crossbow: { name: 'Armbrust', range: 'ranged', dmg: 4, dur: 24, cost: { wood: 3, metal: 2, springs: 2, screws: 2, glue: 1 }, level: 2, art: 'armbrust', desc: 'Leise und kräftig. Die Bolzen nutzen sich ab.' },
   // Nur zu finden (Fundorte und Sichtungen)
-  shovel: { name: 'Spaten', dmg: 3, dur: 30, cost: {}, level: 0, rarity: 'common', where: 'Kleingärten, Baumärkte, Schuppen', art: 'spaten', desc: 'Gräbt und stößt Gegner zurück.' },
-  axe: { name: 'Axt', dmg: 5, dur: 26, cost: {}, level: 0, rarity: 'rare', where: 'Scheunen, Hofläden, Baumärkte', art: 'axt', desc: 'Schwer und langsam, aber wer getroffen wird, bleibt liegen.' },
-  golfclub: { name: 'Golfschläger', dmg: 3, dur: 24, cost: {}, level: 0, rarity: 'rare', where: 'Autos, Garagen, Sichtungen', art: 'golfschlaeger', desc: 'Reicht weit, trifft auch Gegner hinten.' },
-  slingshot: { name: 'Schleuder', dmg: 2, dur: 30, cost: {}, level: 0, rarity: 'rare', where: 'Kioske, Rucksäcke, Sichtungen', art: 'schleuder', desc: 'Kostet keine Kraft, einmal pro Runde.' },
-  nailgun: { name: 'Nagelpistole', dmg: 2, dur: 24, cost: {}, level: 0, rarity: 'epic', where: 'Baumärkte, Werkstätten', art: 'nagelpistole', desc: 'Trifft zwei Gegner mit einem Druck, mit einer Salve sogar alle.' },
+  shovel: { name: 'Spaten', range: 'melee', dmg: 3, dur: 30, cost: {}, level: 0, rarity: 'common', where: 'Kleingärten, Baumärkte, Schuppen', art: 'spaten', desc: 'Gräbt und stößt Gegner zurück.' },
+  axe: { name: 'Axt', range: 'melee', dmg: 5, dur: 26, cost: {}, level: 0, rarity: 'rare', where: 'Scheunen, Hofläden, Baumärkte', art: 'axt', desc: 'Schwer und langsam, aber wer getroffen wird, bleibt liegen.' },
+  golfclub: { name: 'Golfschläger', range: 'ranged', dmg: 3, dur: 24, cost: {}, level: 0, rarity: 'rare', where: 'Autos, Garagen, Sichtungen', art: 'golfschlaeger', desc: 'Reicht weit, trifft auch Gegner hinten.' },
+  slingshot: { name: 'Schleuder', range: 'ranged', dmg: 2, dur: 30, cost: {}, level: 0, rarity: 'rare', where: 'Kioske, Rucksäcke, Sichtungen', art: 'schleuder', desc: 'Kostet keine Kraft, einmal pro Runde.' },
+  nailgun: { name: 'Nagelpistole', range: 'ranged', dmg: 2, dur: 24, cost: {}, level: 0, rarity: 'epic', where: 'Baumärkte, Werkstätten', art: 'nagelpistole', desc: 'Trifft zwei Gegner mit einem Druck, mit einer Salve sogar alle.' },
 };
+export const RANGE_NAMES: Record<WeaponDef['range'], string> = { melee: 'Nahkampf', ranged: 'Fernkampf' };
 /** Waffen, die man nur findet (Sammelbuch). */
 export const FOUND_WEAPONS: WeaponId[] = ['shovel', 'axe', 'golfclub', 'slingshot', 'nailgun'];
 
@@ -1200,6 +1203,8 @@ export interface CardDef {
   vs?: { kind: FoeKind; dmg: number; push?: boolean };
   /** Trifft danach noch einen zweiten Gegner. */
   chain?: boolean;
+  /** Geht durch Rüstung (Nägel durch die Kalkplatten des Borkenmanns). */
+  pierce?: boolean;
   /** Höchstens so oft pro Runde. */
   perTurn?: number;
   /** Fähigkeit, die von selbst wirkt (kommt nicht ins Deck). */
@@ -1236,8 +1241,8 @@ export const CARDS: Record<CardId, CardDef> = {
   chop: { name: 'Axthieb', kind: 'weapon', cost: 2, target: 'near', dmg: 6, stun: true, weapon: 'axe', art: 'axt', desc: '6 Schaden, der Gegner setzt eine Runde aus.' },
   drive: { name: 'Abschlag', kind: 'weapon', cost: 1, target: 'any', dmg: 3, weapon: 'golfclub', art: 'golfschlaeger', desc: '3 Schaden, trifft auch Gegner hinten.' },
   pellet: { name: 'Stahlkugel', kind: 'weapon', cost: 0, target: 'any', dmg: 2, perTurn: 1, weapon: 'slingshot', art: 'schleuder', desc: '2 Schaden ohne Kraft, trifft auch hinten. Einmal pro Runde.' },
-  nail: { name: 'Nagel', kind: 'weapon', cost: 1, target: 'any', dmg: 2, chain: true, weapon: 'nailgun', art: 'nagelpistole', desc: '2 Schaden an einem Gegner und noch einem zweiten.' },
-  salvo: { name: 'Salve', kind: 'weapon', cost: 2, target: 'self', area: 'all', dmg: 2, weapon: 'nailgun', art: 'nagelpistole', desc: '2 Schaden an allen Gegnern, vorne und hinten.' },
+  nail: { name: 'Nagel', kind: 'weapon', cost: 1, target: 'any', dmg: 2, chain: true, pierce: true, weapon: 'nailgun', art: 'nagelpistole', desc: '2 Schaden an einem Gegner und noch einem zweiten. Geht durch Rüstung.' },
+  salvo: { name: 'Salve', kind: 'weapon', cost: 1, target: 'self', area: 'all', dmg: 2, pierce: true, weapon: 'nailgun', art: 'nagelpistole', desc: '2 Schaden an allen Gegnern, vorne und hinten. Geht durch Rüstung.' },
   // Einmal-Karten
   molotov: { name: 'Brandflasche', kind: 'once', cost: 1, target: 'self', area: 'near', dmg: 2, burn: 3, rarity: 'common', where: 'Werktisch, Tankstellen, Autos', craft: { glass: 1, oil: 1, cloth: 1 }, art: 'brandflasche', desc: 'Alle vorne: 2 Schaden und Brennt.' },
   smoke: { name: 'Rauchdose', kind: 'once', cost: 1, target: 'self', area: 'all', blind: 1, rarity: 'common', where: 'Werktisch, Baumarkt', craft: { metal: 1, cloth: 1, phosphate: 1 }, art: 'rauchdose', desc: 'Alle Gegner sind Geblendet: Ihr nächster Angriff geht daneben.' },

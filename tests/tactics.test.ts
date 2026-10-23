@@ -355,6 +355,12 @@ describe('Bleicher Wächter', () => {
       const hits = playCard(st3, 0).filter((e) => e.type === 'hit');
       expect(hits.length).toBe(3);
       expect(st3.weaponDur.nailgun).toBe(9);
+      // Nägel gehen durch die Kalkplatten des Borkenmanns
+      const st4 = withHand(start(['brute'], { weapons: [{ kind: 'nailgun', dur: 10 }] }), 'nail', 'punch');
+      const b = aliveFoes(st4)[0];
+      expect(playCard(st4, 0, b.id).find((e) => e.type === 'hit')).toMatchObject({ dmg: 2 });
+      b.row = 'near';
+      expect(playCard(st4, 0, b.id).find((e) => e.type === 'hit')).toMatchObject({ dmg: 1 });
     });
 
     it('Feuer: Zunder trifft auch hinten, Funkenschlag wird mit der Stufe heißer, Glut verlängert', () => {

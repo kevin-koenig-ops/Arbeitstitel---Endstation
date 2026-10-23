@@ -30,7 +30,7 @@ import {
 } from '../../core/content';
 import { deckFor } from '../../core/tactics';
 import { blueprintName } from '../../core/building';
-import { bestWeapon, collectiblePlaced, currentHealth, dayNumber, kramCount, packCount } from '../../core/rules';
+import { battleWeapons, bestWeapon, collectiblePlaced, currentHealth, dayNumber, kramCount, packCount } from '../../core/rules';
 import type { CollectibleId, GearId, GearSlot, KramId, PlayerState, SpotKind } from '../../core/types';
 import type { App } from '../app';
 import { clear, h, svgEl, type Child } from '../dom';
@@ -253,7 +253,9 @@ export function openPackPanel(app: App, host: HTMLElement, onClose: () => void, 
     const missing = WEAPON_ORDER.filter((w) => !s.weapons.some((x) => x.kind === w));
     const notes: Child[] = [];
     if (!s.weapons.length) notes.push('Keine Waffe. Du kämpfst mit Fäusten, Tritten und Steinen.');
-    notes.push([svgEl(icon('fist', 16)), ' Im Kampf: ', cardLine(deckFor(s.weapons, s.inventory.medicine))]);
+    const fight = battleWeapons(s);
+    notes.push([svgEl(icon('fist', 16)), ` Im Kampf${fight.length ? ` (${fight.map((w) => WEAPONS[w.kind].name).join(' und ')})` : ''}: `, cardLine(deckFor(fight, s.inventory.medicine))]);
+    notes.push('Mit in den Kampf gehen eine Nahkampf- und eine Fernkampfwaffe. Welche, wählst du zu Hause im Lager; sonst nimmst du die stärkste.');
     if (missing.length) notes.push([svgEl(icon('wrench', 16)), ` Am Werktisch zu Hause: ${missing.map((w) => WEAPONS[w].name).join(', ')}`]);
     return {
       cards: s.weapons.length
