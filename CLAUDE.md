@@ -20,4 +20,5 @@ Endzeit-Erkundungsspiel auf der echten Karte (Titel „Home“, früher „Nachh
 - `npm run build`: Typprüfung + Build nach `dist/`
 - `npm run build:preview`: Einzeldatei-Vorschau nach `dist-preview/endstation-vorschau.html`
 - `npm run gen:world`: Demo-Dorf neu erzeugen
+- `npm run balance`: Balancing-Labor (Autopilot kämpft tausende Kämpfe und Ausflüge; `--schnell`, `--sparsam`, `--ohne-tasche`). Nach Änderungen an Karten, Gegnern oder Medizin laufen lassen.
 - Android-APK: baut GitHub bei jedem Push (`.github/workflows/apk.yml`), Download unter Releases

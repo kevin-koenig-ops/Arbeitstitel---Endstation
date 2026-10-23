@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CARDS, FOE_TACTICS, START_WEAPONS, TACTICS, WEAPONS } from '../src/core/content';
 import { aliveFoes, createTactics, deckFor, endTurn, flee, intentOf, playCard, playPouch, pouchFor, targetsFor, type CardKit, type TacticsState } from '../src/core/tactics';
 import type { FoeKind, Weapon } from '../src/core/types';
+import { autopilotFight } from '../src/core/autopilot';
 
 const start = (group: FoeKind[], o: { seed?: string; weapons?: Weapon[]; medicine?: number; health?: number; kit?: CardKit; opening?: 'surprise' | 'spotted' } = {}) =>
   createTactics({ seed: o.seed ?? 'kampf-1', group, weapons: o.weapons ?? START_WEAPONS.map((w) => ({ ...w })), medicine: o.medicine ?? 0, health: o.health ?? 10, maxHealth: 10, kit: o.kit, opening: o.opening });
@@ -414,5 +415,22 @@ describe('Bleicher Wächter', () => {
       playCard(st3, 0, e.id);
       expect(f.burn).toBe(0);
     });
+  });
+});
+
+describe('Autopilot', () => {
+  it('spielt einen Kampf zu Ende, immer gleich', () => {
+    const a = start(['walker', 'crawler'], { seed: 'auto-1' });
+    const b = start(['walker', 'crawler'], { seed: 'auto-1' });
+    autopilotFight(a);
+    autopilotFight(b);
+    expect(a.over).toBe('won');
+    expect(a).toEqual(b);
+  });
+
+  it('nutzt die Tasche nur, wenn es gefährlich wird', () => {
+    const easy = start(['walker'], { seed: 'auto-2', kit: { pouch: { grenade: 1 } } });
+    autopilotFight(easy, { pouch: 'emergency' });
+    expect(easy.used.grenade ?? 0).toBe(0);
   });
 });

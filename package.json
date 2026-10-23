@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "build:preview": "vite build --mode preview && node scripts/make-artifact.mjs",
     "test": "vitest run",
-    "gen:world": "node scripts/gen-demo-world.mjs"
+    "gen:world": "node scripts/gen-demo-world.mjs",
+    "balance": "vite-node scripts/balance.ts --"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",
