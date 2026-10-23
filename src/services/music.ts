@@ -17,7 +17,7 @@ const PLAYLISTS: Record<Place, string[]> = {
   home: ['zuhause-1', 'zuhause-2'],
   // Alle Karten-Stücke laufen überall, zu jeder Zeit und bei jedem Wetter.
   // Ein Suno-Prompt gibt zwei Lieder: karte-3.1 und karte-3.2 gehören zusammen.
-  map: ['karte-1', 'karte-2', 'karte-3.1', 'karte-3.2', 'karte-4.1', 'karte-4.2'],
+  map: ['karte-1', 'karte-2', 'karte-3.1', 'karte-3.2', 'karte-4.1', 'karte-4.2', 'karte-5.1', 'karte-5.2'],
 };
 
 /** Stille zwischen zwei Stücken im Modus „ab und zu“ (Sekunden). */
