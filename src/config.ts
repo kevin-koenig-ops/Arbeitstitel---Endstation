@@ -18,5 +18,11 @@ export const IS_PREVIEW = import.meta.env.MODE === 'preview';
 /** Radius, in dem Fundstellen angezeigt werden. */
 export const VIEW_RADIUS_M = 650;
 
+/**
+ * Funksprüche auf der Karte (Sichtungen, Hinweise am Horizont, Händlerkarren, Weltereignisse in der Ferne).
+ * Kevin 23.10.: erstmal raus, es ploppte zu viel auf. Was da ist, zeigen Radar und Ereignis-Anzeige oben still.
+ */
+export const RADIO_POPUPS = false;
+
 /** Startpunkt für "echte Karte + Simulation", falls noch kein GPS-Standort bekannt ist. */
 export const FALLBACK_START = { lat: 52.5163, lon: 13.3777 };

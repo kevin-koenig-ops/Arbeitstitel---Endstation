@@ -1,6 +1,6 @@
 // Der Spielbildschirm: Karte, Standort, Fundstellen, HUD und Overlays.
 
-import { FALLBACK_START, IS_PREVIEW, VIEW_RADIUS_M } from '../../config';
+import { FALLBACK_START, IS_PREVIEW, RADIO_POPUPS, VIEW_RADIUS_M } from '../../config';
 import { CACHE, ENEMIES, FOE_TACTICS, GEAR, HINT_NAMES, MAX_HEALTH, PATROL, REGIONS, RESOURCE_ORDER, RESOURCES, SIGHT, SPECIAL, SPECIAL_HINT, SURVIVAL_ORDER, TIER, WILD_SPOT_MIN_M, WORLD_EVENT, WORLD_EVENTS } from '../../core/content';
 import { ExploredView, SECTOR_LEVELS, sectorOf } from '../../core/explore';
 import { bearingDeg, distanceM, formatDistance, offsetM } from '../../core/geo';
@@ -522,7 +522,7 @@ export function gameScreen(app: App): Screen {
     updatePointers();
     if (cartNews.length) {
       const sp = cartNews.splice(0)[0];
-      app.toast(`Funkspruch: Bei „${sp.name}“ ist ein Händlerkarren liegen geblieben. ${fix ? formatDistance(distanceM(fix.pos, sp.pos)) + ' entfernt.' : ''}`, 'good');
+      if (RADIO_POPUPS) app.toast(`Funkspruch: Bei „${sp.name}“ ist ein Händlerkarren liegen geblieben. ${fix ? formatDistance(distanceM(fix.pos, sp.pos)) + ' entfernt.' : ''}`, 'good');
     }
     updateCaches();
     const t = performance.now();
@@ -567,9 +567,29 @@ export function gameScreen(app: App): Screen {
         return { id: sp.id, pos: sp.pos, icon: hint, label: HINT_NAMES[hint] };
       });
   };
-  // Hinweise am Horizont als seltener Funkspruch: frühestens nach 1 Minute, dann alle 3 bis 6 Minuten einer
-  let nextHintAt = performance.now() + 60_000;
+  // Hinweise am Horizont als seltener Funkspruch (Kevin 23.10.: seltener): frühestens nach 5 Minuten,
+  // dann höchstens alle 20 Minuten einer, und jeder Ort nur einmal am Tag (auf diesem Gerät gemerkt)
+  let nextHintAt = performance.now() + 5 * 60_000;
+  const HINTED_KEY = 'endstation.horizonHinted';
   const hintedHorizon = new Set<string>();
+  try {
+    const old = JSON.parse(localStorage.getItem(HINTED_KEY) ?? '{}') as Record<string, number>;
+    for (const [id, at] of Object.entries(old)) if (Date.now() - at < 24 * 3_600_000) hintedHorizon.add(id);
+  } catch {
+    // Kein Speicher: dann merkt es sich nur diese Runde
+  }
+  const rememberHint = (id: string) => {
+    hintedHorizon.add(id);
+    try {
+      const old = JSON.parse(localStorage.getItem(HINTED_KEY) ?? '{}') as Record<string, number>;
+      const keep: Record<string, number> = {};
+      for (const [k, at] of Object.entries(old)) if (Date.now() - at < 24 * 3_600_000) keep[k] = at;
+      keep[id] = Date.now();
+      localStorage.setItem(HINTED_KEY, JSON.stringify(keep));
+    } catch {
+      // egal
+    }
+  };
   const maybeHorizonHint = () => {
     if (!fix || !sightings || overlay) return;
     const t = performance.now();
@@ -585,8 +605,8 @@ export function gameScreen(app: App): Screen {
       if (provider?.kind === 'sim' && !joy) walkTo(x.pos);
     });
     if (!ok) return;
-    hintedHorizon.add(x.id);
-    nextHintAt = t + (180 + Math.random() * 180) * 1000;
+    rememberHint(x.id);
+    nextHintAt = t + 20 * 60_000;
   };
   let pointers: Pointers | null = null;
   const notifiedSpecials = new Set<string>();
@@ -952,8 +972,11 @@ export function gameScreen(app: App): Screen {
       newsSeen.add(e.id);
       const c = eventCenter(e, now);
       const d = distanceM(f.pos, c);
-      const where = e.radiusM && d <= e.radiusM ? 'genau hier' : `${formatDistance(d)} Richtung ${compassWord(bearingDeg(f.pos, c))}`;
-      app.toast(`Funk: ${WORLD_EVENTS[e.kind].name}, ${where}. Noch ${remaining(e)}. Antippen oben für mehr.`, e.kind === 'drop' ? 'good' : 'warn');
+      const here = !!e.radiusM && d <= e.radiusM;
+      const where = here ? 'genau hier' : `${formatDistance(d)} Richtung ${compassWord(bearingDeg(f.pos, c))}`;
+      // Ohne Funksprüche nur melden, wenn es dich direkt betrifft (sonst zeigt es die Anzeige oben still)
+      if (RADIO_POPUPS) app.toast(`Funk: ${WORLD_EVENTS[e.kind].name}, ${where}. Noch ${remaining(e)}. Antippen oben für mehr.`, e.kind === 'drop' ? 'good' : 'warn');
+      else if (here) app.toast(`${WORLD_EVENTS[e.kind].name}, genau hier. Noch ${remaining(e)}. Antippen oben für mehr.`, 'warn');
     }
     const drops = worldEvents.filter((e) => e.kind === 'drop' && now >= e.from && now < e.until).map((e) => e.id).join('|');
     if (drops !== dropSig) {

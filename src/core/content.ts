@@ -777,12 +777,18 @@ export const WORKBENCH_LEVELS: WorkbenchLevel[] = [
  */
 export const GRID_TURN = { hours: 24, graceMin: 20 };
 
-/** Wie häufig welche Grid-Fundstelle vorkommt. */
-/** Pilzstellen: Chance pro Kachel und Runde, je Monat (Januar … Dezember). Im Herbst am meisten. */
-export const MUSHROOM_CHANCE = [0.05, 0.05, 0.08, 0.12, 0.18, 0.25, 0.3, 0.4, 0.6, 0.65, 0.45, 0.1] as const;
+/**
+ * Wie viele Grid-Fundstellen pro Kachel (~190 m): none = Anteil leerer Kacheln, two = Anteil mit zweien.
+ * Kevin 23.10.: ein Drittel weniger (vorher 0,2 und 0,22, also gut eine pro Kachel; jetzt etwa 0,7).
+ */
+export const GRID_SPOT_ODDS = { none: 0.42, two: 0.1 };
 
+/** Pilzstellen: Chance pro Kachel und Runde, je Monat (Januar … Dezember). Im Herbst am meisten (Kevin 23.10.: höchstens jedes vierte Waldstück). */
+export const MUSHROOM_CHANCE = [0.02, 0.02, 0.03, 0.05, 0.07, 0.1, 0.12, 0.15, 0.23, 0.25, 0.17, 0.04] as const;
+
+/** Wie häufig welche Grid-Fundstelle vorkommt (Kevin 23.10.: weniger kaputte Autos, vorher 22). */
 export const GRID_KIND_WEIGHTS: readonly (readonly [SpotKind, number])[] = [
-  ['car', 22],
+  ['car', 12],
   ['backpack', 18],
   ['shed', 16],
   ['barrel', 14],
@@ -2475,7 +2481,7 @@ export const SPOT_STORIES: Record<SpotKind, string[]> = {
 export const CART = {
   /** Länge eines Zeitfensters (Stunden) */
   windowH: 2,
-  /** Chance pro Fundstelle und Fenster (bei ~27 Fundstellen pro km² etwa eine pro 500 m Umkreis) */
+  /** Chance pro Fundstelle und Fenster (bei ~18 Fundstellen pro km² etwa eine pro 600 m Umkreis) */
   chance: 0.04,
   lootFactor: 2.5,
   kramBonus: 0.45,

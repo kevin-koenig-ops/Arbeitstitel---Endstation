@@ -9,7 +9,7 @@
 // 3. Besondere Orte: einmal pro Gegend (~1,5 km) ein Hubschrauberwrack, ein Konvoi,
 //    eine Bunkertür … Fest aus dem Weltstartwert, nie an sensiblen Orten.
 
-import { GRID_KIND_WEIGHTS, GRID_TURN, MUSHROOM_CHANCE, POI_KINDS, POI_NAMES, SPECIAL, SPECIAL_WEIGHTS, SPOT_KINDS } from './content';
+import { GRID_KIND_WEIGHTS, GRID_SPOT_ODDS, GRID_TURN, MUSHROOM_CHANCE, POI_KINDS, POI_NAMES, SPECIAL, SPECIAL_WEIGHTS, SPOT_KINDS } from './content';
 import { distanceM, fromTile, toTile } from './geo';
 import { pick, pickWeighted, rngFrom } from './rng';
 import type { LatLon, Spot, SpotKind } from './types';
@@ -37,7 +37,7 @@ function turnSpan(seed: string, x: number, y: number, turn: number): { from: num
 function gridSpotsInCell(seed: string, x: number, y: number, turn: number): Spot[] {
   const r = rngFrom(seed, 'cell', GRID_ZOOM, x, y, turn);
   const roll = r();
-  const count = roll < 0.2 ? 0 : roll < 0.78 ? 1 : 2;
+  const count = roll < GRID_SPOT_ODDS.none ? 0 : roll < 1 - GRID_SPOT_ODDS.two ? 1 : 2;
   const spots: Spot[] = [];
   for (let i = 0; i < count; i++) {
     // 10 % Rand lassen, damit Fundstellen nicht auf Kachelgrenzen kleben.

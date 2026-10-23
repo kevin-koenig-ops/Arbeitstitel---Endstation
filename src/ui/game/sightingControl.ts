@@ -5,7 +5,7 @@
 // einem Weg liegt und an keinem heiklen Ort (Friedhof, Schule, Kirche, Krankenhaus, Gedenkstätte,
 // in Häusern oder im Wasser). Nie auf Gleisen, Dächern oder Baustellen, nie in fremden Gärten.
 
-import { WORLD_SEED } from '../../config';
+import { RADIO_POPUPS, WORLD_SEED } from '../../config';
 import { RARITY_NAMES, type CardRarity } from '../../core/content';
 import { bearingDeg, distanceM, formatDistance } from '../../core/geo';
 import { SIGHT, SIGHTING_NAMES, sightingsNear, type Sighting } from '../../core/sightings';
@@ -109,7 +109,7 @@ export class SightingControl {
    */
   radio(text: string, iconName: string, onTap: (() => void) | null, opts: { force?: boolean; tone?: string } = {}): boolean {
     const t = performance.now();
-    if (this.o.quiet()) return false;
+    if (!RADIO_POPUPS || this.o.quiet()) return false;
     if (!opts.force && t - this.lastRadio < RADIO_GAP) return false;
     this.lastRadio = t;
     clearTimeout(this.radioTimer);
