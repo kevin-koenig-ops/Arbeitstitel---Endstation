@@ -1083,7 +1083,7 @@ export const WEAPONS: Record<WeaponId, WeaponDef> = {
   bat: { name: 'Nagelschläger', range: 'melee', dmg: 3, dur: 32, cost: { wood: 3, metal: 2 }, level: 1, art: 'nagelschlaeger', desc: 'Ein Baseballschläger mit ein paar Nägeln.' },
   crossbow: { name: 'Armbrust', range: 'ranged', dmg: 4, dur: 24, cost: { wood: 3, metal: 2, springs: 2, screws: 2, glue: 1 }, level: 2, art: 'armbrust', desc: 'Leise und kräftig. Die Bolzen nutzen sich ab.' },
   // Nur zu finden (Fundorte und Sichtungen)
-  shovel: { name: 'Spaten', range: 'melee', dmg: 3, dur: 30, cost: {}, level: 0, rarity: 'common', where: 'Kleingärten, Baumärkte, Schuppen', art: 'spaten', desc: 'Gräbt und stößt Gegner zurück.' },
+  shovel: { name: 'Spaten', range: 'melee', dmg: 3, dur: 30, cost: {}, level: 0, rarity: 'common', where: 'Kleingärten, Baumärkte, Schuppen', art: 'spaten', desc: 'Gräbt, und ein kräftiger Stich stößt Gegner zurück.' },
   axe: { name: 'Axt', range: 'melee', dmg: 5, dur: 26, cost: {}, level: 0, rarity: 'rare', where: 'Scheunen, Hofläden, Baumärkte', art: 'axt', desc: 'Schwer und langsam, aber wer getroffen wird, bleibt liegen.' },
   golfclub: { name: 'Golfschläger', range: 'melee', dmg: 3, dur: 24, cost: {}, level: 0, rarity: 'rare', where: 'Autos, Garagen, Sichtungen', art: 'golfschlaeger', desc: 'Holt weit aus und schlägt Gegner nach hinten weg.' },
   slingshot: { name: 'Schleuder', range: 'ranged', dmg: 2, dur: 30, cost: {}, level: 0, rarity: 'rare', where: 'Kioske, Rucksäcke, Sichtungen', art: 'schleuder', desc: 'Kostet keine Kraft, einmal pro Runde.' },
@@ -1241,7 +1241,7 @@ export type CardId =
   | 'spade' | 'chop' | 'drive' | 'pellet' | 'nail' | 'salvo' | 'prong' | 'fend' | 'arrow' | 'drawbow' | 'cleave' | 'hack' | 'swath' | 'sledge' | 'heave' | 'lidup' | 'lidbash' | 'foam' | 'extbash' | 'wrenchhit'
   // Schusswaffen (und der Kolbenschlag, wenn die Munition alle ist)
   | 'airshot' | 'shot' | 'doubletap' | 'revshot' | 'fan' | 'buck' | 'rifleshot' | 'scope' | 'buttstroke'
-  | 'golfhit' | 'airpshot' | 'snapshot' | 'pumpbuck' | 'slug' | 'stalkshot' | 'drillball' | 'drillshot'
+  | 'golfhit' | 'shovelhit' | 'airpshot' | 'snapshot' | 'pumpbuck' | 'slug' | 'stalkshot' | 'drillball' | 'drillshot'
   // Erzeugte Karten (kommen durch andere Karten auf die Hand, sind nach dem Spielen weg)
   | 'marble' | 'pebble' | 'lathhit'
   // Einmal-Karten (nach dem Ausspielen weg)
@@ -1385,6 +1385,7 @@ export const CARDS: Record<CardId, CardDef> = {
   bolt: { name: 'Bolzen', kind: 'weapon', cost: 1, target: 'any', dmg: 3, weapon: 'crossbow', art: 'armbrust', desc: '3 Schaden, trifft auch Gegner hinten.' },
   aim: { name: 'Zielen', kind: 'weapon', cost: 0, target: 'self', focus: 3, art: 'armbrust', desc: 'Der nächste Bolzen oder Wurf macht 3 mehr Schaden.' },
   spade: { name: 'Spatenstich', kind: 'weapon', cost: 1, target: 'near', dmg: 3, push: true, weapon: 'shovel', art: 'spaten', desc: '3 Schaden und stößt zurück.' },
+  shovelhit: { name: 'Spatenhieb', kind: 'weapon', cost: 1, target: 'near', dmg: 2, weapon: 'shovel', art: 'spaten', desc: '2 Schaden mit dem Spaten.' },
   chop: { name: 'Axthieb', kind: 'weapon', cost: 2, target: 'near', dmg: 6, stun: true, weapon: 'axe', art: 'axt', desc: '6 Schaden, der Gegner setzt eine Runde aus.' },
   drive: { name: 'Abschlag', kind: 'weapon', cost: 1, target: 'near', dmg: 3, push: true, weapon: 'golfclub', art: 'golfschlaeger', desc: '3 Schaden vorne, schlägt den Gegner nach hinten weg.' },
   golfhit: { name: 'Durchschwung', kind: 'weapon', cost: 1, target: 'near', dmg: 3, weapon: 'golfclub', art: 'golfschlaeger', desc: '3 Schaden mit dem Golfschläger.' },
@@ -1613,7 +1614,7 @@ export const WEAPON_CARDS: Record<WeaponId, CardId[]> = {
   crowbar: ['pry', 'pry', 'pry'],
   bat: ['swing', 'swing', 'homerun'],
   crossbow: ['bolt', 'bolt', 'aim'],
-  shovel: ['spade', 'spade', 'spade'],
+  shovel: ['spade', 'shovelhit', 'shovelhit'],
   axe: ['chop', 'chop', 'cleave'],
   machete: ['hack', 'hack', 'swath'],
   lid: ['lidup', 'lidup', 'lidbash'],

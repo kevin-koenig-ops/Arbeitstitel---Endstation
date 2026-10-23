@@ -44,6 +44,7 @@ export const CARD_ICON: Record<CardId, string> = {
   chop: 'axe',
   drive: 'golfclub',
   golfhit: 'golfclub',
+  shovelhit: 'shovel',
   pellet: 'slingshot',
   nail: 'nailgun',
   salvo: 'salvo',
