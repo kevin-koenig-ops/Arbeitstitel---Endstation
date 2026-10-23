@@ -43,9 +43,10 @@ const LANDMARKS: Record<string, { kind: LandmarkKind; sign: string }> = {
   water_point: { kind: 'well', sign: '' },
 };
 
+/** Wie bei den Fundstellen: nur die genaue Art zählt (sonst wird jede Ladesäule eine Tankstelle). */
 export function landmarkOf(cls?: string, subclass?: string): { kind: LandmarkKind; sign: string } | null {
-  for (const v of [subclass, cls]) if (v && LANDMARKS[v]) return LANDMARKS[v];
-  return null;
+  const v = subclass || cls;
+  return v && LANDMARKS[v] ? LANDMARKS[v] : null;
 }
 
 export const isShopKind = (k: LandmarkKind): k is ShopKind => k !== 'fuel' && k !== 'stop' && k !== 'well';

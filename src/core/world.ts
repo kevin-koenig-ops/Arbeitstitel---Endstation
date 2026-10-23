@@ -165,11 +165,15 @@ export interface PoiCandidate {
   subclass?: string;
 }
 
+/**
+ * Welche Fundstelle ein Kartenort wird. Zählt nur die genaue Art (subclass), die Gruppe (class)
+ * nur, wenn es keine gibt: In den echten Kartendaten ist z. B. „fuel“ die Gruppe für Tankstellen
+ * und Ladesäulen, „grocery“ auch für Kaufhäuser und Wochenmärkte (Kevin 23.10.: Tankstellen, wo keine sind).
+ */
 export function classifyPoi(cls?: string, subclass?: string): SpotKind | null {
-  for (const value of [subclass, cls]) {
-    if (!value) continue;
-    for (const [kind, values] of POI_KINDS) if (values.includes(value)) return kind;
-  }
+  const value = subclass || cls;
+  if (!value) return null;
+  for (const [kind, values] of POI_KINDS) if (values.includes(value)) return kind;
   return null;
 }
 
@@ -182,7 +186,7 @@ export function poiSpots(seed: string, candidates: PoiCandidate[]): Spot[] {
     if (out.some((s) => s.kind === kind && distanceM(s.pos, c.pos) < 35)) continue;
     const id = c.id !== undefined && c.id !== '' ? `p:${c.id}` : `p:${kind}:${c.pos.lat.toFixed(5)}:${c.pos.lon.toFixed(5)}`;
     const name =
-      (c.subclass && POI_NAMES[c.subclass]) || (c.cls && POI_NAMES[c.cls]) || pick(rngFrom(seed, id), SPOT_KINDS[kind].names);
+      POI_NAMES[c.subclass || c.cls || ''] || pick(rngFrom(seed, id), SPOT_KINDS[kind].names);
     out.push({ id, kind, source: 'poi', pos: c.pos, name });
   }
   return out;

@@ -793,8 +793,9 @@ export const GRID_KIND_WEIGHTS: readonly (readonly [SpotKind, number])[] = [
 /** OSM-Werte (class/subclass), die zu echten Fundorten werden. */
 export const POI_KINDS: readonly (readonly [SpotKind, readonly string[]])[] = [
   ['market', ['supermarket', 'convenience', 'grocery', 'bakery', 'butcher', 'kiosk', 'greengrocer', 'deli', 'beverages', 'farm']],
-  // Keine Krankenhäuser und Kliniken: echte sensible Orte bleiben außen vor
-  ['pharmacy', ['pharmacy', 'chemist', 'doctors', 'dentist']],
+  // Keine Krankenhäuser und Kliniken: echte sensible Orte bleiben außen vor.
+  // Arzt- und Zahnarztpraxen auch nicht mehr (Kevin 23.10.: sahen auf der Karte aus wie Apotheken).
+  ['pharmacy', ['pharmacy', 'chemist']],
   ['hardware', ['hardware', 'doityourself', 'car_repair', 'car_parts', 'garden_centre', 'trade']],
   ['fuel', ['fuel']],
   ['well', ['drinking_water', 'water_point', 'water_well', 'fountain']],

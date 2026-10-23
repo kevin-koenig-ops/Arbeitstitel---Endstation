@@ -34,6 +34,12 @@ describe('Welt', () => {
     expect(classifyPoi('grocery', 'supermarket')).toBe('market');
     expect(classifyPoi('bus', 'bus_stop')).toBe('stop');
     expect(classifyPoi('cafe', 'cafe')).toBeNull();
+    // Nur die genaue Art zählt: eine Ladesäule ist keine Tankstelle, ein Kaufhaus kein Supermarkt,
+    // eine Arztpraxis keine Apotheke
+    expect(classifyPoi('fuel', 'fuel')).toBe('fuel');
+    expect(classifyPoi('fuel', 'charging_station')).toBeNull();
+    expect(classifyPoi('grocery', 'department_store')).toBeNull();
+    expect(classifyPoi('doctors', 'doctors')).toBeNull();
     const spots = poiSpots(SEED, [
       { pos: HOME, cls: 'bus', subclass: 'bus_stop' },
       { pos: offsetM(HOME, 15, 0), cls: 'bus', subclass: 'bus_stop' },

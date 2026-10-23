@@ -450,9 +450,10 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
         hs.top = cv.kind === 'church' ? Math.max(6, Math.min(11, h0 * 0.6)) : Math.max(hs.top, Math.min(h0, 14) * 0.9);
         if (cv.kind === 'church') hs.slope = Math.max(hs.slope, 1.1);
         hs.civic = { kind: cv.kind, sign: cv.sign, toward: cv.p, variant: Math.floor(rngFrom('amt', cv.key)() * 3), ridge: hs.top, tower: false };
-        // Kirche: glatte helle Steinwand ohne Wohnungsfenster (die hohen Fenster setzt houseMesh.ts)
+        // Kirche: heller Putz ohne Wohnungsfenster (die hohen Fenster setzt houseMesh.ts).
+        // Kevin 23.10.: ganz ohne Wandbild sah sie aus wie ein grauer Klotz.
         if (cv.kind === 'church') {
-          hs.facade = null;
+          hs.facade = 'putz';
           hs.tint = [0.84, 0.8, 0.72];
           hs.shed = undefined;
           hs.chimney = false;
@@ -660,7 +661,7 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
       tower.roof = 'flat';
       tower.state = 'intact';
       tower.chimney = false;
-      tower.facade = null;
+      tower.facade = hs.facade;
       tower.tint = hs.tint;
       hs.civic.tower = false;
     } else hs.civic.tower = true;
