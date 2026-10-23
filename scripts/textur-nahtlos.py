@@ -27,12 +27,14 @@ def repeats_2x2(img):
     ac = np.real(np.fft.ifft2(F * np.conj(F))) / max(1e-6, float((g * g).sum()))
     return min(ac[256, 0], ac[0, 256]) > 0.5
 
+tiled = False
 if w == h and repeats_2x2(im):
     # Eine Wiederholung aus der Mitte nehmen (ohne Ränder, dort sitzen oft Wasserzeichen).
     # Ihre Kanten passen schon fast, der Übergang muss nur wenig glätten.
     q = w // 2
     im = im.crop((q // 2, q // 2, q // 2 + q, q // 2 + q)).resize((1024, 1024), Image.LANCZOS)
-    band = min(band, 0.08)
+    band = min(band, 0.1)
+    tiled = True
     print('2 × 2 gekachelt erkannt: nehme ein Viertel aus der Mitte')
 else:
     # Gemini-Zeichen o. Ä. am Rand: ein paar Prozent abschneiden, dann quadratisch
@@ -42,6 +44,10 @@ else:
     im = im.crop((0, 0, n, n)).resize((1024, 1024), Image.LANCZOS)
 a = np.asarray(im).astype(np.float32)
 N = a.shape[0]
+if tiled:
+    # Geminis Naht zwischen den vier Kopien liegt jetzt quer durch die Bildmitte.
+    # Um ein halbes Bild verschieben: dann liegt sie am Rand, und der Übergang unten blendet sie weg.
+    a = np.roll(a, (N // 2, N // 2), axis=(0, 1))
 
 def ramp(n):
     d = np.minimum(np.arange(n), n - 1 - np.arange(n)) / n  # 0 am Rand, 0.5 in der Mitte
