@@ -81,7 +81,13 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
 
     // Flächen: gemalte Texturen je Untergrund (map/patterns.ts)
     { id: 'landuse-residential', type: 'fill', ...from('landuse', cls('residential', 'suburb', 'neighbourhood')), paint: { 'fill-pattern': 'pat-gardens', 'fill-opacity': 0.9 } },
-    { id: 'landuse-industrial', type: 'fill', ...from('landuse', cls('industrial', 'commercial', 'retail', 'railway', 'garages', 'quarry')), paint: { 'fill-pattern': 'pat-rubble', 'fill-opacity': 0.95 } },
+    {
+      id: 'landuse-industrial',
+      type: 'fill',
+      ...from('landuse', cls('industrial', 'commercial', 'retail', 'railway', 'garages', 'quarry')),
+      // Je Art ein eigenes Bild: Industrie, Gewerbe und Parkplätze, Bahngelände, Steinbruch
+      paint: { 'fill-pattern': ['match', ['get', 'class'], ['commercial', 'retail'], 'pat-commercial', 'railway', 'pat-railyard', 'quarry', 'pat-quarry', 'pat-industrial'] as ExpressionSpecification, 'fill-opacity': 0.95 },
+    },
     {
       id: 'landcover-farm',
       type: 'fill',
@@ -99,13 +105,20 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
         'fill-pattern': ['match', ['coalesce', ['get', 'subclass'], ''], ['park', 'garden', 'village_green', 'recreation_ground', 'golf_course', 'flowerbed'], 'pat-grass', 'pat-meadow'] as ExpressionSpecification,
       },
     },
-    { id: 'landuse-green', type: 'fill', ...from('landuse', cls('pitch', 'playground', 'stadium', 'park', 'school')), paint: { 'fill-pattern': 'pat-grass' } },
+    {
+      id: 'landuse-green',
+      type: 'fill',
+      ...from('landuse', cls('pitch', 'playground', 'stadium', 'park', 'school')),
+      paint: { 'fill-pattern': ['match', ['get', 'class'], ['pitch', 'stadium'], 'pat-pitch', 'playground', 'pat-playground', 'pat-grass'] as ExpressionSpecification },
+    },
     // Friedhöfe bleiben schlicht (sensible Orte)
     { id: 'landuse-cemetery', type: 'fill', ...from('landuse', cls('cemetery')), paint: { 'fill-color': '#7e8463' } },
     { id: 'landuse-cemetery-edge', type: 'line', ...from('landuse', cls('cemetery')), paint: { 'line-color': '#5f6248', 'line-width': 1.2, 'line-dasharray': [2, 2] } },
     { id: 'landcover-sand', type: 'fill', ...from('landcover', cls('sand')), paint: { 'fill-pattern': 'pat-sand' } },
     { id: 'landcover-rock', type: 'fill', ...from('landcover', cls('rock')), paint: { 'fill-pattern': 'pat-rock' } },
     { id: 'landcover-wetland', type: 'fill', ...from('landcover', cls('wetland')), paint: { 'fill-pattern': 'pat-wetland' } },
+    // Eis und Gletscher: schlichte Farbe, bis es ein Bild gibt (GameMap setzt es dann)
+    { id: 'landcover-ice', type: 'fill', ...from('landcover', cls('ice', 'glacier')), paint: { 'fill-color': '#dfe5e6' } },
     {
       id: 'landcover-wood',
       type: 'fill',
@@ -129,6 +142,7 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
     soft('sand', from('landcover', cls('sand')), '#c0a991'),
     soft('rock', from('landcover', cls('rock')), '#908871'),
     soft('wetland', from('landcover', cls('wetland')), '#534d38'),
+    soft('ice', from('landcover', cls('ice', 'glacier')), '#dfe5e6'),
     soft('wood', from('landcover', cls('wood', 'forest')), ['step', ['zoom'], '#4f5a33', DECOR_MINZOOM, '#6a4f37'] as ExpressionSpecification),
 
     // Wasser mit hellem Ufer

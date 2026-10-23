@@ -12,7 +12,7 @@ import { generateDecor, type DecorInput, type RawLine, type RawPolygon } from '.
 import { FogOfWar } from './fogOfWar';
 import { WaterAnimation } from './waterAnim';
 import demoWorld from './demoWorld.json';
-import { hasRoadTexture, loadTextures, patternImage, textureColor } from './patterns';
+import { hasOptionalTexture, loadTextures, patternImage, textureColor } from './patterns';
 import { seasonMonth, type Season } from '../services/settings';
 import { buildStyle, DECOR_MINZOOM, loadRealSource } from './style';
 import type { WalkInput } from './walkNet';
@@ -1117,20 +1117,30 @@ export class GameMap {
 
   /** Straßen und Wege mit Bild, sobald es eins gibt; sonst die gezeichneten Linien. */
   private applyRoadTextures() {
+    const has = hasOptionalTexture;
     const use = (layer: string, pat: string) => {
       if (!this.map.getLayer(layer)) return false;
-      const on = hasRoadTexture(pat);
+      const on = has(pat);
       this.map.setPaintProperty(layer, 'line-pattern', on ? pat : undefined);
       return on;
     };
     const major = use('road-major', 'pat-road-major');
     const minor = use('road-minor', 'pat-road-minor');
-    // Feld- und Fußwege mit Bild etwas breiter, sonst sieht man vom Bild nur die Farbe
+    // Feld- und Fußwege, Gleise mit Bild etwas breiter, sonst sieht man vom Bild nur die Farbe
     const width = (layer: string, on: boolean, plain: [number, number][], wide: [number, number][]) => {
       if (this.map.getLayer(layer)) this.map.setPaintProperty(layer, 'line-width', ['interpolate', ['exponential', 1.6], ['zoom'], ...(on ? wide : plain).flat()]);
     };
     width('road-track', use('road-track', 'pat-track'), [[14, 1], [17, 4.5], [20, 14]], [[14, 1.5], [17, 7], [20, 21]]);
-    width('road-path', use('road-path', 'pat-path'), [[14, 0.6], [17, 2.6], [20, 7]], [[14, 1], [17, 4.2], [20, 11]]);
+    // Fußwege: gepflasterte Gehwege (footway) und Pfade im Grünen, je mit eigenem Bild
+    const path = has('pat-path');
+    const footway = has('pat-footway');
+    if (this.map.getLayer('road-path')) {
+      const pattern = footway ? ['match', ['coalesce', ['get', 'subclass'], ''], ['footway', 'pedestrian'], 'pat-footway', path ? 'pat-path' : 'pat-footway'] : path ? 'pat-path' : undefined;
+      this.map.setPaintProperty('road-path', 'line-pattern', pattern);
+    }
+    width('road-path', path || footway, [[14, 0.6], [17, 2.6], [20, 7]], [[14, 1], [17, 4.2], [20, 11]]);
+    width('road-rail', use('road-rail', 'pat-rail'), [[13, 1], [18, 5]], [[13, 1.5], [17, 6], [20, 18]]);
+    if (this.map.getLayer('landcover-ice')) this.map.setPaintProperty('landcover-ice', 'fill-pattern', has('pat-ice') ? 'pat-ice' : undefined);
     // Die gemalten Straßen haben ihre Risse schon im Bild
     if (this.map.getLayer('road-cracks')) this.map.setLayoutProperty('road-cracks', 'visibility', major && minor ? 'none' : 'visible');
   }
@@ -1149,8 +1159,16 @@ export class GameMap {
       if (col) set(layer, col);
     };
     one('soft-residential', this.settlement && this.settlement !== 'village' ? 'pat-paved' : 'pat-gardens');
-    one('soft-industrial', 'pat-rubble');
-    one('soft-green', 'pat-grass');
+    const ind = c('pat-industrial');
+    const com = c('pat-commercial');
+    const rail = c('pat-railyard');
+    const quarry = c('pat-quarry');
+    if (ind && com && rail && quarry) set('soft-industrial', ['match', ['get', 'class'], ['commercial', 'retail'], com, 'railway', rail, 'quarry', quarry, ind]);
+    const pitch = c('pat-pitch');
+    const play = c('pat-playground');
+    const lawn = c('pat-grass');
+    if (pitch && play && lawn) set('soft-green', ['match', ['get', 'class'], ['pitch', 'stadium'], pitch, 'playground', play, lawn]);
+    one('soft-ice', 'pat-ice');
     one('soft-sand', 'pat-sand');
     one('soft-rock', 'pat-rock');
     one('soft-wetland', 'pat-wetland');

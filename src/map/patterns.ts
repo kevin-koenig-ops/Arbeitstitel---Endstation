@@ -41,6 +41,14 @@ const IMAGES: Record<string, { url: string; pr: number }> = {
   'pat-farm-b': { url: ackerGruen, pr: 2.5 },
   'pat-farm-c': { url: ackerKorn, pr: 2.5 },
   'pat-farm': { url: ackerErde, pr: 2.5 },
+  // Eigene Arten für Flächen, die bisher ein gemeinsames Bild hatten (Kevin, 23.10.: Textur für alles).
+  // Bis ihr eigenes Bild da ist, nehmen sie das bisherige.
+  'pat-industrial': { url: schutt, pr: 3 },
+  'pat-commercial': { url: schutt, pr: 3 },
+  'pat-railyard': { url: schutt, pr: 3 },
+  'pat-quarry': { url: schutt, pr: 3 },
+  'pat-pitch': { url: rasen, pr: 2 },
+  'pat-playground': { url: rasen, pr: 2 },
 };
 const loaded = new Map<string, { data: ImageData; pixelRatio: number; url: string; mean: string }>();
 
@@ -67,23 +75,35 @@ const SEASONAL: Record<string, string> = {
   'pat-farm-a': 'acker-a',
   'pat-farm-b': 'acker-b',
   'pat-farm-c': 'acker-c',
+  'pat-industrial': 'industrie',
+  'pat-commercial': 'gewerbe',
+  'pat-railyard': 'bahngelaende',
+  'pat-quarry': 'steinbruch',
+  'pat-pitch': 'sportplatz',
+  'pat-playground': 'spielplatz',
 };
 
 /**
- * Bilder für Straßen und Wege (Kevin, 23.10.), je Jahreszeit wie die Böden, z. B. feldweg-herbst.
- * Das Bild liegt quer: die Straße läuft von links nach rechts, oben und unten sind ihre Ränder.
- * Die Karte streckt es auf die Breite der Straße und wiederholt es entlang.
+ * Bilder, die es nur gibt, wenn Kevin sie geliefert hat (je Jahreszeit oder ganzjährig).
+ * Straßen, Wege und Gleise liegen quer: sie laufen von links nach rechts, oben und unten sind
+ * ihre Ränder. Die Karte streckt das Bild auf die Breite der Linie und wiederholt es entlang.
+ * Fehlt ein Bild, bleibt die gezeichnete Linie, der gemalte Wald oder die schlichte Farbe.
  */
-const ROADS: Record<string, string> = {
-  'pat-road-major': 'strasse-haupt',
-  'pat-road-minor': 'strasse-neben',
-  'pat-track': 'feldweg',
-  'pat-path': 'fussweg',
+const OPTIONAL: Record<string, { key: string; pr: number }> = {
+  'pat-road-major': { key: 'strasse-haupt', pr: 1 },
+  'pat-road-minor': { key: 'strasse-neben', pr: 1 },
+  'pat-track': { key: 'feldweg', pr: 1 },
+  'pat-path': { key: 'fussweg', pr: 1 },
+  'pat-footway': { key: 'gehweg', pr: 1 },
+  'pat-rail': { key: 'gleis', pr: 1 },
+  // Wald von weitem: Baumkronen von oben (statt des gezeichneten Musters)
+  'pat-forest': { key: 'wald-oben', pr: 2 },
+  'pat-ice': { key: 'eis', pr: 2.5 },
 };
 
-/** Hat diese Straßenart gerade ein Bild? */
-export function hasRoadTexture(id: string): boolean {
-  return id in ROADS && loaded.has(id);
+/** Gibt es für dieses Muster gerade ein geliefertes Bild? */
+export function hasOptionalTexture(id: string): boolean {
+  return id in OPTIONAL && loaded.has(id);
 }
 
 /**
@@ -93,14 +113,14 @@ export function hasRoadTexture(id: string): boolean {
  */
 export async function loadTextures(season?: Season): Promise<string[]> {
   const changed: string[] = [];
-  // Straßen und Wege: nur wenn es ein Bild gibt (sonst bleiben die gezeichneten Linien)
-  const roads = Object.entries(ROADS).flatMap(([id, key]) => {
+  // Wahlweise Bilder: nur wenn es eins gibt
+  const optional = Object.entries(OPTIONAL).flatMap(([id, { key, pr }]) => {
     const url = (season && fileUrl(`${key}-${SEASON_NAME[season]}`)) || fileUrl(key);
     if (!url && loaded.delete(id)) changed.push(id);
-    return url ? [[id, { url, pr: 1 }] as const] : [];
+    return url ? [[id, { url, pr }] as const] : [];
   });
   await Promise.all(
-    [...Object.entries(IMAGES), ...roads].map(async ([id, { url, pr }]) => {
+    [...Object.entries(IMAGES), ...optional].map(async ([id, { url, pr }]) => {
       const seasonal = season && SEASONAL[id] ? fileUrl(`${SEASONAL[id]}-${SEASON_NAME[season]}`) : undefined;
       const want = seasonal ?? url;
       const cur = loaded.get(id);
