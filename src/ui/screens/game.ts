@@ -31,6 +31,7 @@ import { openPackPanel, type PackTab } from '../game/packPanel';
 import { getBasePlace } from '../../services/basePlace';
 import { music } from '../../services/music';
 import { seasonOf } from '../../services/settings';
+import { setGroundSeason } from '../../base/groundTextures';
 import { openBattle } from '../game/battle';
 import { AmbienceController, ambienceEffects, currentAmbience, guardSightM, PHASE_NAMES, WEATHER_NAMES, type Ambience } from '../game/ambience';
 import { Particles } from '../game/dust';
@@ -1440,6 +1441,8 @@ export function gameScreen(app: App): Screen {
       return;
     }
     music.setPlace('home');
+    // Böden im Zuhause zur Jahreszeit (wie auf der Karte)
+    setGroundSeason(seasonOf(app.settings.get()));
     overlay = openBaseView(app, overlayHost, {
       getFix: () => fix,
       phase: () => currentAmbience().phase,

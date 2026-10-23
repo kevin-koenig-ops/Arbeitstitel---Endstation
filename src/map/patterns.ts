@@ -52,14 +52,21 @@ if (fileUrl('pflaster')) IMAGES['pat-paved'] = { url: fileUrl('pflaster')!, pr: 
 const SEASON_NAME: Record<Season, string> = { spring: 'fruehling', summer: 'sommer', autumn: 'herbst', winter: 'winter' };
 /** Muster mit eigenen Bildern je Jahreszeit, z. B. wiese-herbst.webp. Fehlt eins, bleibt das normale. */
 const SEASONAL: Record<string, string> = {
+  'pat-ground': 'grundboden',
   'pat-meadow': 'wiese',
   'pat-grass': 'rasen',
+  'pat-gardens': 'vorgaerten',
   'pat-forest-floor': 'wald',
+  'pat-rubble': 'schutt',
+  'pat-yard': 'hof',
+  'pat-paved': 'pflaster',
+  'pat-sand': 'sand',
+  'pat-rock': 'fels',
+  'pat-wetland': 'sumpf',
   'pat-farm': 'acker-a',
   'pat-farm-a': 'acker-a',
   'pat-farm-b': 'acker-b',
-  'pat-farm-c': 'acker-b',
-  'pat-wetland': 'sumpf',
+  'pat-farm-c': 'acker-c',
 };
 
 /**
