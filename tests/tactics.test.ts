@@ -673,3 +673,131 @@ describe('Schutz', () => {
     expect(st.block).toBe(6);
   });
 });
+
+describe('Tüftler', () => {
+  it('Weidezaungerät schlägt jede Runde alle vorne, dann ist die Zeit um', () => {
+    const st = start(['walker', 'walker'], { kit: { pouch: { fencer: 1 }, skills: { tinkerbox: 1 } } });
+    for (const f of aliveFoes(st)) {
+      f.row = 'near';
+      f.hp = 50;
+    }
+    playPouch(st, 'fencer');
+    expect(st.devices).toEqual([{ kind: 'fence', rounds: 4 }]);
+    st.hand = [];
+    const hp0 = aliveFoes(st).map((f) => f.hp);
+    endTurn(st);
+    aliveFoes(st).forEach((f, i) => expect(f.hp).toBe(hp0[i] - 2));
+    for (let i = 0; i < 3; i++) {
+      st.hand = [];
+      st.block = 99;
+      endTurn(st);
+    }
+    expect(st.devices).toEqual([]);
+  });
+
+  it('Lampe blendet, wer nach vorn kommt; Radio lässt Heuler verstummen', () => {
+    const st = start(['walker', 'walker', 'screamer'], { kit: { pouch: { motionlamp: 1, boombox: 1 } } });
+    st.energy = 3;
+    playPouch(st, 'motionlamp');
+    playPouch(st, 'boombox');
+    const sc = aliveFoes(st).find((f) => f.kind === 'screamer')!;
+    sc.step = FOE_TACTICS.screamer.pattern.findIndex((p) => p.kind === 'howl');
+    sc.stunned = false;
+    sc.intent = intentOf(sc);
+    const w = aliveFoes(st).find((f) => f.kind === 'walker')!;
+    w.row = 'far';
+    w.stunned = false;
+    w.intent = { kind: 'advance' };
+    st.hand = [];
+    st.block = 99;
+    const ev = endTurn(st);
+    expect(ev.some((e) => e.type === 'summon')).toBe(false);
+    expect(w.row).toBe('near');
+    expect(w.blind).toBe(1);
+  });
+});
+
+describe('Raubbau', () => {
+  it('Volle Wucht: mehr Schaden, mehr Abnutzung; Panzertape flickt', () => {
+    const st = withHand(start(['brute'], { kit: { skills: { fullforce: 1 }, pouch: { tape: 1 } } }), 'fullforce', 'pry');
+    const b = aliveFoes(st)[0];
+    b.row = 'near';
+    const dur = st.weaponDur.crowbar!;
+    playCard(st, 0);
+    // 3 + 5 - 1 Rüstung
+    expect(playCard(st, 0, b.id).find((e) => e.type === 'hit')).toMatchObject({ dmg: 7 });
+    expect(st.weaponDur.crowbar).toBe(dur - 4);
+    expect(st.wear.crowbar).toBe(4);
+    playPouch(st, 'tape');
+    expect(st.weaponDur.crowbar).toBe(dur + 2);
+    expect(st.wear.crowbar).toBe(-2);
+  });
+
+  it('Letzter Schlag trifft doppelt, wenn die Waffe zerbricht', () => {
+    const st = withHand(start(['brute'], { weapons: [{ kind: 'crowbar', dur: 1 }], kit: { skills: { laststrike: 1 } } }), 'pry');
+    const b = aliveFoes(st)[0];
+    b.row = 'near';
+    const ev = playCard(st, 0, b.id);
+    // (3 x 2) - 1 Rüstung
+    expect(ev.find((e) => e.type === 'hit')).toMatchObject({ dmg: 5 });
+    expect(ev.some((e) => e.type === 'weaponBroke')).toBe(true);
+  });
+
+  it('Zaunlatte: drei Lattenhiebe im Stapel, nach dem Schlag weg', () => {
+    const st = start(['walker'], { kit: { pouch: { lath: 1 } } });
+    playPouch(st, 'lath');
+    expect(st.draw.filter((c) => c === 'lathhit').length).toBe(3);
+    withHand(st, 'lathhit');
+    const w = aliveFoes(st)[0];
+    w.row = 'near';
+    playCard(st, 0, w.id);
+    expect(st.discard.includes('lathhit')).toBe(false);
+  });
+});
+
+describe('Kleinkram', () => {
+  it('Hosentaschen: Murmeln auf die Hand, die verfallen am Rundenende; Zielwasser', () => {
+    const st = withHand(start(['walker'], { kit: { skills: { pockets: 1, trueaim: 1 } } }), 'pockets');
+    playCard(st, 0);
+    expect(st.hand.filter((c) => c === 'marble').length).toBe(2);
+    const w = aliveFoes(st)[0];
+    w.hp = 50;
+    playCard(st, st.hand.indexOf('marble'), w.id);
+    playCard(st, st.hand.indexOf('marble'), w.id);
+    expect(w.slow).toBeGreaterThan(0);
+    st.hand.push('marble');
+    // Dritter Wurf trifft doppelt
+    expect(playCard(st, st.hand.indexOf('marble'), w.id).find((e) => e.type === 'hit')).toMatchObject({ dmg: 2 });
+    st.hand.push('marble');
+    endTurn(st);
+    expect([...st.hand, ...st.draw, ...st.discard].includes('marble')).toBe(false);
+  });
+});
+
+describe('Ruhe und Wut', () => {
+  it('ruhig fängt ab, beim Verlassen gibt es Kraft; rasend macht und nimmt mehr', () => {
+    const st = withHand(start(['walker'], { kit: { skills: { breathe: 1, grit: 1 } } }), 'breathe', 'grit');
+    const w = aliveFoes(st)[0];
+    w.row = 'near';
+    w.hp = 50;
+    w.stunned = false;
+    playCard(st, 0);
+    expect(st.stance).toBe('calm');
+    expect(st.energy).toBe(2);
+    // Zähne zusammenbeißen: 3 Schaden, danach rasend, und 2 Kraft fürs Verlassen der Ruhe
+    const ev = playCard(st, 0, w.id);
+    expect(ev.find((e) => e.type === 'hit')).toMatchObject({ dmg: 3 });
+    expect(st.stance).toBe('wrath');
+    expect(st.energy).toBe(3);
+    // Der nächste Angriff ist rasend: 2 + 3
+    st.hand = ['punch'];
+    expect(playCard(st, 0, w.id).find((e) => e.type === 'hit')).toMatchObject({ dmg: 5 });
+    w.intent = { kind: 'attack', dmg: 3 };
+    w.step = 1;
+    st.hand = [];
+    st.block = 0;
+    const hp = st.hp;
+    endTurn(st);
+    expect(st.hp).toBe(hp - 5);
+  });
+});

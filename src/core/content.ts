@@ -1063,6 +1063,7 @@ export const WEAPONS: Record<WeaponId, WeaponDef> = {
   axe: { name: 'Axt', range: 'melee', dmg: 5, dur: 26, cost: {}, level: 0, rarity: 'rare', where: 'Scheunen, Hofläden, Baumärkte', art: 'axt', desc: 'Schwer und langsam, aber wer getroffen wird, bleibt liegen.' },
   golfclub: { name: 'Golfschläger', range: 'ranged', dmg: 3, dur: 24, cost: {}, level: 0, rarity: 'rare', where: 'Autos, Garagen, Sichtungen', art: 'golfschlaeger', desc: 'Reicht weit, trifft auch Gegner hinten.' },
   slingshot: { name: 'Schleuder', range: 'ranged', dmg: 2, dur: 30, cost: {}, level: 0, rarity: 'rare', where: 'Kioske, Rucksäcke, Sichtungen', art: 'schleuder', desc: 'Kostet keine Kraft, einmal pro Runde.' },
+  pipewrench: { name: 'Rohrzange', range: 'melee', dmg: 5, dur: 16, cost: {}, level: 0, rarity: 'common', where: 'Werkstätten, Baumärkte, Autos', art: 'rohrzange', desc: 'Schwer und wuchtig, aber das Gelenk wackelt schon. Hält nicht lange.' },
   lid: { name: 'Tonnendeckel', range: 'melee', dmg: 2, dur: 24, cost: {}, level: 0, rarity: 'common', where: 'Container, Haltestellen', art: 'tonnendeckel', desc: 'Verbeult, aber er hält. Mehr Schild als Waffe.' },
   extinguisher: { name: 'Feuerlöscher', range: 'melee', dmg: 3, dur: 22, cost: {}, level: 0, rarity: 'epic', where: 'Tankstellen, Werkstätten', art: 'feuerloescher', desc: 'Schwer genug zum Zuschlagen, und der Löschnebel blendet alle.' },
   machete: { name: 'Machete', range: 'melee', dmg: 3, dur: 26, cost: {}, level: 0, rarity: 'rare', where: 'Schuppen, Kleingärten, Baumärkte', art: 'machete', desc: 'Eigentlich für Brombeeren. Jeder Hieb gibt Schwung für den nächsten.' },
@@ -1073,7 +1074,7 @@ export const WEAPONS: Record<WeaponId, WeaponDef> = {
 };
 export const RANGE_NAMES: Record<WeaponDef['range'], string> = { melee: 'Nahkampf', ranged: 'Fernkampf' };
 /** Waffen, die man nur findet (Sammelbuch). */
-export const FOUND_WEAPONS: WeaponId[] = ['shovel', 'pitchfork', 'lid', 'axe', 'machete', 'golfclub', 'slingshot', 'nailgun', 'extinguisher', 'bow', 'sledgehammer'];
+export const FOUND_WEAPONS: WeaponId[] = ['shovel', 'pitchfork', 'lid', 'pipewrench', 'axe', 'machete', 'golfclub', 'slingshot', 'nailgun', 'extinguisher', 'bow', 'sledgehammer'];
 
 export const START_WEAPONS: Weapon[] = [{ kind: 'crowbar', dur: WEAPONS.crowbar.dur }];
 
@@ -1157,14 +1158,33 @@ export type { FoeKind };
 export type CardId =
   // Grundkarten und Waffenkarten
   | 'punch' | 'throw' | 'dodge' | 'kick' | 'pry' | 'swing' | 'homerun' | 'bolt' | 'aim' | 'bandage'
-  | 'spade' | 'chop' | 'drive' | 'pellet' | 'nail' | 'salvo' | 'prong' | 'fend' | 'arrow' | 'drawbow' | 'cleave' | 'hack' | 'swath' | 'sledge' | 'heave' | 'lidup' | 'lidbash' | 'foam' | 'extbash'
+  | 'spade' | 'chop' | 'drive' | 'pellet' | 'nail' | 'salvo' | 'prong' | 'fend' | 'arrow' | 'drawbow' | 'cleave' | 'hack' | 'swath' | 'sledge' | 'heave' | 'lidup' | 'lidbash' | 'foam' | 'extbash' | 'wrenchhit'
+  // Erzeugte Karten (kommen durch andere Karten auf die Hand, sind nach dem Spielen weg)
+  | 'marble' | 'pebble' | 'lathhit'
   // Einmal-Karten (nach dem Ausspielen weg)
-  | 'molotov' | 'smoke' | 'caltrops' | 'firecracker' | 'lure' | 'pepper' | 'tinder' | 'tripwire' | 'alarm' | 'dressing' | 'adrenaline' | 'flare' | 'oilcan' | 'painkiller' | 'flashbang' | 'fireworks' | 'grenade'
+  | 'molotov' | 'smoke' | 'caltrops' | 'firecracker' | 'lure' | 'pepper' | 'tinder' | 'tripwire' | 'alarm' | 'lath' | 'marblesack' | 'motionlamp' | 'boombox' | 'dressing' | 'adrenaline' | 'flare' | 'oilcan' | 'painkiller' | 'tape' | 'fencer' | 'flashbang' | 'fireworks' | 'grenade'
   // Fähigkeiten (dauerhaft, aus Sichtungen; mit Stufen)
-  | 'counter' | 'steady' | 'breath' | 'spark' | 'pitcher' | 'followup' | 'headbutt' | 'cover' | 'roll' | 'sweep' | 'sneak' | 'scavenger' | 'embers' | 'trapper' | 'distract' | 'rage' | 'retaliate' | 'firstaid' | 'radio' | 'secondwind' | 'wildfire' | 'packleader' | 'laststand';
+  | 'counter' | 'steady' | 'breath' | 'spark' | 'pitcher' | 'followup' | 'headbutt' | 'cover' | 'roll' | 'pockets' | 'pickstones' | 'breathe' | 'grit' | 'fullforce' | 'charger' | 'sweep' | 'sneak' | 'scavenger' | 'embers' | 'trapper' | 'distract' | 'rage' | 'retaliate' | 'firstaid' | 'tinkerbox' | 'toolroll' | 'trueaim' | 'unleash' | 'innercalm' | 'radio' | 'secondwind' | 'wildfire' | 'laststrike' | 'frenzy' | 'packleader' | 'laststand';
 
-/** Grundkarte, Waffenkarte, Einmal-Karte oder Fähigkeit. */
-export type CardKind = 'base' | 'weapon' | 'once' | 'skill';
+/** Grundkarte, Waffenkarte, Einmal-Karte, Fähigkeit oder erzeugte Karte (nach dem Spielen weg). */
+export type CardKind = 'base' | 'weapon' | 'once' | 'skill' | 'temp';
+/** Geräte (Tüftler): stehen ein paar Runden und wirken jede Runde von selbst. */
+export type DeviceId = 'fence' | 'lamp' | 'boombox';
+export const DEVICE_NAMES: Record<DeviceId, string> = { fence: 'Weidezaungerät', lamp: 'Bewegungsmelder-Lampe', boombox: 'Kofferradio' };
+/** So viele Geräte stehen höchstens gleichzeitig. */
+export const MAX_DEVICES = 3;
+/** Was Geräte bewirken. */
+export const DEVICES = { fenceDmg: 2 };
+/** Haltungen (Ruhe und Wut). */
+export type Stance = 'calm' | 'wrath';
+export const STANCE = {
+  /** Ruhig: Treffer gegen dich machen so viel weniger; wer die Ruhe verlässt, bekommt so viel Kraft. */
+  calmGuard: 1,
+  calmLeaveGain: 2,
+  /** Rasend: dein Angriff macht so viel mehr, Treffer gegen dich auch. */
+  wrathDmg: 3,
+  wrathTaken: 2,
+};
 export type CardRarity = 'common' | 'rare' | 'epic' | 'legendary';
 export const RARITY_NAMES: Record<CardRarity, string> = { common: 'Gewöhnlich', rare: 'Selten', epic: 'Episch', legendary: 'Legendär' };
 
@@ -1225,6 +1245,20 @@ export interface CardDef {
   momentum?: number;
   /** Betäubt nur, wenn der Gegner gerade ausholt (Kopfnuss). */
   stunIfWindup?: boolean;
+  /** Erzeugt Karten: auf die Hand oder in den Stapel. */
+  make?: { card: CardId; n: number; to: 'hand' | 'draw' };
+  /** Verschwindet am Rundenende von der Hand (Murmeln und Kiesel). */
+  ethereal?: boolean;
+  /** Stellt ein Gerät auf (Runden). */
+  device?: { kind: DeviceId; rounds: number };
+  /** Alle Geräte wirken sofort einmal (Ladegerät). */
+  charge?: boolean;
+  /** Mit voller Wucht: Der nächste Waffenangriff macht bonus mehr und kostet so viel Haltbarkeit extra. */
+  overdrive?: number;
+  /** Flickt die Waffe, die es am nötigsten hat (Haltbarkeit). */
+  repair?: number;
+  /** Wechselt die Haltung. */
+  stance?: Stance;
   /** Höchstens so oft pro Runde. */
   perTurn?: number;
   /** Fähigkeit, die von selbst wirkt (kommt nicht ins Deck). */
@@ -1262,6 +1296,10 @@ export const CARDS: Record<CardId, CardDef> = {
   drive: { name: 'Abschlag', kind: 'weapon', cost: 1, target: 'any', dmg: 3, weapon: 'golfclub', art: 'golfschlaeger', desc: '3 Schaden, trifft auch Gegner hinten.' },
   pellet: { name: 'Stahlkugel', kind: 'weapon', cost: 0, target: 'any', dmg: 2, perTurn: 1, weapon: 'slingshot', art: 'schleuder', desc: '2 Schaden ohne Kraft, trifft auch hinten. Einmal pro Runde.' },
   nail: { name: 'Nagel', kind: 'weapon', cost: 1, target: 'any', dmg: 2, chain: true, pierce: true, weapon: 'nailgun', art: 'nagelpistole', desc: '2 Schaden an einem Gegner und noch einem zweiten. Geht durch Rüstung.' },
+  wrenchhit: { name: 'Zangenhieb', kind: 'weapon', cost: 1, target: 'near', dmg: 5, weapon: 'pipewrench', art: 'rohrzange', desc: '5 Schaden vorne.' },
+  marble: { name: 'Murmel', kind: 'temp', cost: 0, target: 'any', dmg: 1, slow: 1, thrown: true, ethereal: true, desc: '1 Schaden, auch hinten, der Gegner rutscht aus (1 Runde verlangsamt). Am Rundenende weg.' },
+  pebble: { name: 'Kiesel', kind: 'temp', cost: 0, target: 'any', dmg: 1, thrown: true, ethereal: true, desc: '1 Schaden, auch hinten. Am Rundenende weg.' },
+  lathhit: { name: 'Lattenhieb', kind: 'temp', cost: 1, target: 'near', dmg: 4, desc: '4 Schaden vorne. Die Latte bricht danach.' },
   lidup: { name: 'Deckel hoch', kind: 'weapon', cost: 1, target: 'self', block: 4, weapon: 'lid', art: 'tonnendeckel', desc: 'Fängt 4 Schaden ab, bis zu deiner nächsten Runde.' },
   lidbash: { name: 'Deckelstoß', kind: 'weapon', cost: 1, target: 'near', dmg: 2, push: true, weapon: 'lid', art: 'tonnendeckel', desc: '2 Schaden und stößt zurück.' },
   foam: { name: 'Löschnebel', kind: 'weapon', cost: 2, target: 'self', area: 'all', blind: 1, weapon: 'extinguisher', art: 'feuerloescher', desc: 'Alle Gegner sind geblendet: Ihr nächster Angriff geht daneben.' },
@@ -1289,8 +1327,14 @@ export const CARDS: Record<CardId, CardDef> = {
   flare: { name: 'Signalfackel', kind: 'once', cost: 0, target: 'any', blind: 1, vs: { kind: 'watcher', dmg: 2, push: true }, rarity: 'rare', where: 'Konvoi-Wracks, Haltestellen', art: 'signalfackel', desc: 'Ein Gegner ist Geblendet. Der Bleiche Wächter nimmt 2 Schaden und weicht zurück.' },
   tripwire: { name: 'Stolperdraht', kind: 'once', cost: 1, target: 'self', trap: 3, rarity: 'common', where: 'Werktisch, Baumärkte, Hochsitze', craft: { copper: 1, screws: 2 }, art: 'stolperdraht', desc: 'Falle: Wer als Nächstes nach vorn kommt, stürzt. 3 Schaden, und er setzt eine Runde aus.' },
   alarm: { name: 'Wecker', kind: 'once', cost: 1, target: 'self', area: 'far', pull: true, rarity: 'common', where: 'Pakete, Rucksäcke', art: 'wecker', desc: 'Alle hinten kommen sofort nach vorn, auch der Heuler.' },
+  lath: { name: 'Zaunlatte', kind: 'once', cost: 0, target: 'self', make: { card: 'lathhit', n: 3, to: 'draw' }, rarity: 'common', where: 'Werktisch, Schuppen, Hochsitze', craft: { wood: 2 }, art: 'zaunlatte', desc: 'Eine Notwaffe für diesen Kampf: 3 Lattenhiebe kommen in deinen Stapel.' },
+  marblesack: { name: 'Sack Murmeln', kind: 'once', cost: 1, target: 'self', area: 'all', slow: 2, make: { card: 'marble', n: 2, to: 'hand' }, rarity: 'common', where: 'Werktisch, Rucksäcke, Supermärkte', craft: { glass: 2, cloth: 1 }, art: 'sack-murmeln', desc: 'Alle Gegner rutschen aus (2 Runden verlangsamt), dazu 2 Murmeln auf die Hand.' },
+  motionlamp: { name: 'Bewegungsmelder-Lampe', kind: 'once', cost: 1, target: 'self', device: { kind: 'lamp', rounds: 4 }, rarity: 'common', where: 'Werktisch, Baumärkte, Garagen', craft: { cells: 1, glass: 1, electronics: 1 }, art: 'bewegungsmelder', desc: 'Gerät, 4 Runden: Wer nach vorn kommt, ist geblendet.' },
+  boombox: { name: 'Kofferradio', kind: 'once', cost: 1, target: 'self', device: { kind: 'boombox', rounds: 3 }, rarity: 'common', where: 'Werktisch, Pakete, Rucksäcke', craft: { cells: 1, electronics: 1, plastic: 1 }, art: 'kofferradio', desc: 'Gerät, 3 Runden: Rauschen übertönt alles, Heuler rufen niemanden.' },
   oilcan: { name: 'Ölkanister', kind: 'once', cost: 1, target: 'self', area: 'all', burn: 2, rarity: 'rare', where: 'Tankstellen, Fässer, Zeltlager', art: 'oelkanister', desc: 'Alle Gegner brennen 2 Runden, vorne und hinten.' },
   painkiller: { name: 'Schmerzmittel', kind: 'once', cost: 1, target: 'self', block: 6, rarity: 'rare', where: 'Apotheken, Notlazarett-Kisten', art: 'schmerzmittel', desc: 'Fängt 6 Schaden ab, bis zu deiner nächsten Runde.' },
+  tape: { name: 'Panzertape', kind: 'once', cost: 0, target: 'self', repair: 6, rarity: 'rare', where: 'Baumärkte, Autos, Pakete', art: 'panzertape', desc: 'Deine Waffe hält 6 Schläge länger (die, die es am nötigsten hat).' },
+  fencer: { name: 'Weidezaungerät', kind: 'once', cost: 1, target: 'self', device: { kind: 'fence', rounds: 3 }, rarity: 'rare', where: 'Werktisch, Scheunen, Hofläden', craft: { cells: 2, copper: 1, metal: 1 }, art: 'weidezaun', desc: 'Gerät, 3 Runden: Jede Runde bekommen alle vorne einen Schlag (2 Schaden).' },
   flashbang: { name: 'Blendgranate', kind: 'once', cost: 1, target: 'self', area: 'all', stun: true, rarity: 'epic', where: 'Konvoi-Wracks', art: 'blendgranate', desc: 'Alle Gegner setzen eine Runde aus.' },
   fireworks: { name: 'Feuerwerksbatterie', kind: 'once', cost: 1, target: 'self', area: 'all', dmg: 1, blind: 1, silence: 3, rarity: 'epic', where: 'Kioske, Zeltlager, Sichtungen', art: 'feuerwerk', desc: 'Alle Gegner: 1 Schaden und geblendet, Heuler verstummen 3 Runden.' },
   grenade: { name: 'Granate', kind: 'once', cost: 2, target: 'self', area: 'all', dmg: 6, rarity: 'legendary', where: 'Konvoi-Wracks, Hilfsabwürfe', art: 'granate', desc: '6 Schaden an allen Gegnern.' },
@@ -1302,6 +1346,12 @@ export const CARDS: Record<CardId, CardDef> = {
   headbutt: { name: 'Kopfnuss', kind: 'skill', cost: 1, target: 'near', dmg: 1, stunIfWindup: true, scale: { dmg: 1 }, rarity: 'common', where: 'Notizbücher', art: 'kopfnuss', desc: '1 Schaden vorne. Holt der Gegner gerade aus, setzt er eine Runde aus.' },
   cover: { name: 'Deckung', kind: 'skill', cost: 0, target: 'self', block: 2, scale: { block: 1 }, rarity: 'common', where: 'Notizbücher', art: 'deckung', desc: 'Fängt 2 Schaden ab, kostet keine Kraft.' },
   roll: { name: 'Ausweichrolle', kind: 'skill', cost: 1, target: 'self', block: 3, draw: 1, scale: { block: 1 }, rarity: 'common', where: 'Notizbücher', art: 'ausweichrolle', desc: 'Fängt 3 Schaden ab, und du ziehst 1 Karte.' },
+  pockets: { name: 'Hosentaschen', kind: 'skill', cost: 0, target: 'self', make: { card: 'marble', n: 2, to: 'hand' }, scale: { bonus: 1 }, bonus: 0, rarity: 'common', where: 'Notizbücher', art: 'hosentaschen', desc: '2 Murmeln auf die Hand (0 Kraft: 1 Schaden, auch hinten, rutscht aus).' },
+  pickstones: { name: 'Steine aufsammeln', kind: 'skill', cost: 1, target: 'self', make: { card: 'pebble', n: 4, to: 'hand' }, scale: { bonus: 1 }, bonus: 0, rarity: 'common', where: 'Notizbücher', art: 'steine-sammeln', desc: '4 Kiesel auf die Hand (0 Kraft: 1 Schaden, auch hinten).' },
+  breathe: { name: 'Durchatmen', kind: 'skill', cost: 1, target: 'self', block: 3, stance: 'calm', scale: { block: 1 }, rarity: 'common', where: 'Notizbücher', art: 'durchatmen', desc: 'Fängt 3 ab und du wirst ruhig: Treffer machen 1 weniger. Verlässt du die Ruhe, bekommst du 2 Kraft.' },
+  grit: { name: 'Zähne zusammenbeißen', kind: 'skill', cost: 1, target: 'near', dmg: 3, stance: 'wrath', scale: { dmg: 1 }, rarity: 'common', where: 'Notizbücher', art: 'zaehne', desc: '3 Schaden vorne, und du wirst rasend: Deine Angriffe machen 3 mehr, aber Treffer gegen dich 2 mehr.' },
+  fullforce: { name: 'Mit voller Wucht', kind: 'skill', cost: 0, target: 'self', overdrive: 3, bonus: 5, scale: { bonus: 1 }, rarity: 'common', where: 'Notizbücher', art: 'volle-wucht', desc: 'Dein nächster Waffenschlag macht 5 mehr, kostet die Waffe aber 3 Haltbarkeit extra.' },
+  charger: { name: 'Ladegerät', kind: 'skill', cost: 1, target: 'self', charge: true, bonus: 0, scale: { bonus: 1 }, rarity: 'common', where: 'Notizbücher', art: 'ladegeraet', desc: 'Alle deine Geräte wirken sofort einmal. Ab Stufe II laufen sie auch länger.' },
   sweep: { name: 'Rundumschlag', kind: 'skill', cost: 1, target: 'self', area: 'near', dmg: 2, scale: { dmg: 1 }, rarity: 'rare', where: 'Notizbücher, Alpha-Wandler', art: 'rundumschlag', desc: '2 Schaden an allen vorne.' },
   spark: { name: 'Funkenschlag', kind: 'skill', cost: 1, target: 'near', dmg: 1, burn: 2, scale: { burn: 1 }, rarity: 'common', where: 'Notizbücher', art: 'funkenschlag', desc: '1 Schaden vorne, der Gegner brennt 2 Runden.' },
   pitcher: { name: 'Werferin', kind: 'skill', cost: 0, target: 'self', passive: true, bonus: 1, scale: { bonus: 1 }, rarity: 'common', where: 'Notizbücher', art: 'werferin', desc: 'Wirkt von selbst: Steinwurf und Pfeil machen 1 Schaden mehr.' },
@@ -1313,9 +1363,16 @@ export const CARDS: Record<CardId, CardDef> = {
   rage: { name: 'Wut', kind: 'skill', cost: 0, target: 'self', passive: true, bonus: 2, scale: { bonus: 1 }, rarity: 'rare', where: 'Notizbücher', art: 'wut', desc: 'Wirkt von selbst: Hast du nur noch 3 Gesundheit oder weniger, machen deine Angriffe 2 mehr.' },
   retaliate: { name: 'Zurückschlagen', kind: 'skill', cost: 0, target: 'self', passive: true, bonus: 2, scale: { bonus: 1 }, rarity: 'rare', where: 'Notizbücher', art: 'zurueckschlagen', desc: 'Wirkt von selbst: Fängst du einen Angriff ganz ab, nimmt der Angreifer 2 Schaden.' },
   firstaid: { name: 'Erste Hilfe', kind: 'skill', cost: 0, target: 'self', passive: true, bonus: 2, scale: { bonus: 1 }, rarity: 'rare', where: 'Notizbücher, Notlazarett-Kisten', art: 'erste-hilfe', desc: 'Wirkt von selbst: Das erste Verbinden im Kampf kostet keine Medizin und heilt 2 mehr.' },
+  tinkerbox: { name: 'Bastelkiste', kind: 'skill', cost: 0, target: 'self', passive: true, bonus: 1, scale: { bonus: 1 }, rarity: 'rare', where: 'Notizbücher', art: 'bastelkiste', desc: 'Wirkt von selbst: Deine Geräte laufen 1 Runde länger.' },
+  toolroll: { name: 'Werkzeugrolle', kind: 'skill', cost: 0, target: 'self', passive: true, bonus: 2, scale: { bonus: 1 }, rarity: 'rare', where: 'Notizbücher', art: 'werkzeugrolle', desc: 'Wirkt von selbst: Nach jedem Kampf flickst du deine Waffen um 2.' },
+  trueaim: { name: 'Zielwasser', kind: 'skill', cost: 0, target: 'self', passive: true, bonus: 3, scale: { bonus: -0.5 }, rarity: 'rare', where: 'Notizbücher', art: 'zielwasser', desc: 'Wirkt von selbst: Jeder dritte Wurf in einem Kampf trifft doppelt.' },
+  unleash: { name: 'Aus der Ruhe', kind: 'skill', cost: 0, target: 'self', stance: 'wrath', draw: 1, scale: { draw: 1 }, rarity: 'rare', where: 'Notizbücher', art: 'aus-der-ruhe', desc: 'Du wirst rasend und ziehst 1 Karte. Warst du ruhig, bekommst du dazu 2 Kraft.' },
+  innercalm: { name: 'Innere Ruhe', kind: 'skill', cost: 0, target: 'self', passive: true, bonus: 1, scale: { bonus: 0.5 }, rarity: 'rare', where: 'Notizbücher', art: 'innere-ruhe', desc: 'Wirkt von selbst: Bist du ruhig, ziehst du jede Runde 1 Karte mehr.' },
   radio: { name: 'Funker', kind: 'skill', cost: 1, target: 'any', stun: true, silence: 9, rarity: 'epic', where: 'Notizbücher (an hohen Punkten häufiger)', art: 'funker', desc: 'Ein Gegner verliert seine Runde. Ein Heuler ruft in diesem Kampf keine Hilfe mehr.' },
   secondwind: { name: 'Zweiter Atem', kind: 'skill', cost: 0, target: 'self', passive: true, heal: 4, scale: { heal: 2 }, rarity: 'epic', where: 'Alpha-Wandler', art: 'zweiter-atem', desc: 'Wirkt von selbst, einmal pro Kampf: Fällst du unter 3 Gesundheit, heilst du 4.' },
   wildfire: { name: 'Lauffeuer', kind: 'skill', cost: 0, target: 'self', passive: true, burn: 2, scale: { burn: 1 }, rarity: 'epic', where: 'Notizbücher', art: 'lauffeuer', desc: 'Wirkt von selbst: Fällt ein brennender Gegner, fängt der nächste Feuer und brennt 2 Runden.' },
+  laststrike: { name: 'Letzter Schlag', kind: 'skill', cost: 0, target: 'self', passive: true, rarity: 'epic', where: 'Notizbücher', art: 'letzter-schlag', desc: 'Wirkt von selbst: Zerbricht deine Waffe bei einem Schlag, trifft dieser Schlag doppelt.' },
+  frenzy: { name: 'Raserei', kind: 'skill', cost: 1, target: 'self', stance: 'wrath', momentum: 4, scale: { momentum: 1 }, rarity: 'epic', where: 'Notizbücher', art: 'raserei', desc: 'Du wirst rasend, und dein nächster Angriff in dieser Runde macht 4 mehr.' },
   packleader: { name: 'Rudelführer', kind: 'skill', cost: 1, target: 'self', ally: { rounds: 3, dmg: 2 }, scale: { allyDmg: 1 }, rarity: 'legendary', where: 'Alpha-Wandler', art: 'rudelfuehrer', desc: 'Ein Hund kämpft 3 Runden mit und beißt jede Runde für 2 Schaden zu.' },
   laststand: { name: 'Letztes Gefecht', kind: 'skill', cost: 0, target: 'self', passive: true, rarity: 'legendary', where: 'Alpha-Wandler', art: 'letztes-gefecht', desc: 'Wirkt von selbst, einmal am Tag: Ein tödlicher Treffer lässt dich mit 1 Gesundheit stehen.' },
 };
@@ -1324,14 +1381,19 @@ export const CARDS: Record<CardId, CardDef> = {
 // Ein Stil ist nichts, was man „hat“: Man sammelt einzelne Karten und mischt frei. Karten eines
 // Stils machen sich aber gegenseitig stärker. Ohne Stil: passt zu allem.
 
-export type CardStyle = 'fire' | 'trap' | 'momentum' | 'guard' | 'pack';
-export const STYLE_ORDER: CardStyle[] = ['fire', 'trap', 'momentum', 'guard', 'pack'];
-export const STYLE_NAMES: Record<CardStyle, string> = { fire: 'Feuer', trap: 'Fallen und Abstand', momentum: 'Schwung', guard: 'Schutz', pack: 'Rudel' };
+export type CardStyle = 'fire' | 'trap' | 'momentum' | 'guard' | 'tinker' | 'wear' | 'junk' | 'stance' | 'pack';
+/** Gezeigte Stile (Rudel ruht, bis der Hund eine Rolle spielt). */
+export const STYLE_ORDER: CardStyle[] = ['fire', 'trap', 'momentum', 'guard', 'tinker', 'wear', 'junk', 'stance'];
+export const STYLE_NAMES: Record<CardStyle, string> = { fire: 'Feuer', trap: 'Fallen und Abstand', momentum: 'Schwung', guard: 'Schutz', tinker: 'Tüftler', wear: 'Raubbau', junk: 'Kleinkram', stance: 'Ruhe und Wut', pack: 'Rudel' };
 export const STYLE_HINT: Record<CardStyle, string> = {
   fire: 'Anzünden und brennen lassen. Stark gegen Wandler, schwach gegen den gepanzerten Borkenmann.',
   trap: 'Gegner auf Abstand halten, bremsen, in Fallen laufen lassen. Stark gegen Borkenmann und Wächter.',
   momentum: 'Ein Treffer lädt den nächsten auf. Schnelle, harte Kämpfe.',
   guard: 'Abfangen, zurückschlagen, durchhalten. Wenig Schaden, dafür längere Kämpfe.',
+  tinker: 'Geräte aufstellen, die jede Runde von selbst wirken. Braucht Batterien zum Bauen.',
+  wear: 'Waffen bis zum Bruch ausreizen: harte Schläge, die viel Haltbarkeit kosten.',
+  junk: 'Viele kleine Würfe für 0 Kraft: Murmeln, Kiesel, Steine.',
+  stance: 'Zwischen ruhig und rasend wechseln: abwarten oder alles reinlegen.',
   pack: 'Ein Hund kämpft mit. Je länger er bleibt, desto besser.',
 };
 
@@ -1339,19 +1401,28 @@ export const CARD_STYLE: Partial<Record<CardId, CardStyle>> = {
   // Feuer
   molotov: 'fire', tinder: 'fire', oilcan: 'fire', spark: 'fire', embers: 'fire', wildfire: 'fire',
   // Fallen und Abstand
-  caltrops: 'trap', lure: 'trap', tripwire: 'trap', alarm: 'trap', steady: 'trap', pitcher: 'trap', sneak: 'trap', trapper: 'trap', distract: 'trap',
+  caltrops: 'trap', lure: 'trap', tripwire: 'trap', alarm: 'trap', steady: 'trap', pitcher: 'junk', sneak: 'trap', trapper: 'trap', distract: 'trap',
   // Schwung
   adrenaline: 'momentum', followup: 'momentum', sweep: 'momentum', rage: 'momentum',
   // Schutz
   smoke: 'guard', firecracker: 'guard', pepper: 'guard', dressing: 'guard', flare: 'guard', painkiller: 'guard', flashbang: 'guard', fireworks: 'guard',
   counter: 'guard', headbutt: 'guard', cover: 'guard', roll: 'guard', retaliate: 'guard', firstaid: 'guard', radio: 'guard', secondwind: 'guard', laststand: 'guard',
-  // Rudel
-  packleader: 'pack',
+  // Tüftler
+  motionlamp: 'tinker', boombox: 'tinker', fencer: 'tinker', charger: 'tinker', tinkerbox: 'tinker',
+  // Raubbau
+  lath: 'wear', lathhit: 'wear', tape: 'wear', fullforce: 'wear', toolroll: 'wear', laststrike: 'wear',
+  // Kleinkram
+  marblesack: 'junk', marble: 'junk', pebble: 'junk', pockets: 'junk', pickstones: 'junk', trueaim: 'junk',
+  // Ruhe und Wut
+  breathe: 'stance', grit: 'stance', unleash: 'stance', innercalm: 'stance', frenzy: 'stance',
+  // Rudel ruht vorerst (Kevin): Rudelführer bleibt ohne Stil-Zeichen
 };
 export const WEAPON_STYLE: Partial<Record<WeaponId, CardStyle>> = {
   bat: 'momentum', axe: 'momentum', machete: 'momentum', nailgun: 'momentum', sledgehammer: 'momentum',
-  crossbow: 'trap', golfclub: 'trap', slingshot: 'trap', pitchfork: 'trap', bow: 'trap',
+  crossbow: 'trap', golfclub: 'trap', pitchfork: 'trap', bow: 'trap',
   shovel: 'guard', lid: 'guard', extinguisher: 'guard',
+  slingshot: 'junk',
+  pipewrench: 'wear',
 };
 
 /** Stil einer Karte (Waffenkarten haben den Stil ihrer Waffe). */
@@ -1362,8 +1433,8 @@ export function styleOf(id: CardId): CardStyle | undefined {
 }
 
 /** Sammelkarten in der Reihenfolge des Sammelbuchs. */
-export const ONCE_CARDS: CardId[] = ['molotov', 'smoke', 'caltrops', 'firecracker', 'lure', 'pepper', 'tinder', 'tripwire', 'alarm', 'dressing', 'adrenaline', 'flare', 'oilcan', 'painkiller', 'flashbang', 'fireworks', 'grenade'];
-export const SKILL_CARDS: CardId[] = ['counter', 'steady', 'breath', 'spark', 'pitcher', 'followup', 'headbutt', 'cover', 'roll', 'sweep', 'sneak', 'scavenger', 'embers', 'trapper', 'distract', 'rage', 'retaliate', 'firstaid', 'radio', 'secondwind', 'wildfire', 'packleader', 'laststand'];
+export const ONCE_CARDS: CardId[] = ['molotov', 'smoke', 'caltrops', 'firecracker', 'lure', 'pepper', 'tinder', 'tripwire', 'alarm', 'lath', 'marblesack', 'motionlamp', 'boombox', 'dressing', 'adrenaline', 'flare', 'oilcan', 'painkiller', 'tape', 'fencer', 'flashbang', 'fireworks', 'grenade'];
+export const SKILL_CARDS: CardId[] = ['counter', 'steady', 'breath', 'spark', 'pitcher', 'followup', 'headbutt', 'cover', 'roll', 'pockets', 'pickstones', 'breathe', 'grit', 'fullforce', 'charger', 'sweep', 'sneak', 'scavenger', 'embers', 'trapper', 'distract', 'rage', 'retaliate', 'firstaid', 'tinkerbox', 'toolroll', 'trueaim', 'unleash', 'innercalm', 'radio', 'secondwind', 'wildfire', 'packleader', 'laststand'];
 /** Höchstens so viele Einmal-Karten je Sorte stecken in der Tasche. */
 export const ONCE_CARRY = 3;
 /** Die Tasche für Einmal-Karten hat so viele Plätze (je Platz eine Sorte). */
@@ -1387,16 +1458,16 @@ export function cardStat(id: CardId, stat: CardStat, level = 1): number {
  */
 export const CARD_LOOT: Partial<Record<SpotKind, [CardId | `w:${WeaponId}`, number][]>> = {
   fuel: [['molotov', 0.22], ['oilcan', 0.06], ['flare', 0.03], ['w:extinguisher', 0.015]],
-  car: [['molotov', 0.05], ['w:golfclub', 0.02], ['flare', 0.02]],
-  hardware: [['smoke', 0.1], ['caltrops', 0.1], ['tripwire', 0.08], ['w:machete', 0.01], ['w:shovel', 0.05], ['w:axe', 0.03], ['w:nailgun', 0.015], ['w:extinguisher', 0.01]],
-  market: [['lure', 0.12], ['firecracker', 0.08], ['fireworks', 0.01], ['w:slingshot', 0.015], ['w:pitchfork', 0.01]],
+  car: [['molotov', 0.05], ['tape', 0.04], ['w:golfclub', 0.02], ['w:pipewrench', 0.02], ['flare', 0.02]],
+  hardware: [['smoke', 0.1], ['caltrops', 0.1], ['tripwire', 0.08], ['motionlamp', 0.06], ['tape', 0.06], ['w:pipewrench', 0.03], ['w:machete', 0.01], ['w:shovel', 0.05], ['w:axe', 0.03], ['w:nailgun', 0.015], ['w:extinguisher', 0.01]],
+  market: [['lure', 0.12], ['marblesack', 0.03], ['firecracker', 0.08], ['fireworks', 0.01], ['w:slingshot', 0.015], ['w:pitchfork', 0.01]],
   pharmacy: [['pepper', 0.1], ['painkiller', 0.06], ['dressing', 0.05], ['adrenaline', 0.025]],
-  shed: [['tinder', 0.08], ['caltrops', 0.05], ['w:shovel', 0.05], ['w:pitchfork', 0.04], ['w:axe', 0.02], ['w:machete', 0.015]],
-  hide: [['tripwire', 0.06]],
-  parcel: [['alarm', 0.08]],
+  shed: [['tinder', 0.08], ['lath', 0.08], ['fencer', 0.03], ['caltrops', 0.05], ['w:shovel', 0.05], ['w:pitchfork', 0.04], ['w:axe', 0.02], ['w:machete', 0.015]],
+  hide: [['tripwire', 0.06], ['lath', 0.06]],
+  parcel: [['alarm', 0.08], ['boombox', 0.06], ['tape', 0.04]],
   barrel: [['oilcan', 0.05]],
   camp: [['tinder', 0.2], ['oilcan', 0.06], ['fireworks', 0.02]],
-  backpack: [['firecracker', 0.04], ['alarm', 0.04], ['dressing', 0.03], ['w:slingshot', 0.02]],
+  backpack: [['firecracker', 0.04], ['alarm', 0.04], ['marblesack', 0.05], ['boombox', 0.03], ['dressing', 0.03], ['w:slingshot', 0.02]],
   container: [['pepper', 0.03], ['lure', 0.03], ['w:lid', 0.03]],
   stop: [['flare', 0.04], ['firecracker', 0.03], ['w:lid', 0.03]],
   convoy: [['flare', 0.35], ['flashbang', 0.12], ['grenade', 0.04]],
@@ -1416,6 +1487,7 @@ export const WEAPON_CARDS: Record<WeaponId, CardId[]> = {
   axe: ['chop', 'chop', 'cleave'],
   machete: ['hack', 'hack', 'swath'],
   lid: ['lidup', 'lidup', 'lidbash'],
+  pipewrench: ['wrenchhit', 'wrenchhit', 'wrenchhit'],
   extinguisher: ['foam', 'extbash', 'extbash'],
   sledgehammer: ['sledge', 'sledge', 'heave'],
   golfclub: ['drive', 'drive'],

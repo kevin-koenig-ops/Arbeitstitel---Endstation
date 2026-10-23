@@ -44,6 +44,10 @@ if (args.has('--stile')) {
     { name: 'Woche 1 Schwung', weapons: ['machete', 'golfclub'], medicine: 2, pouch: { adrenaline: 1, molotov: 1 }, skills: { followup: 1, sweep: 1 } },
     { name: 'Später Schwung', weapons: ['sledgehammer', 'nailgun'], medicine: 3, pouch: { adrenaline: 2, grenade: 1 }, skills: { followup: 2, rage: 1, sweep: 1, counter: 1 } },
     { name: 'Woche 1 Schutz', weapons: ['lid', 'golfclub'], medicine: 2, pouch: { painkiller: 1, smoke: 1 }, skills: { headbutt: 1, cover: 1 } },
+    { name: 'Woche 1 Tüftler', weapons: ['crowbar', 'golfclub'], medicine: 2, pouch: { fencer: 1, motionlamp: 1, boombox: 1 }, skills: { charger: 1, tinkerbox: 1 } },
+    { name: 'Woche 1 Raubbau', weapons: ['pipewrench', 'golfclub'], medicine: 2, pouch: { tape: 1, lath: 1 }, skills: { fullforce: 1, toolroll: 1 } },
+    { name: 'Woche 1 Kleinkram', weapons: ['crowbar', 'slingshot'], medicine: 2, pouch: { marblesack: 2 }, skills: { pockets: 1, pitcher: 1 } },
+    { name: 'Woche 1 Ruhe/Wut', weapons: ['crowbar', 'golfclub'], medicine: 2, pouch: { pepper: 1, molotov: 1 }, skills: { breathe: 1, grit: 1 } },
     { name: 'Später Schutz', weapons: ['extinguisher', 'crossbow'], medicine: 3, pouch: { painkiller: 2, fireworks: 1 }, skills: { headbutt: 2, roll: 1, retaliate: 1, firstaid: 1 } },
   );
 }

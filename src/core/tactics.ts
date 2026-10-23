@@ -15,7 +15,7 @@
 // Alles hier ist rein und vorhersagbar: gleicher Startwert, gleiche Züge, gleiches Ergebnis.
 // Dadurch kann es später auch der Server nachrechnen.
 
-import { BASE_DECK, CARDS, cardStat, FOE_TACTICS, ONCE_CARRY, POUCH_SLOTS, TACTICS, WEAPON_CARDS, type CardId, type CardStat, type IntentKind } from './content';
+import { BASE_DECK, CARDS, cardStat, DEVICES, FOE_TACTICS, MAX_DEVICES, ONCE_CARRY, POUCH_SLOTS, STANCE, TACTICS, WEAPON_CARDS, type CardId, type CardStat, type DeviceId, type IntentKind, type Stance } from './content';
 import { hashString } from './rng';
 import type { FoeKind, Opening, Weapon, WeaponId } from './types';
 
@@ -111,6 +111,21 @@ export interface TacticsState {
   /** Erste Hilfe: Das erste Verbinden kostet keine Medizin und heilt so viel mehr (0 = hast du nicht). */
   firstAid: number;
   firstAidUsed: boolean;
+  /** Geräte (Tüftler), die gerade stehen, mit restlichen Runden. */
+  devices: { kind: DeviceId; rounds: number }[];
+  /** Bastelkiste: Geräte laufen so viel länger. */
+  tinkerBonus: number;
+  /** Mit voller Wucht: der nächste Waffenschlag (Bonus, Haltbarkeit extra). */
+  overdrive: { dmg: number; wear: number } | null;
+  /** Letzter Schlag: Zerbricht die Waffe, trifft der Schlag doppelt. */
+  lastStrike: boolean;
+  /** Zielwasser: jeder so-und-sovielte Wurf trifft doppelt (0 = hast du nicht); Würfe bisher. */
+  trueAim: number;
+  throws: number;
+  /** Haltung (Ruhe und Wut). */
+  stance: Stance | null;
+  /** Innere Ruhe: so viele Karten mehr, wenn ruhig. */
+  innerCalm: number;
 }
 
 /** Was du an Sammelkarten mitbringst: Einmal-Karten in der Tasche (Anzahl) und Fähigkeiten (Stufe). */
@@ -146,6 +161,12 @@ export type TEvent =
   | { type: 'trap'; id: number }
   | { type: 'pulled'; id: number }
   | { type: 'trapSet'; count: number }
+  | { type: 'deviceSet'; kind: DeviceId; rounds: number }
+  | { type: 'device'; kind: DeviceId }
+  | { type: 'overdrive'; amount: number }
+  | { type: 'repair'; weapon: WeaponId; amount: number }
+  | { type: 'stance'; stance: Stance }
+  | { type: 'made'; card: CardId; n: number; to: 'hand' | 'draw' }
   | { type: 'status'; id: number; status: 'burn' | 'blind' | 'slow' | 'silence' | 'interrupt' | 'steady' }
   | { type: 'miss'; id: number }
   | { type: 'ally'; id: number; dmg: number; kill: boolean }
@@ -288,6 +309,14 @@ export function createTactics(o: {
     retaliate: lvl('retaliate') ? cardStat('retaliate', 'bonus', lvl('retaliate')) : 0,
     firstAid: lvl('firstaid') ? cardStat('firstaid', 'bonus', lvl('firstaid')) : 0,
     firstAidUsed: false,
+    devices: [],
+    tinkerBonus: lvl('tinkerbox') ? cardStat('tinkerbox', 'bonus', lvl('tinkerbox')) : 0,
+    overdrive: null,
+    lastStrike: lvl('laststrike') > 0,
+    trueAim: lvl('trueaim') ? Math.floor(cardStat('trueaim', 'bonus', lvl('trueaim'))) : 0,
+    throws: 0,
+    stance: null,
+    innerCalm: lvl('innercalm') ? Math.floor(cardStat('innercalm', 'bonus', lvl('innercalm'))) : 0,
   };
   for (const w of o.weapons) if (w.dur > 0) st.weaponDur[w.kind] = Math.max(st.weaponDur[w.kind] ?? 0, w.dur);
   st.draw = shuffle(st, deckFor(o.weapons, o.medicine, kit));
@@ -377,7 +406,8 @@ function startTurn(st: TacticsState, events: TEvent[]) {
   st.turnPlays = {};
   st.energy = Math.max(1, TACTICS.energy - st.grabbed);
   st.grabbed = 0;
-  drawCards(st, Math.max(2, TACTICS.hand - st.dazed));
+  // Innere Ruhe: ruhig ziehst du mehr
+  drawCards(st, Math.max(2, TACTICS.hand - st.dazed) + (st.stance === 'calm' ? st.innerCalm : 0));
   st.dazed = 0;
   for (const f of aliveFoes(st)) f.intent = intentOf(f);
   events.push({ type: 'turn', turn: st.turn });
@@ -411,6 +441,11 @@ function damageFoe(st: TacticsState, f: TFoe, raw: number, events: TEvent[], pie
  */
 function arriveNear(st: TacticsState, f: TFoe, events: TEvent[]): boolean {
   f.row = 'near';
+  // Bewegungsmelder-Lampe: Wer nach vorn kommt, ist geblendet
+  if (st.devices.some((d) => d.kind === 'lamp') && f.blind <= 0) {
+    f.blind = 1;
+    events.push({ type: 'device', kind: 'lamp' }, { type: 'status', id: f.id, status: 'blind' });
+  }
   const dmg = st.traps.shift();
   if (dmg === undefined) return false;
   events.push({ type: 'trap', id: f.id });
@@ -421,6 +456,35 @@ function arriveNear(st: TacticsState, f: TFoe, events: TEvent[]): boolean {
     events.push({ type: 'stun', id: f.id });
   }
   return true;
+}
+
+/** Ein Gerät wirkt einmal (Weidezaun schlägt zu, Radio übertönt die Heuler). */
+function deviceAct(st: TacticsState, kind: DeviceId, events: TEvent[]) {
+  if (kind === 'fence') {
+    const near = aliveFoes(st).filter((f) => f.row === 'near');
+    if (!near.length) return;
+    events.push({ type: 'device', kind });
+    for (const f of near) damageFoe(st, f, DEVICES.fenceDmg, events);
+  } else if (kind === 'boombox') {
+    const howlers = aliveFoes(st).filter((f) => canHowl(f.kind));
+    if (!howlers.length) return;
+    events.push({ type: 'device', kind });
+    for (const f of howlers) {
+      f.silence = Math.max(f.silence, 1);
+      events.push({ type: 'status', id: f.id, status: 'silence' });
+    }
+  }
+}
+
+/** Haltung wechseln. Wer die Ruhe verlässt, bekommt Kraft. */
+function setStance(st: TacticsState, stance: Stance, events: TEvent[]) {
+  if (st.stance === stance) return;
+  if (st.stance === 'calm') {
+    st.energy += STANCE.calmLeaveGain;
+    events.push({ type: 'gain', amount: STANCE.calmLeaveGain });
+  }
+  st.stance = stance;
+  events.push({ type: 'stance', stance });
 }
 
 /** Anzünden: Brennt so viele Runden (Glut verlängert). */
@@ -457,9 +521,9 @@ export function playCard(st: TacticsState, handIndex: number, target?: number): 
   if (st.over || !card) return [];
   return resolve(st, card, target, () => {
     st.hand.splice(handIndex, 1);
-    // Einmal-Karten sind danach weg, alles andere kommt auf den Ablagestapel
+    // Einmal-Karten und erzeugte Karten sind danach weg, alles andere kommt auf den Ablagestapel
     if (CARDS[card].kind === 'once') st.used[card] = (st.used[card] ?? 0) + 1;
-    else st.discard.push(card);
+    else if (CARDS[card].kind !== 'temp') st.discard.push(card);
   });
 }
 
@@ -495,6 +559,7 @@ function resolve(st: TacticsState, card: CardId, target: number | undefined, tak
   const events: TEvent[] = [];
   const def = CARDS[card];
   if (st.energy < def.cost) return [{ type: 'denied', reason: 'energy' }];
+  if (def.repair && !Object.values(st.weaponDur).some((d) => (d ?? 0) > 0)) return [{ type: 'denied', reason: 'target' }];
   if (lacksMedicine(st, card)) return [{ type: 'denied', reason: 'medicine' }];
   if (def.heal && !def.gain && st.hp >= st.maxHp) return [{ type: 'denied', reason: 'full' }];
   if (def.perTurn && (st.turnPlays[card] ?? 0) >= def.perTurn) return [{ type: 'denied', reason: 'limit' }];
@@ -511,9 +576,22 @@ function resolve(st: TacticsState, card: CardId, target: number | undefined, tak
   events.push({ type: 'play', card, target: foe?.id });
 
   const targets = def.area ? areaFoes(st, def.area) : foe ? [foe] : [];
+  // Mit voller Wucht: dieser Waffenschlag macht mehr und kostet extra Haltbarkeit
+  let extraWear = 0;
+  let overBonus = 0;
+  if (def.weapon && (def.dmg ?? 0) > 0 && st.overdrive) {
+    overBonus = st.overdrive.dmg;
+    extraWear = st.overdrive.wear;
+    st.overdrive = null;
+  }
+  // Letzter Schlag: Zerbricht die Waffe dabei, trifft er doppelt
+  const breaking = !!def.weapon && st.lastStrike && (st.weaponDur[def.weapon] ?? 0) - 1 - extraWear <= 0;
   let first = true;
   for (const f of targets) {
     let raw = stat(st, card, 'dmg');
+    if (first && raw) raw += overBonus;
+    // Rasend: der Angriff macht mehr
+    if (first && raw && st.stance === 'wrath') raw += STANCE.wrathDmg;
     if (raw && def.thrown) raw += st.pitcher;
     // Schwung aus dem letzten Schlag und Wut: auf den ersten Treffer dieses Angriffs
     if (first && raw && st.momentum) {
@@ -528,6 +606,12 @@ function resolve(st: TacticsState, card: CardId, target: number | undefined, tak
       st.focus = 0;
     }
     if (def.vs && f.kind === def.vs.kind) raw += def.vs.dmg;
+    // Zielwasser: jeder soundsovielte Wurf doppelt
+    if (first && raw && def.thrown) {
+      st.throws += 1;
+      if (st.trueAim && st.throws % st.trueAim === 0) raw *= 2;
+    }
+    if (first && raw && breaking) raw *= 2;
     if (raw > 0) damageFoe(st, f, raw, events, !!def.pierce);
     applyEffects(st, card, f, events);
     // Nagel: trifft noch einen zweiten
@@ -589,10 +673,51 @@ function resolve(st: TacticsState, card: CardId, target: number | undefined, tak
     st.ally = { rounds: def.ally.rounds, dmg: stat(st, card, 'allyDmg') };
     events.push({ type: 'allyIn', rounds: def.ally.rounds });
   }
+  // Karten erzeugen (Murmeln, Kiesel, Lattenhiebe)
+  if (def.make) {
+    const n = def.make.n + Math.floor(stat(st, card, 'bonus'));
+    for (let i = 0; i < n; i++) {
+      if (def.make.to === 'hand') {
+        if (st.hand.length < 10) st.hand.push(def.make.card);
+      } else st.draw.splice(Math.floor(next(st) * (st.draw.length + 1)), 0, def.make.card);
+    }
+    events.push({ type: 'made', card: def.make.card, n, to: def.make.to });
+  }
+  // Gerät aufstellen (höchstens 3; das älteste macht sonst Platz)
+  if (def.device) {
+    st.devices = st.devices.filter((d) => d.kind !== def.device!.kind);
+    if (st.devices.length >= MAX_DEVICES) st.devices.shift();
+    const rounds = def.device.rounds + st.tinkerBonus;
+    st.devices.push({ kind: def.device.kind, rounds });
+    events.push({ type: 'deviceSet', kind: def.device.kind, rounds });
+  }
+  // Ladegerät: alle Geräte wirken sofort (ab Stufe II laufen sie länger)
+  if (def.charge) {
+    const longer = Math.floor(stat(st, card, 'bonus'));
+    for (const d of st.devices) {
+      deviceAct(st, d.kind, events);
+      d.rounds += longer;
+    }
+  }
+  if (def.overdrive) {
+    const amount = stat(st, card, 'bonus');
+    st.overdrive = { dmg: amount, wear: def.overdrive };
+    events.push({ type: 'overdrive', amount });
+  }
+  // Flicken: die Waffe, die es am nötigsten hat
+  if (def.repair) {
+    const w = (Object.keys(st.weaponDur) as WeaponId[]).filter((k) => (st.weaponDur[k] ?? 0) > 0).sort((a, b) => (st.weaponDur[a] ?? 0) - (st.weaponDur[b] ?? 0))[0];
+    if (w) {
+      st.weaponDur[w] = (st.weaponDur[w] ?? 0) + def.repair;
+      st.wear[w] = (st.wear[w] ?? 0) - def.repair;
+      events.push({ type: 'repair', weapon: w, amount: def.repair });
+    }
+  }
+  if (def.stance) setStance(st, def.stance, events);
   if (def.weapon) {
     const w = def.weapon;
-    st.wear[w] = (st.wear[w] ?? 0) + 1;
-    st.weaponDur[w] = (st.weaponDur[w] ?? 1) - 1;
+    st.wear[w] = (st.wear[w] ?? 0) + 1 + extraWear;
+    st.weaponDur[w] = (st.weaponDur[w] ?? 1) - 1 - extraWear;
     if ((st.weaponDur[w] ?? 0) <= 0) {
       removeWeaponCards(st, w);
       events.push({ type: 'weaponBroke', weapon: w });
@@ -656,8 +781,17 @@ function applyEffects(st: TacticsState, card: CardId, f: TFoe, events: TEvent[])
 export function endTurn(st: TacticsState): TEvent[] {
   const events: TEvent[] = [];
   if (st.over) return events;
-  st.discard.push(...st.hand);
+  // Murmeln und Kiesel, die keiner geworfen hat, sind weg
+  st.discard.push(...st.hand.filter((c) => !CARDS[c].ethereal));
   st.hand = [];
+  // Geräte wirken, dann läuft ihre Zeit ab
+  for (const d of st.devices) deviceAct(st, d.kind, events);
+  for (const d of st.devices) d.rounds -= 1;
+  st.devices = st.devices.filter((d) => d.rounds > 0);
+  if (!aliveFoes(st).length) {
+    st.over = 'won';
+    return events;
+  }
   // Der Hund (Rudelführer) beißt zu: den Schwächsten vorne, sonst irgendwen
   if (st.ally) {
     const t = [...aliveFoes(st)].sort((a, b) => (a.row === b.row ? a.hp - b.hp : a.row === 'near' ? -1 : 1))[0];
@@ -730,7 +864,10 @@ export function endTurn(st: TacticsState): TEvent[] {
           events.push({ type: 'miss', id: f.id });
           break;
         }
-        const raw = intent.dmg ?? 0;
+        // Haltung: ruhig fängt etwas ab, rasend tut es mehr weh
+        let raw = intent.dmg ?? 0;
+        if (raw > 0 && st.stance === 'calm') raw = Math.max(0, raw - STANCE.calmGuard);
+        else if (raw > 0 && st.stance === 'wrath') raw += STANCE.wrathTaken;
         const absorbed = Math.min(st.block, raw);
         st.block -= absorbed;
         let dmg = raw - absorbed;

@@ -1080,6 +1080,16 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .t-focus { background: #5a4410; color: #ffe070; }
 .t-focus.t-momentum { background: #6a2a14; color: #ffb08a; }
 .t-focus.t-trap { background: #3a3a2a; color: #e8dcae; }
+.t-focus.t-stance[data-stance="calm"] { background: #26365e; color: #bcd0ff; }
+.t-focus.t-stance[data-stance="wrath"] { background: #6a1f1a; color: #ffb0a0; }
+.t-devices { display: flex; gap: 4px; margin-top: 2px; }
+.t-devices:empty { display: none; }
+.t-dev { display: inline-flex; align-items: center; gap: 2px; padding: 1px 5px; border-radius: 6px; background: #4a3d0e; color: #ffe070; font: 800 11px/1.2 var(--font-ui); }
+.t-card.kind-temp { background: linear-gradient(#e3e6ea, #b9c0c8); }
+.st-tinker { --st: #c9a227; }
+.st-wear { --st: #7d8794; }
+.st-junk { --st: #a8607e; }
+.st-stance { --st: #5566c0; }
 .t-foes { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
 .t-foe { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 0; border: 0; background: none; color: var(--bone); pointer-events: auto; cursor: pointer; touch-action: manipulation; will-change: transform; }
 .t-foe-name { font: 700 11px/1 var(--font-ui); text-shadow: 0 1px 2px #000, 0 0 6px #000; display: flex; gap: 4px; align-items: center; }

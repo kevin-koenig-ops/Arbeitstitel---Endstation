@@ -66,6 +66,7 @@ import {
   gearSum,
   CARDS,
   CARD_LOOT,
+  cardStat,
   ONCE_CARDS,
   ONCE_CARRY,
   POUCH_SLOTS,
@@ -796,10 +797,14 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       for (const [kind, n] of Object.entries(wear) as [WeaponId, number][]) {
         const w = state.weapons.filter((x) => x.kind === kind).sort((a, b) => b.dur - a.dur)[0];
         if (!w) continue;
-        w.dur -= Math.max(0, Math.min(30, Math.floor(n)));
+        // Negativ = geflickt (Panzertape), nie über neu hinaus
+        w.dur = Math.min(WEAPONS[kind].dur, w.dur - Math.max(-18, Math.min(30, Math.floor(n))));
         if (w.dur <= 0) weaponBroke = kind;
       }
       state.weapons = state.weapons.filter((x) => x.dur > 0);
+      // Werkzeugrolle: nach dem Kampf die Kampfwaffen flicken
+      const roll = equippedSkill(state, 'toolroll');
+      if (roll) for (const w of battleWeapons(state)) w.dur = Math.min(WEAPONS[w.kind].dur, w.dur + cardStat('toolroll', 'bonus', roll));
       // Ausgespielte Einmal-Karten sind weg (nie mehr, als im Rucksack waren)
       for (const [id, n] of Object.entries(action.used ?? {}) as [CardId, number][]) {
         if (!CARDS[id] || CARDS[id].kind !== 'once') continue;

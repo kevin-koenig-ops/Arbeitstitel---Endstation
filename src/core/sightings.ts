@@ -69,15 +69,15 @@ type Reward = { card: CardId } | { weapon: WeaponId };
 /** Was in welcher Sichtung stecken kann, nach Seltenheit. */
 const POOLS: Record<SightingKind, Partial<Record<CardRarity, Reward[]>>> = {
   notebook: {
-    common: [{ card: 'counter' }, { card: 'steady' }, { card: 'breath' }, { card: 'spark' }, { card: 'pitcher' }, { card: 'followup' }, { card: 'headbutt' }, { card: 'cover' }, { card: 'roll' }],
-    rare: [{ card: 'sweep' }, { card: 'sneak' }, { card: 'scavenger' }, { card: 'embers' }, { card: 'trapper' }, { card: 'distract' }, { card: 'rage' }, { card: 'retaliate' }, { card: 'firstaid' }],
-    epic: [{ card: 'radio' }, { card: 'secondwind' }, { card: 'wildfire' }],
+    common: [{ card: 'counter' }, { card: 'steady' }, { card: 'breath' }, { card: 'spark' }, { card: 'pitcher' }, { card: 'followup' }, { card: 'headbutt' }, { card: 'cover' }, { card: 'roll' }, { card: 'pockets' }, { card: 'pickstones' }, { card: 'breathe' }, { card: 'grit' }, { card: 'fullforce' }, { card: 'charger' }],
+    rare: [{ card: 'sweep' }, { card: 'sneak' }, { card: 'scavenger' }, { card: 'embers' }, { card: 'trapper' }, { card: 'distract' }, { card: 'rage' }, { card: 'retaliate' }, { card: 'firstaid' }, { card: 'tinkerbox' }, { card: 'toolroll' }, { card: 'trueaim' }, { card: 'unleash' }, { card: 'innercalm' }],
+    epic: [{ card: 'radio' }, { card: 'secondwind' }, { card: 'wildfire' }, { card: 'laststrike' }, { card: 'frenzy' }],
     // Bis es Alpha-Wandler gibt, stehen die Legenden auch in Notizbüchern
     legendary: [{ card: 'packleader' }, { card: 'laststand' }],
   },
   cache: {
-    common: [{ card: 'molotov' }, { card: 'smoke' }, { card: 'caltrops' }, { card: 'firecracker' }, { card: 'lure' }, { card: 'tinder' }, { card: 'tripwire' }, { card: 'alarm' }, { weapon: 'shovel' }, { weapon: 'pitchfork' }, { weapon: 'lid' }],
-    rare: [{ weapon: 'axe' }, { weapon: 'golfclub' }, { weapon: 'slingshot' }, { weapon: 'machete' }, { card: 'oilcan' }],
+    common: [{ card: 'molotov' }, { card: 'smoke' }, { card: 'caltrops' }, { card: 'firecracker' }, { card: 'lure' }, { card: 'tinder' }, { card: 'tripwire' }, { card: 'alarm' }, { card: 'lath' }, { card: 'marblesack' }, { card: 'motionlamp' }, { card: 'boombox' }, { weapon: 'shovel' }, { weapon: 'pitchfork' }, { weapon: 'lid' }, { weapon: 'pipewrench' }],
+    rare: [{ weapon: 'axe' }, { weapon: 'golfclub' }, { weapon: 'slingshot' }, { weapon: 'machete' }, { card: 'oilcan' }, { card: 'tape' }, { card: 'fencer' }],
     epic: [{ weapon: 'nailgun' }, { weapon: 'bow' }, { weapon: 'extinguisher' }, { card: 'fireworks' }],
     legendary: [{ weapon: 'sledgehammer' }],
   },

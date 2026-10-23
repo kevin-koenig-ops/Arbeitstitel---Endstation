@@ -97,12 +97,14 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 ## Als Nächstes (Stand 22.10. spät)
 
 1. **Charakter-Level mit Aufnähern** (Plan steht im Doc, Reiter „Level & Freischalten“; entschieden: Aufnäher, Werktisch ab Stufe 2, Freischalten zu Hause an der Pinnwand)
-2. **Kartenplan:** 75 Karten für Version 1.0 in fünf Spielstilen, ausgewogen nach dem Vorbild von Slay the Spire (Plan im Doc, Reiter „Kartenplan“). Feuer, Fallen und Abstand sowie Schwung sind drin, als Nächstes Schutz, dann Rudel
+2. **Kartenplan:** 75 Karten für Version 1.0 in fünf Spielstilen, ausgewogen nach dem Vorbild von Slay the Spire (Plan im Doc, Reiter „Kartenplan“). Feuer, Fallen und Abstand, Schwung, Schutz, Tüftler, Raubbau, Kleinkram sowie Ruhe und Wut sind drin (acht Stile); Rudel ruht. Jetzt: testen und bei Bedarf abschwächen
 3. Danach: eine Woche nichts Neues, draußen testen, Akku und Tempo, Einstieg schleifen
+
+Erledigt am 23.10. (Karten, vier neue Stile): Tüftler (Geräte, die jede Runde wirken: Bewegungsmelder-Lampe blendet, Kofferradio lockt nach vorn, Weidezaungerät verletzt alle vorne; Ladegerät, Bastelkiste), Raubbau (Rohrzange, Panzertape, Mit voller Wucht, Werkzeugrolle, Letzter Schlag), Kleinkram (Zaunlatte, Sack Murmeln, Hosentaschen, Steine aufsammeln, Zielwasser; erzeugte Wurfkarten verfallen am Rundenende) sowie Ruhe und Wut (Haltungen; Durchatmen, Zähne zusammenbeißen, Aus der Ruhe, Innere Ruhe, Raserei). Labor Woche 1: alle Stile in einem ähnlichen Band; Tüftler, Raubbau und Kleinkram tun sich gegen Borkenmann plus Wandler am schwersten (63 bis 76 % Siege), Ruhe und Wut ist dort stark (93 %). Nachgebessert: Weidezaun 2 Schaden, Rohrzange 5, Mit voller Wucht +5. Bildprompts für alle 19 neuen Karten stehen im Doc.
 
 Erledigt am 23.10. (Karten, vierter Stil): Schutz mit Tonnendeckel, Feuerlöscher, Kopfnuss (betäubt beim Ausholen), Deckung, Ausweichrolle, Zurückschlagen, Erste Hilfe (erstes Verbinden ohne Medizin), Schmerzmittel, Feuerwerksbatterie. Labor: Schutz nimmt deutlich weniger Schaden, Kämpfe dauern doppelt so lang. Kevin: Lange Kämpfe gehören zur Taktik, es kommt niemand dazu. Schutz bleibt der Stil für wenig Schaden und lange Kämpfe.
 
-Erledigt am 23.10. (Karten, dritter Stil): Schwung mit Machete (Hieb, Schneise), Vorschlaghammer (Wuchtschlag, Ausholen; statt Kettensäge), Nachsetzen, Wut, Spalten für die Axt. Im Labor solide überall, schnellste Kämpfe, keine Ausreißer. Als Nächstes: Schutz (Tonnendeckel, Feuerlöscher, Kopfnuss, Deckung, Ausweichrolle, Zurückschlagen, Erste Hilfe, Schmerzmittel), dann Rudel.
+Erledigt am 23.10. (Karten, dritter Stil): Schwung mit Machete (Hieb, Schneise), Vorschlaghammer (Wuchtschlag, Ausholen; statt Kettensäge), Nachsetzen, Wut, Spalten für die Axt. Im Labor solide überall, schnellste Kämpfe, keine Ausreißer. Schutz ist inzwischen auch drin. Rudel ruht (Kevin: der Hund spielt noch keine Rolle).
 
 Erledigt am 23.10. (Karten, zweiter Stil): Fallen und Abstand mit Stolperdraht (Falle), Wecker (holt nach vorn), Mistgabel, Sportbogen, Fallensteller, Ablenken, Werferin; im Labor gegen Feuer und den Allround-Stand verglichen (Fallen stark gegen Borkenmann und Wächter, schwächer gegen Gruppen). Nächster Stil: Schwung (Machete, Nachsetzen, Wut, Vorschlaghammer). Die Kettensäge ist raus (Kevin: zu blutig, lieber geerdet).
 

@@ -4,7 +4,7 @@
 //
 // Rein und vorhersagbar wie der Kampf selbst: gleicher Kampf, gleiche Züge.
 
-import { CARDS, FOE_TACTICS, type CardId } from './content';
+import { CARDS, FOE_TACTICS, STANCE, type CardId, type DeviceId } from './content';
 import { aliveFoes, endTurn, flee, lacksMedicine, playCard, playPouch, targetsFor, type TacticsState, type TFoe } from './tactics';
 
 export interface AutopilotOptions {
@@ -22,7 +22,11 @@ export function incoming(st: TacticsState): number {
     const k = f.intent.kind;
     const hits = k === 'attack' || k === 'smash' || k === 'grab' || k === 'pounce';
     if (!hits) continue;
-    if (f.row === 'near' || k === 'pounce' || FOE_TACTICS[f.kind].stayBack) n += f.intent.dmg ?? 0;
+    if (!(f.row === 'near' || k === 'pounce' || FOE_TACTICS[f.kind].stayBack)) continue;
+    let d = f.intent.dmg ?? 0;
+    if (d > 0 && st.stance === 'calm') d = Math.max(0, d - STANCE.calmGuard);
+    else if (d > 0 && st.stance === 'wrath') d += STANCE.wrathTaken;
+    n += d;
   }
   return n;
 }
@@ -41,6 +45,8 @@ function effDmg(st: TacticsState, card: CardId, f: TFoe, first = true): number {
   if (d.farBonus && f.row === 'far') raw += d.farBonus;
   if (d.thrown) raw += st.pitcher;
   if (first) raw += st.momentum;
+  if (first && st.stance === 'wrath') raw += STANCE.wrathDmg;
+  if (first && d.weapon && st.overdrive) raw += st.overdrive.dmg;
   if (st.rage && st.hp <= 3) raw += st.rage;
   const after = d.pierce ? raw : Math.max(1, raw - armorOf(f));
   return Math.max(0, after - f.block);
@@ -187,6 +193,39 @@ export function autopilotTurn(st: TacticsState, o: AutopilotOptions = {}): void 
     if (farHowler && st.hand.some((c) => CARDS[c].target === 'near' && CARDS[c].dmg)) {
       const p = opts.find((x) => CARDS[x.card].pull);
       if (p && st.energy - CARDS[p.card].cost >= 1 && play(st, p)) continue;
+    }
+    // 6d. Tüftler: ein Gerät aufstellen, wenn es etwas bringt; Ladegerät, wenn Geräte stehen
+    const wantDevice = (k: DeviceId) =>
+      k === 'fence' ? foes.length >= 2 || foes.some((f) => f.kind === 'brute' || f.kind === 'watcher') : k === 'lamp' ? foes.some((f) => f.row === 'far' && !FOE_TACTICS[f.kind].stayBack) : foes.some((f) => isHowler(f) && f.howls < 2);
+    const dev = opts.find((x) => {
+      const dv = CARDS[x.card].device;
+      return !!dv && !st.devices.some((d) => d.kind === dv.kind) && wantDevice(dv.kind);
+    });
+    if (dev && play(st, dev)) continue;
+    const chg = opts.find((x) => CARDS[x.card].charge && st.devices.length > 0);
+    if (chg && play(st, chg)) continue;
+    // 6e. Kleinkram: Würfe auf die Hand holen; Zaunlatte früh in den Stapel
+    const mk = opts.find((x) => CARDS[x.card].make?.to === 'hand' && !CARDS[x.card].area && (CARDS[x.card].cost === 0 || st.energy >= 2));
+    if (mk && play(st, mk)) continue;
+    const lath = opts.find((x) => CARDS[x.card].make?.to === 'draw' && st.turn <= 2);
+    if (lath && play(st, lath)) continue;
+    // 6f. Raubbau: fast kaputte Waffe flicken, volle Wucht vor einem Waffenschlag
+    if (Object.values(st.weaponDur).some((d) => (d ?? 0) > 0 && (d ?? 0) <= 4)) {
+      const rep = opts.find((x) => CARDS[x.card].repair);
+      if (rep && play(st, rep)) continue;
+    }
+    if (!st.overdrive && st.hand.some((c) => CARDS[c].weapon && CARDS[c].dmg && CARDS[c].cost <= st.energy)) {
+      const od = opts.find((x) => CARDS[x.card].overdrive);
+      if (od && play(st, od)) continue;
+    }
+    // 6g. Haltung: aus der Ruhe heraus Kraft holen, rasend werden, wenn es sicher genug ist
+    if (st.stance === 'calm' && danger < st.hp - 3) {
+      const un = opts.find((x) => x.card === 'unleash');
+      if (un && play(st, un)) continue;
+    }
+    if (st.stance !== 'wrath' && st.energy >= 2 && danger < st.hp - 4) {
+      const fr = opts.find((x) => x.card === 'frenzy');
+      if (fr && st.hand.some((c) => c !== 'frenzy' && CARDS[c].dmg) && play(st, fr)) continue;
     }
     // 7. Angreifen: das Beste pro Kraft
     const att = pick(opts, (x) => (CARDS[x.card].dmg || CARDS[x.card].burn || CARDS[x.card].stun || CARDS[x.card].blind || CARDS[x.card].slow || CARDS[x.card].momentum ? score(st, x.card, get(x.target)) : 0));

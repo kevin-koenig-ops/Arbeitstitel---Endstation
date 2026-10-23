@@ -8,7 +8,7 @@
 // Die Regeln stehen in core/tactics.ts; hier wird nur angezeigt und abgespielt.
 
 import { WORLD_SEED } from '../../config';
-import { CARDS, styleOf, CLIMATE, FOE_TACTICS, KRAM, KRAM_ORDER, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, TACTICS, WEAPONS, type CardId, gearArmor, gearSum } from '../../core/content';
+import { CARDS, DEVICE_NAMES, styleOf, CLIMATE, FOE_TACTICS, KRAM, KRAM_ORDER, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, TACTICS, WEAPONS, type CardId, gearArmor, gearSum } from '../../core/content';
 import { isCold, isHot } from '../../core/terrain';
 import { seasonOf } from '../../services/settings';
 import { currentRegion } from './worldState';
@@ -119,12 +119,15 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
   const meFocus = h('span', { class: 't-focus', hidden: true });
   const meTrap = h('span', { class: 't-focus t-trap', hidden: true, title: 'Gelegte Fallen' });
   const meMomentum = h('span', { class: 't-focus t-momentum', hidden: true, title: 'Schwung für den nächsten Angriff' });
+  const meStance = h('span', { class: 't-focus t-stance', hidden: true });
+  const meOver = h('span', { class: 't-focus t-momentum', hidden: true, title: 'Mit voller Wucht: nächster Waffenschlag' });
+  const meDevices = h('span', { class: 't-devices' });
   const weaponLine = h('small', { class: 't-weapon' });
   const meFrame = h(
     'div',
     { class: 'battle-me' },
     faceEl(s0.character.look, 44, 'battle-face'),
-    h('div', { class: 'battle-me-main' }, h('b', null, s0.character.name, meBlock, meFocus, meTrap, meMomentum), h('div', { class: 'bar me' }, meHp, meHpText), weaponLine),
+    h('div', { class: 'battle-me-main' }, h('b', null, s0.character.name, meBlock, meFocus, meTrap, meMomentum, meOver, meStance), meDevices, h('div', { class: 'bar me' }, meHp, meHpText), weaponLine),
   );
   const fleeBtn = h('button', { class: 'btn ghost small battle-flee', type: 'button' }, svgEl(icon('flee', 16)), 'Fliehen');
   const helpBtn = h('button', { class: 'iconbtn small t-help-btn', type: 'button', 'aria-label': 'So geht der Kampf' }, '?');
@@ -308,7 +311,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           const c = e.card;
           const def = CARDS[c];
           if (def.kind === 'once') say(def.name, def.rarity === 'legendary' || def.rarity === 'epic' ? 'gold' : 'good', 900);
-          if (c === 'throw' || c === 'bolt' || c === 'arrow' || c === 'pellet' || c === 'drive' || c === 'lure' || c === 'flare' || c === 'tinder') {
+          if (c === 'throw' || c === 'bolt' || c === 'arrow' || c === 'pellet' || c === 'drive' || c === 'lure' || c === 'flare' || c === 'tinder' || c === 'marble' || c === 'pebble') {
             if (id !== undefined) scene?.shoot(id, c === 'bolt' || c === 'arrow' ? 'bolt' : 'stone');
             if (c === 'flare') fx('flare');
             if (c === 'tinder') fx('fire');
@@ -354,6 +357,26 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           } else await wait(e.type === 'ally' ? 260 : 160);
           break;
         }
+        case 'deviceSet':
+          floatAt(-1, `${DEVICE_NAMES[e.kind]} steht (${e.rounds})`, 'power');
+          await wait(200);
+          break;
+        case 'device':
+          if (e.kind === 'fence') fx('spark');
+          await wait(e.kind === 'fence' ? 220 : 80);
+          break;
+        case 'overdrive':
+          floatAt(-1, `Volle Wucht +${e.amount}`, 'power');
+          break;
+        case 'repair':
+          floatAt(-1, `${WEAPONS[e.weapon].name} +${e.amount}`, 'heal');
+          break;
+        case 'stance':
+          say(e.stance === 'calm' ? 'Ruhig.' : 'Rasend!', e.stance === 'calm' ? 'good' : 'bad', 1000);
+          break;
+        case 'made':
+          floatAt(-1, `+${e.n} ${CARDS[e.card].name}`, 'heal');
+          break;
         case 'trapSet':
           floatAt(-1, `Falle gelegt (${e.count})`, 'power');
           break;
@@ -695,6 +718,16 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     meMomentum.hidden = st.momentum <= 0;
     clear(meMomentum);
     meMomentum.append(svgEl(icon('momentum', 13)), `+${st.momentum}`);
+    meOver.hidden = !st.overdrive;
+    clear(meOver);
+    if (st.overdrive) meOver.append(svgEl(icon('smash', 13)), `+${st.overdrive.dmg}`);
+    meStance.hidden = !st.stance;
+    meStance.dataset.stance = st.stance ?? '';
+    meStance.textContent = st.stance === 'calm' ? 'Ruhig' : st.stance === 'wrath' ? 'Rasend' : '';
+    meStance.title = st.stance === 'calm' ? 'Ruhig: Treffer machen 1 weniger. Verlässt du die Ruhe, bekommst du 2 Kraft.' : 'Rasend: Dein Angriff macht 3 mehr, Treffer gegen dich 2 mehr.';
+    clear(meDevices);
+    const DEV_ICON = { fence: 'fence', lamp: 'lamp', boombox: 'boombox' } as const;
+    for (const d of st.devices) meDevices.append(h('span', { class: 't-dev', title: `${DEVICE_NAMES[d.kind]}: noch ${d.rounds} Runden` }, svgEl(icon(DEV_ICON[d.kind], 13)), String(d.rounds)));
     const kinds = (Object.keys(st.weaponDur) as (keyof typeof WEAPONS)[]).filter((k) => (st.weaponDur[k] ?? 0) > 0);
     weaponLine.textContent = kinds.length ? kinds.map((k) => `${WEAPONS[k].name} ${st.weaponDur[k]}`).join(' · ') : 'Keine Waffe: Fäuste und Steine';
   };
@@ -815,7 +848,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           },
         },
         h('span', { class: 't-cost' }, String(def.cost)),
-        styleMark(styleOf(card), 't-style', 12),
+        def.kind === 'temp' ? null : styleMark(styleOf(card), 't-style', 12),
         // Gemaltes Kartenbild, sobald es eins gibt, sonst das Symbol
         artUrl(def.art) ? h('img', { class: 't-card-art', src: artUrl(def.art)!, alt: '', draggable: 'false' }) : svgEl(icon(CARD_ICON[card], 26), 't-card-icon'),
         h('b', { class: 't-card-name' }, def.name),

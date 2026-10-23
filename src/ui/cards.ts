@@ -45,6 +45,10 @@ export const CARD_ICON: Record<CardId, string> = {
   nail: 'nailgun',
   salvo: 'salvo',
   cleave: 'axe',
+  wrenchhit: 'pipewrench',
+  marble: 'marble',
+  pebble: 'pebble',
+  lathhit: 'lath',
   lidup: 'lid',
   lidbash: 'shove',
   foam: 'smoke',
@@ -69,6 +73,12 @@ export const CARD_ICON: Record<CardId, string> = {
   fireworks: 'fireworks',
   tripwire: 'tripwire',
   alarm: 'alarm',
+  lath: 'lath',
+  marblesack: 'marble',
+  motionlamp: 'lamp',
+  boombox: 'boombox',
+  tape: 'tape',
+  fencer: 'fence',
   dressing: 'dressing',
   adrenaline: 'adrenaline',
   flare: 'flare',
@@ -83,6 +93,19 @@ export const CARD_ICON: Record<CardId, string> = {
   pitcher: 'pitcher',
   followup: 'followup',
   headbutt: 'headbutt',
+  pockets: 'hands',
+  pickstones: 'pebble',
+  breathe: 'breath',
+  grit: 'fist2',
+  fullforce: 'smash',
+  charger: 'charger',
+  tinkerbox: 'toolbox',
+  toolroll: 'wrench',
+  trueaim: 'bottle',
+  unleash: 'pulse',
+  innercalm: 'moon',
+  laststrike: 'crack',
+  frenzy: 'rage',
   cover: 'cover',
   roll: 'roll',
   retaliate: 'retaliate',
@@ -99,12 +122,12 @@ export const CARD_ICON: Record<CardId, string> = {
   laststand: 'laststand',
 };
 
-export const WEAPON_ICON: Record<WeaponId, string> = { crowbar: 'crowbar', bat: 'bat', crossbow: 'bolt', shovel: 'shovel', axe: 'axe', golfclub: 'golfclub', slingshot: 'slingshot', nailgun: 'nailgun', pitchfork: 'pitchfork', bow: 'bow', machete: 'machete', sledgehammer: 'sledgehammer', lid: 'lid', extinguisher: 'extinguisher' };
+export const WEAPON_ICON: Record<WeaponId, string> = { crowbar: 'crowbar', bat: 'bat', crossbow: 'bolt', shovel: 'shovel', axe: 'axe', golfclub: 'golfclub', slingshot: 'slingshot', nailgun: 'nailgun', pitchfork: 'pitchfork', bow: 'bow', machete: 'machete', sledgehammer: 'sledgehammer', lid: 'lid', extinguisher: 'extinguisher', pipewrench: 'pipewrench' };
 
 export const ROMAN = ['', 'I', 'II', 'III'];
 
 /** Stil-Zeichen: Flamme, Draht, Schwung, Schild, Pfote. */
-export const STYLE_ICON: Record<CardStyle, string> = { fire: 'flame', trap: 'tripwire', momentum: 'momentum', guard: 'shield', pack: 'paw' };
+export const STYLE_ICON: Record<CardStyle, string> = { fire: 'flame', trap: 'tripwire', momentum: 'momentum', guard: 'shield', tinker: 'battery', wear: 'wrench', junk: 'marble', stance: 'pulse', pack: 'paw' };
 
 /** Kleines Stil-Zeichen (oder null bei Karten ohne Stil). */
 export function styleMark(style: CardStyle | undefined, cls: string, size = 12): HTMLElement | null {
@@ -185,6 +208,12 @@ export function cardEffect(id: CardId, level = 1): { main: string; tag: string }
   else if (v('heal') && !c.gain) main = `Heilt ${v('heal')}`;
   else if (v('focus')) main = `+${v('focus')} Schaden`;
   else if (v('momentum')) main = `+${v('momentum')} Schwung`;
+  else if (c.device) main = `Gerät, ${c.device.rounds} Runden`;
+  else if (c.make) main = `+${c.make.n + Math.floor(v('bonus'))} ${CARDS[c.make.card].name}`;
+  else if (c.repair) main = `+${c.repair} Haltbarkeit`;
+  else if (c.overdrive) main = `+${v('bonus')} Wucht`;
+  else if (c.charge) main = 'Geräte wirken';
+  else if (c.stance) main = c.stance === 'calm' ? 'Ruhig' : 'Rasend';
   else if (c.gain) main = `+${v('gain')} Kraft`;
   else if (v('draw')) main = `${v('draw')} Karten`;
   else if (c.ally) main = `Hund ${v('allyDmg')} × ${c.ally.rounds}`;
@@ -220,6 +249,8 @@ export function cardEffect(id: CardId, level = 1): { main: string; tag: string }
   if (c.perTurn) tags.push('1× pro Runde');
   if (c.focus) tags.push('nächster Wurf');
   if (c.medicine) tags.push('1 Medizin');
+  if (c.stance && !main.startsWith(c.stance === 'calm' ? 'Ruhig' : 'Rasend')) tags.push(c.stance === 'calm' ? 'ruhig' : 'rasend');
+  if (c.ethereal) tags.push('diese Runde');
   if (c.kind === 'once') tags.push('einmal');
   if (c.kind === 'skill') tags.push(`Stufe ${ROMAN[Math.max(1, Math.min(3, level))]}`);
   return { main, tag: tags.join(' · ') };
