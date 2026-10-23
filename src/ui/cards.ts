@@ -8,7 +8,8 @@ import {
   ONCE_CARDS,
   RARITY_NAMES,
   SKILL_CARDS,
-  SKILL_LEVELS,
+  LEVEL_COPIES,
+  maxLevel,
   skillLevel,
   STYLE_NAMES,
   styleOf,
@@ -120,11 +121,18 @@ export const CARD_ICON: Record<CardId, string> = {
   secondwind: 'secondwind',
   packleader: 'packleader',
   laststand: 'laststand',
+  flamewall: 'flame',
+  waylay: 'tripwire',
+  onslaught: 'momentum',
+  mower: 'toolbox',
+  secondlife: 'tape',
+  stonehail: 'pebble',
+  bulwark: 'shield',
 };
 
 export const WEAPON_ICON: Record<WeaponId, string> = { crowbar: 'crowbar', bat: 'bat', crossbow: 'bolt', shovel: 'shovel', axe: 'axe', golfclub: 'golfclub', slingshot: 'slingshot', nailgun: 'nailgun', pitchfork: 'pitchfork', bow: 'bow', machete: 'machete', sledgehammer: 'sledgehammer', lid: 'lid', extinguisher: 'extinguisher', pipewrench: 'pipewrench' };
 
-export const ROMAN = ['', 'I', 'II', 'III'];
+export const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
 
 /** Stil-Zeichen: Flamme, Draht, Schwung, Schild, Pfote. */
 export const STYLE_ICON: Record<CardStyle, string> = { fire: 'flame', trap: 'tripwire', momentum: 'momentum', guard: 'shield', tinker: 'battery', wear: 'wrench', junk: 'marble', stance: 'pulse', pack: 'paw' };
@@ -252,14 +260,14 @@ export function cardEffect(id: CardId, level = 1): { main: string; tag: string }
   if (c.stance && !main.startsWith(c.stance === 'calm' ? 'Ruhig' : 'Rasend')) tags.push(c.stance === 'calm' ? 'ruhig' : 'rasend');
   if (c.ethereal) tags.push('diese Runde');
   if (c.kind === 'once') tags.push('einmal');
-  if (c.kind === 'skill') tags.push(`Stufe ${ROMAN[Math.max(1, Math.min(3, level))]}`);
+  if (c.kind === 'skill') tags.push(`Stufe ${ROMAN[Math.max(1, Math.min(maxLevel(c.rarity), level))]}`);
   return { main, tag: tags.join(' · ') };
 }
 
-/** Wie weit bis zur nächsten Stufe (Fähigkeiten). */
-export function levelProgress(copies: number): { level: number; next: number | null } {
-  const level = skillLevel(copies);
-  return { level, next: SKILL_LEVELS[level] ?? null };
+/** Wie weit bis zur nächsten Stufe (Fähigkeiten; seltene Karten steigen mit weniger Doppelten auf). */
+export function levelProgress(copies: number, rarity: CardRarity = 'common'): { level: number; next: number | null } {
+  const level = skillLevel(copies, rarity);
+  return { level, next: LEVEL_COPIES[rarity][level] ?? null };
 }
 
 /**
@@ -280,7 +288,7 @@ export function cardFace(key: BookKey, o: { level?: number; count?: number; shin
     },
     h('span', { class: 'cc-art' }, art),
     cost !== null && !locked ? h('span', { class: 'cc-cost', title: 'Kraft' }, String(cost)) : null,
-    it.kind === 'skill' && !locked && level > 0 ? h('span', { class: 'cc-level' }, ROMAN[Math.min(3, level)]) : null,
+    it.kind === 'skill' && !locked && level > 0 ? h('span', { class: 'cc-level' }, ROMAN[Math.min(5, level)]) : null,
     o.count && o.count > 1 && !locked ? h('span', { class: 'cc-count' }, `×${o.count}`) : null,
     styleMark(it.style, 'cc-style', o.big ? 16 : 11),
     h('b', { class: 'cc-name' }, locked ? '???' : it.name),

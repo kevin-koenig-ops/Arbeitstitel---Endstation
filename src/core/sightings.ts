@@ -47,7 +47,8 @@ export const SIGHT = {
   candidates: 6,
   /** Glück mit Netz: spätestens nach so vielen Sichtungen etwas Seltenes bzw. Legendäres. */
   pityRare: 20,
-  pityLegendary: 100,
+  /** Kevin 23.10.: Legenden etwa einmal im Monat (bei einer Stunde am Tag). */
+  pityLegendary: 130,
   shinyChance: 1 / 64,
 };
 
@@ -71,9 +72,9 @@ const POOLS: Record<SightingKind, Partial<Record<CardRarity, Reward[]>>> = {
   notebook: {
     common: [{ card: 'counter' }, { card: 'steady' }, { card: 'breath' }, { card: 'spark' }, { card: 'pitcher' }, { card: 'followup' }, { card: 'headbutt' }, { card: 'cover' }, { card: 'roll' }, { card: 'pockets' }, { card: 'pickstones' }, { card: 'breathe' }, { card: 'grit' }, { card: 'fullforce' }, { card: 'charger' }],
     rare: [{ card: 'sweep' }, { card: 'sneak' }, { card: 'scavenger' }, { card: 'embers' }, { card: 'trapper' }, { card: 'distract' }, { card: 'rage' }, { card: 'retaliate' }, { card: 'firstaid' }, { card: 'tinkerbox' }, { card: 'toolroll' }, { card: 'trueaim' }, { card: 'unleash' }, { card: 'innercalm' }],
-    epic: [{ card: 'radio' }, { card: 'secondwind' }, { card: 'wildfire' }, { card: 'laststrike' }, { card: 'frenzy' }],
-    // Bis es Alpha-Wandler gibt, stehen die Legenden auch in Notizbüchern
-    legendary: [{ card: 'packleader' }, { card: 'laststand' }],
+    epic: [{ card: 'radio' }, { card: 'wildfire' }, { card: 'laststrike' }, { card: 'frenzy' }],
+    // Die Legenden: je Spielstil eine (dazu der Rudelführer)
+    legendary: [{ card: 'packleader' }, { card: 'laststand' }, { card: 'flamewall' }, { card: 'waylay' }, { card: 'onslaught' }, { card: 'mower' }, { card: 'secondlife' }, { card: 'stonehail' }, { card: 'bulwark' }],
   },
   cache: {
     common: [{ card: 'molotov' }, { card: 'smoke' }, { card: 'caltrops' }, { card: 'firecracker' }, { card: 'lure' }, { card: 'tinder' }, { card: 'tripwire' }, { card: 'alarm' }, { card: 'lath' }, { card: 'marblesack' }, { card: 'motionlamp' }, { card: 'boombox' }, { weapon: 'shovel' }, { weapon: 'pitchfork' }, { weapon: 'lid' }, { weapon: 'pipewrench' }],
@@ -89,17 +90,21 @@ const POOLS: Record<SightingKind, Partial<Record<CardRarity, Reward[]>>> = {
   convoy: {
     common: [{ card: 'molotov' }],
     rare: [{ card: 'flare' }],
-    epic: [{ card: 'flashbang' }],
-    legendary: [{ card: 'grenade' }, { weapon: 'sledgehammer' }],
+    epic: [{ card: 'flashbang' }, { card: 'grenade' }],
+    legendary: [{ weapon: 'sledgehammer' }],
   },
 };
 
 const ORDER: CardRarity[] = ['common', 'rare', 'epic', 'legendary'];
 
-/** Seltenheit würfeln: 70 % gewöhnlich, 25 % selten, 4 % episch, 1 % legendär. */
+/**
+ * Seltenheit würfeln: 75 % gewöhnlich, 22 % selten, 2,5 % episch, 0,5 % legendär (Kevin 23.10.:
+ * Legenden etwa einmal im Monat, Episches alle ein bis zwei Wochen, bei einer Stunde am Tag).
+ */
+export const RARITY_ODDS = { legendary: 0.005, epic: 0.03, rare: 0.25 };
 function rollRarity(r: () => number): CardRarity {
   const x = r();
-  return x < 0.01 ? 'legendary' : x < 0.05 ? 'epic' : x < 0.3 ? 'rare' : 'common';
+  return x < RARITY_ODDS.legendary ? 'legendary' : x < RARITY_ODDS.epic ? 'epic' : x < RARITY_ODDS.rare ? 'rare' : 'common';
 }
 
 /** Aus dem Topf der Sichtung: die gewünschte Seltenheit, sonst die nächst niedrigere, sonst höhere. */

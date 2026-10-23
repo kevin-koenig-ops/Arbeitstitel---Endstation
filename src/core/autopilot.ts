@@ -225,7 +225,7 @@ export function autopilotTurn(st: TacticsState, o: AutopilotOptions = {}): void 
     }
     // 6d. Tüftler: ein Gerät aufstellen, wenn es etwas bringt; Ladegerät, wenn Geräte stehen
     const wantDevice = (k: DeviceId) =>
-      k === 'fence' ? foes.length >= 2 || foes.some((f) => f.kind === 'brute' || f.kind === 'watcher') : k === 'lamp' ? foes.some((f) => f.row === 'far' && !FOE_TACTICS[f.kind].stayBack) : foes.some((f) => isHowler(f) && f.howls < 2);
+      k === 'mower' ? true : k === 'fence' ? foes.length >= 2 || foes.some((f) => f.kind === 'brute' || f.kind === 'watcher') : k === 'lamp' ? foes.some((f) => f.row === 'far' && !FOE_TACTICS[f.kind].stayBack) : foes.some((f) => isHowler(f) && f.howls < 2);
     const dev = opts.find((x) => {
       const dv = CARDS[x.card].device;
       return !!dv && !st.devices.some((d) => d.kind === dv.kind) && wantDevice(dv.kind);
@@ -233,6 +233,11 @@ export function autopilotTurn(st: TacticsState, o: AutopilotOptions = {}): void 
     if (dev && play(st, dev)) continue;
     const chg = opts.find((x) => CARDS[x.card].charge && st.devices.length > 0);
     if (chg && play(st, chg)) continue;
+    // 6d2. Legende Steinhagel, wenn genug Karten fliegen
+    if (st.hand.length >= 3) {
+      const hail = opts.find((x) => x.from === 'hand' && CARDS[x.card].hail);
+      if (hail && play(st, hail)) continue;
+    }
     // 6e. Kleinkram: Würfe auf die Hand holen; Zaunlatte früh in den Stapel
     const mk = opts.find((x) => CARDS[x.card].make?.to === 'hand' && !CARDS[x.card].area && (CARDS[x.card].cost === 0 || st.energy >= 2));
     if (mk && play(st, mk)) continue;

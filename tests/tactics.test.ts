@@ -297,9 +297,14 @@ describe('Bleicher Wächter', () => {
       expect(st.ally).toEqual({ rounds: 3, dmg: 4 });
       const ev2 = endTurn(st);
       expect(ev2.some((e) => e.type === 'ally' && e.dmg === 4)).toBe(true);
-      // Zweiter Atem: unter 3 Gesundheit einmal heilen
-      st = start(['brute'], { health: 3, kit: { skills: { secondwind: 1 } } });
-      expect(st.secondWind).toBe(4);
+      // Zweiter Atem: nach einer Runde der Gegner ganz ohne Schaden heilen
+      st = start(['walker'], { health: 5, kit: { skills: { secondwind: 1 } } });
+      expect(st.secondWind).toBe(1);
+      st.foes[0].stunned = true;
+      st.hand = [];
+      const ev3 = endTurn(st);
+      expect(ev3.some((e) => e.type === 'secondWind')).toBe(true);
+      expect(st.hp).toBe(6);
       // Letztes Gefecht: tödlicher Treffer lässt dich bei 1
       st = start(['brute'], { health: 1, kit: { skills: { laststand: 1 }, lastStand: true } });
       const b = aliveFoes(st)[0];
@@ -1247,5 +1252,98 @@ describe('Wilde Menschen (Welle 2)', () => {
       }
       expect(ok / 60, g.join('+')).toBeGreaterThan(0.45);
     }
+  });
+});
+
+describe('Legenden (je Spielstil eine)', () => {
+  const ready = (st: TacticsState, i = 0, row: 'near' | 'far' = 'near') => {
+    const f = st.foes[i];
+    f.row = row;
+    f.stunned = false;
+    f.intent = intentOf(f, st);
+    return f;
+  };
+
+  it('Flammenwand: von selbst; wer vorne steht, brennt, wer vorkommt, fängt Feuer', () => {
+    const st = start(['walker', 'walker', 'screamer'], { kit: { skills: { flamewall: 1 } } });
+    expect(st.flamewall?.rounds).toBe(2);
+    const near = st.foes.filter((f) => f.row === 'near');
+    expect(near.every((f) => f.burn > 0)).toBe(true);
+    // Erstarrte taut die Wand nicht auf
+    const st2 = start(['frozen'], { kit: { skills: { flamewall: 1 } } });
+    expect(st2.foes[0].burn).toBe(0);
+    expect(st2.foes[0].thawed).toBe(false);
+  });
+
+  it('Hinterhalt: alle fangen hinten an, eine Falle liegt; entdeckt wirkt er nicht', () => {
+    const st = start(['walker', 'walker'], { kit: { skills: { waylay: 1 } } });
+    expect(st.foes.every((f) => f.row === 'far')).toBe(true);
+    expect(st.traps).toEqual([3]);
+    expect(st.waylaid).toBe(true);
+    const st2 = start(['walker', 'walker'], { kit: { skills: { waylay: 1 } }, opening: 'spotted' });
+    expect(st2.foes.some((f) => f.row === 'near')).toBe(true);
+    expect(st2.traps).toEqual([]);
+  });
+
+  it('Durchmarsch: Wer einen erledigt, bekommt 1 Kraft und 1 Karte', () => {
+    const st = withHand(start(['walker', 'walker'], { kit: { skills: { onslaught: 1 } } }), 'punch', 'dodge');
+    const a = ready(st, 0);
+    ready(st, 1).hp = 50;
+    a.hp = 1;
+    const energy = st.energy;
+    const ev = playCard(st, 0, a.id);
+    expect(ev.some((e) => e.type === 'gain')).toBe(true);
+    expect(st.energy).toBe(energy);
+    expect(st.hand.length).toBe(2);
+  });
+
+  it('Mähroboter: drängt jede Runde den vordersten nach hinten', () => {
+    const st = withHand(start(['walker'], { kit: { skills: { mower: 1 } } }), 'mower');
+    const w = ready(st);
+    w.hp = 50;
+    playCard(st, 0);
+    expect(st.devices.some((d) => d.kind === 'mower')).toBe(true);
+    const ev = endTurn(st);
+    expect(ev.some((e) => e.type === 'device' && e.kind === 'mower')).toBe(true);
+    expect(w.hp).toBe(48);
+  });
+
+  it('Zweites Leben: Eine zerbrechende Waffe ist sofort wieder da (halbe Haltbarkeit)', () => {
+    const st = withHand(start(['walker'], { weapons: [{ kind: 'crowbar', dur: 1 }], kit: { skills: { secondlife: 1 } } }), 'pry');
+    const w = ready(st);
+    w.hp = 50;
+    const ev = playCard(st, 0, w.id);
+    expect(ev.some((e) => e.type === 'reborn')).toBe(true);
+    expect(st.weaponDur.crowbar).toBe(Math.floor(WEAPONS.crowbar.dur / 2));
+    expect(st.secondLife).toBe(0);
+  });
+
+  it('Steinhagel: jede andere Karte fliegt als Stein auf den Schwächsten', () => {
+    const st = withHand(start(['walker', 'walker'], { kit: { skills: { stonehail: 1 } } }), 'stonehail', 'punch', 'dodge', 'kick');
+    const a = ready(st, 0);
+    const b = ready(st, 1);
+    a.hp = 2;
+    b.hp = 30;
+    const ev = playCard(st, 0);
+    expect(ev.some((e) => e.type === 'hail' && e.n === 3)).toBe(true);
+    expect(st.hand.length).toBe(0);
+    expect(a.hp).toBe(0);
+    expect(b.hp).toBe(26);
+  });
+
+  it('Fels in der Brandung: ruhig macht kein Treffer mehr als 3', () => {
+    const st = start(['brute'], { health: 10, kit: { skills: { bulwark: 1 } } });
+    const b = ready(st);
+    b.step = FOE_TACTICS.brute.pattern.findIndex((p) => p.kind === 'smash');
+    b.intent = intentOf(b, st);
+    st.stance = 'calm';
+    st.hand = [];
+    endTurn(st);
+    expect(st.hp).toBe(7);
+  });
+
+  it('Legenden steigen bis Stufe V', () => {
+    const st = start(['walker'], { kit: { skills: { flamewall: 5 } } });
+    expect(st.flamewall?.burn).toBe(7);
   });
 });

@@ -24,7 +24,7 @@
 // Alles hier ist rein und vorhersagbar: gleicher Startwert, gleiche Züge, gleiches Ergebnis.
 // Dadurch kann es später auch der Server nachrechnen.
 
-import { BASE_DECK, CARDS, cardStat, DEVICES, FOE_RULES, FOE_TACTICS, MAX_DEVICES, ONCE_CARRY, POUCH_SLOTS, STANCE, TACTICS, WEAPON_CARDS, type CardId, type CardStat, type DeviceId, type IntentKind, type Stance } from './content';
+import { BASE_DECK, CARDS, cardStat, DEVICES, FOE_RULES, FOE_TACTICS, MAX_DEVICES, ONCE_CARRY, POUCH_SLOTS, STANCE, TACTICS, WEAPON_CARDS, WEAPONS, type CardId, type CardStat, type DeviceId, type IntentKind, type Stance } from './content';
 import { hashString } from './rng';
 import type { FoeKind, Opening, Weapon, WeaponId } from './types';
 
@@ -116,7 +116,7 @@ export interface TacticsState {
   turnPlays: Partial<Record<CardId, number>>;
   /** Stufe der Fähigkeiten (1–3). */
   levels: Partial<Record<CardId, number>>;
-  /** Zweiter Atem: so viel Heilung, einmal pro Kampf (0 = hast du nicht). */
+  /** Zweiter Atem: so viel Heilung nach einer Runde der Gegner ganz ohne Schaden (0 = hast du nicht). */
   secondWind: number;
   secondWindUsed: boolean;
   /** Letztes Gefecht: heute noch verfügbar, und ob es in diesem Kampf ausgelöst hat. */
@@ -162,6 +162,17 @@ export interface TacticsState {
   burning: number;
   /** So viele Fieberkranke sind mit Medizin gegangen. */
   spared: number;
+  // --- Legenden ---
+  /** Flammenwand: noch so viele Runden, so lange brennt, wer vorne zuschlägt oder nach vorn kommt. */
+  flamewall: { rounds: number; burn: number } | null;
+  /** Hinterhalt: Der Kampf begann aus dem Versteck (alle hinten, eine Falle liegt). */
+  waylaid: boolean;
+  /** Durchmarsch: je erledigtem Gegner 1 Kraft und so viele Karten (0 = hast du nicht). */
+  onslaught: number;
+  /** Zweites Leben: so oft flickst du eine zerbrochene Waffe sofort wieder zusammen. */
+  secondLife: number;
+  /** Fels in der Brandung: Bist du ruhig, macht kein Treffer mehr als so viel (0 = hast du nicht). */
+  bulwark: number;
 }
 
 /** Was du an Sammelkarten mitbringst: Einmal-Karten in der Tasche (Anzahl) und Fähigkeiten (Stufe). */
@@ -239,6 +250,10 @@ export type TEvent =
   | { type: 'order'; by: number; block: number }
   | { type: 'despair'; id: number }
   | { type: 'mercy'; id: number }
+  // Legenden
+  | { type: 'flamewall'; rounds: number }
+  | { type: 'reborn'; weapon: WeaponId; dur: number }
+  | { type: 'hail'; n: number }
   | { type: 'denied'; reason: 'energy' | 'target' | 'medicine' | 'full' | 'limit' | 'netted' };
 
 // --- Zufall --------------------------------------------------------------------------
@@ -444,6 +459,11 @@ export function createTactics(o: {
     netted: 0,
     burning: 0,
     spared: 0,
+    flamewall: null,
+    waylaid: false,
+    onslaught: lvl('onslaught') ? Math.floor(cardStat('onslaught', 'draw', lvl('onslaught'))) : 0,
+    secondLife: lvl('secondlife') ? Math.floor(cardStat('secondlife', 'bonus', lvl('secondlife'))) : 0,
+    bulwark: lvl('bulwark') ? (lvl('bulwark') >= 4 ? 2 : 3) : 0,
   };
   for (const w of o.weapons) if (w.dur > 0) st.weaponDur[w.kind] = Math.max(st.weaponDur[w.kind] ?? 0, w.dur);
   st.draw = shuffle(st, deckFor(o.weapons, o.medicine, kit));
@@ -454,6 +474,20 @@ export function createTactics(o: {
     const f = makeFoe(st, kind, row);
     if (kind === 'walker' && o.mood) f.hp = f.maxHp = f.maxHp + (o.mood === 'strong' ? 2 : -2);
     st.foes.push(f);
+  }
+  // Flammenwand (Legende): Der Kampf beginnt hinter einer Wand aus Feuer, wer vorne steht, brennt
+  if (lvl('flamewall')) {
+    st.flamewall = { rounds: CARDS.flamewall.flamewall ?? 2, burn: cardStat('flamewall', 'burn', lvl('flamewall')) };
+    // Erstarrte hält die Kälte: Die Wand taut sie nicht auf
+    for (const f of st.foes) if (f.row === 'near' && f.frozen <= 0) setBurn(st, f, st.flamewall.burn, []);
+  }
+  // Fels in der Brandung (Legende): ruhig in den Kampf
+  if (lvl('bulwark')) st.stance = 'calm';
+  // Hinterhalt (Legende): Wer nicht entdeckt wurde, sucht sich den Ort aus. Alle fangen hinten an, eine Falle liegt
+  if (lvl('waylay') && o.opening !== 'spotted') {
+    for (const f of st.foes) f.row = 'far';
+    st.traps.push(Math.floor(cardStat('waylay', 'bonus', lvl('waylay'))));
+    st.waylaid = true;
   }
   startTurn(st, []);
   // Ausrüstung (Helm, Weste …): Abwehr in der ersten Runde
@@ -657,6 +691,8 @@ function scatterFrom(st: TacticsState, dead: TFoe, events: TEvent[]) {
  */
 function arriveNear(st: TacticsState, f: TFoe, events: TEvent[]): boolean {
   f.row = 'near';
+  // Flammenwand: Wer nach vorn kommt, fängt Feuer
+  if (st.flamewall && f.hp > 0 && f.frozen <= 0) setBurn(st, f, st.flamewall.burn, events);
   // Bewegungsmelder-Lampe: Wer nach vorn kommt, ist geblendet
   if (st.devices.some((d) => d.kind === 'lamp') && f.blind <= 0) {
     f.blind = 1;
@@ -681,6 +717,18 @@ function deviceAct(st: TacticsState, kind: DeviceId, events: TEvent[]) {
     if (!near.length) return;
     events.push({ type: 'device', kind });
     for (const f of near) damageFoe(st, f, DEVICES.fenceDmg, events);
+  } else if (kind === 'mower') {
+    // Fährt dem vordersten Gegner in die Beine und drängt ihn nach hinten (ist vorne keiner, dem nächsten hinten)
+    const alive = aliveFoes(st);
+    const t = alive.find((f) => f.row === 'near') ?? alive[0];
+    if (!t) return;
+    events.push({ type: 'device', kind });
+    damageFoe(st, t, DEVICES.mowerDmg, events);
+    if (t.hp > 0 && t.row === 'near' && !FOE_TACTICS[t.kind].heavy) {
+      t.row = 'far';
+      interrupt(st, t);
+      events.push({ type: 'push', id: t.id });
+    }
   } else if (kind === 'boombox') {
     const howlers = aliveFoes(st).filter((f) => canHowl(f.kind));
     if (!howlers.length) return;
@@ -797,6 +845,7 @@ function resolve(st: TacticsState, card: CardId, target: number | undefined, tak
   if (def.area && !areaFoes(st, def.area).length && !def.block && !def.heal) return [{ type: 'denied', reason: 'target' }];
   st.energy -= def.cost;
   take();
+  const killsBefore = st.kills;
   st.turnPlays[card] = (st.turnPlays[card] ?? 0) + 1;
   events.push({ type: 'play', card, target: foe?.id });
   // Du brennst: abrollen (Ausweichen) oder den Feuerlöscher nehmen
@@ -917,7 +966,8 @@ function resolve(st: TacticsState, card: CardId, target: number | undefined, tak
   if (def.device) {
     st.devices = st.devices.filter((d) => d.kind !== def.device!.kind);
     if (st.devices.length >= MAX_DEVICES) st.devices.shift();
-    const rounds = def.device.rounds + st.tinkerBonus;
+    // Fähigkeiten mit Gerät (Mähroboter) laufen je Stufe eine Runde länger
+    const rounds = def.device.rounds + st.tinkerBonus + (def.kind === 'skill' ? Math.max(0, (st.levels[card] ?? 1) - 1) : 0);
     st.devices.push({ kind: def.device.kind, rounds });
     events.push({ type: 'deviceSet', kind: def.device.kind, rounds });
   }
@@ -944,14 +994,51 @@ function resolve(st: TacticsState, card: CardId, target: number | undefined, tak
     }
   }
   if (def.stance) setStance(st, def.stance, events);
+  // Flammenwand: ein paar Runden fängt Feuer, wer vorne zuschlägt oder nach vorn kommt
+  if (def.flamewall) {
+    st.flamewall = { rounds: def.flamewall, burn: stat(st, card, 'burn') };
+    events.push({ type: 'flamewall', rounds: def.flamewall });
+    // Wer schon vorne steht, brennt sofort
+    for (const f of aliveFoes(st)) if (f.row === 'near') setBurn(st, f, st.flamewall.burn, events);
+  }
+  // Steinhagel: Jede andere Karte auf der Hand fliegt als Stein auf den Schwächsten
+  if (def.hail) {
+    const stones = st.hand.splice(0);
+    for (const c of stones) if (!CARDS[c].ethereal && CARDS[c].kind !== 'temp') st.discard.push(c);
+    events.push({ type: 'hail', n: stones.length });
+    const each = Math.floor(stat(st, card, 'dmg')) + st.pitcher;
+    for (let i = 0; i < stones.length; i++) {
+      const t = [...aliveFoes(st)].sort((a, b) => a.hp - b.hp || a.id - b.id)[0];
+      if (!t) break;
+      damageFoe(st, t, each, events);
+    }
+  }
   if (def.weapon) {
     const w = def.weapon;
     st.wear[w] = (st.wear[w] ?? 0) + 1 + extraWear;
     st.weaponDur[w] = (st.weaponDur[w] ?? 1) - 1 - extraWear;
     if ((st.weaponDur[w] ?? 0) <= 0) {
-      removeWeaponCards(st, w);
-      events.push({ type: 'weaponBroke', weapon: w });
+      if (st.secondLife > 0) {
+        // Zweites Leben: aus den Trümmern sofort wieder zusammengeflickt (halbe Haltbarkeit)
+        st.secondLife -= 1;
+        const back = Math.max(1, Math.floor(WEAPONS[w].dur / 2));
+        st.weaponDur[w] = back;
+        st.wear[w] = (st.wear[w] ?? 0) - back;
+        events.push({ type: 'reborn', weapon: w, dur: back });
+      } else {
+        removeWeaponCards(st, w);
+        events.push({ type: 'weaponBroke', weapon: w });
+      }
     }
+  }
+  // Durchmarsch: Wer einen Gegner erledigt, bekommt Kraft und Karten
+  const newKills = st.kills - killsBefore;
+  if (st.onslaught && newKills > 0 && aliveFoes(st).length) {
+    st.energy += newKills;
+    events.push({ type: 'gain', amount: newKills });
+    const before = st.hand.length;
+    drawCards(st, st.onslaught * newKills);
+    events.push({ type: 'draw', n: st.hand.length - before });
   }
   if (!aliveFoes(st).length) st.over = cleared(st);
   return events;
@@ -1054,6 +1141,8 @@ export function endTurn(st: TacticsState): TEvent[] {
     st.ally.rounds -= 1;
     if (st.ally.rounds <= 0) st.ally = null;
   }
+  // Zweiter Atem: Merken, wie es vor dem Zug der Gegner stand
+  const hpBefore = st.hp;
   // Vorne zuerst, dann hinten
   const order = [...aliveFoes(st)].sort((a, b) => (a.row === b.row ? 0 : a.row === 'near' ? -1 : 1));
   for (const f of order) {
@@ -1152,6 +1241,8 @@ export function endTurn(st: TacticsState): TEvent[] {
         let raw = intent.dmg ?? 0;
         if (raw > 0 && st.stance === 'calm') raw = Math.max(0, raw - STANCE.calmGuard);
         else if (raw > 0 && st.stance === 'wrath') raw += STANCE.wrathTaken;
+        // Fels in der Brandung: ruhig macht kein Treffer mehr als so viel
+        if (st.bulwark && st.stance === 'calm' && raw > st.bulwark) raw = st.bulwark;
         const absorbed = Math.min(st.block, raw);
         st.block -= absorbed;
         let dmg = raw - absorbed;
@@ -1192,13 +1283,8 @@ export function endTurn(st: TacticsState): TEvent[] {
           st.burning = FOE_RULES.burning;
           events.push({ type: 'aflame', by: f.id });
         }
-        // Zweiter Atem: einmal pro Kampf, wenn es knapp wird
-        if (st.hp > 0 && st.hp < 3 && st.secondWind && !st.secondWindUsed) {
-          st.secondWindUsed = true;
-          const amount = Math.min(st.secondWind, st.maxHp - st.hp);
-          st.hp += amount;
-          events.push({ type: 'secondWind', amount });
-        }
+        // Flammenwand: Wer vorne zuschlägt, fängt Feuer
+        if (st.flamewall && f.row === 'near' && f.hp > 0 && f.frozen <= 0) setBurn(st, f, st.flamewall.burn, events);
         if (st.hp <= 0) st.over = 'lost';
         break;
       }
@@ -1327,6 +1413,17 @@ export function endTurn(st: TacticsState): TEvent[] {
     }
   }
   if (!st.over && !aliveFoes(st).length) st.over = cleared(st);
+  // Zweiter Atem: eine Runde der Gegner ganz ohne Schaden überstanden, dann heilst du etwas
+  if (!st.over && st.secondWind && st.hp === hpBefore && st.hp < st.maxHp) {
+    const amount = Math.min(st.secondWind, st.maxHp - st.hp);
+    st.hp += amount;
+    events.push({ type: 'secondWind', amount });
+  }
+  // Die Flammenwand brennt herunter
+  if (st.flamewall) {
+    st.flamewall.rounds -= 1;
+    if (st.flamewall.rounds <= 0) st.flamewall = null;
+  }
   if (!st.over) startTurn(st, events);
   return events;
 }

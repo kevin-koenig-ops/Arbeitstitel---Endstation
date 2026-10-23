@@ -256,6 +256,8 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
   const defaultInfo = () => {
     const foes = aliveFoes(st);
     if (firstFight && st.turn === 1) return 'Tippe eine Karte an. Jede kostet Kraft (⚡), pro Runde hast du 3. Tippst du einen Gegner an, treffen ihn deine Karten, bis du wechselst.';
+    if (st.turn === 1 && st.flamewall && st.flamewall.rounds >= 2) return 'Flammenwand! Wer vorne steht, brennt, und zwei Runden lang fängt Feuer, wer zuschlägt oder nach vorn kommt.';
+    if (st.turn === 1 && st.waylaid) return 'Hinterhalt! Du hast dir den Ort ausgesucht: Alle stehen hinten, und eine Falle liegt schon.';
     if (st.turn === 1 && opening === 'surprise') return 'Überraschung! Die Gegner setzen diese Runde aus, und du hast 1 Kraft mehr.';
     if (st.turn === 1 && opening === 'spotted') return `Entdeckt: In der ersten Runde hast du 1 Kraft weniger.${cold ? ' Und kalte Finger: eine Karte weniger.' : ''}`;
     if (st.turn === 1 && cold) return `Kalt: Ohne warme Sachen (Wärme ${CLIMATE.warmthNeeded}) hast du in der ersten Runde eine Karte weniger.`;
@@ -494,7 +496,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           break;
         case 'secondWind':
           shown.hp = Math.min(st.maxHp, shown.hp + e.amount);
-          say(`Zweiter Atem! +${e.amount}`, 'gold', 1600);
+          say(`Zweiter Atem: kein Kratzer, +${e.amount}`, 'gold', 1400);
           scene?.heal();
           vibrate([30, 30, 60]);
           await wait(400);
@@ -889,6 +891,26 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           await wait(900);
           break;
         }
+        // --- Legenden ---
+        case 'flamewall':
+          fx('fire');
+          say(`Flammenwand! ${e.rounds} Runden lang fängt Feuer, wer vorne zuschlägt oder vorkommt.`, 'gold', 1800);
+          vibrate([20, 30, 40]);
+          await wait(500);
+          break;
+        case 'reborn':
+          say(`Zweites Leben: ${WEAPONS[e.weapon].name} wieder zusammengeflickt (${e.dur})!`, 'gold', 1800);
+          scene?.focus();
+          await wait(500);
+          break;
+        case 'hail':
+          if (e.n) say(`Steinhagel: ${e.n} Steine!`, 'gold', 1200);
+          for (let i = 0; i < Math.min(e.n, 6); i++) {
+            const t = aliveFoes(st)[0];
+            if (t) scene?.shoot(t.id, 'stone');
+            await wait(90);
+          }
+          break;
         case 'turn':
           syncShown();
           scene?.setFoes(shownList());
@@ -1031,7 +1053,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     meStance.textContent = st.stance === 'calm' ? 'Ruhig' : st.stance === 'wrath' ? 'Rasend' : '';
     meStance.title = st.stance === 'calm' ? 'Ruhig: Treffer machen 1 weniger. Verlässt du die Ruhe, bekommst du 2 Kraft.' : 'Rasend: Dein Angriff macht 3 mehr, Treffer gegen dich 2 mehr.';
     clear(meDevices);
-    const DEV_ICON = { fence: 'fence', lamp: 'lamp', boombox: 'boombox' } as const;
+    const DEV_ICON = { fence: 'fence', lamp: 'lamp', boombox: 'boombox', mower: 'toolbox' } as const;
     for (const d of st.devices) meDevices.append(h('span', { class: 't-dev', title: `${DEVICE_NAMES[d.kind]}: noch ${d.rounds} Runden` }, svgEl(icon(DEV_ICON[d.kind], 13)), String(d.rounds)));
     const kinds = (Object.keys(st.weaponDur) as (keyof typeof WEAPONS)[]).filter((k) => (st.weaponDur[k] ?? 0) > 0);
     weaponLine.textContent = kinds.length ? kinds.map((k) => `${WEAPONS[k].name} ${st.weaponDur[k]}`).join(' · ') : 'Keine Waffe: Fäuste und Steine';

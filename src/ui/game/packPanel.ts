@@ -412,7 +412,7 @@ export function openPackPanel(app: App, host: HTMLElement, onClose: () => void, 
       const id = k as CardId;
       return (s.packCards[id] ?? 0) + (s.stash[id] ?? 0);
     };
-    const level = (k: BookKey) => (bookItem(k).kind === 'skill' ? levelProgress(s.book[k]?.n ?? 0).level : 1);
+    const level = (k: BookKey) => (bookItem(k).kind === 'skill' ? levelProgress(s.book[k]?.n ?? 0, CARDS[k as CardId].rarity).level : 1);
     const showDetail = (k: BookKey) => {
       cardSel = k;
       for (const b of grid.querySelectorAll('.cbook-cell')) b.classList.toggle('sel', (b as HTMLElement).dataset.key === k);
@@ -430,7 +430,7 @@ export function openPackPanel(app: App, host: HTMLElement, onClose: () => void, 
         lines.push('Im Kampf liegen Einmal-Karten in der Tasche: 3 Sorten, je bis zu 3 Stück, jederzeit spielbar. Welche Sorten, wählst du zu Hause im Lager. Gespielt sind sie weg, und wirst du niedergeschlagen, ist weg, was du dabeihattest.');
         if (CARDS[id].craft) lines.push(['Am Werktisch zu bauen: ', costChips(CARDS[id].craft!)]);
       } else if (it.kind === 'skill') {
-        const p = levelProgress(e.n);
+        const p = levelProgress(e.n, CARDS[k as CardId].rarity);
         lines.push(`Stufe ${ROMAN[p.level]} · ${e.n} gefunden${p.next ? ` · Stufe ${ROMAN[p.level + 1]} ab ${p.next}` : ' · höchste Stufe'}`);
         const on = s.loadout.skills.includes(k as CardId);
         lines.push(

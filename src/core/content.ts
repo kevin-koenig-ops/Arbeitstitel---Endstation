@@ -1164,17 +1164,19 @@ export type CardId =
   // Einmal-Karten (nach dem Ausspielen weg)
   | 'molotov' | 'smoke' | 'caltrops' | 'firecracker' | 'lure' | 'pepper' | 'tinder' | 'tripwire' | 'alarm' | 'lath' | 'marblesack' | 'motionlamp' | 'boombox' | 'dressing' | 'adrenaline' | 'flare' | 'oilcan' | 'painkiller' | 'tape' | 'fencer' | 'flashbang' | 'fireworks' | 'grenade'
   // Fähigkeiten (dauerhaft, aus Sichtungen; mit Stufen)
-  | 'counter' | 'steady' | 'breath' | 'spark' | 'pitcher' | 'followup' | 'headbutt' | 'cover' | 'roll' | 'pockets' | 'pickstones' | 'breathe' | 'grit' | 'fullforce' | 'charger' | 'sweep' | 'sneak' | 'scavenger' | 'embers' | 'trapper' | 'distract' | 'rage' | 'retaliate' | 'firstaid' | 'tinkerbox' | 'toolroll' | 'trueaim' | 'unleash' | 'innercalm' | 'radio' | 'secondwind' | 'wildfire' | 'laststrike' | 'frenzy' | 'packleader' | 'laststand';
+  | 'counter' | 'steady' | 'breath' | 'spark' | 'pitcher' | 'followup' | 'headbutt' | 'cover' | 'roll' | 'pockets' | 'pickstones' | 'breathe' | 'grit' | 'fullforce' | 'charger' | 'sweep' | 'sneak' | 'scavenger' | 'embers' | 'trapper' | 'distract' | 'rage' | 'retaliate' | 'firstaid' | 'tinkerbox' | 'toolroll' | 'trueaim' | 'unleash' | 'innercalm' | 'radio' | 'secondwind' | 'wildfire' | 'laststrike' | 'frenzy' | 'packleader' | 'laststand'
+  // Legenden je Spielstil (seit 23.10.): jede mit einer Wirkung, die keine andere Karte hat
+  | 'flamewall' | 'waylay' | 'onslaught' | 'mower' | 'secondlife' | 'stonehail' | 'bulwark';
 
 /** Grundkarte, Waffenkarte, Einmal-Karte, Fähigkeit oder erzeugte Karte (nach dem Spielen weg). */
 export type CardKind = 'base' | 'weapon' | 'once' | 'skill' | 'temp';
 /** Geräte (Tüftler): stehen ein paar Runden und wirken jede Runde von selbst. */
-export type DeviceId = 'fence' | 'lamp' | 'boombox';
-export const DEVICE_NAMES: Record<DeviceId, string> = { fence: 'Weidezaungerät', lamp: 'Bewegungsmelder-Lampe', boombox: 'Kofferradio' };
+export type DeviceId = 'fence' | 'lamp' | 'boombox' | 'mower';
+export const DEVICE_NAMES: Record<DeviceId, string> = { fence: 'Weidezaungerät', lamp: 'Bewegungsmelder-Lampe', boombox: 'Kofferradio', mower: 'Mähroboter' };
 /** So viele Geräte stehen höchstens gleichzeitig. */
 export const MAX_DEVICES = 3;
 /** Was Geräte bewirken. */
-export const DEVICES = { fenceDmg: 2 };
+export const DEVICES = { fenceDmg: 2, mowerDmg: 2 };
 /** Haltungen (Ruhe und Wut). */
 export type Stance = 'calm' | 'wrath';
 export const STANCE = {
@@ -1259,6 +1261,10 @@ export interface CardDef {
   repair?: number;
   /** Wechselt die Haltung. */
   stance?: Stance;
+  /** Flammenwand: so viele Runden fängt Feuer, wer vorne zuschlägt oder nach vorn kommt. */
+  flamewall?: number;
+  /** Steinhagel: jede andere Karte auf der Hand fliegt als Stein. */
+  hail?: boolean;
   /** Höchstens so oft pro Runde. */
   perTurn?: number;
   /** Fähigkeit, die von selbst wirkt (kommt nicht ins Deck). */
@@ -1337,7 +1343,7 @@ export const CARDS: Record<CardId, CardDef> = {
   fencer: { name: 'Weidezaungerät', kind: 'once', cost: 1, target: 'self', device: { kind: 'fence', rounds: 3 }, rarity: 'rare', where: 'Werktisch, Scheunen, Hofläden', craft: { cells: 2, copper: 1, metal: 1 }, art: 'weidezaun', desc: 'Gerät, 3 Runden: Jede Runde bekommen alle vorne einen Schlag (2 Schaden).' },
   flashbang: { name: 'Blendgranate', kind: 'once', cost: 1, target: 'self', area: 'all', stun: true, rarity: 'epic', where: 'Konvoi-Wracks', art: 'blendgranate', desc: 'Alle Gegner setzen eine Runde aus.' },
   fireworks: { name: 'Feuerwerksbatterie', kind: 'once', cost: 1, target: 'self', area: 'all', dmg: 1, blind: 1, silence: 3, rarity: 'epic', where: 'Kioske, Zeltlager, Sichtungen', art: 'feuerwerk', desc: 'Alle Gegner: 1 Schaden und geblendet, Heuler verstummen 3 Runden.' },
-  grenade: { name: 'Granate', kind: 'once', cost: 2, target: 'self', area: 'all', dmg: 6, rarity: 'legendary', where: 'Konvoi-Wracks, Hilfsabwürfe', art: 'granate', desc: '6 Schaden an allen Gegnern.' },
+  grenade: { name: 'Granate', kind: 'once', cost: 2, target: 'self', area: 'all', dmg: 6, rarity: 'epic', where: 'Konvoi-Wracks, Hilfsabwürfe', art: 'granate', desc: '6 Schaden an allen Gegnern.' },
   // Fähigkeiten
   counter: { name: 'Konter', kind: 'skill', cost: 1, target: 'self', block: 2, thorns: 2, scale: { block: 1, thorns: 1 }, rarity: 'common', where: 'Notizbücher', art: 'konter', desc: 'Fängt 2 ab. Wer dich bis zur nächsten Runde trifft, nimmt 2 Schaden.' },
   steady: { name: 'Ruhige Hand', kind: 'skill', cost: 0, target: 'self', focus: 2, scale: { focus: 1 }, rarity: 'common', where: 'Notizbücher', art: 'ruhige-hand', desc: 'Der nächste Wurf oder Fernangriff macht 2 mehr Schaden.' },
@@ -1369,12 +1375,20 @@ export const CARDS: Record<CardId, CardDef> = {
   unleash: { name: 'Aus der Ruhe', kind: 'skill', cost: 0, target: 'self', stance: 'wrath', draw: 1, scale: { draw: 1 }, rarity: 'rare', where: 'Notizbücher', art: 'aus-der-ruhe', desc: 'Du wirst rasend und ziehst 1 Karte. Warst du ruhig, bekommst du dazu 2 Kraft.' },
   innercalm: { name: 'Innere Ruhe', kind: 'skill', cost: 0, target: 'self', passive: true, bonus: 1, scale: { bonus: 0.5 }, rarity: 'rare', where: 'Notizbücher', art: 'innere-ruhe', desc: 'Wirkt von selbst: Bist du ruhig, ziehst du jede Runde 1 Karte mehr.' },
   radio: { name: 'Funker', kind: 'skill', cost: 1, target: 'any', stun: true, silence: 9, rarity: 'epic', where: 'Notizbücher (an hohen Punkten häufiger)', art: 'funker', desc: 'Ein Gegner verliert seine Runde. Ein Heuler ruft in diesem Kampf keine Hilfe mehr.' },
-  secondwind: { name: 'Zweiter Atem', kind: 'skill', cost: 0, target: 'self', passive: true, heal: 4, scale: { heal: 2 }, rarity: 'epic', where: 'Alpha-Wandler', art: 'zweiter-atem', desc: 'Wirkt von selbst, einmal pro Kampf: Fällst du unter 3 Gesundheit, heilst du 4.' },
+  secondwind: { name: 'Zweiter Atem', kind: 'skill', cost: 0, target: 'self', passive: true, heal: 1, scale: { heal: 1 }, rarity: 'epic', where: 'Notlazarett-Kisten', art: 'zweiter-atem', desc: 'Wirkt von selbst: Kommst du durch eine Runde der Gegner ganz ohne Schaden, heilst du 1.' },
   wildfire: { name: 'Lauffeuer', kind: 'skill', cost: 0, target: 'self', passive: true, burn: 2, scale: { burn: 1 }, rarity: 'epic', where: 'Notizbücher', art: 'lauffeuer', desc: 'Wirkt von selbst: Fällt ein brennender Gegner, fängt der nächste Feuer und brennt 2 Runden.' },
   laststrike: { name: 'Letzter Schlag', kind: 'skill', cost: 0, target: 'self', passive: true, rarity: 'epic', where: 'Notizbücher', art: 'letzter-schlag', desc: 'Wirkt von selbst: Zerbricht deine Waffe bei einem Schlag, trifft dieser Schlag doppelt.' },
   frenzy: { name: 'Raserei', kind: 'skill', cost: 1, target: 'self', stance: 'wrath', momentum: 4, scale: { momentum: 1 }, rarity: 'epic', where: 'Notizbücher', art: 'raserei', desc: 'Du wirst rasend, und dein nächster Angriff in dieser Runde macht 4 mehr.' },
-  packleader: { name: 'Rudelführer', kind: 'skill', cost: 1, target: 'self', ally: { rounds: 3, dmg: 2 }, scale: { allyDmg: 1 }, rarity: 'legendary', where: 'Alpha-Wandler', art: 'rudelfuehrer', desc: 'Ein Hund kämpft 3 Runden mit und beißt jede Runde für 2 Schaden zu.' },
-  laststand: { name: 'Letztes Gefecht', kind: 'skill', cost: 0, target: 'self', passive: true, rarity: 'legendary', where: 'Alpha-Wandler', art: 'letztes-gefecht', desc: 'Wirkt von selbst, einmal am Tag: Ein tödlicher Treffer lässt dich mit 1 Gesundheit stehen.' },
+  packleader: { name: 'Rudelführer', kind: 'skill', cost: 1, target: 'self', ally: { rounds: 3, dmg: 2 }, scale: { allyDmg: 1 }, rarity: 'legendary', where: 'Notizbücher (sehr selten)', art: 'rudelfuehrer', desc: 'Ein Hund kämpft 3 Runden mit und beißt jede Runde für 2 Schaden zu.' },
+  laststand: { name: 'Letztes Gefecht', kind: 'skill', cost: 0, target: 'self', passive: true, rarity: 'legendary', where: 'Notizbücher (sehr selten)', art: 'letztes-gefecht', desc: 'Wirkt von selbst, einmal am Tag: Ein tödlicher Treffer lässt dich mit 1 Gesundheit stehen.' },
+  // --- Legenden: je Spielstil eine, jede mit einer Wirkung, die es sonst nirgends gibt ---
+  flamewall: { name: 'Flammenwand', kind: 'skill', cost: 0, target: 'self', passive: true, flamewall: 2, burn: 3, scale: { burn: 1 }, rarity: 'legendary', where: 'Notizbücher (sehr selten)', art: 'flammenwand', desc: 'Wirkt von selbst: Jeder Kampf beginnt hinter einer Wand aus Feuer. Wer vorne steht, brennt sofort, und zwei Runden lang fängt Feuer, wer vorne zuschlägt oder nach vorn kommt (brennt 3 Runden).' },
+  waylay: { name: 'Hinterhalt', kind: 'skill', cost: 0, target: 'self', passive: true, bonus: 3, scale: { bonus: 1 }, rarity: 'legendary', where: 'Notizbücher (sehr selten)', art: 'hinterhalt', desc: 'Wirkt von selbst, wenn dich keiner entdeckt hat: Du suchst dir den Ort aus. Alle Gegner fangen hinten an, und eine Falle liegt schon (3 Schaden).' },
+  onslaught: { name: 'Durchmarsch', kind: 'skill', cost: 0, target: 'self', passive: true, draw: 1, scale: { draw: 0.5 }, rarity: 'legendary', where: 'Notizbücher (sehr selten)', art: 'durchmarsch', desc: 'Wirkt von selbst: Erledigst du einen Gegner, bekommst du 1 Kraft zurück und ziehst 1 Karte.' },
+  mower: { name: 'Mähroboter', kind: 'skill', cost: 1, target: 'self', device: { kind: 'mower', rounds: 3 }, rarity: 'legendary', where: 'Notizbücher (sehr selten)', art: 'maehroboter', desc: 'Ein umgebauter Mähroboter fährt 3 Runden mit: Jede Runde fährt er dem vordersten Gegner in die Beine (2 Schaden) und drängt ihn nach hinten.' },
+  secondlife: { name: 'Zweites Leben', kind: 'skill', cost: 0, target: 'self', passive: true, bonus: 1, scale: { bonus: 0.5 }, rarity: 'legendary', where: 'Notizbücher (sehr selten)', art: 'zweites-leben', desc: 'Wirkt von selbst, einmal pro Kampf: Zerbricht deine Waffe, flickst du sie sofort aus den Trümmern wieder zusammen (halbe Haltbarkeit).' },
+  stonehail: { name: 'Steinhagel', kind: 'skill', cost: 0, target: 'self', hail: true, dmg: 2, thrown: true, scale: { dmg: 0.5 }, rarity: 'legendary', where: 'Notizbücher (sehr selten)', art: 'steinhagel', desc: 'Alles, was du in der Hand hast, fliegt: Jede andere Karte wird zu einem Stein auf den schwächsten Gegner (je 2 Schaden, Wurf-Boni zählen).' },
+  bulwark: { name: 'Fels in der Brandung', kind: 'skill', cost: 0, target: 'self', passive: true, bonus: 3, rarity: 'legendary', where: 'Notizbücher (sehr selten)', art: 'fels-in-der-brandung', desc: 'Wirkt von selbst: Du gehst ruhig in jeden Kampf, und bist du ruhig, macht kein einzelner Treffer mehr als 3 Schaden.' },
 };
 
 // --- Spielstile: Karten, die gut zusammenarbeiten (Zeichen auf der Karte) -----------------
@@ -1399,22 +1413,22 @@ export const STYLE_HINT: Record<CardStyle, string> = {
 
 export const CARD_STYLE: Partial<Record<CardId, CardStyle>> = {
   // Feuer
-  molotov: 'fire', tinder: 'fire', oilcan: 'fire', spark: 'fire', embers: 'fire', wildfire: 'fire',
+  molotov: 'fire', tinder: 'fire', oilcan: 'fire', spark: 'fire', embers: 'fire', wildfire: 'fire', flamewall: 'fire',
   // Fallen und Abstand
-  caltrops: 'trap', lure: 'trap', tripwire: 'trap', alarm: 'trap', steady: 'trap', pitcher: 'junk', sneak: 'trap', trapper: 'trap', distract: 'trap',
+  caltrops: 'trap', lure: 'trap', tripwire: 'trap', alarm: 'trap', steady: 'trap', pitcher: 'junk', sneak: 'trap', trapper: 'trap', distract: 'trap', waylay: 'trap',
   // Schwung
-  adrenaline: 'momentum', followup: 'momentum', sweep: 'momentum', rage: 'momentum',
+  adrenaline: 'momentum', followup: 'momentum', sweep: 'momentum', rage: 'momentum', onslaught: 'momentum',
   // Schutz
   smoke: 'guard', firecracker: 'guard', pepper: 'guard', dressing: 'guard', flare: 'guard', painkiller: 'guard', flashbang: 'guard', fireworks: 'guard',
   counter: 'guard', headbutt: 'guard', cover: 'guard', roll: 'guard', retaliate: 'guard', firstaid: 'guard', radio: 'guard', secondwind: 'guard', laststand: 'guard',
   // Tüftler
-  motionlamp: 'tinker', boombox: 'tinker', fencer: 'tinker', charger: 'tinker', tinkerbox: 'tinker',
+  motionlamp: 'tinker', boombox: 'tinker', fencer: 'tinker', charger: 'tinker', tinkerbox: 'tinker', mower: 'tinker',
   // Raubbau
-  lath: 'wear', lathhit: 'wear', tape: 'wear', fullforce: 'wear', toolroll: 'wear', laststrike: 'wear',
+  lath: 'wear', lathhit: 'wear', tape: 'wear', fullforce: 'wear', toolroll: 'wear', laststrike: 'wear', secondlife: 'wear',
   // Kleinkram
-  marblesack: 'junk', marble: 'junk', pebble: 'junk', pockets: 'junk', pickstones: 'junk', trueaim: 'junk',
+  marblesack: 'junk', marble: 'junk', pebble: 'junk', pockets: 'junk', pickstones: 'junk', trueaim: 'junk', stonehail: 'junk',
   // Ruhe und Wut
-  breathe: 'stance', grit: 'stance', unleash: 'stance', innercalm: 'stance', frenzy: 'stance',
+  breathe: 'stance', grit: 'stance', unleash: 'stance', innercalm: 'stance', frenzy: 'stance', bulwark: 'stance',
   // Rudel ruht vorerst (Kevin): Rudelführer bleibt ohne Stil-Zeichen
 };
 export const WEAPON_STYLE: Partial<Record<WeaponId, CardStyle>> = {
@@ -1434,16 +1448,28 @@ export function styleOf(id: CardId): CardStyle | undefined {
 
 /** Sammelkarten in der Reihenfolge des Sammelbuchs. */
 export const ONCE_CARDS: CardId[] = ['molotov', 'smoke', 'caltrops', 'firecracker', 'lure', 'pepper', 'tinder', 'tripwire', 'alarm', 'lath', 'marblesack', 'motionlamp', 'boombox', 'dressing', 'adrenaline', 'flare', 'oilcan', 'painkiller', 'tape', 'fencer', 'flashbang', 'fireworks', 'grenade'];
-export const SKILL_CARDS: CardId[] = ['counter', 'steady', 'breath', 'spark', 'pitcher', 'followup', 'headbutt', 'cover', 'roll', 'pockets', 'pickstones', 'breathe', 'grit', 'fullforce', 'charger', 'sweep', 'sneak', 'scavenger', 'embers', 'trapper', 'distract', 'rage', 'retaliate', 'firstaid', 'tinkerbox', 'toolroll', 'trueaim', 'unleash', 'innercalm', 'radio', 'secondwind', 'wildfire', 'laststrike', 'frenzy', 'packleader', 'laststand'];
+export const SKILL_CARDS: CardId[] = ['counter', 'steady', 'breath', 'spark', 'pitcher', 'followup', 'headbutt', 'cover', 'roll', 'pockets', 'pickstones', 'breathe', 'grit', 'fullforce', 'charger', 'sweep', 'sneak', 'scavenger', 'embers', 'trapper', 'distract', 'rage', 'retaliate', 'firstaid', 'tinkerbox', 'toolroll', 'trueaim', 'unleash', 'innercalm', 'radio', 'secondwind', 'wildfire', 'laststrike', 'frenzy', 'packleader', 'laststand', 'flamewall', 'waylay', 'onslaught', 'mower', 'secondlife', 'stonehail', 'bulwark'];
 /** Höchstens so viele Einmal-Karten je Sorte stecken in der Tasche. */
 export const ONCE_CARRY = 3;
 /** Die Tasche für Einmal-Karten hat so viele Plätze (je Platz eine Sorte). */
 export const POUCH_SLOTS = 3;
 /** So viele Fähigkeiten nimmt man in den Kampf mit (zu Hause gewählt). */
 export const SKILL_SLOTS = 4;
-/** So viele gleiche Fähigkeiten braucht es insgesamt für Stufe II und III. */
-export const SKILL_LEVELS = [1, 4, 10];
-export const skillLevel = (copies: number): number => (copies >= SKILL_LEVELS[2] ? 3 : copies >= SKILL_LEVELS[1] ? 2 : copies >= 1 ? 1 : 0);
+/**
+ * So viele gleiche Fähigkeiten braucht es insgesamt für jede Stufe (I, II, III …). Doppelte machen
+ * eine Fähigkeit stärker. Seltene Karten steigen mit weniger Doppelten auf, Legenden bis Stufe V.
+ */
+export const LEVEL_COPIES: Record<CardRarity, number[]> = {
+  common: [1, 4, 10],
+  rare: [1, 4, 10],
+  epic: [1, 2, 4],
+  legendary: [1, 2, 3, 4, 5],
+};
+export const SKILL_LEVELS = LEVEL_COPIES.common;
+/** Stufe aus der Zahl der Doppelten (0 = noch nicht gefunden). */
+export const skillLevel = (copies: number, rarity: CardRarity = 'common'): number => LEVEL_COPIES[rarity].filter((n) => copies >= n).length;
+/** Höchste Stufe einer Fähigkeit. */
+export const maxLevel = (rarity: CardRarity = 'common'): number => LEVEL_COPIES[rarity].length;
 
 /** Wert einer Karte auf ihrer Stufe (1 = Grundwert). */
 export function cardStat(id: CardId, stat: CardStat, level = 1): number {
@@ -1454,26 +1480,26 @@ export function cardStat(id: CardId, stat: CardStat, level = 1): number {
 
 /**
  * Sammelkarten und Waffen beim Durchsuchen: je Ortstyp, was es dort geben kann (mit Chance).
- * Höchstens eins pro Suche. „w:…“ ist eine Waffe.
+ * Höchstens eins pro Suche. „w:…“ ist eine Waffe. Epische Sachen sind bewusst selten (seit 23.10.).
  */
 export const CARD_LOOT: Partial<Record<SpotKind, [CardId | `w:${WeaponId}`, number][]>> = {
-  fuel: [['molotov', 0.22], ['oilcan', 0.06], ['flare', 0.03], ['w:extinguisher', 0.015]],
+  fuel: [['molotov', 0.22], ['oilcan', 0.06], ['flare', 0.03], ['w:extinguisher', 0.005]],
   car: [['molotov', 0.05], ['tape', 0.04], ['w:golfclub', 0.02], ['w:pipewrench', 0.02], ['flare', 0.02]],
-  hardware: [['smoke', 0.1], ['caltrops', 0.1], ['tripwire', 0.08], ['motionlamp', 0.06], ['tape', 0.06], ['w:pipewrench', 0.03], ['w:machete', 0.01], ['w:shovel', 0.05], ['w:axe', 0.03], ['w:nailgun', 0.015], ['w:extinguisher', 0.01]],
-  market: [['lure', 0.12], ['marblesack', 0.03], ['firecracker', 0.08], ['fireworks', 0.01], ['w:slingshot', 0.015], ['w:pitchfork', 0.01]],
+  hardware: [['smoke', 0.1], ['caltrops', 0.1], ['tripwire', 0.08], ['motionlamp', 0.06], ['tape', 0.06], ['w:pipewrench', 0.03], ['w:machete', 0.01], ['w:shovel', 0.05], ['w:axe', 0.03], ['w:nailgun', 0.005], ['w:extinguisher', 0.004]],
+  market: [['lure', 0.12], ['marblesack', 0.03], ['firecracker', 0.08], ['fireworks', 0.004], ['w:slingshot', 0.015], ['w:pitchfork', 0.01]],
   pharmacy: [['pepper', 0.1], ['painkiller', 0.06], ['dressing', 0.05], ['adrenaline', 0.025]],
   shed: [['tinder', 0.08], ['lath', 0.08], ['fencer', 0.03], ['caltrops', 0.05], ['w:shovel', 0.05], ['w:pitchfork', 0.04], ['w:axe', 0.02], ['w:machete', 0.015]],
   hide: [['tripwire', 0.06], ['lath', 0.06]],
   parcel: [['alarm', 0.08], ['boombox', 0.06], ['tape', 0.04]],
   barrel: [['oilcan', 0.05]],
-  camp: [['tinder', 0.2], ['oilcan', 0.06], ['fireworks', 0.02]],
+  camp: [['tinder', 0.2], ['oilcan', 0.06], ['fireworks', 0.008]],
   backpack: [['firecracker', 0.04], ['alarm', 0.04], ['marblesack', 0.05], ['boombox', 0.03], ['dressing', 0.03], ['w:slingshot', 0.02]],
   container: [['pepper', 0.03], ['lure', 0.03], ['w:lid', 0.03]],
   stop: [['flare', 0.04], ['firecracker', 0.03], ['w:lid', 0.03]],
-  convoy: [['flare', 0.35], ['flashbang', 0.12], ['grenade', 0.04]],
-  heli: [['dressing', 0.2], ['painkiller', 0.1], ['adrenaline', 0.1], ['grenade', 0.03]],
-  bunker: [['flashbang', 0.15], ['grenade', 0.05], ['adrenaline', 0.1]],
-  airdrop: [['dressing', 0.25], ['adrenaline', 0.15], ['grenade', 0.05]],
+  convoy: [['flare', 0.35], ['flashbang', 0.04], ['grenade', 0.02]],
+  heli: [['dressing', 0.2], ['painkiller', 0.1], ['adrenaline', 0.1], ['grenade', 0.015]],
+  bunker: [['flashbang', 0.05], ['grenade', 0.02], ['adrenaline', 0.1]],
+  airdrop: [['dressing', 0.25], ['adrenaline', 0.15], ['grenade', 0.02]],
 };
 
 /** Grund-Karten, die man immer hat. */

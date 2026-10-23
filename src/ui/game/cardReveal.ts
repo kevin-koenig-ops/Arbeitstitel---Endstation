@@ -20,7 +20,7 @@ export function showCardReveal(host: HTMLElement, ev: Claimed, state: PlayerStat
   if (ev.weapon) lines.push(ev.repaired ? `Deine ${WEAPONS[ev.weapon].name} ist wieder wie neu.` : `${WEAPONS[ev.weapon].name}: ab jetzt im Kampf dabei.`);
   else if (ev.card && CARDS[ev.card].kind === 'once') lines.push('Steckt im Rucksack. Bis zu 3 davon nimmst du in jeden Kampf mit.');
   else if (ev.card && CARDS[ev.card].kind === 'skill') {
-    const p = levelProgress(n);
+    const p = levelProgress(n, CARDS[ev.card].rarity);
     if (ev.levelUp) lines.push(`Stufe ${ROMAN[p.level]} erreicht!`);
     else if (n === 1) lines.push('Kommt ab jetzt in jedem Kampf mit.');
     if (p.next) lines.push(`${n} von ${p.next} für Stufe ${ROMAN[p.level + 1]}.`);

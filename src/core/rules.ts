@@ -480,7 +480,7 @@ export function cardCount(bag: Partial<Record<CardId, number>>): number {
 
 /** Stufe einer Fähigkeit (0 = hast du nicht). */
 export function skillOf(state: PlayerState, id: CardId): number {
-  return CARDS[id].kind === 'skill' ? skillLevel(state.book[id]?.n ?? 0) : 0;
+  return CARDS[id].kind === 'skill' ? skillLevel(state.book[id]?.n ?? 0, CARDS[id].rarity) : 0;
 }
 
 /** So viele Fähigkeiten gehen mit in den Kampf. Später mit Charakterstufen: ab Stufe 10 fünf, ab 20 sechs. */

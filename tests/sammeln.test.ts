@@ -62,7 +62,10 @@ describe('Sammelkarten', () => {
   });
 
   it('Fähigkeiten steigen mit Kopien: 1 → I, 4 → II, 10 → III', () => {
-    expect([0, 1, 3, 4, 9, 10, 30].map(skillLevel)).toEqual([0, 1, 1, 2, 2, 3, 3]);
+    expect([0, 1, 3, 4, 9, 10, 30].map((n) => skillLevel(n))).toEqual([0, 1, 1, 2, 2, 3, 3]);
+    // Seltene Karten steigen mit weniger Doppelten auf, Legenden bis Stufe V
+    expect([0, 1, 2, 3, 4, 5].map((n) => skillLevel(n, 'epic'))).toEqual([0, 1, 2, 2, 3, 3]);
+    expect([0, 1, 2, 3, 4, 5, 9].map((n) => skillLevel(n, 'legendary'))).toEqual([0, 1, 2, 3, 4, 5, 5]);
     const s = createPlayer('p', hero, T0);
     s.book.counter = { n: 4, at: T0 };
     expect(skillOf(s, 'counter')).toBe(2);
