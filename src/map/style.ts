@@ -114,7 +114,14 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
     // Friedhöfe bleiben schlicht (sensible Orte)
     { id: 'landuse-cemetery', type: 'fill', ...from('landuse', cls('cemetery')), paint: { 'fill-color': '#7e8463' } },
     { id: 'landuse-cemetery-edge', type: 'line', ...from('landuse', cls('cemetery')), paint: { 'line-color': '#5f6248', 'line-width': 1.2, 'line-dasharray': [2, 2] } },
-    { id: 'landcover-sand', type: 'fill', ...from('landcover', cls('sand')), paint: { 'fill-pattern': 'pat-sand' } },
+    // Sand: Strand und Dünen mit Sandbild; „sand“ allein sind bei uns meist sandige Plätze und
+    // Parkplätze (Kevin 23.10.: sah aus wie Wüste), die bekommen Kies (bis es ein Bild gibt: Grundboden)
+    {
+      id: 'landcover-sand',
+      type: 'fill',
+      ...from('landcover', cls('sand')),
+      paint: { 'fill-pattern': ['match', ['coalesce', ['get', 'subclass'], ''], ['beach', 'dune'], 'pat-sand', 'pat-gravel'] as ExpressionSpecification },
+    },
     { id: 'landcover-rock', type: 'fill', ...from('landcover', cls('rock')), paint: { 'fill-pattern': 'pat-rock' } },
     { id: 'landcover-wetland', type: 'fill', ...from('landcover', cls('wetland')), paint: { 'fill-pattern': 'pat-wetland' } },
     // Eis und Gletscher: schlichte Farbe, bis es ein Bild gibt (GameMap setzt es dann)
@@ -139,7 +146,7 @@ export function buildStyle(mode: Mode, real?: RealSource): StyleSpecification {
       ['match', ['coalesce', ['get', 'subclass'], ''], ['park', 'garden', 'village_green', 'recreation_ground', 'golf_course', 'flowerbed'], '#969657', '#9a955a'] as ExpressionSpecification,
     ),
     soft('green', from('landuse', cls('pitch', 'playground', 'stadium', 'park', 'school')), '#969657'),
-    soft('sand', from('landcover', cls('sand')), '#c0a991'),
+    soft('sand', from('landcover', cls('sand')), ['match', ['coalesce', ['get', 'subclass'], ''], ['beach', 'dune'], '#c0a991', '#80694a'] as ExpressionSpecification),
     soft('rock', from('landcover', cls('rock')), '#908871'),
     soft('wetland', from('landcover', cls('wetland')), '#534d38'),
     soft('ice', from('landcover', cls('ice', 'glacier')), '#dfe5e6'),

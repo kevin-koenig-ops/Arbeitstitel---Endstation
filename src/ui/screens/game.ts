@@ -94,7 +94,7 @@ export function gameScreen(app: App): Screen {
   let particles: Particles | null = null;
   let ambience: AmbienceController | null = null;
   const sectorChip = h('button', { class: 'env-chip sector-chip', type: 'button', onclick: () => explainSector() });
-  // Neuland: wo du kaum warst, ist die Beute besser
+  // Neuland: wo du kaum warst, findest du öfter Seltenes
   const tierChip = h('button', { class: 'env-chip tier-chip', type: 'button', hidden: true, onclick: () => explainTier() });
   // Kompass: Windrose oben in der Reihe, Norden (rot) zeigt nach Norden.
   // Antippen: Karte nach Norden, nochmal: Karte dreht sich mit deiner Blickrichtung
@@ -622,7 +622,7 @@ export function gameScreen(app: App): Screen {
     if (t === 0) return;
     clear(tierChip);
     tierChip.dataset.tier = String(t);
-    tierChip.setAttribute('aria-label', `${TIER.names[t]}: bessere Beute`);
+    tierChip.setAttribute('aria-label', `${TIER.names[t]}: öfter Seltenes`);
     tierChip.append(svgEl(icon('sparkle', 15)), TIER.names[t]);
   };
   const explainTier = () => {
@@ -631,8 +631,8 @@ export function gameScreen(app: App): Screen {
     const t = regionTier(s, fix.pos);
     app.toast(
       t === 2
-        ? `Fernes Land: Weit und breit warst du noch nie. Hier ist die Beute ${Math.round((TIER.lootFactor[2] - 1) * 100)} % besser, und du findest öfter Seltenes.`
-        : `Neuland: Diese Gegend kennst du noch kaum. Die Beute ist ${Math.round((TIER.lootFactor[1] - 1) * 100)} % besser, und du findest öfter Seltenes. Je weiter weg von deinen gewohnten Wegen, desto mehr.`,
+        ? 'Fernes Land: Weit und breit warst du noch nie. Hier findest du viel öfter Seltenes.'
+        : 'Neuland: Diese Gegend kennst du noch kaum. Hier findest du öfter Seltenes. Je weiter weg von deinen gewohnten Wegen, desto mehr.',
     );
   };
 

@@ -1181,7 +1181,9 @@ export class GameMap {
     const lawn = c('pat-grass');
     if (pitch && play && lawn) set('soft-green', ['match', ['get', 'class'], ['pitch', 'stadium'], pitch, 'playground', play, lawn]);
     one('soft-ice', 'pat-ice');
-    one('soft-sand', 'pat-sand');
+    const sandC = c('pat-sand');
+    const gravelC = c('pat-gravel');
+    if (sandC && gravelC) set('soft-sand', ['match', ['coalesce', ['get', 'subclass'], ''], ['beach', 'dune'], sandC, gravelC]);
     one('soft-rock', 'pat-rock');
     one('soft-wetland', 'pat-wetland');
     const grass = c('pat-grass');

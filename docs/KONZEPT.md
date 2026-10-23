@@ -314,7 +314,7 @@ Beim ersten Fund einer Art wird sie bestimmt, wie in einem Bestimmungsbuch. Alle
 
 - **Nebel:** Unbekanntes Gebiet liegt unter Nebel. Was du gerade siehst (~100 m), ist frei. Wo du gegangen bist (~55 m Umkreis), bleibt dauerhaft aufgedeckt.
 - **Sektoren** (~750 m × 750 m): Bei 25 % aufgedeckt gilt ein Sektor als *erkundet*, bei 50 % als *gesichert*. Beides gibt einmalig eine Belohnung.
-- **Echte Tageszeit** aus dem Sonnenstand: Tag, Dämmerung, Nacht. Nachts mehr Wächter, dafür 30 % mehr Beute, dazu Taschenlampe und glühende Funken.
+- **Echte Tageszeit** aus dem Sonnenstand: Tag, Dämmerung, Nacht. Nachts mehr Wächter, dazu Taschenlampe und glühende Funken (mehr Beute gibt es seit 23.10. nachts nicht mehr, Kevin: keine Boni).
 - **Echtes Wetter** (Open-Meteo, Position auf ~10 km gerundet): bei Nebel, Regen und nachts sind Wandler zäher (+2 Gesundheit), in praller Sonne träge (−2), bei Nebel sieht man Wächter erst aus der Nähe, Gewitter mit Blitzen.
 - In den Einstellungen kann man Tageszeit und Wetter zum Ausprobieren erzwingen (nur Optik).
 
@@ -329,7 +329,7 @@ Die Häuser stehen schon als einfache Klötze in echter Höhe auf der Karte. Ech
 
 ## Bedrohung und Kampf
 
-- **Wachen:** Gegner bewachen Fundstellen (etwa jede vierte, an echten Orten öfter, nachts mehr). Wer gewinnt, bekommt mehr Beute und darf danach weiter wühlen. Man kann bewachte Orte auch liegen lassen.
+- **Wachen:** Gegner bewachen Fundstellen (etwa jede vierte, an echten Orten öfter, nachts mehr). Wer gewinnt, findet öfter Kram und Seltenes und darf danach weiter wühlen. Man kann bewachte Orte auch liegen lassen.
 - **Gegner aus der Lore:** Wandler (vom Weinen ausgebrannte Menschen; packen zu), Kriecher (flink, ducken sich weg), Borkenmann (Kalkplatten unter der Haut als Rüstung, holt aus und schlägt schwer zu), Heuler (bleibt hinten und ruft Wandler herbei, zuerst ausschalten). Meist kommen sie zu zweit oder dritt, nachts öfter.
 - **Kampf als kurze Taktik mit Karten** (Seitenansicht: du links, die Gegner rechts):
   - Über jedem Gegner steht, was er als Nächstes tut (Angriff mit Schaden, Packen, Ausholen, Wuchtschlag, Näherkommen, Heulen). Danach plant man.

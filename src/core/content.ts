@@ -1030,8 +1030,7 @@ export const WATCHER_LOOT = { items: { medicine: 1, electronics: 2 } as Partial<
 
 /** Anteil bewachter Fundstellen. */
 export const GUARD_CHANCE = { grid: 0.25, poi: 0.4, special: 0.35 };
-/** Bewachte Fundstellen lohnen sich: mehr Beute, öfter Erinnerungsstücke. */
-export const GUARD_LOOT_FACTOR = 1.5;
+/** Bewachte Fundstellen lohnen sich: öfter Kram, Sammelstücke und Erinnerungsstücke (seit 23.10. nicht mehr mehr Rohstoffe). */
 export const GUARD_MEMENTO_BONUS = 0.12;
 
 export interface WeaponDef {
@@ -1967,14 +1966,24 @@ export const HABIT = {
 
 // --- Durchsuchen: Geschick, Erstfund, Weiter wühlen --------------------------------
 
-/** Wie gut das Mini-Spiel lief: so viel Beute und Glück. */
-export const LOOT_QUALITY: Record<Quality, { factor: number; luck: number }> = {
-  miss: { factor: 0.7, luck: 0 },
-  good: { factor: 1, luck: 0 },
-  perfect: { factor: 1.35, luck: 1 },
+/** Wie gut das Mini-Spiel lief: so viel Glück (öfter Kram und Seltenes). Die Menge ändert es nicht mehr (23.10.). */
+export const LOOT_QUALITY: Record<Quality, { luck: number }> = {
+  miss: { luck: 0 },
+  good: { luck: 0 },
+  perfect: { luck: 1 },
 };
-/** Eine Fundstelle zum allerersten Mal: doppelte Beute. */
-export const FIRST_FIND_FACTOR = 2;
+
+/**
+ * Rohstoffe beim Durchsuchen (Kevin 23.10.: „Loot ist zu viel“, „keine Boni, Grundmenge verkleinern“,
+ * Wasser und Essen „weniger finden“). Erstfund, Nacht, Wache, Minispiel und Neuland ändern die
+ * Menge nicht mehr. Medizin bleibt wie im Balancing gerechnet.
+ */
+export const LOOT = {
+  /** So viel von der Grundmenge (gerundet, mindestens 1). */
+  base: 0.65,
+  /** Wasser und Essen: so viel seltener, wo sie nicht das Wichtigste des Ortes sind. */
+  foodWaterChance: 0.55,
+};
 
 export const DIG = {
   /** So oft darf man nach dem Durchsuchen weiter wühlen. */
@@ -2377,13 +2386,12 @@ export const HINT_NAMES: Record<HintKind, string> = {
   chute: 'Ein Fallschirm in den Bäumen',
 };
 
-/** Neuland: Wo du noch kaum warst, ist die Beute seltener und besser. Stufe 0 vertraut, 1 Neuland, 2 fernes Land. */
+/** Neuland: Wo du noch kaum warst, findest du öfter Seltenes. Stufe 0 vertraut, 1 Neuland, 2 fernes Land. */
 export const TIER = {
   names: ['Vertraut', 'Neuland', 'Fernes Land'],
   /** Fernes Land: kein erkundeter Sektor in dieser Entfernung (in Sektoren, je ~0,5 km) */
   farSectors: 5,
   luck: [0, 1, 2],
-  lootFactor: [1, 1.1, 1.3],
   mementoBonus: [0, 0.02, 0.05],
 };
 
@@ -2462,8 +2470,6 @@ export const SPOT_STORIES: Record<SpotKind, string[]> = {
   mast: ['Der Mast summt leise. Irgendwo läuft noch ein Generator.', 'Von oben hängt ein Kabel bis zum Boden, frisch geflickt.'],
   airdrop: ['Der Fallschirm hängt in den Bäumen, die Kiste ist aufgeplatzt.', 'Jemand hat schon versucht, die Kiste aufzustemmen, und aufgegeben.'],
 };
-/** Hinweis bei Tag: nachts ist es hier anders (mehr Beute, mehr Gefahr). */
-export const NIGHT_HINT = 'Komm nachts wieder: Dann gibt es hier mehr zu holen, aber nicht ohne Gefahr.';
 
 // --- Draußen: Händlerkisten und Verstecke -------------------------------------------
 
@@ -2556,9 +2562,7 @@ export const RARITY: Record<Resource, Rarity> = {
 
 // --- Tageszeit ---------------------------------------------------------------------
 
-/** Nachts bewachen mehr Zombies die Fundstellen ... */
+/** Nachts bewachen mehr Zombies die Fundstellen (mehr Beute gibt es seit 23.10. nicht mehr dafür). */
 export const NIGHT_GUARD_FACTOR = 1.6;
-/** ... dafür gibt es mehr Beute. */
-export const NIGHT_LOOT_FACTOR = 1.3;
 /** GPS-Positionen, die ungenauer sind, decken keine Karte auf. */
 export const EXPLORE_MAX_ACCURACY_M = 45;

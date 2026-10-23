@@ -1,8 +1,7 @@
 // Untere Karte für eine Fundstelle: Infos, Durchsuchen, Fundbeleg.
 
-import { BACKGROUNDS, CACHE, CART, CHAIN, COLLECTIBLES, COOK, DIG, ENEMIES, FIRST_FIND_FACTOR, GEAR, HINT_NAMES, isMaterial, KRAM, LOOT_QUALITY, MEMENTOS, MIN_HEALTH_TO_FIGHT, NIGHT_HINT, RARITY, RESOURCE_ORDER, RESOURCES, SETS, SET_ORDER, SPECIAL_HINT, SPOT_KINDS, SPOT_STORIES, TIER, TRACK_LINES } from '../../core/content';
+import { BACKGROUNDS, CACHE, CART, CHAIN, COLLECTIBLES, COOK, DIG, ENEMIES, GEAR, HINT_NAMES, isMaterial, KRAM, LOOT_QUALITY, MEMENTOS, MIN_HEALTH_TO_FIGHT, RARITY, RESOURCE_ORDER, RESOURCES, SETS, SET_ORDER, SPECIAL_HINT, SPOT_KINDS, SPOT_STORIES, TIER, TRACK_LINES } from '../../core/content';
 import { hashString } from '../../core/rng';
-import { dayPhase } from '../../core/sun';
 import { bearingDeg, distanceM, formatDistance } from '../../core/geo';
 import { currentHealth, nextHealthIn, readyAt, regenMs, searchRangeM } from '../../core/rules';
 import type { Cache, CollectibleId, GameEvent, GearSlot, Inventory, KramId, LatLon, Quality, Resource, Spot } from '../../core/types';
@@ -24,7 +23,6 @@ export function spotStory(spot: Spot): string {
 }
 
 /** Bei Tag an manchen Orten: nachts ist hier mehr los. */
-const NIGHT_KINDS = new Set(['hide', 'shed', 'container', 'heli', 'convoy', 'bunker', 'camp', 'mast']);
 
 /** Himmelsrichtung in Worten (für Hinweise auf Verstecke). */
 export function compassWord(deg: number): string {
@@ -138,7 +136,6 @@ export class SpotSheet {
     // Besonderer Ort, noch nie da gewesen und noch zu weit weg: was es ist, siehst du erst vor Ort
     const hint = SPECIAL_HINT[spot.kind];
     const unknown = spot.source === 'special' && !state.discovered[spot.id] && !inRange;
-    const nightHint = !unknown && NIGHT_KINDS.has(spot.kind) && dayPhase(spot.pos, now) !== 'night' && (hashString(`${spot.id}:nacht`) >>> 0) % 3 === 0;
 
     let status: string;
     let button: HTMLElement;
@@ -194,15 +191,14 @@ export class SpotSheet {
               'div',
               null,
               h('div', { class: 'guard-title' }, `Bewacht: ${ENEMIES[guard].name}, oft nicht allein`),
-              h('p', null, `${ENEMIES[guard].desc} Wer gewinnt, findet hier mehr.`),
+              h('p', null, `${ENEMIES[guard].desc} Wer gewinnt, findet hier öfter Kram und Seltenes.`),
             ),
           )
         : cart
           ? h('p', { class: 'sheet-hint cart' }, `Ein Händlerkarren ist hier liegen geblieben. Viel mehr Beute als sonst (×${CART.lootFactor}), oft Kram und Sammelstücke. Nur für eine Weile.`)
           : unknown
             ? h('p', { class: 'sheet-hint' }, 'Was dort ist, siehst du erst vor Ort. Besondere Orte gibt es nur einmal pro Gegend, mit seltener Beute.')
-            : h('p', { class: 'sheet-hint' }, def.hint, state.spots[spot.id] ? null : h('span', { class: 'first-tag' }, ` Noch nie durchsucht: doppelte Beute.`)),
-      nightHint ? h('p', { class: 'sheet-hint small night' }, svgEl(icon('moon', 14)), NIGHT_HINT) : null,
+            : h('p', { class: 'sheet-hint' }, def.hint, state.spots[spot.id] ? null : h('span', { class: 'first-tag' }, ' Noch nie durchsucht.')),
       h(
         'div',
         { class: 'sheet-meta' },
@@ -311,13 +307,11 @@ export class SpotSheet {
     const q = ev.quality;
     // Was diesmal mehr (oder weniger) gebracht hat, als kleine Marken
     const tags: [string, string][] = [];
-    if (q === 'perfect') tags.push(['gold', `Perfekt +${Math.round((LOOT_QUALITY.perfect.factor - 1) * 100)} %`]);
-    if (q === 'miss') tags.push(['dim', `Daneben −${Math.round((1 - LOOT_QUALITY.miss.factor) * 100)} %`]);
-    if (ev.first) tags.push(['good', `Erstfund ×${FIRST_FIND_FACTOR}`]);
+    // Seit 23.10. ändern Minispiel, Erstfund, Nacht und Neuland die Menge nicht mehr (Kevin: keine Boni)
+    if (q === 'perfect' && LOOT_QUALITY.perfect.luck) tags.push(['gold', 'Perfekt: mehr Glück']);
     if (ev.cart) tags.push(['gold', `Händlerkiste ×${CART.lootFactor}`]);
     if (ev.fed) tags.push(['good', `Satt +${Math.round(COOK.lootBonus * 100)} %`]);
-    if (ev.night) tags.push(['night', 'Nacht +30 %']);
-    if (ev.tier) tags.push(['gold', `${TIER.names[ev.tier]} +${Math.round((TIER.lootFactor[ev.tier] - 1) * 100)} %`]);
+    if (ev.tier) tags.push(['gold', TIER.names[ev.tier]]);
     if (ev.newKind) tags.push(['olive', 'Neuer Ortstyp']);
     if (ev.bonus) tags.push(['good', 'Rückkehr ×2']);
     const items = itemList(ev.items);

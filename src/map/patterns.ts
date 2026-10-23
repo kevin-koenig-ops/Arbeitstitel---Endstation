@@ -34,6 +34,8 @@ const IMAGES: Record<string, { url: string; pr: number }> = {
   'pat-yard': { url: hof, pr: 2.5 },
   'pat-paved': { url: schutt, pr: 3 },
   'pat-sand': { url: sand, pr: 2 },
+  // Sandige Plätze und Parkplätze: Kies, bis es ein eigenes Bild gibt (kies.webp) der Grundboden
+  'pat-gravel': { url: grundboden, pr: 2 },
   'pat-rock': { url: fels, pr: 2.5 },
   'pat-wetland': { url: sumpf, pr: 2.5 },
   // Äcker: drei Sorten, damit nicht jedes Feld gleich aussieht
@@ -57,6 +59,7 @@ const ALL_FILES = import.meta.glob('../assets/textures/*.webp', { eager: true, q
 const fileUrl = (name: string): string | undefined => ALL_FILES[`../assets/textures/${name}.webp`];
 // Eigenes Pflaster-/Asphaltbild für Städte, sobald es da ist (pflaster.webp)
 if (fileUrl('pflaster')) IMAGES['pat-paved'] = { url: fileUrl('pflaster')!, pr: 3 };
+if (fileUrl('kies')) IMAGES['pat-gravel'] = { url: fileUrl('kies')!, pr: 2 };
 const SEASON_NAME: Record<Season, string> = { spring: 'fruehling', summer: 'sommer', autumn: 'herbst', winter: 'winter' };
 /** Muster mit eigenen Bildern je Jahreszeit, z. B. wiese-herbst.webp. Fehlt eins, bleibt das normale. */
 const SEASONAL: Record<string, string> = {
@@ -69,6 +72,7 @@ const SEASONAL: Record<string, string> = {
   'pat-yard': 'hof',
   'pat-paved': 'pflaster',
   'pat-sand': 'sand',
+  'pat-gravel': 'kies',
   'pat-rock': 'fels',
   'pat-wetland': 'sumpf',
   'pat-farm': 'acker-a',

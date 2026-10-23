@@ -47,8 +47,8 @@ export const WEATHER_NAMES: Record<WeatherKind, string> = {
 
 export function ambienceEffects(a: Ambience): string {
   const parts: string[] = [];
-  if (a.phase === 'night') parts.push('Nacht: mehr Wächter, dafür 30 % mehr Beute.');
-  if (a.phase === 'dusk') parts.push('Dämmerung: Bald wird es Nacht, dann gibt es mehr Beute und mehr Gefahr.');
+  if (a.phase === 'night') parts.push('Nacht: mehr Wächter, mehr Gefahr.');
+  if (a.phase === 'dusk') parts.push('Dämmerung: Bald wird es Nacht, dann wird es gefährlicher.');
   if (a.phase === 'night' || ['fog', 'rain', 'storm'].includes(a.weather)) parts.push('Wandler sind jetzt zäher.');
   if (a.weather === 'rain') parts.push('Regen: Wandler mögen das.');
   if (a.weather === 'storm') parts.push('Gewitter: Donner übertönt deine Schritte, Trupps hören dich schlechter. Aber such dir in echt einen Unterschlupf!');

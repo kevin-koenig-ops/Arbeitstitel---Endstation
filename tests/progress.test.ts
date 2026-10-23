@@ -91,18 +91,18 @@ describe('Zielleiste und Ruf', () => {
 });
 
 describe('Looten', () => {
-  it('Geschick zählt: daneben gibt weniger, perfekt mehr', () => {
+  it('Kevin 23.10.: keine Boni mehr, das Minispiel ändert die Menge nicht', () => {
     const spot = free()[0];
     const s = { ...fresh(), seen: [] };
     const miss = total(loot(search(s, spot, 'miss').events).items);
     const good = total(loot(search(s, spot, 'good').events).items);
     const perfect = total(loot(search(s, spot, 'perfect').events).items);
-    expect(miss).toBeLessThanOrEqual(good);
-    expect(perfect).toBeGreaterThanOrEqual(good);
+    expect(miss).toBe(good);
+    expect(perfect).toBe(good);
     expect(loot(search(s, spot, 'perfect').events).quality).toBe('perfect');
   });
 
-  it('beim ersten Besuch gibt es doppelt so viel', () => {
+  it('der erste Besuch wird gemerkt (gibt aber nicht mehr)', () => {
     const spot = free()[1];
     const first = search(fresh(), spot);
     expect(loot(first.events).first).toBe(true);

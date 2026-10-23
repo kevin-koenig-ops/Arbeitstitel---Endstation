@@ -5,7 +5,7 @@
 // Teil 2: Ausflüge (eine Stunde draußen): mehrere Kämpfe hintereinander, Erholung,
 //         Heilen mit Medizin, Medizin finden. Zeigt, ob Gesundheit und Medizin knapp sind.
 
-import { ENEMY_WEIGHTS, GRID_KIND_WEIGHTS, HEAL_AMOUNT, HEALTH_REGEN_MIN, MAX_HEALTH, MIN_HEALTH_TO_FIGHT, NIGHT_ENEMY_WEIGHTS, NIGHT_GUARD_FACTOR, GUARD_CHANCE, GUARD_LOOT_FACTOR, REGIONS, SPOT_KINDS, WEAPONS, type CardId } from '../src/core/content';
+import { ENEMY_WEIGHTS, GRID_KIND_WEIGHTS, HEAL_AMOUNT, HEALTH_REGEN_MIN, MAX_HEALTH, MIN_HEALTH_TO_FIGHT, NIGHT_ENEMY_WEIGHTS, NIGHT_GUARD_FACTOR, GUARD_CHANCE, REGIONS, SPOT_KINDS, WEAPONS, type CardId } from '../src/core/content';
 import { autopilotFight, type AutopilotOptions } from '../src/core/autopilot';
 import { encounter } from '../src/core/rules';
 import { rngFrom, pickWeighted } from '../src/core/rng';
@@ -278,7 +278,7 @@ function trip(stage: Stage, region: RegionId, night: boolean, seed: string): Tri
     }
     // Beute: Medizin (bewachte Fundstellen bringen mehr)
     if (e.kind === 'search') {
-      const m = MED_PER_SEARCH * (guarded ? GUARD_LOOT_FACTOR : 1);
+      const m = MED_PER_SEARCH;
       const got = Math.floor(m) + (r() < m % 1 ? 1 : 0);
       med += got;
       res.medFound += got;

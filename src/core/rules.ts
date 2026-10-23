@@ -29,13 +29,11 @@ import {
   GUARD_CHANCE,
   GUARD_COLLECT_BONUS,
   GUARD_KRAM_BONUS,
-  GUARD_LOOT_FACTOR,
   isMaterial,
   KRAM,
   GUARD_MEMENTO_BONUS,
   HEAL_AMOUNT,
   DIG,
-  FIRST_FIND_FACTOR,
   HEALTH_REGEN_MIN,
   LOOT_QUALITY,
   LUCK_COLLECT,
@@ -46,7 +44,6 @@ import {
   MIN_HEALTH_TO_FIGHT,
   EXPLORE_MAX_ACCURACY_M,
   NIGHT_GUARD_FACTOR,
-  NIGHT_LOOT_FACTOR,
   PERK_CHANCE,
   RESOURCE_ORDER,
   RETURN_BONUS_AFTER_H,
@@ -71,6 +68,7 @@ import {
   AMMO,
   AMMO_LOOT,
   NOISE,
+  LOOT,
   gunAmmo,
   cardStat,
   ONCE_CARDS,
@@ -753,7 +751,9 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       const rolls = 1 + (r() < 0.5 ? 1 : 0);
       for (let i = 0; i < rolls; i++) {
         const rule = def.loot[Math.floor(r() * def.loot.length)];
-        items[rule.res] = (items[rule.res] ?? 0) + Math.max(1, Math.round(randInt(r, rule.min, rule.max) * 0.6 * perks.lootFactor));
+        // Wasser und Essen auch beim Wühlen seltener
+        if (lootChance(def.loot, rule) < rule.chance && r() > LOOT.foodWaterChance) continue;
+        items[rule.res] = (items[rule.res] ?? 0) + lootAmount(rule.res, randInt(r, rule.min, rule.max), 0.6 * perks.lootFactor);
       }
       gain(state, items);
       let kram: KramId | undefined;
@@ -1596,6 +1596,16 @@ export function encounter(seed: string, playerId: string, spot: Spot, window: nu
   return g;
 }
 
+/** Wasser und Essen gibt es seltener, außer sie sind das Wichtigste des Ortes (erste Zeile, z. B. Brunnen). */
+function lootChance(loot: readonly { res: Resource; chance: number }[], rule: { res: Resource; chance: number }): number {
+  return (rule.res === 'food' || rule.res === 'water') && rule !== loot[0] ? rule.chance * LOOT.foodWaterChance : rule.chance;
+}
+
+/** Menge eines Rohstoffs: Grundmenge kleiner (Medizin nicht), mindestens 1. */
+function lootAmount(res: Resource, n: number, factor = 1): number {
+  return Math.max(1, Math.round(n * (res === 'medicine' ? 1 : LOOT.base) * factor));
+}
+
 function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, o: { guarded: boolean; quality: Quality }): Extract<GameEvent, { type: 'loot' }> {
   const guarded = o.guarded;
   const def = SPOT_KINDS[spot.kind];
@@ -1607,24 +1617,17 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, o: { guarded
   const first = firstVisit(state, spot.id);
   const items: Partial<Inventory> = {};
   for (const rule of def.loot) {
-    if (r() < rule.chance) items[rule.res] = (items[rule.res] ?? 0) + randInt(r, rule.min, rule.max);
+    if (r() < lootChance(def.loot, rule)) items[rule.res] = (items[rule.res] ?? 0) + randInt(r, rule.min, rule.max);
   }
   // Nie ganz leer ausgehen.
   if (Object.keys(items).length === 0) items[def.loot[0].res] = def.loot[0].min;
   const night = dayPhase(spot.pos, ctx.now) === 'night';
   const cart = !guarded && !!cartOf(ctx.worldSeed, spot, ctx.now);
   const fed = isFed(state, ctx.now);
-  // Alles, was die Menge verändert: Wache, Nacht, Geschick, Stufe des Zuhauses, Erstfund, Händlerkiste, satt
-  const factor =
-    (guarded ? GUARD_LOOT_FACTOR : 1) *
-    (night ? NIGHT_LOOT_FACTOR : 1) *
-    q.factor *
-    perks.lootFactor *
-    (first ? FIRST_FIND_FACTOR : 1) *
-    (cart ? CART.lootFactor : 1) *
-    (fed ? 1 + COOK.lootBonus : 1) *
-    TIER.lootFactor[tier];
-  for (const k of Object.keys(items) as Resource[]) items[k] = Math.max(1, Math.round((items[k] ?? 0) * factor));
+  // Was die Menge noch verändert (Kevin 23.10.: keine Boni mehr für Erstfund, Nacht, Wache, Minispiel
+  // und Neuland): nur noch Händlerkiste, satt (Eintopf) und die Oase zu Hause
+  const factor = perks.lootFactor * (cart ? CART.lootFactor : 1) * (fed ? 1 + COOK.lootBonus : 1);
+  for (const k of Object.keys(items) as Resource[]) items[k] = lootAmount(k, items[k] ?? 0, factor);
   // Vorgeschichte
   let perk: Resource | undefined;
   const bonusRes = BACKGROUNDS[state.character.background].bonusRes;
