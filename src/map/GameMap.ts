@@ -1125,8 +1125,12 @@ export class GameMap {
     };
     const major = use('road-major', 'pat-road-major');
     const minor = use('road-minor', 'pat-road-minor');
-    use('road-track', 'pat-track');
-    use('road-path', 'pat-path');
+    // Feld- und Fußwege mit Bild etwas breiter, sonst sieht man vom Bild nur die Farbe
+    const width = (layer: string, on: boolean, plain: [number, number][], wide: [number, number][]) => {
+      if (this.map.getLayer(layer)) this.map.setPaintProperty(layer, 'line-width', ['interpolate', ['exponential', 1.6], ['zoom'], ...(on ? wide : plain).flat()]);
+    };
+    width('road-track', use('road-track', 'pat-track'), [[14, 1], [17, 4.5], [20, 14]], [[14, 1.5], [17, 7], [20, 21]]);
+    width('road-path', use('road-path', 'pat-path'), [[14, 0.6], [17, 2.6], [20, 7]], [[14, 1], [17, 4.2], [20, 11]]);
     // Die gemalten Straßen haben ihre Risse schon im Bild
     if (this.map.getLayer('road-cracks')) this.map.setLayoutProperty('road-cracks', 'visibility', major && minor ? 'none' : 'visible');
   }
