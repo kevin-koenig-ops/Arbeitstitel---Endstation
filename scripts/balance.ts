@@ -32,6 +32,17 @@ const STAGES: Stage[] = [
   { name: 'Woche 1', weapons: ['crowbar', 'golfclub'], medicine: 2, pouch: { molotov: 2, pepper: 1 }, skills: { counter: 1, breath: 1 } },
   { name: 'Gut ausgerüstet', weapons: ['axe', 'crossbow'], medicine: 3, pouch: { molotov: 3, smoke: 2, grenade: 1 }, skills: { counter: 2, sweep: 1, steady: 1, secondwind: 1 } },
 ];
+// Spielstile zum Vergleich (--stile): gleich starke Ausrüstung wie Woche 1 bzw. gut ausgerüstet
+if (args.has('--stile')) {
+  STAGES.length = 0;
+  STAGES.push(
+    { name: 'Woche 1', weapons: ['crowbar', 'golfclub'], medicine: 2, pouch: { molotov: 2, pepper: 1 }, skills: { counter: 1, breath: 1 } },
+    { name: 'Woche 1 Fallen', weapons: ['pitchfork', 'golfclub'], medicine: 2, pouch: { tripwire: 2, alarm: 1 }, skills: { trapper: 1, distract: 1 } },
+    { name: 'Woche 1 Feuer', weapons: ['crowbar', 'golfclub'], medicine: 2, pouch: { molotov: 2, tinder: 1 }, skills: { spark: 1, embers: 1 } },
+    { name: 'Später Fallen', weapons: ['pitchfork', 'bow'], medicine: 3, pouch: { tripwire: 3, caltrops: 2, alarm: 1 }, skills: { trapper: 2, distract: 1, pitcher: 1, steady: 1 } },
+    { name: 'Später Feuer', weapons: ['crowbar', 'crossbow'], medicine: 3, pouch: { molotov: 3, oilcan: 1, tinder: 2 }, skills: { spark: 2, embers: 1, wildfire: 1, counter: 1 } },
+  );
+}
 
 const GROUPS: FoeKind[][] = [
   ['walker'],

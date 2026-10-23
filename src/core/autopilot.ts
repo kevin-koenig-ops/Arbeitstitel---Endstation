@@ -38,6 +38,8 @@ function effDmg(st: TacticsState, card: CardId, f: TFoe, first = true): number {
   raw += Math.max(0, (st.levels[card] ?? 1) - 1) * (d.scale?.dmg ?? 0);
   if (first && d.target === 'any' && st.focus) raw += st.focus;
   if (d.vs && f.kind === d.vs.kind) raw += d.vs.dmg;
+  if (d.farBonus && f.row === 'far') raw += d.farBonus;
+  if (d.thrown) raw += st.pitcher;
   const after = d.pierce ? raw : Math.max(1, raw - armorOf(f));
   return Math.max(0, after - f.block);
 }
@@ -61,6 +63,8 @@ function score(st: TacticsState, card: CardId, target?: TFoe): number {
     const threat = f.intent.dmg ?? 0;
     if (d.stun && !f.stunned && !f.steady) v += 1 + threat;
     if ((d.push || d.interrupt) && f.row === 'near' && (f.intent.kind === 'smash' || f.intent.kind === 'windup')) v += 4;
+    // Wegstoßen lohnt, wenn danach Pfeile fliegen können
+    if (d.push && f.row === 'near' && st.hand.some((c) => CARDS[c].farBonus)) v += 2;
     if (d.blind && threat) v += threat;
     if (d.burn) v += Math.min(f.hp, (d.burn ?? 0) * (f.kind === 'walker' ? 2 : 1)) * 0.8;
     if (d.slow && f.row === 'far') v += 1.5;
@@ -166,6 +170,17 @@ export function autopilotTurn(st: TacticsState, o: AutopilotOptions = {}): void 
         return blk && !d.dmg ? Math.min(blk, danger) / Math.max(0.6, d.cost) : 0;
       });
       if (p && (danger >= 5 || st.hp <= 6) && play(st, p)) continue;
+    }
+    // 6b. Falle legen, wenn hinten jemand gleich nach vorn kommt
+    if (!st.traps.length && foes.some((f) => f.row === 'far' && f.slow <= 0 && !FOE_TACTICS[f.kind].stayBack)) {
+      const p = opts.find((x) => CARDS[x.card].trap);
+      if (p && play(st, p)) continue;
+    }
+    // 6c. Heuler hinten und Schläge auf der Hand: mit dem Wecker nach vorn holen
+    const farHowler = foes.find((f) => f.row === 'far' && isHowler(f));
+    if (farHowler && st.hand.some((c) => CARDS[c].target === 'near' && CARDS[c].dmg)) {
+      const p = opts.find((x) => CARDS[x.card].pull);
+      if (p && st.energy - CARDS[p.card].cost >= 1 && play(st, p)) continue;
     }
     // 7. Angreifen: das Beste pro Kraft
     const att = pick(opts, (x) => (CARDS[x.card].dmg || CARDS[x.card].burn || CARDS[x.card].stun || CARDS[x.card].blind || CARDS[x.card].slow ? score(st, x.card, get(x.target)) : 0));

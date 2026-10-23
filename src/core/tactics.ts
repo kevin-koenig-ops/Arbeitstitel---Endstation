@@ -96,6 +96,12 @@ export interface TacticsState {
   burnBonus: number;
   /** Lauffeuer: Fällt ein brennender Gegner, brennt der nächste so lange (0 = hast du nicht). */
   spread: number;
+  /** Gelegte Fallen (Schaden je Falle); die erste trifft, wer als Nächstes nach vorn kommt. */
+  traps: number[];
+  /** Werferin: Würfe und Pfeile machen so viel mehr. */
+  pitcher: number;
+  /** Fallensteller: Verlangsamte nehmen so viel mehr, Fallen treffen so viel härter. */
+  trapper: number;
 }
 
 /** Was du an Sammelkarten mitbringst: Einmal-Karten in der Tasche (Anzahl) und Fähigkeiten (Stufe). */
@@ -127,6 +133,9 @@ export type TEvent =
   | { type: 'turn'; turn: number }
   | { type: 'burn'; id: number; dmg: number; kill: boolean }
   | { type: 'spread'; from: number; id: number }
+  | { type: 'trap'; id: number }
+  | { type: 'pulled'; id: number }
+  | { type: 'trapSet'; count: number }
   | { type: 'status'; id: number; status: 'burn' | 'blind' | 'slow' | 'silence' | 'interrupt' | 'steady' }
   | { type: 'miss'; id: number }
   | { type: 'ally'; id: number; dmg: number; kill: boolean }
@@ -258,6 +267,9 @@ export function createTactics(o: {
     lastStandUsed: false,
     burnBonus: lvl('embers') ? cardStat('embers', 'burn', lvl('embers')) : 0,
     spread: lvl('wildfire') ? cardStat('wildfire', 'burn', lvl('wildfire')) : 0,
+    traps: [],
+    pitcher: lvl('pitcher') ? cardStat('pitcher', 'bonus', lvl('pitcher')) : 0,
+    trapper: lvl('trapper') ? cardStat('trapper', 'bonus', lvl('trapper')) : 0,
   };
   for (const w of o.weapons) if (w.dur > 0) st.weaponDur[w.kind] = Math.max(st.weaponDur[w.kind] ?? 0, w.dur);
   st.draw = shuffle(st, deckFor(o.weapons, o.medicine, kit));
@@ -361,6 +373,8 @@ function removeWeaponCards(st: TacticsState, w: WeaponId) {
 
 /** Schaden an einem Gegner: erst Rüstung (außer pierce), dann seine Abwehr. */
 function damageFoe(st: TacticsState, f: TFoe, raw: number, events: TEvent[], pierce = false) {
+  // Fallensteller: Verlangsamte trifft es härter
+  if (raw > 0 && f.slow > 0) raw += st.trapper;
   const afterArmor = pierce ? raw : Math.max(raw > 0 ? 1 : 0, raw - FOE_TACTICS[f.kind].armor);
   const absorbed = Math.min(f.block, afterArmor);
   f.block -= absorbed;
@@ -370,6 +384,24 @@ function damageFoe(st: TacticsState, f: TFoe, raw: number, events: TEvent[], pie
   if (kill) st.kills += 1;
   events.push({ type: 'hit', id: f.id, dmg, absorbed, kill });
   if (kill) spreadFire(st, f, events);
+}
+
+/**
+ * Ein Gegner kommt nach vorn (von selbst, durch einen Sprung oder einen Wecker). Liegt eine Falle,
+ * stürzt er: Schaden, und er setzt eine Runde aus. Gibt true zurück, wenn er gestürzt ist.
+ */
+function arriveNear(st: TacticsState, f: TFoe, events: TEvent[]): boolean {
+  f.row = 'near';
+  const dmg = st.traps.shift();
+  if (dmg === undefined) return false;
+  events.push({ type: 'trap', id: f.id });
+  damageFoe(st, f, dmg + st.trapper, events);
+  if (f.hp > 0 && !f.steady) {
+    f.stunned = true;
+    f.intent = intentOf(f);
+    events.push({ type: 'stun', id: f.id });
+  }
+  return true;
 }
 
 /** Anzünden: Brennt so viele Runden (Glut verlängert). */
@@ -457,7 +489,10 @@ function resolve(st: TacticsState, card: CardId, target: number | undefined, tak
   let first = true;
   for (const f of targets) {
     let raw = stat(st, card, 'dmg');
-    if (first && def.target === 'any' && raw && st.focus) {
+    if (raw && def.thrown) raw += st.pitcher;
+    if (raw && def.farBonus && f.row === 'far') raw += def.farBonus;
+    // Zielen: für den nächsten Fernangriff (Wurf, Bolzen, Pfeil)
+    if (first && (def.target === 'any' || def.target === 'far') && raw && st.focus) {
       raw += st.focus;
       st.focus = 0;
     }
@@ -506,6 +541,10 @@ function resolve(st: TacticsState, card: CardId, target: number | undefined, tak
   }
   const thorns = stat(st, card, 'thorns');
   if (thorns) st.thorns += thorns;
+  if (def.trap) {
+    st.traps.push(def.trap);
+    events.push({ type: 'trapSet', count: st.traps.length });
+  }
   if (def.ally) {
     st.ally = { rounds: def.ally.rounds, dmg: stat(st, card, 'allyDmg') };
     events.push({ type: 'allyIn', rounds: def.ally.rounds });
@@ -537,6 +576,13 @@ function applyEffects(st: TacticsState, card: CardId, f: TFoe, events: TEvent[])
     interrupt(f);
     events.push({ type: 'status', id: f.id, status: 'interrupt' });
   }
+  // Wecker: von hinten nach vorn holen (Fallen lösen dabei aus)
+  if (def.pull && f.row === 'far') {
+    events.push({ type: 'pulled', id: f.id });
+    arriveNear(st, f, events);
+    if (f.hp > 0) f.intent = intentOf(f);
+    if (f.hp <= 0) return;
+  }
   if (def.stun) {
     // Niemand lässt sich zweimal hintereinander betäuben (sonst ginge es endlos)
     if (f.steady) events.push({ type: 'status', id: f.id, status: 'steady' });
@@ -552,8 +598,9 @@ function applyEffects(st: TacticsState, card: CardId, f: TFoe, events: TEvent[])
     f.blind += def.blind;
     events.push({ type: 'status', id: f.id, status: 'blind' });
   }
-  if (def.slow) {
-    f.slow = Math.max(f.slow, def.slow);
+  const slow = stat(st, card, 'slow');
+  if (slow) {
+    f.slow = Math.max(f.slow, slow);
     events.push({ type: 'status', id: f.id, status: 'slow' });
   }
   if (def.silence) {
@@ -618,8 +665,8 @@ export function endTurn(st: TacticsState): TEvent[] {
         continue;
       }
       if (aliveFoes(st).filter((x) => x.row === 'near').length < 3) {
-        f.row = 'near';
         events.push({ type: 'advance', id: f.id });
+        arriveNear(st, f, events);
       }
       continue;
     }
@@ -631,9 +678,9 @@ export function endTurn(st: TacticsState): TEvent[] {
       case 'smash':
       case 'grab': {
         if (intent.kind === 'pounce') {
-          // Aus dem Dunkel nach vorne gesprungen, dann zugeschlagen
-          f.row = 'near';
+          // Aus dem Dunkel nach vorne gesprungen, dann zugeschlagen (in eine Falle gesprungen: nicht)
           events.push({ type: 'pounce', id: f.id });
+          if (arriveNear(st, f, events)) break;
         }
         // Geblendet: Der Angriff geht daneben
         if (f.blind > 0) {

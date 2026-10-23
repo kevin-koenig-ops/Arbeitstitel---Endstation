@@ -117,12 +117,13 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
   const meHpText = h('span', { class: 'bar-text' });
   const meBlock = h('span', { class: 't-block', hidden: true });
   const meFocus = h('span', { class: 't-focus', hidden: true });
+  const meTrap = h('span', { class: 't-focus t-trap', hidden: true, title: 'Gelegte Fallen' });
   const weaponLine = h('small', { class: 't-weapon' });
   const meFrame = h(
     'div',
     { class: 'battle-me' },
     faceEl(s0.character.look, 44, 'battle-face'),
-    h('div', { class: 'battle-me-main' }, h('b', null, s0.character.name, meBlock, meFocus), h('div', { class: 'bar me' }, meHp, meHpText), weaponLine),
+    h('div', { class: 'battle-me-main' }, h('b', null, s0.character.name, meBlock, meFocus, meTrap), h('div', { class: 'bar me' }, meHp, meHpText), weaponLine),
   );
   const fleeBtn = h('button', { class: 'btn ghost small battle-flee', type: 'button' }, svgEl(icon('flee', 16)), 'Fliehen');
   const helpBtn = h('button', { class: 'iconbtn small t-help-btn', type: 'button', 'aria-label': 'So geht der Kampf' }, '?');
@@ -306,14 +307,20 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           const c = e.card;
           const def = CARDS[c];
           if (def.kind === 'once') say(def.name, def.rarity === 'legendary' || def.rarity === 'epic' ? 'gold' : 'good', 900);
-          if (c === 'throw' || c === 'bolt' || c === 'pellet' || c === 'drive' || c === 'lure' || c === 'flare' || c === 'tinder') {
-            if (id !== undefined) scene?.shoot(id, c === 'bolt' ? 'bolt' : 'stone');
+          if (c === 'throw' || c === 'bolt' || c === 'arrow' || c === 'pellet' || c === 'drive' || c === 'lure' || c === 'flare' || c === 'tinder') {
+            if (id !== undefined) scene?.shoot(id, c === 'bolt' || c === 'arrow' ? 'bolt' : 'stone');
             if (c === 'flare') fx('flare');
             if (c === 'tinder') fx('fire');
             await wait(c === 'bolt' ? 160 : 300);
           } else if (c === 'dodge' || c === 'counter') scene?.shieldUp();
           else if (c === 'bandage' || c === 'dressing' || c === 'adrenaline' || c === 'secondwind') scene?.heal();
-          else if (c === 'aim' || c === 'steady') scene?.focus();
+          else if (c === 'aim' || c === 'steady' || c === 'drawbow') scene?.focus();
+          else if (c === 'tripwire') await wait(160);
+          else if (c === 'alarm') {
+            fx('spark');
+            vibrate([20, 20, 20, 20, 20]);
+            await wait(300);
+          }
           else if (c === 'molotov' || c === 'oilcan' || c === 'grenade' || c === 'flashbang' || c === 'smoke' || c === 'firecracker' || c === 'caltrops' || c === 'radio') {
             fx(c === 'molotov' || c === 'oilcan' ? 'fire' : c === 'grenade' ? 'blast' : c === 'flashbang' ? 'flash' : c === 'smoke' ? 'smoke' : c === 'firecracker' ? 'spark' : c === 'radio' ? 'radio' : 'dust');
             vibrate(c === 'grenade' ? [40, 30, 90] : 30);
@@ -323,7 +330,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           } else {
             if (c === 'pepper') fx('smoke');
             if (c === 'spark' || c === 'salvo') fx('spark');
-            scene?.act(c === 'homerun' || c === 'chop' || c === 'sweep' || c === 'salvo' ? 'power' : c === 'kick' || c === 'spade' || c === 'pepper' ? 'shove' : 'swing', id);
+            scene?.act(c === 'homerun' || c === 'chop' || c === 'sweep' || c === 'salvo' ? 'power' : c === 'kick' || c === 'spade' || c === 'pepper' || c === 'fend' || c === 'distract' ? 'shove' : 'swing', id);
             await wait(c === 'homerun' || c === 'chop' ? 260 : 150);
           }
           break;
@@ -345,6 +352,25 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           } else await wait(e.type === 'ally' ? 260 : 160);
           break;
         }
+        case 'trapSet':
+          floatAt(-1, `Falle gelegt (${e.count})`, 'power');
+          break;
+        case 'pulled': {
+          const f = sfoe(e.id);
+          if (f) {
+            f.row = 'near';
+            f.intent = foeById(st, e.id)?.intent ?? f.intent;
+          }
+          scene?.setFoes(shownList());
+          floatAt(e.id, 'Kommt her!', 'crit');
+          await wait(420);
+          break;
+        }
+        case 'trap':
+          floatAt(e.id, 'Gestolpert!', 'crit');
+          vibrate(40);
+          await wait(220);
+          break;
         case 'spread':
           floatAt(e.id, 'Fängt Feuer!', 'power');
           await wait(260);
@@ -658,6 +684,9 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     meFocus.hidden = st.focus <= 0;
     clear(meFocus);
     meFocus.append(svgEl(icon('aim', 13)), `+${st.focus}`);
+    meTrap.hidden = st.traps.length <= 0;
+    clear(meTrap);
+    meTrap.append(svgEl(icon('tripwire', 13)), String(st.traps.length));
     const kinds = (Object.keys(st.weaponDur) as (keyof typeof WEAPONS)[]).filter((k) => (st.weaponDur[k] ?? 0) > 0);
     weaponLine.textContent = kinds.length ? kinds.map((k) => `${WEAPONS[k].name} ${st.weaponDur[k]}`).join(' · ') : 'Keine Waffe: Fäuste und Steine';
   };

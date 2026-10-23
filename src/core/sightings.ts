@@ -69,16 +69,16 @@ type Reward = { card: CardId } | { weapon: WeaponId };
 /** Was in welcher Sichtung stecken kann, nach Seltenheit. */
 const POOLS: Record<SightingKind, Partial<Record<CardRarity, Reward[]>>> = {
   notebook: {
-    common: [{ card: 'counter' }, { card: 'steady' }, { card: 'breath' }, { card: 'spark' }],
-    rare: [{ card: 'sweep' }, { card: 'sneak' }, { card: 'scavenger' }, { card: 'embers' }],
+    common: [{ card: 'counter' }, { card: 'steady' }, { card: 'breath' }, { card: 'spark' }, { card: 'pitcher' }],
+    rare: [{ card: 'sweep' }, { card: 'sneak' }, { card: 'scavenger' }, { card: 'embers' }, { card: 'trapper' }, { card: 'distract' }],
     epic: [{ card: 'radio' }, { card: 'secondwind' }, { card: 'wildfire' }],
     // Bis es Alpha-Wandler gibt, stehen die Legenden auch in Notizbüchern
     legendary: [{ card: 'packleader' }, { card: 'laststand' }],
   },
   cache: {
-    common: [{ card: 'molotov' }, { card: 'smoke' }, { card: 'caltrops' }, { card: 'firecracker' }, { card: 'lure' }, { card: 'tinder' }, { weapon: 'shovel' }],
+    common: [{ card: 'molotov' }, { card: 'smoke' }, { card: 'caltrops' }, { card: 'firecracker' }, { card: 'lure' }, { card: 'tinder' }, { card: 'tripwire' }, { card: 'alarm' }, { weapon: 'shovel' }, { weapon: 'pitchfork' }],
     rare: [{ weapon: 'axe' }, { weapon: 'golfclub' }, { weapon: 'slingshot' }, { card: 'oilcan' }],
-    epic: [{ weapon: 'nailgun' }],
+    epic: [{ weapon: 'nailgun' }, { weapon: 'bow' }],
   },
   medkit: {
     common: [{ card: 'pepper' }],

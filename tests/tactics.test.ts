@@ -505,3 +505,74 @@ describe('Balancing-Ziele (Autopilot, Woche 1: Brechstange, Golfschläger, 2 Ein
     expect(r.lost).toBeGreaterThan(4);
   });
 });
+
+describe('Fallen und Abstand', () => {
+  it('Stolperdraht: wer nach vorn kommt, stürzt; Fallensteller trifft härter', () => {
+    const st = start(['walker', 'walker', 'walker'], { kit: { pouch: { tripwire: 1 }, skills: { trapper: 1 } } });
+    const far = aliveFoes(st).find((f) => f.row === 'far')!;
+    far.intent = { kind: 'advance' };
+    far.stunned = false;
+    st.energy = 3;
+    expect(playPouch(st, 'tripwire')[0]).toMatchObject({ type: 'play' });
+    expect(st.traps).toEqual([3]);
+    // Die vorne erledigen, damit er nachrücken kann
+    for (const f of aliveFoes(st)) if (f.row === 'near') f.hp = 0;
+    st.hand = [];
+    const hp0 = far.hp;
+    const ev = endTurn(st);
+    expect(ev.some((e) => e.type === 'trap' && e.id === far.id)).toBe(true);
+    expect(far.row).toBe('near');
+    expect(far.hp).toBe(hp0 - 4);
+    expect(far.stunned).toBe(true);
+    expect(st.traps).toEqual([]);
+  });
+
+  it('der Bleiche Wächter springt in die Falle und schlägt nicht zu', () => {
+    const st = start(['watcher']);
+    const w = aliveFoes(st)[0];
+    w.row = 'far';
+    w.stunned = false;
+    w.step = FOE_TACTICS.watcher.pattern.findIndex((p) => p.kind === 'pounce');
+    w.intent = intentOf(w);
+    st.traps = [3];
+    st.hand = [];
+    const hp = st.hp;
+    endTurn(st);
+    expect(st.hp).toBe(hp);
+    expect(w.stunned).toBe(true);
+  });
+
+  it('Wecker holt den Heuler nach vorn, dann trifft ihn auch die Faust', () => {
+    const st = withHand(start(['walker', 'screamer'], { kit: { pouch: { alarm: 1 } } }), 'punch');
+    const sc = aliveFoes(st).find((f) => f.kind === 'screamer')!;
+    expect(targetsFor(st, 'punch').some((f) => f.id === sc.id)).toBe(false);
+    const ev = playPouch(st, 'alarm');
+    expect(ev.some((e) => e.type === 'pulled' && e.id === sc.id)).toBe(true);
+    expect(sc.row).toBe('near');
+    expect(targetsFor(st, 'punch').some((f) => f.id === sc.id)).toBe(true);
+  });
+
+  it('Pfeil trifft hinten am stärksten, Spannen und Werferin machen ihn stärker', () => {
+    const st = withHand(start(['walker', 'walker', 'walker'], { weapons: [{ kind: 'bow', dur: 10 }], kit: { skills: { pitcher: 2 } } }), 'drawbow', 'arrow', 'arrow');
+    const far = aliveFoes(st).find((f) => f.row === 'far')!;
+    const near = aliveFoes(st).find((f) => f.row === 'near')!;
+    playCard(st, 0);
+    // 3 + 2 (hinten) + 2 (Spannen) + 2 (Werferin Stufe II)
+    expect(playCard(st, 0, far.id).find((e) => e.type === 'hit')).toMatchObject({ dmg: 9 });
+    // Vorne: 3 + 2 (Werferin)
+    expect(playCard(st, 0, near.id).find((e) => e.type === 'hit')).toMatchObject({ dmg: 5 });
+    expect(CARDS.throw.thrown).toBe(true);
+  });
+
+  it('Ablenken stößt weg und bremst, Mistgabel stößt alle vorne zurück', () => {
+    const st = withHand(start(['walker', 'walker'], { kit: { skills: { distract: 2 } }, weapons: [{ kind: 'pitchfork', dur: 10 }] }), 'distract', 'fend');
+    const [a, b] = aliveFoes(st);
+    a.row = 'near';
+    b.row = 'near';
+    playCard(st, 0, a.id);
+    expect(a.row).toBe('far');
+    expect(a.slow).toBe(2);
+    playCard(st, 0);
+    expect(b.row).toBe('far');
+  });
+});

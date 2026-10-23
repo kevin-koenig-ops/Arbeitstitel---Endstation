@@ -40,6 +40,10 @@ export const CARD_ICON: Record<CardId, string> = {
   pellet: 'slingshot',
   nail: 'nailgun',
   salvo: 'salvo',
+  prong: 'pitchfork',
+  fend: 'shove',
+  arrow: 'arrow',
+  drawbow: 'bow',
   molotov: 'molotov',
   smoke: 'smoke',
   caltrops: 'caltrops',
@@ -48,6 +52,8 @@ export const CARD_ICON: Record<CardId, string> = {
   pepper: 'pepper',
   tinder: 'tinder',
   oilcan: 'oilcan',
+  tripwire: 'tripwire',
+  alarm: 'alarm',
   dressing: 'dressing',
   adrenaline: 'adrenaline',
   flare: 'flare',
@@ -59,6 +65,9 @@ export const CARD_ICON: Record<CardId, string> = {
   spark: 'spark',
   embers: 'embers',
   wildfire: 'wildfire',
+  pitcher: 'pitcher',
+  trapper: 'trapper',
+  distract: 'distract',
   sweep: 'sweep',
   sneak: 'sneak',
   scavenger: 'scavenger',
@@ -68,7 +77,7 @@ export const CARD_ICON: Record<CardId, string> = {
   laststand: 'laststand',
 };
 
-export const WEAPON_ICON: Record<WeaponId, string> = { crowbar: 'crowbar', bat: 'bat', crossbow: 'bolt', shovel: 'shovel', axe: 'axe', golfclub: 'golfclub', slingshot: 'slingshot', nailgun: 'nailgun' };
+export const WEAPON_ICON: Record<WeaponId, string> = { crowbar: 'crowbar', bat: 'bat', crossbow: 'bolt', shovel: 'shovel', axe: 'axe', golfclub: 'golfclub', slingshot: 'slingshot', nailgun: 'nailgun', pitchfork: 'pitchfork', bow: 'bow' };
 
 export const ROMAN = ['', 'I', 'II', 'III'];
 
@@ -145,9 +154,12 @@ export function cardEffect(id: CardId, level = 1): { main: string; tag: string }
   else if (v('draw')) main = `${v('draw')} Karten`;
   else if (c.ally) main = `Hund ${v('allyDmg')} × ${c.ally.rounds}`;
   else if (c.burn) main = `Brennt ${v('burn')}`;
+  else if (c.trap) main = `Falle ${c.trap}`;
+  else if (c.pull) main = 'Holt nach vorn';
   else if (c.stun) main = 'Betäubt';
   else if (c.blind) main = 'Blendet';
   else if (c.slow) main = 'Bremst';
+  else if (c.push) main = 'Stößt weg';
   else if (c.interrupt) main = 'Unterbricht';
   const tags: string[] = [];
   if (c.area === 'near') tags.push('alle vorne');
@@ -156,7 +168,8 @@ export function cardEffect(id: CardId, level = 1): { main: string; tag: string }
   else if (c.target === 'near') tags.push('vorne');
   else if (c.target === 'any') tags.push('auch hinten');
   else if (c.target === 'far') tags.push('hinten');
-  if (c.push) tags.push('stößt weg');
+  if (c.push && main !== 'Stößt weg') tags.push('stößt weg');
+  if (c.trap) tags.push('setzt aus');
   if (c.stun && main !== 'Betäubt') tags.push('betäubt');
   if (c.burn && !c.passive && !main.startsWith('Brennt')) tags.push(`brennt ${v('burn')}`);
   if (c.blind && main !== 'Blendet') tags.push('blendet');
@@ -166,6 +179,7 @@ export function cardEffect(id: CardId, level = 1): { main: string; tag: string }
   if (c.heal && c.gain) tags.push(`+${v('heal')} Gesundheit`);
   if (c.chain) tags.push('zwei Ziele');
   if (c.pierce) tags.push('durch Rüstung');
+  if (c.farBonus) tags.push(`hinten +${c.farBonus}`);
   if (c.perTurn) tags.push('1× pro Runde');
   if (c.focus) tags.push('nächster Wurf');
   if (c.medicine) tags.push('1 Medizin');
