@@ -170,6 +170,8 @@ const P: Record<string, string> = {
   firstaid: '<rect x="4" y="7" width="16" height="12" rx="2"/><path d="M9 7V5h6v2"/><path d="M8 13c2-2 6-2 8 0"/>',
   painkiller: '<rect x="4" y="9" width="16" height="7" rx="3.5" transform="rotate(-30 12 12.5)"/><path d="M10 9.5l4 7"/>',
   fireworks: '<rect x="7" y="14" width="10" height="7" rx="1"/><path d="M9 14v-2M12 14v-3M15 14v-2"/><path d="M12 7V3M9 5l-2-2M15 5l2-2M8.5 8H5M15.5 8H19"/>',
+  flame: '<path d="M12 21c-4 0-6.5-2.6-6.5-6.2 0-4.3 4-6 4-10.3 2.4 1.7 3.6 3.6 3.6 5.8 1-.9 1.6-2.2 1.6-3.6 2.6 2.1 4.8 5 4.8 8.1 0 3.6-2.5 6.2-7.5 6.2z"/>',
+  paw: '<ellipse cx="12" cy="16" rx="4.5" ry="3.8"/><circle cx="6" cy="10.5" r="1.8"/><circle cx="9.5" cy="6.5" r="1.8"/><circle cx="14.5" cy="6.5" r="1.8"/><circle cx="18" cy="10.5" r="1.8"/>',
   machete: '<path d="M4.5 19.5l2-2"/><path d="M6.5 17.5L18 6c1.5-1.5 3-1.5 3 0 0 2-3 4.5-7.5 8.5l-4 3.5z"/><path d="M3 21l2.5-1.5"/>',
   sledgehammer: '<path d="M10.5 13.5L5 19"/><path d="M4 20l1.5-1.5"/><rect x="11" y="4" width="9" height="6" rx="1" transform="rotate(45 15.5 7)"/>',
   momentum: '<path d="M3 15c3-6 9-8 15-5"/><path d="M15 6.5l3.5 3.5-4 2"/><path d="M4 19h4M6 21h4"/>',

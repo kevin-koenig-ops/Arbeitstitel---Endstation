@@ -1867,6 +1867,24 @@ button.base-res { align-items: center; padding: 3px 6px 3px 4px; border: 1px sol
 .cbook-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; justify-items: center; }
 .cbook-cell { padding: 4px; border: 0; border-radius: 12px; background: none; cursor: pointer; }
 .cbook-cell.sel { background: rgba(255, 178, 46, 0.18); }
+/* Stil-Zeichen: Flamme, Draht, Schwung, Schild, Pfote */
+.st-fire { --st: #e2742c; }
+.st-trap { --st: #8a9a3c; }
+.st-momentum { --st: #c2443a; }
+.st-guard { --st: #3f8f8c; }
+.st-pack { --st: #9a6f3e; }
+.cc-style, .t-style, .t-pc-style, .cbook-style { display: inline-grid; place-items: center; border-radius: 50%; background: var(--st); color: #fff8ec; box-shadow: 0 0 0 1.5px #2b261e; }
+.cc-style { position: absolute; right: 4px; top: 27px; width: 18px; height: 18px; }
+.cc.big .cc-style { right: 8px; top: 40px; width: 26px; height: 26px; }
+.cc.locked .cc-style { opacity: 0.45; }
+.t-style { position: absolute; left: 5px; bottom: 5px; width: 18px; height: 18px; }
+.t-pc-style { position: absolute; bottom: -5px; right: -5px; width: 16px; height: 16px; }
+.cbook-style { width: 18px; height: 18px; vertical-align: -4px; }
+.cbook-filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
+.cbook-filters button { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.04); color: var(--bone); font: 600 12px var(--font-ui); cursor: pointer; }
+.cbook-filters button svg { color: var(--st, var(--dust)); }
+.cbook-filters button[aria-selected="true"] { background: var(--st, var(--amber)); border-color: transparent; color: #1b1915; }
+.cbook-filters button[aria-selected="true"] svg { color: #1b1915; }
 /* Lager: für den Kampf packen */
 .loadout-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 4px 0 0; font: 700 13px var(--font-ui); color: var(--bone); }
 .loadout-head small { font: 400 12px var(--font-ui); color: var(--dust); }

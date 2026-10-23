@@ -10,6 +10,10 @@ import {
   SKILL_CARDS,
   SKILL_LEVELS,
   skillLevel,
+  STYLE_NAMES,
+  styleOf,
+  WEAPON_STYLE,
+  type CardStyle,
   WEAPON_CARDS,
   WEAPONS,
   type CardId,
@@ -99,6 +103,15 @@ export const WEAPON_ICON: Record<WeaponId, string> = { crowbar: 'crowbar', bat: 
 
 export const ROMAN = ['', 'I', 'II', 'III'];
 
+/** Stil-Zeichen: Flamme, Draht, Schwung, Schild, Pfote. */
+export const STYLE_ICON: Record<CardStyle, string> = { fire: 'flame', trap: 'tripwire', momentum: 'momentum', guard: 'shield', pack: 'paw' };
+
+/** Kleines Stil-Zeichen (oder null bei Karten ohne Stil). */
+export function styleMark(style: CardStyle | undefined, cls: string, size = 12): HTMLElement | null {
+  if (!style) return null;
+  return h('span', { class: `${cls} st-${style}`, title: `Stil: ${STYLE_NAMES[style]}`, 'aria-label': `Stil: ${STYLE_NAMES[style]}` }, svgEl(icon(STYLE_ICON[style], size)));
+}
+
 /** Eintrag im Sammelbuch: eine Karte oder „w:Waffe“. */
 export type BookKey = CardId | `w:${WeaponId}`;
 export const BOOK_ORDER: BookKey[] = [...ONCE_CARDS, ...FOUND_WEAPONS.map((w) => `w:${w}` as const), ...SKILL_CARDS];
@@ -117,6 +130,7 @@ export interface BookItem {
   art: string | null;
   card?: CardId;
   weapon?: WeaponId;
+  style?: CardStyle;
 }
 
 export function bookItem(key: BookKey): BookItem {
@@ -134,6 +148,7 @@ export function bookItem(key: BookKey): BookItem {
       icon: WEAPON_ICON[w],
       art: artUrl(d.art),
       weapon: w,
+      style: WEAPON_STYLE[w],
     };
   }
   const id = key as CardId;
@@ -148,6 +163,7 @@ export function bookItem(key: BookKey): BookItem {
     icon: CARD_ICON[id],
     art: artUrl(c.art),
     card: id,
+    style: styleOf(id),
   };
 }
 
@@ -235,6 +251,7 @@ export function cardFace(key: BookKey, o: { level?: number; count?: number; shin
     cost !== null && !locked ? h('span', { class: 'cc-cost', title: 'Kraft' }, String(cost)) : null,
     it.kind === 'skill' && !locked && level > 0 ? h('span', { class: 'cc-level' }, ROMAN[Math.min(3, level)]) : null,
     o.count && o.count > 1 && !locked ? h('span', { class: 'cc-count' }, `×${o.count}`) : null,
+    styleMark(it.style, 'cc-style', o.big ? 16 : 11),
     h('b', { class: 'cc-name' }, locked ? '???' : it.name),
     locked ? h('small', { class: 'cc-where' }, it.where) : h('span', { class: 'cc-eff' }, eff.main),
     o.big && !locked ? h('small', { class: 'cc-tag' }, eff.tag) : null,

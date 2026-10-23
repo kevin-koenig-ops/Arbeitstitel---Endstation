@@ -26,7 +26,11 @@ import {
   WEAPON_CARDS,
   WEAPON_ORDER,
   WEAPONS,
+  STYLE_HINT,
+  STYLE_NAMES,
+  STYLE_ORDER,
   type CardId,
+  type CardStyle,
 } from '../../core/content';
 import { deckFor } from '../../core/tactics';
 import { blueprintName } from '../../core/building';
@@ -38,7 +42,7 @@ import { icon, resIcon, spotIcon } from '../icons';
 import { REJECT_TEXT, SPOT_PLURAL } from '../texts';
 import { exploredStats } from '../../core/explore';
 import { costChips, itemsLine, partsChips, thingThumb } from './chips';
-import { BOOK_ORDER, bookItem, CARD_ICON, cardFace, levelProgress, ROMAN, WEAPON_ICON, type BookKey } from '../cards';
+import { BOOK_ORDER, bookItem, CARD_ICON, cardFace, levelProgress, ROMAN, STYLE_ICON, styleMark, WEAPON_ICON, type BookKey } from '../cards';
 
 export type PackTab = 'pack' | 'book' | 'gear' | 'cards';
 
@@ -397,6 +401,8 @@ export function openPackPanel(app: App, host: HTMLElement, onClose: () => void, 
 
   // --- Sammelbuch: Karten und Waffen ---------------------------------------------------
   let cardSel: BookKey | null = null;
+  /** Sammelbuch nach Stil filtern (null = alle). */
+  let styleSel: CardStyle | null = null;
   const cardsView = () => {
     const s = app.backend.current()!;
     const have = BOOK_ORDER.filter((k) => s.book[k]).length;
@@ -440,6 +446,11 @@ export function openPackPanel(app: App, host: HTMLElement, onClose: () => void, 
         lines.push(own ? `Haltbarkeit ${own.dur} von ${WEAPONS[w].dur}. Findest du sie nochmal, ist sie wieder wie neu.` : 'Kaputt gegangen. Findest du sie nochmal, hast du sie wieder.');
       }
       lines.push(`Fundorte: ${it.where}`);
+      // Stil: Was passt dazu?
+      if (it.style) {
+        const mates = BOOK_ORDER.filter((x) => x !== k && bookItem(x).style === it.style).map((x) => (s.book[x] ? bookItem(x).name : null)).filter(Boolean);
+        lines.push([styleMark(it.style, 'cbook-style', 13), ` Stil ${STYLE_NAMES[it.style]}: ${STYLE_HINT[it.style]}`, mates.length ? ` Passt gut zu: ${mates.join(', ')}.` : '']);
+      } else lines.push('Ohne Stil: passt zu allem.');
       detail.append(cardFace(k, { level: level(k), shiny: e.shiny, big: true }), h('div', { class: 'cbook-lines' }, lines.map((l) => h('p', { class: 'char-note' }, l))));
     };
     const section = (title: string, keys: BookKey[]) =>
@@ -459,15 +470,31 @@ export function openPackPanel(app: App, host: HTMLElement, onClose: () => void, 
           ),
         ),
       );
-    const once = BOOK_ORDER.filter((k) => bookItem(k).kind === 'once');
-    const weapons = BOOK_ORDER.filter((k) => bookItem(k).kind === 'weapon');
-    const skills = BOOK_ORDER.filter((k) => bookItem(k).kind === 'skill');
-    const grid = h('div', { class: 'cbook-main' }, section('Einmal-Karten', once), section('Waffen zum Finden', weapons), section('Fähigkeiten', skills));
-    const first = cardSel ?? BOOK_ORDER.find((k) => s.book[k]) ?? BOOK_ORDER[0];
+    const shown = BOOK_ORDER.filter((k) => !styleSel || bookItem(k).style === styleSel);
+    const once = shown.filter((k) => bookItem(k).kind === 'once');
+    const weapons = shown.filter((k) => bookItem(k).kind === 'weapon');
+    const skills = shown.filter((k) => bookItem(k).kind === 'skill');
+    const grid = h('div', { class: 'cbook-main' }, once.length ? section('Einmal-Karten', once) : null, weapons.length ? section('Waffen zum Finden', weapons) : null, skills.length ? section('Fähigkeiten', skills) : null);
+    // Filter nach Stil
+    const filters = h(
+      'div',
+      { class: 'cbook-filters', role: 'tablist', 'aria-label': 'Nach Stil filtern' },
+      h('button', { type: 'button', role: 'tab', 'aria-selected': String(!styleSel), onclick: () => ((styleSel = null), render()) }, 'Alle'),
+      STYLE_ORDER.map((st) =>
+        h(
+          'button',
+          { type: 'button', role: 'tab', class: `st-${st}`, 'aria-selected': String(styleSel === st), title: STYLE_HINT[st], onclick: () => ((styleSel = st), render()) },
+          svgEl(icon(STYLE_ICON[st], 14)),
+          STYLE_NAMES[st],
+        ),
+      ),
+    );
+    const first = cardSel && shown.includes(cardSel) ? cardSel : (shown.find((k) => s.book[k]) ?? shown[0] ?? BOOK_ORDER[0]);
     const view = h(
       'div',
       { class: 'cbook' },
       h('p', { class: 'mem-count' }, `${have} von ${BOOK_ORDER.length} gesammelt. Alle 10 Minuten taucht in der Gegend etwas Neues auf: Achte auf Sichtungen auf der Karte.`),
+      filters,
       h('div', { class: 'cbook-wrap' }, grid, detail),
     );
     showDetail(first);

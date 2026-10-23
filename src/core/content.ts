@@ -1320,6 +1320,47 @@ export const CARDS: Record<CardId, CardDef> = {
   laststand: { name: 'Letztes Gefecht', kind: 'skill', cost: 0, target: 'self', passive: true, rarity: 'legendary', where: 'Alpha-Wandler', art: 'letztes-gefecht', desc: 'Wirkt von selbst, einmal am Tag: Ein tödlicher Treffer lässt dich mit 1 Gesundheit stehen.' },
 };
 
+// --- Spielstile: Karten, die gut zusammenarbeiten (Zeichen auf der Karte) -----------------
+// Ein Stil ist nichts, was man „hat“: Man sammelt einzelne Karten und mischt frei. Karten eines
+// Stils machen sich aber gegenseitig stärker. Ohne Stil: passt zu allem.
+
+export type CardStyle = 'fire' | 'trap' | 'momentum' | 'guard' | 'pack';
+export const STYLE_ORDER: CardStyle[] = ['fire', 'trap', 'momentum', 'guard', 'pack'];
+export const STYLE_NAMES: Record<CardStyle, string> = { fire: 'Feuer', trap: 'Fallen und Abstand', momentum: 'Schwung', guard: 'Schutz', pack: 'Rudel' };
+export const STYLE_HINT: Record<CardStyle, string> = {
+  fire: 'Anzünden und brennen lassen. Stark gegen Wandler, schwach gegen den gepanzerten Borkenmann.',
+  trap: 'Gegner auf Abstand halten, bremsen, in Fallen laufen lassen. Stark gegen Borkenmann und Wächter.',
+  momentum: 'Ein Treffer lädt den nächsten auf. Schnelle, harte Kämpfe.',
+  guard: 'Abfangen, zurückschlagen, durchhalten. Wenig Schaden, dafür längere Kämpfe.',
+  pack: 'Ein Hund kämpft mit. Je länger er bleibt, desto besser.',
+};
+
+export const CARD_STYLE: Partial<Record<CardId, CardStyle>> = {
+  // Feuer
+  molotov: 'fire', tinder: 'fire', oilcan: 'fire', spark: 'fire', embers: 'fire', wildfire: 'fire',
+  // Fallen und Abstand
+  caltrops: 'trap', lure: 'trap', tripwire: 'trap', alarm: 'trap', steady: 'trap', pitcher: 'trap', sneak: 'trap', trapper: 'trap', distract: 'trap',
+  // Schwung
+  adrenaline: 'momentum', followup: 'momentum', sweep: 'momentum', rage: 'momentum',
+  // Schutz
+  smoke: 'guard', firecracker: 'guard', pepper: 'guard', dressing: 'guard', flare: 'guard', painkiller: 'guard', flashbang: 'guard', fireworks: 'guard',
+  counter: 'guard', headbutt: 'guard', cover: 'guard', roll: 'guard', retaliate: 'guard', firstaid: 'guard', radio: 'guard', secondwind: 'guard', laststand: 'guard',
+  // Rudel
+  packleader: 'pack',
+};
+export const WEAPON_STYLE: Partial<Record<WeaponId, CardStyle>> = {
+  bat: 'momentum', axe: 'momentum', machete: 'momentum', nailgun: 'momentum', sledgehammer: 'momentum',
+  crossbow: 'trap', golfclub: 'trap', slingshot: 'trap', pitchfork: 'trap', bow: 'trap',
+  shovel: 'guard', lid: 'guard', extinguisher: 'guard',
+};
+
+/** Stil einer Karte (Waffenkarten haben den Stil ihrer Waffe). */
+export function styleOf(id: CardId): CardStyle | undefined {
+  if (CARD_STYLE[id]) return CARD_STYLE[id];
+  const w = CARDS[id]?.weapon ?? (Object.keys(WEAPON_CARDS) as WeaponId[]).find((k) => WEAPON_CARDS[k].includes(id));
+  return w ? WEAPON_STYLE[w] : undefined;
+}
+
 /** Sammelkarten in der Reihenfolge des Sammelbuchs. */
 export const ONCE_CARDS: CardId[] = ['molotov', 'smoke', 'caltrops', 'firecracker', 'lure', 'pepper', 'tinder', 'tripwire', 'alarm', 'dressing', 'adrenaline', 'flare', 'oilcan', 'painkiller', 'flashbang', 'fireworks', 'grenade'];
 export const SKILL_CARDS: CardId[] = ['counter', 'steady', 'breath', 'spark', 'pitcher', 'followup', 'headbutt', 'cover', 'roll', 'sweep', 'sneak', 'scavenger', 'embers', 'trapper', 'distract', 'rage', 'retaliate', 'firstaid', 'radio', 'secondwind', 'wildfire', 'packleader', 'laststand'];

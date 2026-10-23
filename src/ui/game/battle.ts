@@ -8,13 +8,13 @@
 // Die Regeln stehen in core/tactics.ts; hier wird nur angezeigt und abgespielt.
 
 import { WORLD_SEED } from '../../config';
-import { CARDS, CLIMATE, FOE_TACTICS, KRAM, KRAM_ORDER, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, TACTICS, WEAPONS, type CardId, gearArmor, gearSum } from '../../core/content';
+import { CARDS, styleOf, CLIMATE, FOE_TACTICS, KRAM, KRAM_ORDER, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, TACTICS, WEAPONS, type CardId, gearArmor, gearSum } from '../../core/content';
 import { isCold, isHot } from '../../core/terrain';
 import { seasonOf } from '../../services/settings';
 import { currentRegion } from './worldState';
 import { aliveFoes, canHowl, createTactics, endTurn, flee, fleeCost, foeById, lacksMedicine, playable, playCard, playPouch, targetsFor, type Intent, type TacticsState, type TEvent } from '../../core/tactics';
 import { battleWeapons, bestWeapon, cardKit, currentHealth } from '../../core/rules';
-import { artUrl, CARD_ICON, cardEffect } from '../cards';
+import { artUrl, CARD_ICON, cardEffect, styleMark } from '../cards';
 import type { DayPhase } from '../../core/sun';
 import type { EnemyId, GameEvent, Inventory, KramBag, Spot } from '../../core/types';
 import type { App } from '../app';
@@ -815,6 +815,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           },
         },
         h('span', { class: 't-cost' }, String(def.cost)),
+        styleMark(styleOf(card), 't-style', 12),
         // Gemaltes Kartenbild, sobald es eins gibt, sonst das Symbol
         artUrl(def.art) ? h('img', { class: 't-card-art', src: artUrl(def.art)!, alt: '', draggable: 'false' }) : svgEl(icon(CARD_ICON[card], 26), 't-card-icon'),
         h('b', { class: 't-card-name' }, def.name),
@@ -863,6 +864,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
             },
           },
           h('span', { class: 't-pc-cost' }, String(def.cost)),
+          styleMark(styleOf(id), 't-pc-style', 10),
           artUrl(def.art) ? h('img', { class: 't-pc-art', src: artUrl(def.art)!, alt: '', draggable: 'false' }) : svgEl(icon(CARD_ICON[id], 20), 't-pc-icon'),
           h('b', null, def.name),
           h('small', null, n ? `×${n}` : 'leer'),
