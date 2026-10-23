@@ -100,7 +100,7 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 2. **Kartenplan:** 75 Karten für Version 1.0 in fünf Spielstilen, ausgewogen nach dem Vorbild von Slay the Spire (Plan im Doc, Reiter „Kartenplan“). Als Nächstes der Stil Fallen und Abstand, dann Schwung (mit Kettensäge), Schutz, Rudel
 3. Danach: eine Woche nichts Neues, draußen testen, Akku und Tempo, Einstieg schleifen
 
-Erledigt am 23.10. (Karten, zweiter Stil): Fallen und Abstand mit Stolperdraht (Falle), Wecker (holt nach vorn), Mistgabel, Sportbogen, Fallensteller, Ablenken, Werferin; im Labor gegen Feuer und den Allround-Stand verglichen (Fallen stark gegen Borkenmann und Wächter, schwächer gegen Gruppen). Nächster Stil: Schwung (Machete, Nachsetzen, Wut, Kettensäge).
+Erledigt am 23.10. (Karten, zweiter Stil): Fallen und Abstand mit Stolperdraht (Falle), Wecker (holt nach vorn), Mistgabel, Sportbogen, Fallensteller, Ablenken, Werferin; im Labor gegen Feuer und den Allround-Stand verglichen (Fallen stark gegen Borkenmann und Wächter, schwächer gegen Gruppen). Nächster Stil: Schwung (Machete, Nachsetzen, Wut, Vorschlaghammer). Die Kettensäge ist raus (Kevin: zu blutig, lieber geerdet).
 
 Erledigt am 23.10. (Balancing): Balancing-Labor (`npm run balance`); Kämpfe fordernder (Wandler, Kriecher, Borkenmann, Wächter stärker); Medizin halb so oft, Verbinden heilt 4; Fliehen kostet einen letzten Treffer; nicht zweimal hintereinander betäubbar; Bolzen 3 statt 4. Offen: Herausforderung für gut Ausgerüstete über Inhalte (Dungeons, Weltgegner, stärkere Formen).
 
