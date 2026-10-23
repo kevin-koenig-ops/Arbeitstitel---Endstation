@@ -67,8 +67,18 @@ export async function createApp(root: HTMLElement) {
   applyUiScale(settings.get().uiScale);
   settings.onChange((st) => applyUiScale(st.uiScale));
 
+  const backend = new LocalBackend(new GuestAuth(), WORLD_SEED);
+  // Zum Testen: Bauen ohne Bauzeit. Beim Einschalten wird auch alles fertig, was gerade im Bau ist.
+  backend.setInstantBuild(settings.get().instantBuild);
+  let instant = settings.get().instantBuild;
+  settings.onChange((st) => {
+    backend.setInstantBuild(st.instantBuild);
+    if (st.instantBuild && !instant && backend.current()) void backend.dispatch({ type: 'settle' });
+    instant = st.instantBuild;
+  });
+
   const app: App = {
-    backend: new LocalBackend(new GuestAuth(), WORLD_SEED),
+    backend,
     settings,
     go(name) {
       const prev = current;

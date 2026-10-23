@@ -43,6 +43,9 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
   const weatherToggle = h('input', { id: 'set-weather', type: 'checkbox', class: 'toggle', onchange: () => s.set({ realWeather: weatherToggle.checked }) });
   weatherToggle.checked = s.get().realWeather;
 
+  const buildToggle = h('input', { id: 'set-instant', type: 'checkbox', class: 'toggle', onchange: () => s.set({ instantBuild: buildToggle.checked }) });
+  buildToggle.checked = s.get().instantBuild;
+
   const waterToggle = h('input', { id: 'set-water', type: 'checkbox', class: 'toggle', onchange: () => s.set({ waterMotion: waterToggle.checked }) });
   waterToggle.checked = s.get().waterMotion;
 
@@ -282,6 +285,7 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
         row(lbl('set-phase', 'Tageszeit'), phaseSelect),
         row(lbl('set-wx', 'Wetter'), weatherSelect),
         row(lbl('set-season', 'Jahreszeit', 'Laub, kahle Bäume, Schnee und später die Bodenbilder je Jahreszeit'), seasonSelect),
+        row(lbl('set-instant', 'Ohne Bauzeit bauen', 'Zu Hause ist alles sofort fertig, auch was gerade im Bau ist. Nur zum Ausprobieren; im echten Spiel braucht Bauen Zeit.'), buildToggle),
         row(lbl('set-gift', 'Sammelkarte bekommen', 'Zum Ansehen: kommt in den Rucksack und ins Sammelbuch'), h('div', { class: 'gift-row' }, giftSelect, giftBtn)),
       ],
     ],

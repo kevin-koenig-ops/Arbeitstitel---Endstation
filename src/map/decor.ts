@@ -96,7 +96,6 @@ export interface DecorResult {
 
 // --- Farben --------------------------------------------------------------------------
 const WALLS = ['#b9ae98', '#c6baa1', '#a99e88', '#9c907b', '#a0634b', '#b7a58a', '#8f8676', '#c2b59b'];
-const SOOT = ['#4a4440', '#56504a', '#4f4943'];
 const ROOFS = ['#a24f38', '#8e4632', '#5e5b58', '#7a5a42', '#b0603f', '#6a6660'];
 const FLAT_ROOF = ['#7d7a72', '#8a867c', '#73706a'];
 /** 3D-Häuser: Farbtöne über den Fassadenbildern und Dachziegeln (1 = wie gemalt). */
@@ -427,20 +426,20 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
     buildings++;
 
     const r = rngFrom('haus', key);
-    const roll = r();
-    // Kevin 23.10.: keine Ruinen ohne Dach mehr. Ein paar Häuser sind ausgebrannt (verkohltes Dach), der Rest steht.
-    const state = roll < 0.1 ? 'burnt' : 'intact';
+    // Kevin 23.10.: nur intakte Häuser, keine Ruinen und keine ausgebrannten mehr.
+    // Die Zahl wird trotzdem gezogen, damit Farben und Formen der Häuser gleich bleiben.
+    r();
     const h0 = Math.min(40, Math.max(3, b.height ?? 6));
     const minH = b.minHeight ?? 0;
-    const k = state === 'burnt' ? 0.6 : 0.82 + 0.18 * r();
+    const k = 0.82 + 0.18 * r();
     const wallTop = Math.max(2.4, h0 * k);
-    const wall = state === 'burnt' ? pick(r, SOOT) : pick(r, WALLS);
+    const wall = pick(r, WALLS);
     const simple = ring.length <= 9 && inRing(c, ring);
     if (minH === 0 && simple && area >= 30 && area <= 280) houses.push({ c, rad: Math.sqrt(area / Math.PI), key });
     if (opts.houseMeshes) {
       const poi = minH === 0 ? shopFor(ring, c, Math.sqrt(area)) : null;
       if (poi) poi.used = true;
-      const hs = houseSpec(ring, key, poi ? 'intact' : state, h0, minH * k, poi ? Math.max(3.4, h0 * 0.9) : wallTop, wall, simple, area, poi ? 'home' : civic.some((q) => inRing(q, ring)) ? 'civic' : zoneOf(c));
+      const hs = houseSpec(ring, key, 'intact', h0, minH * k, poi ? Math.max(3.4, h0 * 0.9) : wallTop, wall, simple, area, poi ? 'home' : civic.some((q) => inRing(q, ring)) ? 'civic' : zoneOf(c));
       if (poi) dressShop(hs, poi.kind as ShopKind, poi.sign, poi.p, rngFrom('laden', poi.key)(), area, h0);
       const cv = !poi && minH === 0 ? civicFor(ring) : null;
       if (cv) {
@@ -471,7 +470,6 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
     add(ring, minH * k, wallTop, wall);
     // Sockel: dunkler Streifen unten, das Haus steht damit sichtbar auf dem Boden
     if (minH === 0 && simple && area < 450) add(scaleRing(ring, c, 1.04), 0, 0.55, PLINTH);
-    // Auch ausgebrannte Häuser behalten ihr Dach (Kevin 23.10.: keine Ruinen ohne Dach)
     if (minH > 0) continue;
     if (area > 450 || !simple) {
       add(scaleRing(ring, c, 0.93), wallTop, wallTop + 0.45, pick(r, FLAT_ROOF));

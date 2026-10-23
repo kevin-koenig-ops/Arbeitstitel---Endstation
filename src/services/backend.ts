@@ -38,6 +38,8 @@ export interface GameBackend {
   spotUntil(spot: Spot): number | null;
   /** Wo nichts liegen darf (aus den Kartendaten); gilt für neue Verstecke. */
   setPlaceFilter(fn: ((p: LatLon) => boolean) | null): void;
+  /** Nur zum Testen: Bauen ohne Bauzeit (Einstellungen > Testen). */
+  setInstantBuild(on: boolean): void;
   /** Nach jedem Schritt: was passiert ist. Für Hinweise, die überall gelten (z. B. „Baustelle fertig“). Gibt das Abmelden zurück. */
   onEvents(fn: (events: GameEvent[], state: PlayerState) => void): () => void;
   /** Wo keine besonderen Orte liegen sollen (bebaut, Gärten, Höfe): sie liegen draußen im Offenen. */
@@ -56,6 +58,7 @@ export class LocalBackend implements GameBackend {
   private state: PlayerState | null = null;
   private placeFilter: ((p: LatLon) => boolean) | null = null;
   private listeners = new Set<(events: GameEvent[], state: PlayerState) => void>();
+  private instantBuild = false;
 
   constructor(
     private auth: AuthProvider,
@@ -86,7 +89,7 @@ export class LocalBackend implements GameBackend {
 
   async dispatch(action: Action): Promise<ActionResult> {
     if (!this.state) throw new Error('Kein Spielstand geladen');
-    const result = applyAction(this.state, action, { now: this.clock(), worldSeed: this.worldSeed, blocked: this.placeFilter ?? undefined });
+    const result = applyAction(this.state, action, { now: this.clock(), worldSeed: this.worldSeed, blocked: this.placeFilter ?? undefined, instantBuild: this.instantBuild || undefined });
     if (result.state !== this.state) {
       this.state = result.state;
       writeJson(await this.key(), this.state);
@@ -94,6 +97,10 @@ export class LocalBackend implements GameBackend {
     const st = this.state;
     this.listeners.forEach((l) => l(result.events, st));
     return result;
+  }
+
+  setInstantBuild(on: boolean) {
+    this.instantBuild = on;
   }
 
   onEvents(fn: (events: GameEvent[], state: PlayerState) => void) {
