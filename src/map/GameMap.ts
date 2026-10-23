@@ -12,7 +12,7 @@ import { generateDecor, type DecorInput, type RawLine, type RawPolygon } from '.
 import { FogOfWar } from './fogOfWar';
 import { WaterAnimation } from './waterAnim';
 import demoWorld from './demoWorld.json';
-import { loadTextures, patternImage, textureColor } from './patterns';
+import { hasRoadTexture, loadTextures, patternImage, textureColor } from './patterns';
 import { seasonMonth, type Season } from '../services/settings';
 import { buildStyle, DECOR_MINZOOM, loadRealSource } from './style';
 import type { WalkInput } from './walkNet';
@@ -264,6 +264,7 @@ export class GameMap {
     this.water = new WaterAnimation(this.map, this.opts.waterMotion);
     this.applySnow();
     this.applySoftColors();
+    this.applyRoadTextures();
     if (this.pendingRange) this.setRange(this.pendingRange.c, this.pendingRange.r);
     if (this.pendingCaches) this.setCaches(this.pendingCaches);
     void this.initTrees();
@@ -1111,6 +1112,23 @@ export class GameMap {
       this.map.addImage(id, img.data, { pixelRatio: img.pixelRatio });
     }
     this.applySoftColors();
+    this.applyRoadTextures();
+  }
+
+  /** Straßen und Wege mit Bild, sobald es eins gibt; sonst die gezeichneten Linien. */
+  private applyRoadTextures() {
+    const use = (layer: string, pat: string) => {
+      if (!this.map.getLayer(layer)) return false;
+      const on = hasRoadTexture(pat);
+      this.map.setPaintProperty(layer, 'line-pattern', on ? pat : undefined);
+      return on;
+    };
+    const major = use('road-major', 'pat-road-major');
+    const minor = use('road-minor', 'pat-road-minor');
+    use('road-track', 'pat-track');
+    use('road-path', 'pat-path');
+    // Die gemalten Straßen haben ihre Risse schon im Bild
+    if (this.map.getLayer('road-cracks')) this.map.setLayoutProperty('road-cracks', 'visibility', major && minor ? 'none' : 'visible');
   }
 
   /**

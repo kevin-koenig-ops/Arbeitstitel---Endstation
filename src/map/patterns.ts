@@ -70,14 +70,37 @@ const SEASONAL: Record<string, string> = {
 };
 
 /**
+ * Bilder für Straßen und Wege (Kevin, 23.10.), je Jahreszeit wie die Böden, z. B. feldweg-herbst.
+ * Das Bild liegt quer: die Straße läuft von links nach rechts, oben und unten sind ihre Ränder.
+ * Die Karte streckt es auf die Breite der Straße und wiederholt es entlang.
+ */
+const ROADS: Record<string, string> = {
+  'pat-road-major': 'strasse-haupt',
+  'pat-road-minor': 'strasse-neben',
+  'pat-track': 'feldweg',
+  'pat-path': 'fussweg',
+};
+
+/** Hat diese Straßenart gerade ein Bild? */
+export function hasRoadTexture(id: string): boolean {
+  return id in ROADS && loaded.has(id);
+}
+
+/**
  * Vor dem Kartenstart aufrufen: lädt die Bild-Texturen (fehlt eins, bleibt das gezeichnete Muster).
  * Mit Jahreszeit: wo es ein Bild für diese Jahreszeit gibt, wird es genommen.
  * Gibt die Muster zurück, die sich gegenüber vorher geändert haben.
  */
 export async function loadTextures(season?: Season): Promise<string[]> {
   const changed: string[] = [];
+  // Straßen und Wege: nur wenn es ein Bild gibt (sonst bleiben die gezeichneten Linien)
+  const roads = Object.entries(ROADS).flatMap(([id, key]) => {
+    const url = (season && fileUrl(`${key}-${SEASON_NAME[season]}`)) || fileUrl(key);
+    if (!url && loaded.delete(id)) changed.push(id);
+    return url ? [[id, { url, pr: 1 }] as const] : [];
+  });
   await Promise.all(
-    Object.entries(IMAGES).map(async ([id, { url, pr }]) => {
+    [...Object.entries(IMAGES), ...roads].map(async ([id, { url, pr }]) => {
       const seasonal = season && SEASONAL[id] ? fileUrl(`${SEASONAL[id]}-${SEASON_NAME[season]}`) : undefined;
       const want = seasonal ?? url;
       const cur = loaded.get(id);
