@@ -26,7 +26,8 @@ import type { WeatherKind } from '../services/weather';
 import { Assembler, GLOW, LIT, placeMatrix, TemplateCache, type Template } from './bake';
 import { CharacterRig } from './character';
 import { buildEnvironment, type Environment } from './environment';
-import { groundMaterial, groundUV, PLOT_TEX, TINT, type GroundTex } from './groundTextures';
+import { buildGroundBlend } from './groundBlend';
+import { groundMaterial, groundUV, OUTER_TEX, PLOT_TEX, TINT, type GroundTex } from './groundTextures';
 import { buildFurniture, type LightSpec } from './models';
 import { findPath, nearestWalkable, walkable } from './path';
 import { buildFloor, buildObstacle, buildRoof, buildRoofTrim, buildWall, CUT_H, WALL_H } from './structures';
@@ -381,6 +382,27 @@ export class BaseScene {
       ground.receiveShadow = true;
       this.layers.ground.add(ground);
     }
+    // Weiche Übergänge zwischen zurückerobert, verwildert und dem Gelände drumherum
+    const OPEN = 0;
+    const WILD = 1;
+    const OUTER = 2;
+    const tinted = (kind: GroundTex | null, k: number): [number, number, number] => {
+      const t = kind ? TINT[kind] : [1, 1, 1];
+      return [t[0] * k, t[1] * k, t[2] * k];
+    };
+    const outerKind = OUTER_TEX[d.site];
+    for (const m of buildGroundBlend({
+      plot: PLOT,
+      classes: [
+        { kind: tex.open, tint: tinted(tex.open, 1) },
+        { kind: tex.wild, tint: tinted(tex.wild, 0.8) },
+        // Draußen ist der Boden etwas heller getönt (siehe environment.ts)
+        { kind: outerKind, tint: tinted(outerKind, 0.95) },
+      ],
+      classOf: (x, y) => (d.idx.unlocked[cellIndex(x, y)] === 1 ? OPEN : WILD),
+      outer: OUTER,
+    }))
+      this.layers.ground.add(m);
 
     // Bewuchs auf noch nicht zurückeroberten Abschnitten
     const locked: [number, number][] = [];

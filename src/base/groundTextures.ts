@@ -40,6 +40,11 @@ export function setGroundSeason(s: Season) {
     const old = mat.map;
     mat.map = loadMap(kind);
     mat.needsUpdate = true;
+    const over = overlays.get(kind);
+    if (over) {
+      over.map = mat.map;
+      over.needsUpdate = true;
+    }
     old?.dispose();
   }
 }
@@ -82,21 +87,51 @@ export const OUTER_TEX: Record<SiteId, GroundTex> = {
 };
 
 const materials = new Map<GroundTex, THREE.MeshStandardMaterial>();
+/** Durchscheinende Fassung für die weichen Übergänge (teilt sich das Bild mit dem Boden). */
+const overlays = new Map<GroundTex, THREE.MeshStandardMaterial>();
+
+/** Bild etwas entsättigen: das warme Licht im Zuhause färbt sonst alles knallgelb. */
+function desaturate(mat: THREE.MeshStandardMaterial) {
+  mat.onBeforeCompile = (sh) => {
+    sh.fragmentShader = sh.fragmentShader.replace(
+      '#include <map_fragment>',
+      '#include <map_fragment>\n\tdiffuseColor.rgb = mix(vec3(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722))), diffuseColor.rgb, 0.55);',
+    );
+  };
+  mat.customProgramCacheKey = () => 'boden-entsaettigt';
+}
 
 /** Ein Material pro Textur, für alle Böden geteilt (wird nie weggeworfen). */
 export function groundMaterial(kind: GroundTex): THREE.MeshStandardMaterial {
   let mat = materials.get(kind);
   if (!mat) {
     mat = new THREE.MeshStandardMaterial({ map: loadMap(kind), vertexColors: true, roughness: 0.95, metalness: 0 });
-    // Bild etwas entsättigen: das warme Licht im Zuhause färbt sonst alles knallgelb
-    mat.onBeforeCompile = (sh) => {
-      sh.fragmentShader = sh.fragmentShader.replace(
-        '#include <map_fragment>',
-        '#include <map_fragment>\n\tdiffuseColor.rgb = mix(vec3(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722))), diffuseColor.rgb, 0.55);',
-      );
-    };
-    mat.customProgramCacheKey = () => 'boden-entsaettigt';
+    desaturate(mat);
     materials.set(kind, mat);
+  }
+  return mat;
+}
+
+/**
+ * Für die Übergänge: dasselbe Bild, aber durchscheinend (Deckkraft aus der Vertex-Farbe)
+ * und knapp über dem Boden gezeichnet, ohne ihn zu verdecken.
+ */
+export function groundOverlayMaterial(kind: GroundTex): THREE.MeshStandardMaterial {
+  let mat = overlays.get(kind);
+  if (!mat) {
+    mat = new THREE.MeshStandardMaterial({
+      map: groundMaterial(kind).map,
+      vertexColors: true,
+      roughness: 0.95,
+      metalness: 0,
+      transparent: true,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -4,
+    });
+    desaturate(mat);
+    overlays.set(kind, mat);
   }
   return mat;
 }
