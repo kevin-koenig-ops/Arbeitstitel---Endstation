@@ -107,6 +107,7 @@ Erledigt am 22.10. spät: lange Wege über Straßen, Zentrieren zoomt nah ran, N
 ## Ideen für irgendwann
 
 - **Kapitel (Kevin, 22.10.):** große Ereignisse über zwei Wochen, zum Beispiel „Der Vorarbeiter“ jagt dich. Details im Doc, Reiter „Ideen: Kapitel“.
+- **Gruppen-Dungeons (Kevin, 23.10.):** 2 bis 4 Leute in einer Roten Zone oder einem Bunker, rundenweise ohne Zeitdruck (jeder zieht, wann er Zeit hat). Rollen mit eigenen Karten (Sanitäterin, Wächter, Späherin, Bastler). Wer nicht zieht, für den spielt ein vorsichtiger Autopilot. Kein freier Chat, nur feste Zurufe. Braucht einen Server. Details im Doc, Reiter „Ideen: Gruppen-Dungeons“.
 - **Fahrzeuge (Kevin, 22.10.):** craftbar, Sprit von Tankstellen; abends mal 30 km in die nächste Stadt fahren. Offen: Wie passt das zu „draußen laufen“ und zur Sicherheit (nie während echter Fahrt spielen)?
 
 - **Gegenden mit eigenem Charakter (Kevin, 22.10.):** Varianten der Kreaturen je Gegend mit eigenem Kniff im Kampf (Küsten-Wandler gepanzert, Sumpf-Wandler zieht runter, Kriecher springen in den Bergen) plus Bestiarium; eigene Fundorte, Beute und Sammel-Sets je Gegend; Rohstoffe nur in bestimmten Gegenden (Salz, Harz, Schiefer, Phosphat) für höhere Ausbauten; Atlas der Gegenden; eigene Kampfkulissen, Wetter und Funksprüche. Details im Doc, Tab „Ideen: Gegenden & Kampf“
