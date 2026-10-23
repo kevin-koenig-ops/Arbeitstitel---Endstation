@@ -78,9 +78,9 @@ const POOLS: Record<SightingKind, Partial<Record<CardRarity, Reward[]>>> = {
   },
   cache: {
     common: [{ card: 'molotov' }, { card: 'smoke' }, { card: 'caltrops' }, { card: 'firecracker' }, { card: 'lure' }, { card: 'tinder' }, { card: 'tripwire' }, { card: 'alarm' }, { card: 'lath' }, { card: 'marblesack' }, { card: 'motionlamp' }, { card: 'boombox' }, { weapon: 'shovel' }, { weapon: 'pitchfork' }, { weapon: 'lid' }, { weapon: 'pipewrench' }],
-    rare: [{ weapon: 'axe' }, { weapon: 'golfclub' }, { weapon: 'slingshot' }, { weapon: 'machete' }, { card: 'oilcan' }, { card: 'tape' }, { card: 'fencer' }],
-    epic: [{ weapon: 'nailgun' }, { weapon: 'bow' }, { weapon: 'extinguisher' }, { card: 'fireworks' }],
-    legendary: [{ weapon: 'sledgehammer' }],
+    rare: [{ weapon: 'axe' }, { weapon: 'golfclub' }, { weapon: 'slingshot' }, { weapon: 'machete' }, { card: 'oilcan' }, { card: 'tape' }, { card: 'fencer' }, { weapon: 'airrifle' }, { weapon: 'pistol' }],
+    epic: [{ weapon: 'nailgun' }, { weapon: 'bow' }, { weapon: 'extinguisher' }, { card: 'fireworks' }, { weapon: 'revolver' }, { weapon: 'shotgun' }],
+    legendary: [{ weapon: 'sledgehammer' }, { weapon: 'huntingrifle' }],
   },
   medkit: {
     common: [{ card: 'pepper' }],
@@ -89,9 +89,9 @@ const POOLS: Record<SightingKind, Partial<Record<CardRarity, Reward[]>>> = {
   },
   convoy: {
     common: [{ card: 'molotov' }],
-    rare: [{ card: 'flare' }],
-    epic: [{ card: 'flashbang' }, { card: 'grenade' }],
-    legendary: [{ weapon: 'sledgehammer' }],
+    rare: [{ card: 'flare' }, { weapon: 'pistol' }],
+    epic: [{ card: 'flashbang' }, { card: 'grenade' }, { weapon: 'shotgun' }],
+    legendary: [{ weapon: 'sledgehammer' }, { weapon: 'huntingrifle' }],
   },
 };
 

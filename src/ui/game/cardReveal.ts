@@ -1,7 +1,7 @@
 // Fund aus einer Sichtung: Die Karte dreht sich um, Rahmen und Glanz nach Seltenheit.
 // Darunter, was sie bringt (neu im Sammelbuch, Stufe erreicht, Waffe wieder heil …).
 
-import { CARDS, RARITY_NAMES, WEAPONS } from '../../core/content';
+import { AMMO, CARDS, RARITY_NAMES, WEAPONS } from '../../core/content';
 import type { GameEvent, PlayerState } from '../../core/types';
 import { SIGHTING_NAMES, sightingById, type SightingKind } from '../../core/sightings';
 import { bookItem, cardFace, levelProgress, ROMAN, type BookKey } from '../cards';
@@ -18,6 +18,9 @@ export function showCardReveal(host: HTMLElement, ev: Claimed, state: PlayerStat
   const lines: string[] = [];
   if (n === 1) lines.push('Neu im Sammelbuch!');
   if (ev.weapon) lines.push(ev.repaired ? `Deine ${WEAPONS[ev.weapon].name} ist wieder wie neu.` : `${WEAPONS[ev.weapon].name}: ab jetzt im Kampf dabei.`);
+  // Schusswaffe: ein paar Schuss stecken noch drin
+  const gun = ev.weapon ? WEAPONS[ev.weapon] : undefined;
+  if (gun?.ammo && gun.loaded) lines.push(`Darin: ${gun.loaded} ${AMMO[gun.ammo].name}. Mehr Munition findest du nur draußen.`);
   else if (ev.card && CARDS[ev.card].kind === 'once') lines.push('Steckt im Rucksack. Bis zu 3 davon nimmst du in jeden Kampf mit.');
   else if (ev.card && CARDS[ev.card].kind === 'skill') {
     const p = levelProgress(n, CARDS[ev.card].rarity);

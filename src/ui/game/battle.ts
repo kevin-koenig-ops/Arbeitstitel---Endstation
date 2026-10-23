@@ -8,7 +8,7 @@
 // Die Regeln stehen in core/tactics.ts; hier wird nur angezeigt und abgespielt.
 
 import { WORLD_SEED } from '../../config';
-import { CARDS, DEVICE_NAMES, styleOf, CLIMATE, FOE_RULES, FOE_TACTICS, KRAM, KRAM_ORDER, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, TACTICS, WEAPONS, type CardId, gearArmor, gearSum } from '../../core/content';
+import { AMMO, CARDS, DEVICE_NAMES, styleOf, CLIMATE, FOE_RULES, FOE_TACTICS, KRAM, KRAM_ORDER, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, TACTICS, WEAPONS, type CardId, gearArmor, gearSum } from '../../core/content';
 import { isCold, isHot } from '../../core/terrain';
 import { seasonOf } from '../../services/settings';
 import { currentRegion } from './worldState';
@@ -116,6 +116,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     // Je eine Nahkampf- und Fernkampfwaffe (zu Hause gewählt, sonst die stärkste)
     weapons: battleWeapons(s0),
     medicine: s0.inventory.medicine,
+    ammo: s0.ammo ?? {},
     health: currentHealth(s0, now0),
     maxHealth: MAX_HEALTH,
     mood,
@@ -285,7 +286,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     if (foes.some((f) => f.kind === 'feral')) return 'Der Verwilderte schießt aus dem Gebüsch. Würfe treffen ihn hinten, vorne erwischst du ihn nur kurz.';
     if (foes.some((f) => f.kind === 'scrapper')) return 'Der Schrotter trägt Rüstung aus Schildern und Reifen: Schwere Schläge und Nägel helfen.';
     if (st.turn === 1 && mood && foes.some((f) => f.kind === 'walker')) return mood === 'strong' ? 'Nacht, Nebel oder Regen: Die Wandler sind zäher als sonst.' : 'Pralle Sonne: Die Wandler sind träge.';
-    if (foes.some((f) => f.kind === 'screamer')) return 'Der Heuler ruft Verstärkung. Erst ihn ausschalten, mit Wurf oder Bolzen.';
+    if (foes.some((f) => f.kind === 'screamer')) return 'Der Heuler ruft Verstärkung. Erst ihn ausschalten, mit Wurf, Bolzen oder Schuss.';
     if (st.energy === 0) return 'Keine Kraft mehr: Runde beenden.';
     return `Runde ${st.turn}`;
   };
@@ -565,6 +566,13 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
         case 'weaponBroke':
           say(`${WEAPONS[e.weapon].name} zerbrochen!`, 'bad');
           vibrate([30, 40, 30]);
+          break;
+        case 'fired':
+          // Kurzer Ruck beim Schuss; laute Schüsse spürt man
+          if (e.loud) vibrate(25);
+          break;
+        case 'outOfAmmo':
+          say(`${WEAPONS[e.weapon].name}: keine Munition mehr. Ab jetzt Kolbenschläge.`, 'bad');
           break;
         case 'advance': {
           const f = sfoe(e.id);
@@ -936,6 +944,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
       const btn = 'hand' in sel ? handEl.children[sel.hand] : pouchEl.querySelector(`[data-card="${sel.pouch}"]`);
       if (btn) shake(btn);
       if (events[0].reason === 'target') setInfo('Da steht gerade niemand, den diese Karte trifft.');
+      if (events[0].reason === 'ammo') setInfo('Dafür reicht die Munition nicht mehr.');
       return;
     }
     renderHand();
@@ -1056,7 +1065,12 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     const DEV_ICON = { fence: 'fence', lamp: 'lamp', boombox: 'boombox', mower: 'toolbox' } as const;
     for (const d of st.devices) meDevices.append(h('span', { class: 't-dev', title: `${DEVICE_NAMES[d.kind]}: noch ${d.rounds} Runden` }, svgEl(icon(DEV_ICON[d.kind], 13)), String(d.rounds)));
     const kinds = (Object.keys(st.weaponDur) as (keyof typeof WEAPONS)[]).filter((k) => (st.weaponDur[k] ?? 0) > 0);
-    weaponLine.textContent = kinds.length ? kinds.map((k) => `${WEAPONS[k].name} ${st.weaponDur[k]}`).join(' · ') : 'Keine Waffe: Fäuste und Steine';
+    // Schusswaffen: Munition statt Haltbarkeit zeigen (die Haltbarkeit hält lange)
+    const label = (k: (typeof kinds)[number]) => {
+      const a = WEAPONS[k].ammo;
+      return a ? `${WEAPONS[k].name} · ${st.ammo[a] ?? 0} ${(st.ammo[a] ?? 0) === 1 ? AMMO[a].one : AMMO[a].one === 'Kugel' ? 'Kugeln' : 'Patronen'}` : `${WEAPONS[k].name} ${st.weaponDur[k]}`;
+    };
+    weaponLine.textContent = kinds.length ? kinds.map(label).join(' · ') : 'Keine Waffe: Fäuste und Steine';
   };
 
   const foeEls = new Map<number, { el: HTMLElement; intent: HTMLElement; hp: HTMLElement; hpText: HTMLElement; block: HTMLElement; row: HTMLElement; status: HTMLElement; key: string; skey: string }>();
@@ -1304,11 +1318,13 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     const banner = h('div', { class: `battle-banner ${outcome === 'spared' ? 'won' : outcome}` }, outcome === 'won' ? 'Sieg!' : outcome === 'spared' ? 'Gute Tat' : outcome === 'lost' ? 'Niedergeschlagen' : 'Rückzug');
     el.append(banner);
     if (outcome === 'won' || outcome === 'spared') vibrate([30, 40, 60]);
-    const res = await app.backend.dispatch({ type: 'battleResult', outcome, health: st.hp, kills: st.kills, usedMedicine: st.usedMedicine, wear: st.wear, used: st.used, lastStand: st.lastStandUsed || undefined });
+    const res = await app.backend.dispatch({ type: 'battleResult', outcome, health: st.hp, kills: st.kills, usedMedicine: st.usedMedicine, wear: st.wear, used: st.used, lastStand: st.lastStandUsed || undefined, usedAmmo: st.usedAmmo, shots: st.shots || undefined });
     const loot = res.events.find((e) => e.type === 'loot');
     const lost = res.events.find((e) => e.type === 'combatLost');
     const broke = res.events.map((e) => ('weaponBroke' in e ? e.weaponBroke : undefined)).find(Boolean);
     if (broke) app.toast(`${WEAPONS[broke].name} ist zerbrochen. Am Werktisch baust du eine neue.`, 'warn');
+    // Laute Schüsse: auf der Karte kommen gleich Trupps nachsehen
+    if (st.shots > 0 && outcome !== 'lost') setTimeout(() => app.toast('Die Schüsse waren weit zu hören. Was in der Nähe war, kommt nachsehen.', 'warn'), 1600);
     if (outcome === 'lost' && lost?.type === 'combatLost') {
       setTimeout(() => showLost(lost.dropped, lost.droppedKram, lost.droppedCards ?? {}), 900);
       return;

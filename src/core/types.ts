@@ -363,7 +363,39 @@ export type BackgroundId = 'rescue' | 'workshop' | 'farm' | 'courier';
 
 // --- Kampf ---------------------------------------------------------------------
 export type EnemyId = 'walker' | 'crawler' | 'brute' | 'watcher';
-export type WeaponId = 'crowbar' | 'bat' | 'crossbow' | 'shovel' | 'axe' | 'golfclub' | 'slingshot' | 'nailgun' | 'pitchfork' | 'bow' | 'machete' | 'sledgehammer' | 'lid' | 'extinguisher' | 'pipewrench';
+export type WeaponId =
+  | 'crowbar'
+  | 'bat'
+  | 'crossbow'
+  | 'shovel'
+  | 'axe'
+  | 'golfclub'
+  | 'slingshot'
+  | 'nailgun'
+  | 'pitchfork'
+  | 'bow'
+  | 'machete'
+  | 'sledgehammer'
+  | 'lid'
+  | 'extinguisher'
+  | 'pipewrench'
+  // Schusswaffen (Kevin 23.10.): nur zu finden, jede mit eigener Munition
+  | 'airrifle'
+  | 'pistol'
+  | 'revolver'
+  | 'shotgun'
+  | 'huntingrifle';
+/** Munition: jede Schusswaffe hat ihre eigene. Gibt es nur draußen zu finden. */
+export type AmmoId = 'pellets' | 'pistol' | 'revolver' | 'shells' | 'rifle';
+/** Schüsse waren zu hören: Trupps aus der Gegend kommen nachsehen (nur auf der Karte). */
+export interface Noise {
+  id: string;
+  at: LatLon;
+  from: number;
+  until: number;
+  /** Wie viele laute Schüsse (mehr Schüsse, mehr Trupps). */
+  loud: number;
+}
 /** Wie gut ein Geschicklichkeits-Moment lief (Mini-Spiel beim Durchsuchen). Kommt vom Client, wirkt nur begrenzt. */
 export type Quality = 'miss' | 'good' | 'perfect';
 /**
@@ -615,6 +647,10 @@ export interface PlayerState {
   /** Bis zu diesem Zeitpunkt ist die Erholung eingerechnet. */
   healthAt: number;
   weapons: Weapon[];
+  /** Munition je Sorte (wirkt sofort, wie Medizin). */
+  ammo: Partial<Record<AmmoId, number>>;
+  /** Wo zuletzt geschossen wurde: Trupps kommen nachsehen, solange es frisch ist. */
+  noise: Noise[];
   /** Kleidung und Ausrüstung am Körper (Kopf, Gesicht, Oberkörper, Hände, Beine, Füße, Rücken). */
   gear: GearState;
   /** Laufender Kampf oder null. Bleibt beim Neuladen erhalten. */
@@ -738,7 +774,7 @@ export type Action =
   | { type: 'unpack' }
   | { type: 'engage'; spot: Spot; at: LatLon; accuracyM: number }
   /** Ergebnis eines Echtzeitkampfs (Kampf 2.0). Später prüft der Server es anhand der Eingaben nach. */
-  | { type: 'battleResult'; outcome: 'won' | 'lost' | 'fled' | 'spared'; health: number; kills: number; usedMedicine: number; wear?: Partial<Record<WeaponId, number>>; used?: Partial<Record<CardId, number>>; lastStand?: boolean }
+  | { type: 'battleResult'; outcome: 'won' | 'lost' | 'fled' | 'spared'; health: number; kills: number; usedMedicine: number; wear?: Partial<Record<WeaponId, number>>; used?: Partial<Record<CardId, number>>; lastStand?: boolean; /** Verschossene Munition je Sorte. */ usedAmmo?: Partial<Record<AmmoId, number>>; /** Laute Schüsse (locken Trupps an). */ shots?: number }
   | { type: 'craftCard'; card: CardId }
   | { type: 'claimSighting'; id: string; candidate: number; at: LatLon; accuracyM: number }
   /** Nur zum Testen: eine Sammelkarte oder Waffe bekommen. */
@@ -821,7 +857,7 @@ export type RejectReason =
   | 'building';
 
 export type GameEvent =
-  | { type: 'loot'; spotId: string; items: Partial<Inventory>; card?: CardId; weapon?: WeaponId; kram?: KramId; /** Mehr Kram auf einmal (Haufen des Hamsterers, Taschen des Gewohnheitstiers). */ kramMore?: Partial<Record<KramId, number>>; /** Dank eines Fieberkranken (Medizin gegeben). */ mercy?: boolean; collectible?: CollectibleId; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: BlueprintId; gear?: GearId; site?: SiteId; quality?: Quality; first?: boolean; canDig?: boolean; cart?: boolean; fed?: boolean; clue?: string; newKind?: boolean; discovery?: boolean; tier?: number }
+  | { type: 'loot'; spotId: string; items: Partial<Inventory>; card?: CardId; weapon?: WeaponId; /** Gefundene Munition. */ ammo?: Partial<Record<AmmoId, number>>; kram?: KramId; /** Mehr Kram auf einmal (Haufen des Hamsterers, Taschen des Gewohnheitstiers). */ kramMore?: Partial<Record<KramId, number>>; /** Dank eines Fieberkranken (Medizin gegeben). */ mercy?: boolean; collectible?: CollectibleId; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: BlueprintId; gear?: GearId; site?: SiteId; quality?: Quality; first?: boolean; canDig?: boolean; cart?: boolean; fed?: boolean; clue?: string; newKind?: boolean; discovery?: boolean; tier?: number }
   | { type: 'siteChosen'; site: SiteId; first: boolean }
   | { type: 'reclaimed'; section: string; cost: Partial<Inventory> }
   | { type: 'obstacleCleared'; id: string; kind: ObstacleKind; reward: Partial<Inventory> }

@@ -159,7 +159,7 @@ export class LocalBackend implements GameBackend {
   }
 
   patrolsNear(center: LatLon, radiusM: number, region: RegionId, night: boolean, events: WorldEvent[], frost = false) {
-    return patrolsAround(this.worldSeed, center, radiusM, this.clock(), region, night, events, frost);
+    return patrolsAround(this.worldSeed, center, radiusM, this.clock(), region, night, events, frost, this.state?.noise ?? []);
   }
 
   specialsNear(center: LatLon, radiusM: number) {

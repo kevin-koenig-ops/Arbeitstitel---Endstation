@@ -10,7 +10,7 @@ import { autopilotFight, type AutopilotOptions } from '../src/core/autopilot';
 import { encounter } from '../src/core/rules';
 import { rngFrom, pickWeighted } from '../src/core/rng';
 import { createTactics, type CardKit } from '../src/core/tactics';
-import type { FoeKind, RegionId, SpotKind, WeaponId } from '../src/core/types';
+import type { AmmoId, FoeKind, RegionId, SpotKind, WeaponId } from '../src/core/types';
 
 const args = new Set(process.argv.slice(2));
 const QUICK = args.has('--schnell');
@@ -25,6 +25,8 @@ interface Stage {
   medicine: number;
   pouch: Partial<Record<CardId, number>>;
   skills: Partial<Record<CardId, number>>;
+  /** Munition für Schusswaffen. */
+  ammo?: Partial<Record<AmmoId, number>>;
 }
 
 const STAGES: Stage[] = [
@@ -32,6 +34,22 @@ const STAGES: Stage[] = [
   { name: 'Woche 1', weapons: ['crowbar', 'golfclub'], medicine: 2, pouch: { molotov: 2, pepper: 1 }, skills: { counter: 1, breath: 1 } },
   { name: 'Gut ausgerüstet', weapons: ['axe', 'crossbow'], medicine: 3, pouch: { molotov: 3, smoke: 2, grenade: 1 }, skills: { counter: 2, sweep: 1, steady: 1, secondwind: 1 } },
 ];
+// Schusswaffen zum Vergleich (--waffen): Woche 1 mit Golfschläger gegen die Schusswaffen (mit wenig und ohne Munition)
+if (args.has('--waffen')) {
+  const base = { medicine: 2, pouch: { molotov: 2, pepper: 1 }, skills: { counter: 1, breath: 1 } };
+  STAGES.length = 0;
+  STAGES.push(
+    { name: 'Golfschläger', weapons: ['crowbar', 'golfclub'], ...base },
+    { name: 'Luftgewehr (12)', weapons: ['crowbar', 'airrifle'], ...base, ammo: { pellets: 12 } },
+    { name: 'Pistole (4)', weapons: ['crowbar', 'pistol'], ...base, ammo: { pistol: 4 } },
+    { name: 'Pistole (12)', weapons: ['crowbar', 'pistol'], ...base, ammo: { pistol: 12 } },
+    { name: 'Revolver (5)', weapons: ['crowbar', 'revolver'], ...base, ammo: { revolver: 5 } },
+    { name: 'Schrotflinte (3)', weapons: ['crowbar', 'shotgun'], ...base, ammo: { shells: 3 } },
+    { name: 'Jagdgewehr (3)', weapons: ['crowbar', 'huntingrifle'], ...base, ammo: { rifle: 3 } },
+    { name: 'Pistole leer', weapons: ['crowbar', 'pistol'], ...base, ammo: {} },
+  );
+}
+
 // Spielstile zum Vergleich (--stile): gleich starke Ausrüstung wie Woche 1 bzw. gut ausgerüstet
 if (args.has('--stile')) {
   STAGES.length = 0;
@@ -119,6 +137,7 @@ function fight(stage: Stage, group: FoeKind[], seed: string, o: { hp: number; me
     group,
     weapons: stage.weapons.map((k) => ({ kind: k, dur: WEAPONS[k].dur })),
     medicine: o.medicine,
+    ammo: stage.ammo,
     health: o.hp,
     maxHealth: MAX_HEALTH,
     opening: o.opening,

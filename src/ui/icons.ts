@@ -117,6 +117,12 @@ const P: Record<string, string> = {
   grab: '<path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11M11 10.5V4a1.5 1.5 0 0 1 3 0v6.5M14 10.5V5.5a1.5 1.5 0 0 1 3 0V12M17 11.5a1.5 1.5 0 0 1 3 0v2a7 7 0 0 1-7 7h-.5A6.5 6.5 0 0 1 6 15l-2-3.5a1.5 1.5 0 0 1 2.6-1.5L8 12"/>',
   throwStone: '<path d="M4 18c3-8.5 8.5-12 14-11"/><circle cx="19" cy="7" r="2.3"/>',
   bolt: '<path d="M4 20L18 6M13.5 5h5.5v5.5"/><path d="M4 20l.8-3.5M4 20l3.5-.8"/>',
+  // Schusswaffen und Munition
+  pistol: '<path d="M3 7.5h16v4H12l-1.6 4.5H6.8L8 11.5H3z"/><path d="M19 8.5h2M10 11.5l.6 1.8"/>',
+  revolver: '<path d="M2.5 8h11v3H9l-1.4 4.5H4.4L5.5 11h-3z"/><circle cx="11.5" cy="12.5" r="2"/><path d="M13.5 8h7.5v2.2h-7.5"/>',
+  longgun: '<path d="M2 12.5l4-1h15v2.5H10l-2.5 3H4.5l1.5-3H2z"/><path d="M12 11.5V9.5h4v2"/>',
+  cartridge: '<rect x="9" y="9" width="6" height="11" rx="1"/><path d="M9 9c0-3.2 1.4-5.5 3-5.5s3 2.3 3 5.5M9 17h6"/>',
+  spread: '<path d="M3 12h4M7 12l13-6M7 12h13M7 12l13 6"/>',
   // Ausrüstungs-Plätze
   gHead: '<path d="M4 15.5a8 8 0 0 1 16 0z"/><path d="M3 15.5h18M12 7.5v8M9 8.3l1 7.2M15 8.3l-1 7.2"/>',
   gFace: '<path d="M5 9c2-1.5 12-1.5 14 0v4c0 3.5-3.2 6-7 6s-7-2.5-7-6z"/><path d="M5 10.5L2.5 9M19 10.5L21.5 9M9.5 13.5h5M10 16h4"/>',

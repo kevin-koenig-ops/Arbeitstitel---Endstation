@@ -5,7 +5,7 @@
 // Rein und vorhersagbar wie der Kampf selbst: gleicher Kampf, gleiche Züge.
 
 import { CARDS, FOE_RULES, FOE_TACTICS, STANCE, type CardId, type DeviceId } from './content';
-import { aliveFoes, armorNow, endTurn, flee, giveMedicine, HITS, lacksMedicine, mercyTarget, playCard, playPouch, targetsFor, type TacticsState, type TFoe } from './tactics';
+import { aliveFoes, armorNow, endTurn, flee, giveMedicine, hasAmmo, HITS, lacksMedicine, mercyTarget, playCard, playPouch, targetsFor, type TacticsState, type TFoe } from './tactics';
 
 export interface AutopilotOptions {
   /** Einmal-Karten aus der Tasche: klug einsetzen, nur im Notfall oder nie. */
@@ -115,6 +115,7 @@ function options(st: TacticsState, pouch: boolean): Play[] {
     if (d.cost > st.energy) return;
     if (d.perTurn && (st.turnPlays[card] ?? 0) >= d.perTurn) return;
     if (lacksMedicine(st, card)) return;
+    if (!hasAmmo(st, card)) return;
     if (st.netted > 0 && FOE_RULES.netBlocks.includes(card)) return;
     if (d.target === 'self') out.push({ ...p });
     else for (const f of targetsFor(st, card)) out.push({ ...p, target: f.id });

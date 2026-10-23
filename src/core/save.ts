@@ -11,6 +11,11 @@ import type { PlayerState } from './types';
 type Raw = Record<string, unknown> & { schema?: number };
 
 const MIGRATIONS: Record<number, (s: Raw) => void> = {
+  // Version 20 -> 21: Schusswaffen. Munition je Sorte und gemerkte Lärm-Orte (Trupps kommen nachsehen).
+  20: (s) => {
+    if (!s.ammo || typeof s.ammo !== 'object') s.ammo = {};
+    if (!Array.isArray(s.noise)) s.noise = [];
+  },
   // Version 19 -> 20: Bauzeit. Jedes Gelände kann eine Bauliste haben (plot.jobs); was bisher steht, ist fertig.
   19: () => {},
   // Version 18 -> 19: Zähler für gute Taten (Fieberkranken Medizin gegeben)

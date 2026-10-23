@@ -2,7 +2,7 @@
 // (Tasche und Fähigkeiten), Rohstoffe und Kram ansehen, Kram zum Werktisch geben,
 // Sammelstücke aufstellen.
 
-import { CARDS, COLLECTIBLE_ORDER, COLLECTIBLES, KRAM, KRAM_ORDER, MATERIAL_ORDER, ONCE_CARDS, POUCH_SLOTS, RANGE_NAMES, RESOURCES, SKILL_CARDS, WEAPON_CARDS, WEAPONS, type CardId } from '../../core/content';
+import { AMMO, AMMO_ORDER, CARDS, COLLECTIBLE_ORDER, COLLECTIBLES, KRAM, KRAM_ORDER, MATERIAL_ORDER, ONCE_CARDS, POUCH_SLOTS, RANGE_NAMES, RESOURCES, SKILL_CARDS, WEAPON_CARDS, WEAPONS, type CardId } from '../../core/content';
 import { battleWeapons, collectiblePlaced, hasWorkbench, kramCount, onceOwned, packCount, skillOf, skillSlots, workbenchSlots } from '../../core/rules';
 import type { WeaponId } from '../../core/types';
 import type { Action, CollectibleId, PlayerState } from '../../core/types';
@@ -104,6 +104,19 @@ export function openLager(app: App, host: HTMLElement, opts: Opts): { el: HTMLEl
         ),
       ),
     );
+
+    // --- Munition (nur, wenn es welche gibt oder eine Schusswaffe da ist) ---
+    const guns = s.weapons.some((w) => WEAPONS[w.kind].ammo);
+    if (guns || AMMO_ORDER.some((a) => (s.ammo[a] ?? 0) > 0)) {
+      body.append(h('h3', { class: 'ws-sec' }, 'Munition', h('small', null, 'Gibt es nur draußen')));
+      body.append(
+        h(
+          'ul',
+          { class: 'lager-mats' },
+          AMMO_ORDER.map((a) => h('li', { class: s.ammo[a] ? '' : 'empty' }, svgEl(icon('cartridge', 20)), h('span', null, AMMO[a].name), h('b', null, String(s.ammo[a] ?? 0)))),
+        ),
+      );
+    }
 
     // --- Kram ---
     const owned = KRAM_ORDER.filter((k) => (s.kram[k] ?? 0) > 0);
@@ -244,7 +257,7 @@ export function openLager(app: App, host: HTMLElement, opts: Opts): { el: HTMLEl
                       onclick: () => void pick(range, k),
                     },
                     svgEl(icon(WEAPON_ICON[k], 20)),
-                    h('span', null, h('b', null, WEAPONS[k].name), h('small', null, `${dur} Haltbarkeit`)),
+                    h('span', null, h('b', null, WEAPONS[k].name), h('small', null, WEAPONS[k].ammo ? `${s.ammo[WEAPONS[k].ammo!] ?? 0} Schuss · ${dur} Haltbarkeit` : `${dur} Haltbarkeit`)),
                   );
                 }))
               : h('span', { class: 'ws-empty' }, range === 'ranged' ? 'Noch keine. Bis dahin trifft dein Steinwurf auch hinten.' : 'Noch keine. Du kämpfst mit den Fäusten.'),

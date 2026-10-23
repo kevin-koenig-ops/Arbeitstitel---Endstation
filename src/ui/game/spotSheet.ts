@@ -10,7 +10,7 @@ import type { Fix } from '../../services/location';
 import type { App } from '../app';
 import { append, clear, h, reducedMotion, sleep, svgEl, type Child } from '../dom';
 import { icon, resIcon, spotIcon } from '../icons';
-import { partsChips, thingThumb } from './chips';
+import { ammoLine, partsChips, thingThumb } from './chips';
 import { bookItem, cardFace } from '../cards';
 import { REJECT_TEXT } from '../texts';
 import { blueprintName, SITES } from '../../core/building';
@@ -335,6 +335,7 @@ export class SpotSheet {
         tags.length ? h('div', { class: 'receipt-tags' }, tags.map(([tone, t]) => h('span', { class: 'rtag', 'data-tone': tone }, t))) : null,
         ev.collectible ? this.collectibleNote(ev.collectible) : null,
         items,
+        ev.ammo ? h('p', { class: 'receipt-note receipt-ammo' }, svgEl(icon('cartridge', 16)), `Munition: ${ammoLine(ev.ammo)}`) : null,
         ev.perk ? h('p', { class: 'receipt-note' }, `${perkBg}: +1 ${RESOURCES[ev.perk].name} extra`) : null,
         note ? h('p', { class: 'receipt-note' }, note) : null,
         ev.kram ? kramCard(ev.kram) : null,

@@ -13,10 +13,10 @@
 // Gewohnheitstiere laufen jeden Tag zur selben Sonnenzeit dieselbe Runde (gleicher Startpunkt,
 // gleiche Strecke). Bei Frost sind manche Wandler erstarrt.
 
-import { FOE_TIME, HABIT, PATROL, REGIONS, WORLD_EVENT } from './content';
+import { FOE_TIME, HABIT, NOISE, PATROL, REGIONS, WORLD_EVENT } from './content';
 import { fromTile, offsetM, toTile, distanceM } from './geo';
 import { pickWeighted, rngFrom } from './rng';
-import type { FoeKind, LatLon, RegionId, WorldEvent } from './types';
+import type { FoeKind, LatLon, Noise, RegionId, WorldEvent } from './types';
 import { eventCenter, resolveEvent } from './worldEvents';
 
 const MIN = 60_000;
@@ -37,6 +37,8 @@ export interface PatrolPlan {
   horde?: boolean;
   /** Für die Strecke (sonst die Kennung): Gewohnheitstiere laufen jeden Tag dieselbe. */
   pathKey?: string;
+  /** Kommt nachsehen: läuft vom Startpunkt zu diesem Ort (Schüsse waren zu hören). */
+  target?: LatLon;
 }
 
 /**
@@ -122,6 +124,35 @@ function habitPatrol(seed: string, region: RegionId, x: number, y: number, day: 
   };
 }
 
+/**
+ * Lärm: Schüsse waren zu hören. Ein bis drei Trupps aus der Gegend kommen zum Kampfort und
+ * suchen ihn ab, solange es frisch ist. Die Kennung "t:n:<lärm>:<nr>" lässt sich aus dem
+ * gemerkten Lärm (Spielstand) wieder ausrechnen.
+ */
+function noisePatrols(seed: string, n: Noise, night: boolean, region: RegionId, frost = false): PatrolPlan[] {
+  const count = Math.min(NOISE.maxPatrols, 1 + Math.floor(Math.max(0, n.loud - 1) / NOISE.shotsPerPatrol));
+  const out: PatrolPlan[] = [];
+  for (let k = 0; k < count; k++) {
+    const id = `t:n:${n.id}:${k}`;
+    const r = rngFrom(seed, 'laerm', id);
+    const a = r() * Math.PI * 2;
+    const d = NOISE.fromM[0] + r() * (NOISE.fromM[1] - NOISE.fromM[0]);
+    const anchor = offsetM(n.at, Math.sin(a) * d, Math.cos(a) * d);
+    out.push({
+      id,
+      anchor,
+      group: patrolGroup(seed, id, night, region, frost),
+      speed: NOISE.speed,
+      lengthM: Math.round(d + 60),
+      // Nicht alle auf einmal: der erste nach einer Minute, die anderen etwas später
+      from: n.from + (1 + k * 2) * MIN,
+      until: n.until,
+      target: n.at,
+    });
+  }
+  return out;
+}
+
 /** Welcher Tag (Sonnenzeit) ist hier gerade? */
 function solarDay(now: number, lon: number): number {
   return Math.floor((now + solarOffset(lon)) / DAY_MS);
@@ -144,7 +175,7 @@ function hordePatrol(seed: string, ev: WorldEvent, k: number, win: number, night
  * region: die Gegend um den Spieler; events: laufende Weltereignisse (Horden bringen mehr Trupps);
  * frost: es friert (manche Wandler sind erstarrt).
  */
-export function patrolsAround(seed: string, center: LatLon, radiusM: number, now: number, region: RegionId, night: boolean, events: WorldEvent[] = [], frost = false): PatrolPlan[] {
+export function patrolsAround(seed: string, center: LatLon, radiusM: number, now: number, region: RegionId, night: boolean, events: WorldEvent[] = [], frost = false, noise: Noise[] = []): PatrolPlan[] {
   const t = toTile(center, PATROL.zoom);
   const cellM = (40075016 * Math.cos((center.lat * Math.PI) / 180)) / 2 ** PATROL.zoom;
   const span = Math.ceil(radiusM / cellM) + 1;
@@ -175,6 +206,11 @@ export function patrolsAround(seed: string, center: LatLon, radiusM: number, now
       if (now < p.until) out.push(p);
     }
   }
+  // Lärm: Trupps kommen nachsehen, wo geschossen wurde
+  for (const n of noise) {
+    if (now >= n.until || distanceM(center, n.at) > radiusM + NOISE.fromM[1]) continue;
+    for (const p of noisePatrols(seed, n, night, region, frost)) if (p.from <= now && now < p.until) out.push(p);
+  }
   return out;
 }
 
@@ -183,8 +219,15 @@ export function patrolsAround(seed: string, center: LatLon, radiusM: number, now
  * region: die Gegend, die das Gerät meldet (prüft später der Server mit eigenen Kartendaten).
  * Gibt null zurück bei erfundenen, abgelaufenen oder nicht passend geschriebenen Kennungen.
  */
-export function resolvePatrol(seed: string, id: string, now: number, night: boolean, region: RegionId, frost = false): PatrolPlan | null {
+export function resolvePatrol(seed: string, id: string, now: number, night: boolean, region: RegionId, frost = false, noise: Noise[] = []): PatrolPlan | null {
   const slack = 5 * MIN;
+  const nm = /^t:n:(\d+):(\d+)$/.exec(id);
+  if (nm) {
+    const n = noise.find((x) => x.id === nm[1]);
+    const p = n ? noisePatrols(seed, n, night, region, frost).find((x) => x.id === id) : undefined;
+    if (!p || now < p.from || now >= p.until + slack) return null;
+    return p;
+  }
   const m = /^t:(-?\d+):(-?\d+):(-?\d+)$/.exec(id);
   if (m) {
     const p = cellPatrol(seed, region, Number(m[1]), Number(m[2]), Number(m[3]), night, frost);

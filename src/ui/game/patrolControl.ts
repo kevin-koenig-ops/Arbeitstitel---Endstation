@@ -198,9 +198,10 @@ export class PatrolControl {
   /** Strecke eines Trupps: Wegpunkte mit aufsummierter Länge. */
   private makePath(plan: PatrolPlan, net: WalkNet | null) {
     if (!net?.wayCount) return null;
+    // Lärm: Der Trupp kommt über die Wege zum Kampfort (und sucht hin und her)
     // Gewohnheitstiere laufen jeden Tag dieselbe Strecke
     const r = rngFrom(this.host.app.backend.seed, 'trupp-weg', plan.pathKey ?? plan.id);
-    const pts = net.patrolPath(plan.anchor, plan.lengthM, r);
+    const pts = plan.target ? (net.route(plan.anchor, plan.target)?.path ?? [plan.anchor, plan.target]) : net.patrolPath(plan.anchor, plan.lengthM, r);
     if (!pts || pts.length < 2) return null;
     const cum = [0];
     for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + distanceM(pts[i - 1], pts[i]));

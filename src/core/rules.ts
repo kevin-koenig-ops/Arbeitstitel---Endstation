@@ -68,6 +68,9 @@ import {
   gearSum,
   CARDS,
   CARD_LOOT,
+  AMMO,
+  AMMO_LOOT,
+  NOISE,
   cardStat,
   ONCE_CARDS,
   ONCE_CARRY,
@@ -130,6 +133,7 @@ import { gridSpotsAround } from './world';
 import { dayPhase } from './sun';
 import { hashString, pickWeighted, randInt, rngFrom } from './rng';
 import type {
+  AmmoId,
   GearId,
   GearState,
   Action,
@@ -163,7 +167,7 @@ import { resolvePatrol } from './patrols';
 import { resolveDropSpot, zonesAt } from './worldEvents';
 import { GOALS } from './progress';
 
-export const SCHEMA_VERSION = 20;
+export const SCHEMA_VERSION = 21;
 
 /** Startausrüstung: alles gefunden und angezogen. */
 export function startGear(now: number): GearState {
@@ -201,6 +205,8 @@ export function createPlayer(playerId: string, character: Character, now: number
     health: MAX_HEALTH,
     healthAt: now,
     weapons: START_WEAPONS.map((w) => ({ ...w })),
+    ammo: {},
+    noise: [],
     gear: startGear(now),
     combat: null,
     explored: {},
@@ -292,7 +298,12 @@ const RARITY_RANK: Record<string, number> = { common: 1, rare: 2, epic: 3, legen
 /** Die stärkste heile Waffe einer Art (Nahkampf oder Fernkampf); bei Gleichstand die seltenere, dann die heilere. */
 export function strongestWeapon(state: PlayerState, range: 'melee' | 'ranged'): Weapon | null {
   let best: Weapon | null = null;
-  const score = (w: Weapon) => WEAPONS[w.kind].dmg * 100 + (RARITY_RANK[WEAPONS[w.kind].rarity ?? ''] ?? 0) * 10;
+  const score = (w: Weapon) => {
+    const def = WEAPONS[w.kind];
+    // Schusswaffe ohne Munition: nur Kolbenschläge, also nur, wenn sonst nichts da ist
+    if (def.ammo && !((state.ammo?.[def.ammo] ?? 0) > 0)) return 1;
+    return def.dmg * 100 + (RARITY_RANK[def.rarity ?? ''] ?? 0) * 10;
+  };
   for (const w of state.weapons) {
     if (w.dur <= 0 || WEAPONS[w.kind].range !== range) continue;
     if (!best || score(w) > score(best) || (score(w) === score(best) && w.dur > best.dur)) best = w;
@@ -598,6 +609,9 @@ function addToBook(state: PlayerState, key: string, now: number, shiny = false):
 
 /** Eine gefundene Waffe: neu dazu, oder (hast du sie schon) wieder ganz heil. */
 function gainWeapon(state: PlayerState, kind: WeaponId): boolean {
+  // Eine gefundene Schusswaffe hat noch ein paar Schuss drin
+  const def = WEAPONS[kind];
+  if (def.ammo && def.loaded) state.ammo[def.ammo] = (state.ammo[def.ammo] ?? 0) + def.loaded;
   const have = state.weapons.find((w) => w.kind === kind && w.dur > 0);
   if (have) {
     have.dur = Math.max(have.dur, WEAPONS[kind].dur);
@@ -805,7 +819,7 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       const night = dayPhase(action.at, ctx.now) === 'night';
       const region: RegionId = action.region in REGIONS ? action.region : 'village';
       // Den Trupp aus seiner Kennung neu berechnen: erfundene oder abgelaufene gibt es nicht
-      const plan = resolvePatrol(ctx.worldSeed, action.patrol, ctx.now, night, region, !!action.frost);
+      const plan = resolvePatrol(ctx.worldSeed, action.patrol, ctx.now, night, region, !!action.frost, state.noise ?? []);
       if (state.combat || !plan || state.patrols[action.patrol]) return reject('nothing');
       // Man muss in der Nähe seiner Strecke sein (Strecke, Weg zum nächsten Pfad, Verfolgung)
       if (action.accuracyM > 120 || distanceM(action.at, plan.anchor) > plan.lengthM + PATROL.reachSlackM) return reject('too_far');
@@ -849,6 +863,18 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       if (!c) return reject('no_combat');
       const used = Math.max(0, Math.min(Math.floor(action.usedMedicine), state.inventory.medicine));
       state.inventory.medicine -= used;
+      // Verschossene Munition ist weg (nie mehr, als da war)
+      for (const [a, n] of Object.entries(action.usedAmmo ?? {}) as [AmmoId, number][]) {
+        if (!(a in AMMO) || !(n > 0)) continue;
+        state.ammo[a] = Math.max(0, (state.ammo[a] ?? 0) - Math.floor(n));
+      }
+      // Laute Schüsse: Trupps aus der Gegend kommen zum Kampfort (nur auf der Karte, siehe patrols.ts)
+      const shots = Math.max(0, Math.min(40, Math.floor(action.shots ?? 0)));
+      state.noise = (state.noise ?? []).filter((n) => n.until > ctx.now);
+      if (shots > 0) {
+        state.noise.push({ id: `${Math.floor(ctx.now / 1000)}`, at: c.spot.pos, from: ctx.now, until: ctx.now + NOISE.minutes * 60_000, loud: shots });
+        state.noise = state.noise.slice(-NOISE.keep);
+      }
       // Mehr als vorher plus Verbinden geht nicht
       const cap = Math.min(MAX_HEALTH, state.health + used * HEAL_AMOUNT);
       const health = Math.max(0, Math.min(cap, Math.round(action.health)));
@@ -1669,6 +1695,20 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, o: { guarded
     break;
   }
 
+  // Munition (eigener Zufall, damit sich die übrige Beute nicht verschiebt). Bewachte Orte geben mehr her.
+  const drop: Partial<Record<AmmoId, number>> = {};
+  const ra = rngFrom(ctx.worldSeed, state.playerId, 'munition', spot.id, guardWindow(spot, ctx.now));
+  for (const [a, p, min, max] of AMMO_LOOT[spot.kind] ?? []) {
+    const hit = ra() < p * (guarded ? 1.5 : 1);
+    const n = randInt(ra, min, max);
+    if (hit) drop[a] = (drop[a] ?? 0) + n;
+  }
+  for (const [a, n] of Object.entries(drop) as [AmmoId, number][]) state.ammo[a] = (state.ammo[a] ?? 0) + n;
+  // Zum Anzeigen: dazu die Schuss in einer gefundenen Schusswaffe (gainWeapon hat sie schon gutgeschrieben)
+  const ammo: Partial<Record<AmmoId, number>> = { ...drop };
+  const gunDef = foundWeapon ? WEAPONS[foundWeapon] : undefined;
+  if (gunDef?.ammo && gunDef.loaded) ammo[gunDef.ammo] = (ammo[gunDef.ammo] ?? 0) + gunDef.loaded;
+
   // Lageplan für einen neuen Schauplatz (erst, wenn man schon irgendwo wohnt)
   let site: SiteId | undefined;
   if (state.base.active) {
@@ -1732,6 +1772,7 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, o: { guarded
     site,
     card,
     weapon: foundWeapon,
+    ammo: Object.keys(ammo).length ? ammo : undefined,
     quality: o.quality,
     first: first || undefined,
     canDig: !guarded || undefined,

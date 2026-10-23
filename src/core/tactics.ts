@@ -26,7 +26,7 @@
 
 import { BASE_DECK, CARDS, cardStat, DEVICES, FOE_RULES, FOE_TACTICS, MAX_DEVICES, ONCE_CARRY, POUCH_SLOTS, STANCE, TACTICS, WEAPON_CARDS, WEAPONS, type CardId, type CardStat, type DeviceId, type IntentKind, type Stance } from './content';
 import { hashString } from './rng';
-import type { FoeKind, Opening, Weapon, WeaponId } from './types';
+import type { AmmoId, FoeKind, Opening, Weapon, WeaponId } from './types';
 
 export interface Intent {
   kind: IntentKind;
@@ -97,6 +97,11 @@ export interface TacticsState {
   nextId: number;
   medicine: number;
   usedMedicine: number;
+  /** Munition je Sorte (Schusswaffen) und was davon verschossen ist. */
+  ammo: Partial<Record<AmmoId, number>>;
+  usedAmmo: Partial<Record<AmmoId, number>>;
+  /** Laute Schüsse in diesem Kampf (auf der Karte kommen danach Trupps nachsehen). */
+  shots: number;
   /** Abnutzung je Waffe in diesem Kampf. */
   wear: Partial<Record<WeaponId, number>>;
   /** Verbleibende Haltbarkeit je Waffe (die beste ihrer Art). */
@@ -202,6 +207,10 @@ export type TEvent =
   | { type: 'lurk'; id: number; block: number }
   | { type: 'summon'; by: number; id: number; kind: FoeKind }
   | { type: 'weaponBroke'; weapon: WeaponId }
+  /** Ein Schuss (left: Munition danach; loud: auf der Karte zu hören). */
+  | { type: 'fired'; weapon: WeaponId; left: number; loud: boolean }
+  /** Keine Munition mehr: ab jetzt Kolbenschläge. */
+  | { type: 'outOfAmmo'; weapon: WeaponId }
   | { type: 'turn'; turn: number }
   | { type: 'burn'; id: number; dmg: number; kill: boolean }
   | { type: 'spread'; from: number; id: number }
@@ -254,7 +263,7 @@ export type TEvent =
   | { type: 'flamewall'; rounds: number }
   | { type: 'reborn'; weapon: WeaponId; dur: number }
   | { type: 'hail'; n: number }
-  | { type: 'denied'; reason: 'energy' | 'target' | 'medicine' | 'full' | 'limit' | 'netted' };
+  | { type: 'denied'; reason: 'energy' | 'target' | 'medicine' | 'full' | 'limit' | 'netted' | 'ammo' };
 
 // --- Zufall --------------------------------------------------------------------------
 
@@ -395,6 +404,8 @@ export function createTactics(o: {
   group: FoeKind[];
   weapons: Weapon[];
   medicine: number;
+  /** Munition je Sorte (für Schusswaffen). */
+  ammo?: Partial<Record<AmmoId, number>>;
   health: number;
   maxHealth: number;
   mood?: 'strong' | 'weak' | null;
@@ -424,6 +435,9 @@ export function createTactics(o: {
     nextId: 1,
     medicine: o.medicine,
     usedMedicine: 0,
+    ammo: { ...(o.ammo ?? {}) },
+    usedAmmo: {},
+    shots: 0,
     wear: {},
     weaponDur: {},
     kills: 0,
@@ -467,6 +481,11 @@ export function createTactics(o: {
   };
   for (const w of o.weapons) if (w.dur > 0) st.weaponDur[w.kind] = Math.max(st.weaponDur[w.kind] ?? 0, w.dur);
   st.draw = shuffle(st, deckFor(o.weapons, o.medicine, kit));
+  // Schusswaffe ohne Munition: ihre Schüsse sind von Anfang an Kolbenschläge
+  for (const w of Object.keys(st.weaponDur) as WeaponId[]) {
+    const a = WEAPONS[w].ammo;
+    if (a && !((st.ammo[a] ?? 0) > 0)) emptyGun(st, w);
+  }
   let near = 0;
   for (const kind of o.group.slice(0, TACTICS.maxFoes)) {
     const row = !FOE_TACTICS[kind].stayBack && !FOE_TACTICS[kind].startFar && near < 2 ? 'near' : 'far';
@@ -601,6 +620,21 @@ function startTurn(st: TacticsState, events: TEvent[]) {
   st.dazed = 0;
   for (const f of aliveFoes(st)) f.intent = intentOf(f, st);
   events.push({ type: 'turn', turn: st.turn });
+}
+
+/** Munition alle: Jeder Schuss dieser Waffe wird zum Kolbenschlag (Anlegen bleibt). */
+function emptyGun(st: TacticsState, w: WeaponId) {
+  const swap = (l: CardId[]) => l.map((c): CardId => (CARDS[c].weapon === w && CARDS[c].ammo ? 'buttstroke' : c));
+  st.hand = swap(st.hand);
+  st.draw = swap(st.draw);
+  st.discard = swap(st.discard);
+}
+
+/** Reicht die Munition für diese Karte? (Karten ohne Munition: immer) */
+export function hasAmmo(st: TacticsState, card: CardId): boolean {
+  const def = CARDS[card];
+  const a = def.ammo && def.weapon ? WEAPONS[def.weapon].ammo : undefined;
+  return !a || (st.ammo[a] ?? 0) >= (def.ammo ?? 0);
 }
 
 function removeWeaponCards(st: TacticsState, w: WeaponId) {
@@ -822,6 +856,7 @@ export function playable(st: TacticsState, card: CardId): boolean {
     (!def.heal || !!def.gain || st.hp < st.maxHp) &&
     (!def.perTurn || (st.turnPlays[card] ?? 0) < def.perTurn) &&
     !(st.netted > 0 && FOE_RULES.netBlocks.includes(card)) &&
+    hasAmmo(st, card) &&
     (def.target === 'self' ? !def.area || !!areaFoes(st, def.area).length || !!def.block || !!def.heal : targetsFor(st, card).length > 0)
   );
 }
@@ -836,6 +871,7 @@ function resolve(st: TacticsState, card: CardId, target: number | undefined, tak
   if (def.heal && !def.gain && st.hp >= st.maxHp) return [{ type: 'denied', reason: 'full' }];
   if (def.perTurn && (st.turnPlays[card] ?? 0) >= def.perTurn) return [{ type: 'denied', reason: 'limit' }];
   if (st.netted > 0 && FOE_RULES.netBlocks.includes(card)) return [{ type: 'denied', reason: 'netted' }];
+  if (!hasAmmo(st, card)) return [{ type: 'denied', reason: 'ammo' }];
   let foe: TFoe | undefined;
   if (def.target !== 'self') {
     const options = targetsFor(st, card);
@@ -848,6 +884,19 @@ function resolve(st: TacticsState, card: CardId, target: number | undefined, tak
   const killsBefore = st.kills;
   st.turnPlays[card] = (st.turnPlays[card] ?? 0) + 1;
   events.push({ type: 'play', card, target: foe?.id });
+  // Schusswaffe: Munition verschießen; laut zählt für die Karte (Trupps kommen nachsehen)
+  const gun = def.ammo && def.weapon ? def.weapon : null;
+  const gunAmmo = gun ? WEAPONS[gun].ammo : undefined;
+  if (gun && gunAmmo && def.ammo) {
+    st.ammo[gunAmmo] = (st.ammo[gunAmmo] ?? 0) - def.ammo;
+    st.usedAmmo[gunAmmo] = (st.usedAmmo[gunAmmo] ?? 0) + def.ammo;
+    if (WEAPONS[gun].loud) st.shots += def.ammo;
+    events.push({ type: 'fired', weapon: gun, left: st.ammo[gunAmmo] ?? 0, loud: !!WEAPONS[gun].loud });
+    if ((st.ammo[gunAmmo] ?? 0) <= 0) {
+      emptyGun(st, gun);
+      events.push({ type: 'outOfAmmo', weapon: gun });
+    }
+  }
   // Du brennst: abrollen (Ausweichen) oder den Feuerlöscher nehmen
   if (st.burning > 0 && FOE_RULES.douse.includes(card)) {
     st.burning = 0;

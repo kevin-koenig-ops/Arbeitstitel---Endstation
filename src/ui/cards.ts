@@ -128,9 +128,18 @@ export const CARD_ICON: Record<CardId, string> = {
   secondlife: 'tape',
   stonehail: 'pebble',
   bulwark: 'shield',
+  airshot: 'longgun',
+  shot: 'pistol',
+  doubletap: 'pistol',
+  revshot: 'revolver',
+  fan: 'revolver',
+  buck: 'spread',
+  rifleshot: 'longgun',
+  scope: 'aim',
+  buttstroke: 'fist',
 };
 
-export const WEAPON_ICON: Record<WeaponId, string> = { crowbar: 'crowbar', bat: 'bat', crossbow: 'bolt', shovel: 'shovel', axe: 'axe', golfclub: 'golfclub', slingshot: 'slingshot', nailgun: 'nailgun', pitchfork: 'pitchfork', bow: 'bow', machete: 'machete', sledgehammer: 'sledgehammer', lid: 'lid', extinguisher: 'extinguisher', pipewrench: 'pipewrench' };
+export const WEAPON_ICON: Record<WeaponId, string> = { crowbar: 'crowbar', bat: 'bat', crossbow: 'bolt', shovel: 'shovel', axe: 'axe', golfclub: 'golfclub', slingshot: 'slingshot', nailgun: 'nailgun', pitchfork: 'pitchfork', bow: 'bow', machete: 'machete', sledgehammer: 'sledgehammer', lid: 'lid', extinguisher: 'extinguisher', pipewrench: 'pipewrench', airrifle: 'longgun', pistol: 'pistol', revolver: 'revolver', shotgun: 'longgun', huntingrifle: 'longgun' };
 
 export const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
 

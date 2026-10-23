@@ -1,10 +1,10 @@
 // Kleine Bausteine für Rohstoffe, Kram und Sammelstücke (Kosten-Chips, Zeilen, Vorschaubilder).
 
-import { isMaterial, KRAM, KRAM_ORDER, RESOURCE_ORDER, RESOURCES } from '../../core/content';
+import { AMMO, AMMO_ORDER, isMaterial, KRAM, KRAM_ORDER, RESOURCE_ORDER, RESOURCES } from '../../core/content';
 import { whereToFind } from '../../core/rules';
 import { SPOT_PLURAL } from '../texts';
 import type { FurnitureId } from '../../core/furniture';
-import type { Inventory, KramId, Resource } from '../../core/types';
+import type { AmmoId, Inventory, KramId, Resource } from '../../core/types';
 import { clear, h, svgEl } from '../dom';
 import { icon, resIcon } from '../icons';
 
@@ -83,6 +83,13 @@ export function kramWith(r: Resource) {
 export function itemsLine(items: Partial<Inventory>) {
   return RESOURCE_ORDER.filter((r) => items[r])
     .map((r) => `${items[r]} ${RESOURCES[r].name}`)
+    .join(', ');
+}
+
+/** "4 Pistolenpatronen, 2 Schrotpatronen" */
+export function ammoLine(ammo: Partial<Record<AmmoId, number>>) {
+  return AMMO_ORDER.filter((a) => (ammo[a] ?? 0) > 0)
+    .map((a) => `${ammo[a]} ${AMMO[a].name}`)
     .join(', ');
 }
 
