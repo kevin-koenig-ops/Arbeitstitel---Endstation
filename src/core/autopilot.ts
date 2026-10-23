@@ -5,13 +5,15 @@
 // Rein und vorhersagbar wie der Kampf selbst: gleicher Kampf, gleiche Züge.
 
 import { CARDS, FOE_RULES, FOE_TACTICS, STANCE, type CardId, type DeviceId } from './content';
-import { aliveFoes, armorNow, endTurn, flee, HITS, lacksMedicine, playCard, playPouch, targetsFor, type TacticsState, type TFoe } from './tactics';
+import { aliveFoes, armorNow, endTurn, flee, giveMedicine, HITS, lacksMedicine, mercyTarget, playCard, playPouch, targetsFor, type TacticsState, type TFoe } from './tactics';
 
 export interface AutopilotOptions {
   /** Einmal-Karten aus der Tasche: klug einsetzen, nur im Notfall oder nie. */
   pouch?: 'smart' | 'emergency' | 'never';
   /** Fliehen, wenn es so schlecht steht (Gesundheit höchstens so viel und Lebensgefahr). null = nie. */
   fleeAt?: number | null;
+  /** Fieberkranken Medizin geben, statt zu kämpfen (Standard: ja, wenn welche da ist). */
+  mercy?: boolean;
 }
 
 /** Wie viel Schaden kommt diese Runde auf dich zu (ohne deinen Schutz)? */
@@ -21,7 +23,7 @@ export function incoming(st: TacticsState): number {
     if (f.stunned || f.blind > 0) continue;
     const k = f.intent.kind;
     if (!HITS.includes(k)) continue;
-    if (!(f.row === 'near' || k === 'pounce' || k === 'ambush' || FOE_TACTICS[f.kind].stayBack)) continue;
+    if (!(f.row === 'near' || k === 'pounce' || k === 'ambush' || k === 'sling' || k === 'thrust' || FOE_TACTICS[f.kind].stayBack)) continue;
     let d = f.intent.dmg ?? 0;
     if (d > 0 && st.stance === 'calm') d = Math.max(0, d - STANCE.calmGuard);
     else if (d > 0 && st.stance === 'wrath') d += STANCE.wrathTaken;
@@ -32,7 +34,9 @@ export function incoming(st: TacticsState): number {
 
 const isHowler = (f: TFoe) => FOE_TACTICS[f.kind].pattern.some((p) => p.kind === 'howl');
 /** Schwere angekündigte Schläge (Wuchtschlag, Rammstoß, Wurf des Hünen). */
-const isBigHit = (f: TFoe) => f.intent.kind === 'smash' || f.intent.kind === 'ram' || f.intent.kind === 'hurl';
+const isBigHit = (f: TFoe) => f.intent.kind === 'smash' || f.intent.kind === 'ram' || f.intent.kind === 'hurl' || f.intent.kind === 'firebomb';
+/** Angekündigt, aber noch nicht da (Ausholen, Anlauf, Brandflasche anzünden). */
+const isWindup = (f: TFoe) => f.intent.kind === 'windup' || f.intent.kind === 'charge' || f.intent.kind === 'light';
 /** Was es bringt, ihn zu erledigen, für die anderen: der Leithammel treibt sie an, fällt er, setzen sie aus. */
 const leaderValue = (st: TacticsState, f: TFoe) => (FOE_TACTICS[f.kind].scatter ? aliveFoes(st).filter((x) => x.id !== f.id).reduce((a, x) => a + 1 + (x.intent.dmg ?? 0), 0) : 0);
 
@@ -77,8 +81,12 @@ function score(st: TacticsState, card: CardId, target?: TFoe): number {
     if (FOE_TACTICS[f.kind].scatter) v += Math.min(dmg, f.hp) * 0.5;
     const threat = f.intent.dmg ?? 0;
     if (d.stun && !f.stunned && !f.steady) v += 1 + threat;
-    if (d.stunIfWindup && !f.steady && (f.intent.kind === 'windup' || f.intent.kind === 'charge' || isBigHit(f))) v += 2 + threat;
-    if ((d.push || d.interrupt) && f.row === 'near' && !FOE_TACTICS[f.kind].heavy && (isBigHit(f) || f.intent.kind === 'windup' || f.intent.kind === 'charge')) v += 4;
+    if (d.stunIfWindup && !f.steady && (isWindup(f) || isBigHit(f))) v += 2 + threat;
+    if ((d.push || d.interrupt) && f.row === 'near' && !FOE_TACTICS[f.kind].heavy && (isBigHit(f) || isWindup(f))) v += 4;
+    // Wilde Menschen: Der Schütze hat angelegt (jeder Treffer verzieht ihn); der Langfinger will mit der Medizin weg
+    if (dmg > 0 && f.intent.kind === 'shot') v += threat + 1;
+    if (f.loot > 0) v += dmg >= f.hp ? 4 + f.loot * 3 : 1.5;
+    if (d.slow && f.intent.kind === 'escape') v += 4;
     // Wegstoßen lohnt, wenn danach Pfeile fliegen können
     if (d.push && f.row === 'near' && st.hand.some((c) => CARDS[c].farBonus)) v += 2;
     if (d.blind && threat) v += threat;
@@ -107,6 +115,7 @@ function options(st: TacticsState, pouch: boolean): Play[] {
     if (d.cost > st.energy) return;
     if (d.perTurn && (st.turnPlays[card] ?? 0) >= d.perTurn) return;
     if (lacksMedicine(st, card)) return;
+    if (st.netted > 0 && FOE_RULES.netBlocks.includes(card)) return;
     if (d.target === 'self') out.push({ ...p });
     else for (const f of targetsFor(st, card)) out.push({ ...p, target: f.id });
   };
@@ -123,6 +132,12 @@ function play(st: TacticsState, p: Play): boolean {
 /** Eine Runde lang Karten spielen (ohne „Runde beenden“). */
 export function autopilotTurn(st: TacticsState, o: AutopilotOptions = {}): void {
   const pouchMode = o.pouch ?? 'smart';
+  // Ein Fieberkranker bittet um Medizin: geben (eine gute Tat), wenn welche da ist
+  for (let i = 0; i < 3 && o.mercy !== false && !st.over; i++) {
+    const f = mercyTarget(st);
+    if (!f) break;
+    giveMedicine(st, f.id);
+  }
   for (let guard = 0; guard < 16 && !st.over; guard++) {
     const foes = aliveFoes(st);
     const danger = incoming(st) - st.block;
@@ -152,6 +167,11 @@ export function autopilotTurn(st: TacticsState, o: AutopilotOptions = {}): void 
         const d = CARDS[x.card];
         return (x.target === smasher.id && ((d.push && !heavy) || d.stun || d.interrupt || d.stunIfWindup)) || (d.area && (d.stun || d.interrupt)) ? 10 - d.cost : 0;
       });
+      if (p && play(st, p)) continue;
+    }
+    // 1b. Du brennst: abrollen oder löschen (Ausweichen fängt dazu noch ab)
+    if (st.burning > 0) {
+      const p = opts.find((x) => FOE_RULES.douse.includes(x.card));
       if (p && play(st, p)) continue;
     }
     // 2. Lebensgefahr: abwehren, heilen

@@ -16,6 +16,8 @@ interface Look {
   thin?: boolean;
   /** Breiter gebaut (Hüne, Brüller). */
   wide?: number;
+  /** Ein Mensch (wilde Menschen): aufrecht, keine Tränenspuren, kein Blut. */
+  human?: boolean;
 }
 
 const LOOKS: Record<FoeKind, Look> = {
@@ -34,6 +36,16 @@ const LOOKS: Record<FoeKind, Look> = {
   frozen: { skin: '#b9c6cc', shirt: '#56606a', pants: '#3c444c', scale: 1 },
   hoarder: { skin: '#8f9474', shirt: '#5a5236', pants: '#3a3428', scale: 0.96 },
   bellower: { skin: '#b4b49e', shirt: '#4a3e48', pants: '#36303a', scale: 1.14, wide: 1.2 },
+  // Wilde Menschen (Klötzchen mit Ausrüstung, bis es Modelle gibt)
+  feral: { skin: '#b98d6c', shirt: '#55553a', pants: '#4a3c2c', scale: 0.98, thin: true, human: true },
+  shieldbearer: { skin: '#cfa384', shirt: '#6a5644', pants: '#3a3f4a', scale: 1.06, human: true },
+  archer: { skin: '#c69c7c', shirt: '#3e4a3a', pants: '#3a3a34', scale: 1, human: true },
+  thief: { skin: '#d4ab8c', shirt: '#2e2e36', pants: '#2a2a30', scale: 0.94, thin: true, human: true },
+  scrapper: { skin: '#bf9474', shirt: '#5a4a3a', pants: '#3a3a3a', scale: 1.1, wide: 1.15, human: true },
+  drover: { skin: '#cfa888', shirt: '#d6d0c2', pants: '#b8b0a0', scale: 1.02, human: true },
+  deserter: { skin: '#c49c7c', shirt: '#4a5238', pants: '#3e4432', scale: 1.02, human: true },
+  sergeant: { skin: '#c8a080', shirt: '#4e5640', pants: '#3e4432', scale: 1.05, human: true },
+  feverish: { skin: '#dcc8b6', shirt: '#6a7080', pants: '#4a4a50', scale: 0.98, thin: true, human: true },
 };
 
 export type ZombiePose = 'idle' | 'walk' | 'windup' | 'strike' | 'stagger' | 'scream' | 'dead' | 'sleep' | 'frozen';
@@ -101,9 +113,11 @@ export class ZombieRig {
     const chest = part(torso, new THREE.CylinderGeometry(0.24 * w, 0.2 * w, 0.56, 6, 1), m(L.shirt), 0, 0.28, 0);
     chest.scale.set(1, 1, 0.66);
     chest.rotation.y = Math.PI / 6;
-    // Risse im Hemd: Haut schaut durch
-    part(torso, B(0.1, 0.12, 0.02), skin, 0.06, 0.2, 0.135);
-    part(torso, B(0.06, 0.16, 0.02), m('#4a1f1a'), -0.08, 0.34, 0.135);
+    // Risse im Hemd: Haut schaut durch (nur bei den Wirten)
+    if (!L.human) {
+      part(torso, B(0.1, 0.12, 0.02), skin, 0.06, 0.2, 0.135);
+      part(torso, B(0.06, 0.16, 0.02), m('#4a1f1a'), -0.08, 0.34, 0.135);
+    }
     if (L.vest) {
       part(torso, B(0.44, 0.42, 0.3), m('#e07a1a', 0.7), 0, 0.3, 0);
       for (const y of [0.18, 0.36]) part(torso, B(0.45, 0.04, 0.31), m('#d8d8c8', 0.4), 0, y, 0);
@@ -114,7 +128,7 @@ export class ZombieRig {
     const skull = part(head, new THREE.IcosahedronGeometry(0.13, 1), skin, 0, 0.13, 0);
     skull.scale.set(0.95, 1.1, 1);
     const loud = kind === 'screamer' || kind === 'bellower';
-    const eyes = new THREE.MeshBasicMaterial({ color: loud ? '#ff6a4a' : kind === 'frozen' ? '#bfe6ff' : '#e8d070' });
+    const eyes = new THREE.MeshBasicMaterial({ color: L.human ? '#2a2420' : loud ? '#ff6a4a' : kind === 'frozen' ? '#bfe6ff' : '#e8d070' });
     for (const side of [-1, 1]) part(head, B(0.03, 0.02, 0.01), eyes, side * 0.045, 0.15, 0.125);
     part(head, B(loud ? 0.07 : 0.06, loud ? 0.07 : 0.03, 0.02), m('#1a0f0d'), 0, 0.06, 0.12);
     // ein paar Haarsträhnen
@@ -129,9 +143,11 @@ export class ZombieRig {
       if (side < 0) this.armL = arm;
       else this.armR = arm;
     }
-    // Blutige Tränenspuren unter den Augen (Lore: das Weinen)
-    const tears = m('#5a1414', 0.9);
-    for (const side of [-1, 1]) part(head, B(0.012, 0.05, 0.006), tears, side * 0.045, 0.115, 0.128);
+    // Blutige Tränenspuren unter den Augen (Lore: das Weinen), nicht bei Menschen
+    if (!L.human) {
+      const tears = m('#5a1414', 0.9);
+      for (const side of [-1, 1]) part(head, B(0.012, 0.05, 0.006), tears, side * 0.045, 0.115, 0.128);
+    }
     if (kind === 'brute') {
       // Kalkplatten auf Schultern, Rücken und Arm: das Kalzium aus den Knochen lagert sich unter der Haut ab
       const crust = m('#8f8c84', 1);
@@ -204,6 +220,67 @@ export class ZombieRig {
       // Brüller: riesiger Brustkorb, geschwollener Hals
       part(torso, new THREE.SphereGeometry(0.24, 8, 6), m('#4a3e48'), 0, 0.32, 0.08).scale.set(1.2, 1, 0.9);
       part(torso, new THREE.CylinderGeometry(0.09, 0.11, 0.1, 8), m('#b4a89e', 0.8), 0, 0.6, 0.02);
+    } else if (kind === 'feral') {
+      // Verwilderter: Umhang aus Laub und Fell, Kapuze, Bart, Schleuder in der Hand
+      part(torso, B(0.46, 0.6, 0.12), m('#4e5a34'), 0, 0.28, -0.14);
+      part(torso, B(0.2, 0.14, 0.2), m('#6a5a3a'), -0.16, 0.5, -0.06).rotation.z = 0.3;
+      part(head, B(0.3, 0.24, 0.3), m('#4e5a34'), 0, 0.17, -0.05);
+      part(head, B(0.16, 0.1, 0.06), m('#3a2c20'), 0, 0.03, 0.11);
+      part(this.armR, B(0.03, 0.24, 0.03), m('#5a3e26'), 0, -0.74, 0.04);
+    } else if (kind === 'shieldbearer') {
+      // Schildträger: Schild aus Brettern am linken Arm, Halstuch
+      const wood = m('#8a6a44');
+      const shield = part(this.armL, B(0.08, 0.66, 0.5), wood, -0.07, -0.42, 0.12);
+      shield.rotation.y = 0.15;
+      for (const y of [-0.2, -0.44, -0.66]) part(this.armL, B(0.09, 0.04, 0.52), m('#5a4430'), -0.07, y, 0.12);
+      part(torso, B(0.3, 0.07, 0.24), m('#8a3a2a'), 0, 0.56, 0.01);
+    } else if (kind === 'archer') {
+      // Armbrustschütze: Armbrust vor der Brust, Schirmmütze
+      part(this.armR, B(0.06, 0.06, 0.5), m('#5a4430'), 0, -0.6, 0.18);
+      part(this.armR, B(0.44, 0.03, 0.04), m('#3a3a3a', 0.5), 0, -0.6, 0.38);
+      const cap = m('#3a4430');
+      part(head, new THREE.CylinderGeometry(0.135, 0.135, 0.06, 10), cap, 0, 0.26, 0);
+      part(head, B(0.15, 0.02, 0.1), cap, 0, 0.23, 0.12);
+    } else if (kind === 'thief') {
+      // Langfinger: Kapuze, Umhängebeutel
+      part(head, B(0.28, 0.26, 0.28), m('#26262c'), 0, 0.16, -0.04);
+      part(torso, B(0.05, 0.6, 0.02), m('#3a2a1e'), -0.02, 0.32, 0.13).rotation.z = -0.6;
+      part(torso, B(0.2, 0.18, 0.08), m('#4a3a2a'), -0.24, 0.04, 0.06);
+    } else if (kind === 'scrapper') {
+      // Schrotter: Brustpanzer aus einem Verkehrsschild, Reifen auf der Schulter, Eimer als Helm
+      const sign = part(torso, new THREE.CylinderGeometry(0.22, 0.22, 0.03, 16), m('#b8322a', 0.6), 0, 0.32, 0.16);
+      sign.rotation.x = Math.PI / 2;
+      const inner = part(torso, new THREE.CylinderGeometry(0.15, 0.15, 0.035, 16), m('#e8e2d6', 0.6), 0, 0.32, 0.165);
+      inner.rotation.x = Math.PI / 2;
+      const tire = part(torso, new THREE.TorusGeometry(0.16, 0.06, 6, 12), m('#1e1e20', 0.9), 0.2, 0.56, 0);
+      tire.rotation.y = Math.PI / 2;
+      part(head, new THREE.CylinderGeometry(0.15, 0.13, 0.16, 10), m('#7a7e80', 0.5), 0, 0.27, 0);
+    } else if (kind === 'drover') {
+      // Treiber der Kalkjünger: weiß geschminktes Gesicht, langes Gewand, Kette in der Hand
+      part(head, B(0.2, 0.18, 0.04), m('#f2eee6', 0.6), 0, 0.12, 0.11);
+      part(torso, B(0.42, 0.7, 0.3), m('#d6d0c2'), 0, 0.02, 0);
+      const chain = m('#6a6a68', 0.4);
+      for (let i = 0; i < 4; i++) part(this.armR, B(0.04, 0.06, 0.04), chain, 0, -0.72 - i * 0.07, 0.02 + i * 0.03);
+    } else if (kind === 'deserter' || kind === 'sergeant') {
+      // Deserteure: alter Helm, Schild und Speer; der Feldwebel mit Schirmmütze und Armbinde
+      if (kind === 'deserter') {
+        part(head, new THREE.SphereGeometry(0.16, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), m('#4a5238', 0.7), 0, 0.17, 0);
+        part(this.armL, B(0.06, 0.5, 0.4), m('#5a5e48'), -0.07, -0.42, 0.1);
+      } else {
+        const cap = m('#3e4632');
+        part(head, new THREE.CylinderGeometry(0.15, 0.13, 0.08, 10), cap, 0, 0.27, 0);
+        part(head, B(0.16, 0.02, 0.1), m('#1e1e1e', 0.4), 0, 0.23, 0.12);
+        part(this.armL, B(0.12, 0.08, 0.12), m('#9a2a22'), 0, -0.12, 0);
+      }
+      // Speer aufrecht in der Hand (wie ein Stab), die Spitze oben
+      const len = kind === 'deserter' ? 1.7 : 1.3;
+      const spear = part(this.armR, new THREE.CylinderGeometry(0.018, 0.018, len, 6), m('#6a4e30'), 0, -0.62 + len * 0.2, 0.05);
+      spear.rotation.x = 0.35;
+      part(this.armR, new THREE.ConeGeometry(0.035, 0.12, 6), m('#9a9a96', 0.4), 0, -0.62 + len * 0.7 + 0.06, 0.05 + Math.sin(0.35) * len * 0.5).rotation.x = 0.35;
+      part(torso, B(0.36, 0.08, 0.26), m('#3a3a2a'), 0, 0.02, 0);
+    } else if (kind === 'feverish') {
+      // Fieberkranker: Wolldecke um die Schultern, blass
+      part(torso, B(0.48, 0.46, 0.3), m('#7a6a58'), 0, 0.34, -0.02);
     }
   }
 
@@ -235,11 +312,12 @@ export class ZombieRig {
     const stiff = this.pose === 'frozen';
     this.phase += stiff ? 0 : dt * (moving ? (crawl ? 11 : 6) : 1.5);
     const s = Math.sin(this.phase);
-    // Grundhaltung: gebückt, Arme nach vorn
-    let lean = crawl ? 1.05 : 0.22;
-    let armX = crawl ? -1.2 : -1.35;
+    // Grundhaltung: gebückt, Arme nach vorn (Menschen stehen aufrecht, Arme unten)
+    const human = !!LOOKS[this.kind].human;
+    let lean = crawl ? 1.05 : human ? 0.06 : 0.22;
+    let armX = crawl ? -1.2 : human ? -0.35 : -1.35;
     let armSpread = 0.1;
-    let headX = crawl ? -0.9 : 0.15;
+    let headX = crawl ? -0.9 : human ? 0 : 0.15;
     let bodyY = crawl ? -0.38 : 0;
     let legSwing = moving ? (crawl ? 0.5 : 0.45) : 0.05;
     const p = this.pose;
@@ -251,8 +329,8 @@ export class ZombieRig {
         armSpread = 0.2 + 1.0 * k;
         lean = -0.15 * k;
       } else {
-        armX = -1.35 - 1.3 * k;
-        lean = 0.22 - 0.35 * k;
+        armX = (human ? -0.35 : -1.35) - 1.3 * k;
+        lean = (human ? 0.06 : 0.22) - 0.35 * k;
         armSpread = 0.1 + 0.15 * k;
       }
       legSwing = 0.03;
@@ -285,7 +363,7 @@ export class ZombieRig {
     this.torso.rotation.x = lean;
     this.torso.rotation.z = Math.sin(this.phase * 0.5) * 0.08;
     this.head.rotation.x = headX;
-    this.head.rotation.z = 0.25 + Math.sin(t * 1.3 + this.phase) * 0.06;
+    this.head.rotation.z = (human ? 0.04 : 0.25) + Math.sin(t * 1.3 + this.phase) * 0.06;
     this.armL.rotation.set(armX + s * 0.15, 0, armSpread);
     this.armR.rotation.set(armX - s * 0.15, 0, -armSpread);
     this.legL.rotation.x = s * legSwing;

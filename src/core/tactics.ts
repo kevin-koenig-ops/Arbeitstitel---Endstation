@@ -11,6 +11,10 @@
 // (Treffer doppelt) und überfällt dich beim Aufwachen; der Kalkkopf rammt und taumelt danach;
 // der Erstarrte ist steif vor Kälte (Feuer taut ihn auf); der Hamsterer verteidigt seinen Haufen;
 // der Brüller ruft und brüllt die anderen stark.
+// Wilde Menschen (Welle 2): Der Verwilderte schießt aus dem Gebüsch und legt Schlingen; Wegelagerer
+// kommen zu dritt (Schildträger vorn, Armbrustschütze hinten, Langfinger klaut Medizin); der
+// Schrotter wirft Netz und Brandflasche; der Treiber der Kalkjünger lässt Wandler von der Kette;
+// Deserteure halten den Schildwall, ihr Feldwebel führt; der Fieberkranke bittet um Medizin.
 // Dazu kommen Einmal-Karten (Brandflasche, Granate …) und Fähigkeiten (Konter, Rundumschlag …,
 // mit Stufen I–III; manche wirken von selbst). Einmal-Karten liegen nicht im Stapel, sondern in
 // der Tasche (3 Plätze): Man kann sie jederzeit spielen, danach sind sie weg. Zustände der Gegner:
@@ -64,6 +68,12 @@ export interface TFoe {
   thawed: boolean;
   /** Vom Brüller aufgestachelt: der nächste Angriff macht mehr. */
   roused: boolean;
+  /** Fieberkranker: bittet noch so viele Runden um Medizin. */
+  plead: number;
+  /** Langfinger: so viel Medizin hat er dir abgenommen. */
+  loot: number;
+  /** Nicht mehr im Kampf, aber nicht besiegt: davongerannt oder mit Medizin gegangen. */
+  gone: boolean;
 }
 
 export interface TacticsState {
@@ -92,7 +102,8 @@ export interface TacticsState {
   /** Verbleibende Haltbarkeit je Waffe (die beste ihrer Art). */
   weaponDur: Partial<Record<WeaponId, number>>;
   kills: number;
-  over: null | 'won' | 'lost' | 'fled';
+  /** spared: Es gab nichts zu besiegen, nur Fieberkranke, die mit Medizin gegangen sind. */
+  over: null | 'won' | 'lost' | 'fled' | 'spared';
   /** Konter: wer dich bis zu deiner nächsten Runde trifft, nimmt so viel Schaden. */
   thorns: number;
   /** Ein Hund kämpft mit (Rudelführer). */
@@ -145,6 +156,12 @@ export interface TacticsState {
   stance: Stance | null;
   /** Innere Ruhe: so viele Karten mehr, wenn ruhig. */
   innerCalm: number;
+  /** Im Netz des Schrotters: diese Runde kein Ausweichen. */
+  netted: number;
+  /** Du brennst (Brandflasche): so viel Schaden am Ende deiner Runde, außer du löschst. */
+  burning: number;
+  /** So viele Fieberkranke sind mit Medizin gegangen. */
+  spared: number;
 }
 
 /** Was du an Sammelkarten mitbringst: Einmal-Karten in der Tasche (Anzahl) und Fähigkeiten (Stufe). */
@@ -204,7 +221,25 @@ export type TEvent =
   | { type: 'gain'; amount: number }
   | { type: 'secondWind'; amount: number }
   | { type: 'lastStand' }
-  | { type: 'denied'; reason: 'energy' | 'target' | 'medicine' | 'full' | 'limit' };
+  // Wilde Menschen
+  | { type: 'snared'; by: number }
+  | { type: 'retreat'; id: number; hidden: boolean }
+  | { type: 'shield'; id: number; block: number }
+  | { type: 'aim'; id: number }
+  | { type: 'flinch'; id: number }
+  | { type: 'steal'; by: number }
+  | { type: 'escape'; id: number; loot: number }
+  | { type: 'recovered'; amount: number }
+  | { type: 'netted'; by: number }
+  | { type: 'light'; id: number }
+  | { type: 'aflame'; by: number }
+  | { type: 'scorched'; dmg: number }
+  | { type: 'doused' }
+  | { type: 'preach'; by: number }
+  | { type: 'order'; by: number; block: number }
+  | { type: 'despair'; id: number }
+  | { type: 'mercy'; id: number }
+  | { type: 'denied'; reason: 'energy' | 'target' | 'medicine' | 'full' | 'limit' | 'netted' };
 
 // --- Zufall --------------------------------------------------------------------------
 
@@ -262,7 +297,7 @@ function makeFoe(st: TacticsState, kind: FoeKind, row: 'near' | 'far'): TFoe {
     hp: def.hp,
     maxHp: def.hp,
     block: 0,
-    row: def.stayBack ? 'far' : row,
+    row: def.stayBack || def.startFar ? 'far' : row,
     step: start,
     intent: { kind: 'advance' },
     stunned: false,
@@ -278,19 +313,35 @@ function makeFoe(st: TacticsState, kind: FoeKind, row: 'near' | 'far'): TFoe {
     frozen: def.frozen ?? 0,
     thawed: false,
     roused: false,
+    plead: def.pleads ?? 0,
+    loot: 0,
+    gone: false,
   };
   f.intent = intentOf(f, st);
   return f;
 }
 
 /** Absichten, die dich treffen (Schaden). */
-export const HITS: readonly IntentKind[] = ['attack', 'smash', 'grab', 'pounce', 'ram', 'hurl', 'ambush'];
-/** Angekündigte schwere Schläge (Ausholen, Anlauf): lassen sich unterbrechen oder betäuben. */
-const TELEGRAPHED: readonly IntentKind[] = ['windup', 'smash', 'charge', 'ram', 'hurl'];
+export const HITS: readonly IntentKind[] = ['attack', 'smash', 'grab', 'pounce', 'ram', 'hurl', 'ambush', 'sling', 'shot', 'thrust', 'firebomb'];
+/** Angekündigte schwere Schläge (Ausholen, Anlauf, Brandflasche): lassen sich unterbrechen oder betäuben. */
+const TELEGRAPHED: readonly IntentKind[] = ['windup', 'smash', 'charge', 'ram', 'hurl', 'light', 'firebomb'];
+/** Was auch aus der zweiten Reihe geht (Schleuder, Schlinge, Speer), ohne erst nach vorn zu kommen. */
+const REACH: readonly IntentKind[] = ['sling', 'snare', 'thrust', 'retreat'];
+/** Wer zu den Wandlern zählt (Predigt des Treibers). */
+const isWalkerKind = (k: FoeKind) => !FOE_TACTICS[k].human && k !== 'screamer' && k !== 'bellower';
 
 /** Was der Gegner als Nächstes tut (wird angezeigt). st: für Wirkungen anderer (Leithammel). */
 export function intentOf(f: TFoe, st?: TacticsState): Intent {
-  const base = baseIntent(f);
+  let base = baseIntent(f);
+  // Wilde Menschen: Was gerade nichts bringt, wird zum einfachen Schlag
+  const others = st ? aliveFoes(st).filter((x) => x.id !== f.id) : [];
+  if (base.kind === 'steal' && st && st.medicine <= 0) base = { kind: 'attack', dmg: 2 };
+  else if (base.kind === 'escape' && f.loot <= 0) base = { kind: 'attack', dmg: 2 };
+  else if (base.kind === 'unleash' && st && (f.howls >= FOE_RULES.unleash || aliveFoes(st).length >= TACTICS.maxFoes)) base = { kind: 'attack', dmg: 2 };
+  else if (base.kind === 'preach' && st && !others.some((x) => isWalkerKind(x.kind))) base = { kind: 'attack', dmg: 2 };
+  else if (base.kind === 'order' && st && !others.length) base = { kind: 'thrust', dmg: 2 };
+  // Wilde Menschen, die sonst hinten bleiben: Allein kommen sie nach vorn (keiner mehr, hinter dem sie stehen)
+  if (st && f.row === 'far' && FOE_TACTICS[f.kind].human && FOE_TACTICS[f.kind].stayBack && !others.length && base.kind !== 'stunned') return { kind: 'advance' };
   if (!base.dmg || !HITS.includes(base.kind)) return base;
   let dmg = base.dmg;
   if (f.thawed) dmg += FOE_RULES.thawed;
@@ -306,11 +357,12 @@ function baseIntent(f: TFoe): Intent {
   if (f.sleep > 0) return { kind: 'sleep' };
   if (f.frozen > 0) return { kind: 'frozen' };
   if (f.calm) return { kind: 'routine' };
+  if (f.plead > 0) return { kind: 'plead' };
   // Aufgewacht: Überfall, notfalls mit einem Satz von hinten
   if (f.ambush) return { kind: 'ambush', dmg: def.ambush ?? 3 };
   const p = def.pattern[f.step % def.pattern.length];
   // Der Sprung kommt von hinten: dafür muss er nicht erst nach vorne
-  if (f.row === 'far' && !def.stayBack && p.kind !== 'pounce') return { kind: 'advance' };
+  if (f.row === 'far' && !def.stayBack && p.kind !== 'pounce' && !REACH.includes(p.kind)) return { kind: 'advance' };
   if (f.row === 'near' && p.kind === 'pounce') return { kind: 'attack', dmg: p.dmg };
   if (p.kind === 'howl' && f.howls >= TACTICS.maxHowls) return { kind: 'attack', dmg: 1 };
   return { kind: p.kind, dmg: p.dmg, block: p.block };
@@ -389,12 +441,15 @@ export function createTactics(o: {
     throws: 0,
     stance: null,
     innerCalm: lvl('innercalm') ? Math.floor(cardStat('innercalm', 'bonus', lvl('innercalm'))) : 0,
+    netted: 0,
+    burning: 0,
+    spared: 0,
   };
   for (const w of o.weapons) if (w.dur > 0) st.weaponDur[w.kind] = Math.max(st.weaponDur[w.kind] ?? 0, w.dur);
   st.draw = shuffle(st, deckFor(o.weapons, o.medicine, kit));
   let near = 0;
   for (const kind of o.group.slice(0, TACTICS.maxFoes)) {
-    const row = !FOE_TACTICS[kind].stayBack && near < 2 ? 'near' : 'far';
+    const row = !FOE_TACTICS[kind].stayBack && !FOE_TACTICS[kind].startFar && near < 2 ? 'near' : 'far';
     if (row === 'near') near++;
     const f = makeFoe(st, kind, row);
     if (kind === 'walker' && o.mood) f.hp = f.maxHp = f.maxHp + (o.mood === 'strong' ? 2 : -2);
@@ -425,7 +480,36 @@ export function createTactics(o: {
 
 /** Kann diese Gegnerart Hilfe rufen (Heuler)? Nur bei denen zählt „Still“. */
 export function canHowl(kind: FoeKind): boolean {
-  return FOE_TACTICS[kind].pattern.some((p) => p.kind === 'howl');
+  return FOE_TACTICS[kind].pattern.some((p) => p.kind === 'howl' || p.kind === 'preach' || p.kind === 'order');
+}
+
+/** Alle Gegner sind weg: gewonnen, oder (nur Fieberkranke, die mit Medizin gegangen sind) verschont. */
+function cleared(st: TacticsState): 'won' | 'spared' {
+  return st.kills === 0 && st.spared > 0 ? 'spared' : 'won';
+}
+
+/**
+ * Einem Fieberkranken Medizin geben: Er geht, der Kampf ist für ihn vorbei (eine gute Tat).
+ * Kostet keine Kraft, nur eine Medizin. Geht auch, wenn er schon angreift.
+ */
+export function giveMedicine(st: TacticsState, id: number): TEvent[] {
+  const f = foeById(st, id);
+  if (st.over || !f || f.hp <= 0 || !FOE_TACTICS[f.kind].pleads) return [];
+  if (st.medicine <= 0) return [{ type: 'denied', reason: 'medicine' }];
+  st.medicine -= 1;
+  st.usedMedicine += 1;
+  f.hp = 0;
+  f.gone = true;
+  st.spared += 1;
+  const events: TEvent[] = [{ type: 'mercy', id: f.id }];
+  if (!aliveFoes(st).length) st.over = cleared(st);
+  return events;
+}
+
+/** Kann man gerade jemandem Medizin geben? (der erste Fieberkranke, der noch da ist) */
+export function mercyTarget(st: TacticsState): TFoe | undefined {
+  if (st.over || st.medicine <= 0) return undefined;
+  return aliveFoes(st).find((f) => FOE_TACTICS[f.kind].pleads);
 }
 
 export function aliveFoes(st: TacticsState): TFoe[] {
@@ -513,11 +597,31 @@ function damageFoe(st: TacticsState, f: TFoe, raw: number, events: TEvent[], pie
   if (kill) st.kills += 1;
   events.push({ type: 'hit', id: f.id, dmg, absorbed, kill });
   if (kill) {
+    // Den Langfinger erwischt: Er hat deine Medizin noch dabei
+    if (f.loot > 0) {
+      st.medicine += f.loot;
+      st.usedMedicine = Math.max(0, st.usedMedicine - f.loot);
+      events.push({ type: 'recovered', amount: f.loot });
+      f.loot = 0;
+    }
     spreadFire(st, f, events);
     scatterFrom(st, f, events);
     return;
   }
   if (raw <= 0) return;
+  // Der Fieberkranke bittet nicht mehr, er wehrt sich
+  if (f.plead > 0) {
+    f.plead = 0;
+    f.intent = intentOf(f, st);
+    events.push({ type: 'despair', id: f.id });
+  }
+  // Der Schütze hat schon angelegt: Ein Treffer verzieht ihn, er muss neu anlegen
+  if (f.intent.kind === 'shot') {
+    const pattern = FOE_TACTICS[f.kind].pattern;
+    f.step = Math.max(0, pattern.findIndex((x) => x.kind === 'aim'));
+    f.intent = intentOf(f, st);
+    events.push({ type: 'flinch', id: f.id });
+  }
   // Wer schläft, wacht auf (und überfällt dich); wer seiner Wege ging, wird wütend
   if (f.sleep > 0) {
     f.sleep = 0;
@@ -669,6 +773,7 @@ export function playable(st: TacticsState, card: CardId): boolean {
     !lacksMedicine(st, card) &&
     (!def.heal || !!def.gain || st.hp < st.maxHp) &&
     (!def.perTurn || (st.turnPlays[card] ?? 0) < def.perTurn) &&
+    !(st.netted > 0 && FOE_RULES.netBlocks.includes(card)) &&
     (def.target === 'self' ? !def.area || !!areaFoes(st, def.area).length || !!def.block || !!def.heal : targetsFor(st, card).length > 0)
   );
 }
@@ -682,6 +787,7 @@ function resolve(st: TacticsState, card: CardId, target: number | undefined, tak
   if (lacksMedicine(st, card)) return [{ type: 'denied', reason: 'medicine' }];
   if (def.heal && !def.gain && st.hp >= st.maxHp) return [{ type: 'denied', reason: 'full' }];
   if (def.perTurn && (st.turnPlays[card] ?? 0) >= def.perTurn) return [{ type: 'denied', reason: 'limit' }];
+  if (st.netted > 0 && FOE_RULES.netBlocks.includes(card)) return [{ type: 'denied', reason: 'netted' }];
   let foe: TFoe | undefined;
   if (def.target !== 'self') {
     const options = targetsFor(st, card);
@@ -693,6 +799,11 @@ function resolve(st: TacticsState, card: CardId, target: number | undefined, tak
   take();
   st.turnPlays[card] = (st.turnPlays[card] ?? 0) + 1;
   events.push({ type: 'play', card, target: foe?.id });
+  // Du brennst: abrollen (Ausweichen) oder den Feuerlöscher nehmen
+  if (st.burning > 0 && FOE_RULES.douse.includes(card)) {
+    st.burning = 0;
+    events.push({ type: 'doused' });
+  }
 
   const targets = def.area ? areaFoes(st, def.area) : foe ? [foe] : [];
   // Mit voller Wucht: dieser Waffenschlag macht mehr und kostet extra Haltbarkeit
@@ -842,7 +953,7 @@ function resolve(st: TacticsState, card: CardId, target: number | undefined, tak
       events.push({ type: 'weaponBroke', weapon: w });
     }
   }
-  if (!aliveFoes(st).length) st.over = 'won';
+  if (!aliveFoes(st).length) st.over = cleared(st);
   return events;
 }
 
@@ -905,12 +1016,30 @@ export function endTurn(st: TacticsState): TEvent[] {
   // Murmeln und Kiesel, die keiner geworfen hat, sind weg
   st.discard.push(...st.hand.filter((c) => !CARDS[c].ethereal));
   st.hand = [];
+  // Das Netz des Schrotters hielt nur diese Runde
+  st.netted = 0;
+  // Du brennst noch (nicht gelöscht): das tut weh, Abwehr hilft nicht
+  if (st.burning > 0) {
+    let dmg = Math.min(st.burning, st.hp);
+    st.burning = 0;
+    if (dmg >= st.hp && st.lastStand && !st.lastStandUsed) {
+      dmg = st.hp - 1;
+      st.lastStandUsed = true;
+      events.push({ type: 'lastStand' });
+    }
+    st.hp -= dmg;
+    events.push({ type: 'scorched', dmg });
+    if (st.hp <= 0) {
+      st.over = 'lost';
+      return events;
+    }
+  }
   // Geräte wirken, dann läuft ihre Zeit ab
   for (const d of st.devices) deviceAct(st, d.kind, events);
   for (const d of st.devices) d.rounds -= 1;
   st.devices = st.devices.filter((d) => d.rounds > 0);
   if (!aliveFoes(st).length) {
-    st.over = 'won';
+    st.over = cleared(st);
     return events;
   }
   // Der Hund (Rudelführer) beißt zu: den Schwächsten vorne, sonst irgendwen
@@ -970,6 +1099,15 @@ export function endTurn(st: TacticsState): TEvent[] {
       continue;
     }
     if (intent.kind === 'routine') continue;
+    // Fieberkranker: bittet um Medizin; bekommt er keine, wird er verzweifelt
+    if (intent.kind === 'plead') {
+      f.plead -= 1;
+      if (f.plead <= 0) {
+        f.intent = intentOf(f, st);
+        events.push({ type: 'despair', id: f.id });
+      }
+      continue;
+    }
     if (intent.kind === 'advance') {
       if (slowed) {
         events.push({ type: 'status', id: f.id, status: 'slow' });
@@ -992,7 +1130,11 @@ export function endTurn(st: TacticsState): TEvent[] {
       case 'grab':
       case 'ram':
       case 'hurl':
-      case 'ambush': {
+      case 'ambush':
+      case 'sling':
+      case 'shot':
+      case 'thrust':
+      case 'firebomb': {
         if (intent.kind === 'pounce' || (intent.kind === 'ambush' && f.row === 'far')) {
           // Aus dem Dunkel (oder aus dem Gras) nach vorne gesprungen, dann zugeschlagen (in eine Falle gesprungen: nicht)
           events.push({ type: 'pounce', id: f.id });
@@ -1045,6 +1187,11 @@ export function endTurn(st: TacticsState): TEvent[] {
           st.dazed = 1;
           events.push({ type: 'dazed', by: f.id });
         }
+        // Brandflasche: Du brennst (am Ende deiner Runde, außer du löschst)
+        if (intent.kind === 'firebomb' && st.hp > 0) {
+          st.burning = FOE_RULES.burning;
+          events.push({ type: 'aflame', by: f.id });
+        }
         // Zweiter Atem: einmal pro Kampf, wenn es knapp wird
         if (st.hp > 0 && st.hp < 3 && st.secondWind && !st.secondWindUsed) {
           st.secondWindUsed = true;
@@ -1081,6 +1228,77 @@ export function endTurn(st: TacticsState): TEvent[] {
         f.block = 2;
         events.push({ type: 'lurk', id: f.id, block: 2 });
         break;
+      // --- Wilde Menschen ---
+      case 'snare':
+        st.grabbed = 1;
+        events.push({ type: 'snared', by: f.id });
+        break;
+      case 'retreat': {
+        // Zurück ins Dickicht (wer schon hinten ist, versteckt sich nur)
+        const hidden = f.row === 'far';
+        f.row = 'far';
+        f.block = 2;
+        events.push({ type: 'retreat', id: f.id, hidden });
+        break;
+      }
+      case 'shield':
+        f.block = intent.block ?? 3;
+        events.push({ type: 'shield', id: f.id, block: f.block });
+        break;
+      case 'aim':
+        events.push({ type: 'aim', id: f.id });
+        break;
+      case 'reload':
+        break;
+      case 'steal':
+        if (st.medicine > 0) {
+          st.medicine -= 1;
+          st.usedMedicine += 1;
+          f.loot += 1;
+          events.push({ type: 'steal', by: f.id });
+        }
+        break;
+      case 'escape':
+        // Verlangsamt kommt er nicht weg
+        if (slowed) {
+          events.push({ type: 'status', id: f.id, status: 'slow' });
+          break;
+        }
+        events.push({ type: 'escape', id: f.id, loot: f.loot });
+        f.hp = 0;
+        f.gone = true;
+        break;
+      case 'net':
+        st.netted = 1;
+        events.push({ type: 'netted', by: f.id });
+        break;
+      case 'light':
+        events.push({ type: 'light', id: f.id });
+        break;
+      case 'unleash':
+        if (aliveFoes(st).length < TACTICS.maxFoes && f.howls < FOE_RULES.unleash) {
+          f.howls += 1;
+          const nf = makeFoe(st, 'walker', 'far');
+          st.foes.push(nf);
+          events.push({ type: 'summon', by: f.id, id: nf.id, kind: 'walker' });
+        }
+        break;
+      case 'preach':
+        if (silenced) {
+          events.push({ type: 'status', id: f.id, status: 'silence' });
+          break;
+        }
+        for (const x of aliveFoes(st)) if (x.id !== f.id && isWalkerKind(x.kind)) x.roused = true;
+        events.push({ type: 'preach', by: f.id });
+        break;
+      case 'order':
+        if (silenced) {
+          events.push({ type: 'status', id: f.id, status: 'silence' });
+          break;
+        }
+        for (const x of aliveFoes(st)) if (x.id !== f.id) x.block = Math.max(x.block, FOE_RULES.order);
+        events.push({ type: 'order', by: f.id, block: FOE_RULES.order });
+        break;
       case 'stare':
         // Wie gelähmt: eine Karte und eine Kraft weniger
         st.dazed = 1;
@@ -1108,7 +1326,7 @@ export function endTurn(st: TacticsState): TEvent[] {
         break;
     }
   }
-  if (!st.over && !aliveFoes(st).length) st.over = 'won';
+  if (!st.over && !aliveFoes(st).length) st.over = cleared(st);
   if (!st.over) startTurn(st, events);
   return events;
 }
@@ -1125,7 +1343,7 @@ export function fleeHits(st: TacticsState): { id: number; dmg: number }[] {
     const k = f.intent.kind;
     const attacks = FOE_TACTICS[f.kind].pattern.filter((p) => (p.dmg ?? 0) > 0).map((p) => p.dmg!);
     // Wer schläft, steif ist oder seiner Wege geht, schlägt beim Weglaufen nicht zu
-    if (k === 'sleep' || k === 'frozen' || k === 'routine') continue;
+    if (k === 'sleep' || k === 'frozen' || k === 'routine' || k === 'plead') continue;
     const dmg = HITS.includes(k) && f.intent.dmg ? f.intent.dmg : attacks.length ? Math.min(...attacks) : 0;
     if (dmg > 0) out.push({ id: f.id, dmg });
   }

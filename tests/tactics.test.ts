@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CARDS, FOE_TACTICS, START_WEAPONS, TACTICS, WEAPONS } from '../src/core/content';
-import { aliveFoes, createTactics, deckFor, endTurn, flee, fleeCost, intentOf, playCard, playPouch, pouchFor, targetsFor, type CardKit, type TacticsState } from '../src/core/tactics';
+import { aliveFoes, createTactics, deckFor, endTurn, flee, fleeCost, giveMedicine, intentOf, playCard, playPouch, pouchFor, targetsFor, type CardKit, type TacticsState } from '../src/core/tactics';
 import type { FoeKind, Weapon } from '../src/core/types';
 import { autopilotFight } from '../src/core/autopilot';
 
@@ -1003,6 +1003,249 @@ describe('Wirte aus dem Bestiarium', () => {
         if (st.over === 'won') won++;
       }
       expect(won / 60, g.join('+')).toBeGreaterThan(0.45);
+    }
+  });
+});
+
+describe('Wilde Menschen (Welle 2)', () => {
+  /** Ein Gegner bereit (nicht betäubt), an einer Stelle seines Musters. */
+  const set = (st: TacticsState, i: number, step: number, row?: 'near' | 'far') => {
+    const f = st.foes[i];
+    f.stunned = false;
+    f.step = step;
+    if (row) f.row = row;
+    f.intent = intentOf(f, st);
+    return f;
+  };
+
+  it('Verwilderter: fängt hinten an, schießt mit der Schleuder von dort, die Schlinge kostet Kraft', () => {
+    const st = start(['feral']);
+    const f = set(st, 0, 0);
+    expect(f.row).toBe('far');
+    expect(f.intent.kind).toBe('sling');
+    st.hand = [];
+    const hp = st.hp;
+    endTurn(st);
+    expect(st.hp).toBe(hp - 3);
+    expect(f.row).toBe('far');
+    // Schlinge: nächste Runde 1 Kraft weniger
+    expect(f.intent.kind).toBe('snare');
+    st.hand = [];
+    endTurn(st);
+    expect(st.energy).toBe(TACTICS.energy - 1);
+    // Dann kommt er nach vorn, schlägt zu und verschwindet wieder
+    expect(f.intent.kind).toBe('advance');
+    st.hand = [];
+    endTurn(st);
+    expect(f.row).toBe('near');
+    st.hand = [];
+    endTurn(st);
+    expect(f.intent.kind).toBe('retreat');
+    st.hand = [];
+    endTurn(st);
+    expect(f.row).toBe('far');
+    expect(f.block).toBe(2);
+  });
+
+  it('Armbrustschütze: legt an und schießt, ein Treffer vorher verzieht ihn', () => {
+    const st = start(['archer', 'walker']);
+    // Der Wandler geht nur seiner Wege, damit allein der Schütze zählt
+    st.foes[1].calm = true;
+    st.foes[1].hp = 50;
+    const a = set(st, 0, 1);
+    expect(a.row).toBe('far');
+    expect(a.intent.kind).toBe('shot');
+    withHand(st, 'throw');
+    const ev = playCard(st, 0, a.id);
+    expect(ev.some((e) => e.type === 'flinch')).toBe(true);
+    expect(a.intent.kind).toBe('aim');
+    st.hand = [];
+    const hp = st.hp;
+    endTurn(st);
+    expect(st.hp).toBe(hp);
+    // Ohne Störung: 5 Schaden
+    expect(a.intent.kind).toBe('shot');
+    st.hand = [];
+    endTurn(st);
+    expect(st.hp).toBe(hp - 5);
+  });
+
+  it('Langfinger: nimmt Medizin und haut ab; erwischt man ihn vorher, ist sie wieder da', () => {
+    const st = start(['thief', 'walker'], { medicine: 2 });
+    const t = set(st, 0, 0, 'near');
+    const w = st.foes[1];
+    w.hp = 50;
+    expect(t.intent.kind).toBe('steal');
+    st.hand = [];
+    endTurn(st);
+    expect(st.medicine).toBe(1);
+    expect(st.usedMedicine).toBe(1);
+    expect(t.loot).toBe(1);
+    expect(t.intent.kind).toBe('escape');
+    // Erwischt: Medizin zurück
+    t.hp = 1;
+    withHand(st, 'punch');
+    const ev = playCard(st, 0, t.id);
+    expect(ev.some((e) => e.type === 'recovered')).toBe(true);
+    expect(st.medicine).toBe(2);
+    expect(st.usedMedicine).toBe(0);
+    // Zweiter Fall: Er kommt davon, die Medizin ist weg
+    const st2 = start(['thief', 'walker'], { medicine: 1 });
+    const t2 = set(st2, 0, 0, 'near');
+    st2.foes[1].hp = 50;
+    st2.hand = [];
+    endTurn(st2);
+    st2.hand = [];
+    const ev2 = endTurn(st2);
+    expect(ev2.some((e) => e.type === 'escape')).toBe(true);
+    expect(t2.gone).toBe(true);
+    expect(st2.medicine).toBe(0);
+    expect(st2.usedMedicine).toBe(1);
+    expect(st2.kills).toBe(0);
+    // Ohne Medizin greift er einfach an
+    const st3 = start(['thief']);
+    expect(set(st3, 0, 0, 'near').intent.kind).toBe('attack');
+  });
+
+  it('Schrotter: Netz verhindert Ausweichen, Brandflasche brennt, außer man rollt sich ab', () => {
+    const st = start(['scrapper'], { health: 30 });
+    st.maxHp = 30;
+    const s = set(st, 0, 1, 'near');
+    expect(s.intent.kind).toBe('net');
+    st.hand = [];
+    endTurn(st);
+    expect(st.netted).toBe(1);
+    withHand(st, 'dodge', 'punch');
+    expect(playCard(st, 0)[0]).toEqual({ type: 'denied', reason: 'netted' });
+    // Anzünden, dann werfen
+    expect(s.intent.kind).toBe('light');
+    st.hand = [];
+    endTurn(st);
+    expect(st.netted).toBe(0);
+    expect(s.intent.kind).toBe('firebomb');
+    let hp = st.hp;
+    st.hand = [];
+    endTurn(st);
+    expect(st.hp).toBe(hp - 4);
+    expect(st.burning).toBe(2);
+    // Nicht gelöscht: am Rundenende 2 Schaden
+    hp = st.hp;
+    st.hand = [];
+    const ev = endTurn(st);
+    expect(ev.some((e) => e.type === 'scorched')).toBe(true);
+    expect(st.hp).toBeLessThanOrEqual(hp - 2);
+    // Abrollen löscht
+    const st2 = start(['scrapper'], { health: 30 });
+    st2.maxHp = 30;
+    st2.burning = 2;
+    withHand(st2, 'dodge');
+    const ev2 = playCard(st2, 0);
+    expect(ev2.some((e) => e.type === 'doused')).toBe(true);
+    expect(st2.burning).toBe(0);
+  });
+
+  it('Schrotter: Ein Tritt unterbricht das Anzünden', () => {
+    const st = start(['scrapper']);
+    const s = set(st, 0, 2, 'near');
+    expect(s.intent.kind).toBe('light');
+    withHand(st, 'kick');
+    playCard(st, 0, s.id);
+    expect(s.step).toBe(0);
+  });
+
+  it('Treiber: lässt Wandler los und predigt; fällt er, stehen sie planlos herum', () => {
+    const st = start(['drover', 'walker']);
+    const d = set(st, 0, 0);
+    expect(d.row).toBe('far');
+    expect(d.intent.kind).toBe('unleash');
+    st.foes[1].hp = 50;
+    st.hand = [];
+    const ev = endTurn(st);
+    expect(ev.some((e) => e.type === 'summon' && e.by === d.id)).toBe(true);
+    expect(aliveFoes(st).length).toBe(3);
+    expect(d.intent.kind).toBe('preach');
+    st.hand = [];
+    endTurn(st);
+    expect(aliveFoes(st).filter((f) => f.kind === 'walker').every((f) => f.roused)).toBe(true);
+    // Er fällt: die anderen setzen aus
+    d.hp = 1;
+    withHand(st, 'throw');
+    const ev2 = playCard(st, 0, d.id);
+    expect(ev2.some((e) => e.type === 'scatter')).toBe(true);
+    expect(aliveFoes(st).every((f) => f.stunned)).toBe(true);
+  });
+
+  it('Deserteure: Speer reicht aus der zweiten Reihe, der Feldwebel befiehlt Schilde', () => {
+    const st = start(['sergeant', 'deserter', 'deserter']);
+    const sg = set(st, 0, 0);
+    expect(sg.row).toBe('far');
+    const d1 = set(st, 1, 2, 'far');
+    // Speerstoß von hinten, ohne erst nach vorn zu kommen
+    expect(d1.intent.kind).toBe('thrust');
+    expect(d1.intent.dmg).toBe(3);
+    st.foes[2].hp = 50;
+    st.hand = [];
+    const ev = endTurn(st);
+    expect(ev.some((e) => e.type === 'order')).toBe(true);
+    expect(st.foes[2].block).toBeGreaterThanOrEqual(2);
+    expect(d1.row).toBe('far');
+  });
+
+  it('Wer sonst hinten bleibt, kommt allein nach vorn (Schütze, Treiber, Feldwebel)', () => {
+    const st = start(['archer']);
+    const a = set(st, 0, 1);
+    expect(a.intent.kind).toBe('advance');
+    st.hand = [];
+    endTurn(st);
+    expect(a.row).toBe('near');
+  });
+
+  it('Fieberkranker: bittet um Medizin; wer gibt, beendet den Kampf als gute Tat', () => {
+    const st = start(['feverish'], { medicine: 1 });
+    const f = st.foes[0];
+    f.stunned = false;
+    f.intent = intentOf(f, st);
+    expect(f.intent.kind).toBe('plead');
+    expect(fleeCost(st)).toBe(0);
+    const ev = giveMedicine(st, f.id);
+    expect(ev[0].type).toBe('mercy');
+    expect(st.over).toBe('spared');
+    expect(st.medicine).toBe(0);
+    expect(st.usedMedicine).toBe(1);
+    expect(st.kills).toBe(0);
+  });
+
+  it('Fieberkranker: ohne Medizin oder nach einem Schlag wird er verzweifelt', () => {
+    const st = start(['feverish']);
+    const f = st.foes[0];
+    f.stunned = false;
+    f.intent = intentOf(f, st);
+    st.hand = [];
+    const hp = st.hp;
+    const ev = endTurn(st);
+    expect(st.hp).toBe(hp);
+    expect(ev.some((e) => e.type === 'despair')).toBe(true);
+    expect(['attack', 'grab']).toContain(f.intent.kind);
+    const st2 = start(['feverish']);
+    const f2 = st2.foes[0];
+    f2.stunned = false;
+    f2.intent = intentOf(f2, st2);
+    withHand(st2, 'punch');
+    const ev2 = playCard(st2, 0, f2.id);
+    expect(ev2.some((e) => e.type === 'despair')).toBe(true);
+    expect(f2.plead).toBe(0);
+  });
+
+  it('Autopilot schafft die wilden Menschen meistens (Woche-1-Ausrüstung)', () => {
+    const groups: FoeKind[][] = [['feral'], ['feral', 'feral'], ['shieldbearer', 'archer', 'thief'], ['shieldbearer', 'archer'], ['scrapper'], ['drover', 'walker'], ['sergeant', 'deserter', 'deserter'], ['feverish']];
+    for (const g of groups) {
+      let ok = 0;
+      for (let i = 0; i < 60; i++) {
+        const st = start(g, { seed: `mensch-${g.join('-')}-${i}`, weapons: [{ kind: 'crowbar', dur: 30 }, { kind: 'crossbow', dur: 24 }], medicine: 1 });
+        autopilotFight(st);
+        if (st.over === 'won' || st.over === 'spared') ok++;
+      }
+      expect(ok / 60, g.join('+')).toBeGreaterThan(0.45);
     }
   });
 });

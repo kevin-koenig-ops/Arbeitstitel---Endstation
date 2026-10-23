@@ -11,6 +11,11 @@ import type { PlayerState } from './types';
 type Raw = Record<string, unknown> & { schema?: number };
 
 const MIGRATIONS: Record<number, (s: Raw) => void> = {
+  // Version 18 -> 19: Zähler für gute Taten (Fieberkranken Medizin gegeben)
+  18: (s) => {
+    const stats = (s.stats ?? {}) as Record<string, unknown>;
+    s.stats = { ...stats, mercy: typeof stats.mercy === 'number' ? stats.mercy : 0 };
+  },
   // Version 17 -> 18: je eine Nahkampf- und Fernkampfwaffe im Kampf. Nichts gewählt = automatisch die stärkste.
   17: (s) => {
     const lo = (s.loadout ?? {}) as { pouch?: unknown; skills?: unknown };

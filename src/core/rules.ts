@@ -155,7 +155,7 @@ import { resolvePatrol } from './patrols';
 import { resolveDropSpot, zonesAt } from './worldEvents';
 import { GOALS } from './progress';
 
-export const SCHEMA_VERSION = 18;
+export const SCHEMA_VERSION = 19;
 
 /** Startausrüstung: alles gefunden und angezogen. */
 export function startGear(now: number): GearState {
@@ -199,7 +199,7 @@ export function createPlayer(playerId: string, character: Character, now: number
     sectors: {},
     base: { active: null, plots: {}, found: {} },
     blueprints: {},
-    stats: { searches: 0, kills: 0, unpacks: 0, dismantled: 0, crafted: 0, caches: 0, cooked: 0 },
+    stats: { searches: 0, kills: 0, unpacks: 0, dismantled: 0, crafted: 0, caches: 0, cooked: 0, mercy: 0 },
     goals: {},
     dig: null,
     seen: [],
@@ -724,7 +724,9 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       const roll = r();
       // Nachts kann auch der Bleiche Wächter durchs Unterholz streifen
       // Dazu Kalkköpfe auf Waldwegen und Schläfer im Gras
-      const group: FoeKind[] = night && roll < 0.25 ? ['watcher'] : roll < 0.12 ? ['brute'] : roll < 0.2 ? ['ramhead'] : roll < 0.26 ? ['sleeper'] : roll < 0.48 ? ['crawler', 'walker'] : night ? ['walker', 'walker'] : ['walker'];
+      // Tagsüber auch mal ein Verwilderter, der hier sein Revier hat
+      const group: FoeKind[] =
+        night && roll < 0.25 ? ['watcher'] : roll < 0.12 ? ['brute'] : roll < 0.2 ? ['ramhead'] : roll < 0.26 ? ['sleeper'] : roll < 0.48 ? ['crawler', 'walker'] : !night && roll > 0.88 ? ['feral'] : night ? ['walker', 'walker'] : ['walker'];
       const spot: Spot = { id: `w:${window}`, kind: 'hide', source: 'grid', pos: action.at, name: 'Unterholz' };
       state.wildAt = ctx.now;
       state.dig = null;
@@ -840,6 +842,8 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
           gain(state, items);
           const loot: Extract<GameEvent, { type: 'loot' }> = { type: 'loot', spotId: c.spot.id, items, bonus: false };
           if (c.group.includes('watcher')) watcherBonus(state, loot, ctx.now);
+          // Im Wald: Wer den Verwilderten besiegt, findet sein Lager
+          if (c.wild && c.group.includes('feral')) foeKram(state, c.group, rngFrom(ctx.worldSeed, state.playerId, 'lager', c.spot.id), loot, ['feral']);
           scavengerBonus(state, loot, c.spot);
           events.push(loot);
           break;
@@ -856,6 +860,15 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
         }
         scavengerBonus(state, loot, c.spot);
         events.push(loot, ...checkSets(state, ctx.now));
+      } else if (action.outcome === 'spared' && c.group.includes('feverish') && used > 0) {
+        // Eine gute Tat: Der Fieberkranke ist mit deiner Medizin gegangen und lässt dir etwas da
+        state.health = Math.max(1, health);
+        if (state.health < MAX_HEALTH) state.healthAt = ctx.now;
+        state.stats.mercy = (state.stats.mercy ?? 0) + 1;
+        if (c.patrol) state.patrols[c.patrol] = ctx.now;
+        const loot: Extract<GameEvent, { type: 'loot' }> = { type: 'loot', spotId: c.spot.id, items: {}, bonus: false, mercy: true };
+        foeKram(state, c.group, rngFrom(ctx.worldSeed, state.playerId, 'dank', c.patrol ?? c.spot.id), loot, ['feverish']);
+        events.push(loot);
       } else if (action.outcome === 'lost') {
         // Niedergeschlagen: alles aus dem Rucksack ist weg. Lager zu Hause, Waffen und
         // Ausrüstung bleiben. Du kommst zu Hause wieder zu dir (das zeigt die Oberfläche).
@@ -1774,11 +1787,19 @@ function patrolLoot(state: PlayerState, c: Combat, ctx: RuleContext, kills: numb
     state.packKram[kram] = (state.packKram[kram] ?? 0) + 1;
     loot.kram = kram;
   }
-  // Wirte mit eigener Beute: das Gewohnheitstier trägt, was es früher dabeihatte; der Hamsterer hat seinen Haufen
-  const extra: Partial<Record<KramId, number>> = {};
-  for (const k of new Set(c.group)) {
+  foeKram(state, c.group, r, loot);
+  return loot;
+}
+
+/**
+ * Was Gegner mit eigener Beute dabeihaben: das Gewohnheitstier, was es früher dabeihatte; der
+ * Hamsterer seinen Haufen; wilde Menschen, was in ihrem Lager liegt. only: nur diese Arten.
+ */
+function foeKram(state: PlayerState, group: FoeKind[], r: () => number, loot: Extract<GameEvent, { type: 'loot' }>, only?: FoeKind[]) {
+  const extra: Partial<Record<KramId, number>> = { ...(loot.kramMore ?? {}) };
+  for (const k of new Set(group)) {
     const fl = FOE_LOOT[k];
-    if (!fl) continue;
+    if (!fl || (only && !only.includes(k))) continue;
     for (let i = 0; i < fl.n; i++) {
       const kram = pickWeighted(r, fl.kram);
       state.packKram[kram] = (state.packKram[kram] ?? 0) + 1;
@@ -1786,7 +1807,6 @@ function patrolLoot(state: PlayerState, c: Combat, ctx: RuleContext, kills: numb
     }
   }
   if (Object.keys(extra).length) loot.kramMore = extra;
-  return loot;
 }
 
 function pruneSpots(state: PlayerState, now: number) {

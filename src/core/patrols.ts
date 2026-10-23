@@ -13,7 +13,7 @@
 // Gewohnheitstiere laufen jeden Tag zur selben Sonnenzeit dieselbe Runde (gleicher Startpunkt,
 // gleiche Strecke). Bei Frost sind manche Wandler erstarrt.
 
-import { HABIT, PATROL, REGIONS, WORLD_EVENT } from './content';
+import { FOE_TIME, HABIT, PATROL, REGIONS, WORLD_EVENT } from './content';
 import { fromTile, offsetM, toTile, distanceM } from './geo';
 import { pickWeighted, rngFrom } from './rng';
 import type { FoeKind, LatLon, RegionId, WorldEvent } from './types';
@@ -41,6 +41,7 @@ export interface PatrolPlan {
 
 /**
  * Wer zu diesem Trupp gehört: passend zur Gegend, nachts manchmal der Bleiche Wächter allein.
+ * Wilde Menschen nur zu ihrer Tageszeit (Wegelagerer tagsüber, Kalkjünger nachts).
  * frost: Bei Frost ist ein Teil der Wandler erstarrt.
  */
 export function patrolGroup(seed: string, id: string, night: boolean, region: RegionId, frost = false): FoeKind[] {
@@ -53,7 +54,11 @@ export function patrolGroup(seed: string, id: string, night: boolean, region: Re
   } else if (night && rngFrom(seed, 'trupp-waechter', id)() < PATROL.watcherChance) {
     // Eigener Zufall für den Wächter: Tag und Nacht ändern sonst die ganze Gruppe
     return ['watcher'];
-  } else g = [...pickWeighted(rngFrom(seed, 'trupp-gruppe', id), REGIONS[region].groups)];
+  } else {
+    g = [...pickWeighted(rngFrom(seed, 'trupp-gruppe', id), REGIONS[region].groups)];
+    // Wegelagerer nur tagsüber, Kalkjünger nur nachts: sonst die häufigste Gruppe der Gegend
+    if (g.some((k) => FOE_TIME[k] && FOE_TIME[k] !== (night ? 'night' : 'day'))) g = [...REGIONS[region].groups[0][0]];
+  }
   if (!frost) return g;
   // Eigener Zufall für den Frost, damit sich sonst nichts ändert
   const r = rngFrom(seed, 'trupp-frost', id);

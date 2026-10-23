@@ -71,6 +71,18 @@ const GROUPS: FoeKind[][] = [
   ['frozen', 'frozen'],
   ['hoarder'],
   ['bellower', 'walker', 'walker'],
+  // Wilde Menschen (Welle 2)
+  ['feral'],
+  ['feral', 'feral'],
+  ['shieldbearer', 'archer'],
+  ['shieldbearer', 'archer', 'thief'],
+  ['scrapper'],
+  ['drover', 'walker'],
+  ['drover', 'walker', 'walker'],
+  ['sergeant', 'deserter'],
+  ['sergeant', 'deserter', 'deserter'],
+  ['deserter', 'deserter'],
+  ['feverish'],
 ];
 
 const NAMES: Record<FoeKind, string> = {
@@ -87,6 +99,15 @@ const NAMES: Record<FoeKind, string> = {
   frozen: 'Erstarrter',
   hoarder: 'Hamsterer',
   bellower: 'Brüller',
+  feral: 'Verwilderter',
+  shieldbearer: 'Schildträger',
+  archer: 'Armbrustschütze',
+  thief: 'Langfinger',
+  scrapper: 'Schrotter',
+  drover: 'Treiber',
+  deserter: 'Deserteur',
+  sergeant: 'Feldwebel',
+  feverish: 'Fieberkranker',
 };
 const groupName = (g: FoeKind[]) => g.map((k) => NAMES[k]).join(' + ');
 const pct = (x: number) => `${Math.round(x * 100)} %`;
@@ -129,7 +150,7 @@ console.log('Je Feld: Siege · Gesundheit verloren (Ø, von 10) · Runden (Ø)\n
       let rounds = 0;
       for (let i = 0; i < N_FIGHT; i++) {
         const st = fight(stage, g, `lab|${stage.name}|${g.join('-')}|${i}`, { hp: MAX_HEALTH, medicine: stage.medicine, pouch: { ...stage.pouch } }, { pouch: POUCH, fleeAt: null });
-        if (st.over === 'won') won++;
+        if (st.over === 'won' || st.over === 'spared') won++;
         lost += MAX_HEALTH - st.hp;
         rounds += st.turn;
       }

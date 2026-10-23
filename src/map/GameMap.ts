@@ -16,7 +16,7 @@ import { hasOptionalTexture, loadTextures, patternImage, textureColor } from './
 import { seasonMonth, type Season } from '../services/settings';
 import { buildStyle, DECOR_MINZOOM, loadRealSource } from './style';
 import type { WalkInput } from './walkNet';
-import type { HintKind } from '../core/content';
+import { FOE_TACTICS, type HintKind } from '../core/content';
 import type { TreeLayer } from './treeLayer';
 
 /** Umkreis der Detail-Ebene. Dahinter liegt ohnehin Nebel. */
@@ -577,7 +577,7 @@ export class GameMap {
       seen.add(p.id);
       let m = this.patrolMarkers.get(p.id);
       if (!m) {
-        const el = h('button', { class: 'patrol', type: 'button', 'data-id': p.id }, h('span', { class: 'patrol-badge' }, svgEl(icon(p.group.includes('watcher') ? 'eye' : p.group.includes('habit') ? 'clock' : 'patrol', 18)), h('b', null, String(p.group.length))), h('span', { class: 'patrol-alert', 'aria-hidden': 'true' }));
+        const el = h('button', { class: 'patrol', type: 'button', 'data-id': p.id }, h('span', { class: 'patrol-badge' }, svgEl(icon(p.group.includes('watcher') ? 'eye' : p.group.includes('habit') ? 'clock' : p.group.includes('feverish') ? 'hands' : p.group.some((k) => FOE_TACTICS[k].human) ? 'flag' : 'patrol', 18)), h('b', null, String(p.group.length))), h('span', { class: 'patrol-alert', 'aria-hidden': 'true' }));
         el.addEventListener('click', (ev) => {
           ev.stopPropagation();
           this.lastMarkerTap = Date.now();

@@ -1532,7 +1532,25 @@ export type IntentKind =
   | 'reel' // Kalkkopf: taumelt nach dem Stoß, der Kalkhelm hilft nicht
   | 'hurl' // Hüne: packt und wirft dich (nächste Runde 1 Kraft weniger)
   | 'guard' // Hamsterer: hockt auf seinem Haufen (Abwehr)
-  | 'roar'; // Brüller: Gebrüll, die anderen schlagen härter
+  | 'roar' // Brüller: Gebrüll, die anderen schlagen härter
+  // Wilde Menschen (Welle 2)
+  | 'sling' // Verwilderter: Schleuder aus dem Gebüsch (trifft auch von hinten)
+  | 'snare' // Verwilderter: Schlinge auf dem Weg (nächste Runde 1 Kraft weniger)
+  | 'retreat' // Verwilderter: zurück ins Dickicht (nach hinten, Abwehr)
+  | 'shield' // Schildträger, Deserteur: Schild hoch (Abwehr)
+  | 'aim' // Armbrustschütze: legt an
+  | 'shot' // Armbrustschütze: Schuss (ein Treffer vorher verzieht ihn)
+  | 'reload' // Armbrustschütze: lädt nach
+  | 'steal' // Langfinger: greift nach deiner Medizin
+  | 'escape' // Langfinger: rennt mit der Beute davon
+  | 'net' // Schrotter: wirft ein Netz (nächste Runde kein Ausweichen)
+  | 'light' // Schrotter: zündet eine Brandflasche an
+  | 'firebomb' // Schrotter: wirft die Brandflasche (du brennst)
+  | 'unleash' // Treiber: lässt einen angeketteten Wandler los
+  | 'preach' // Treiber: Predigt, die Wandler schlagen härter
+  | 'order' // Feldwebel: „Schilde hoch!“ (alle anderen Abwehr)
+  | 'thrust' // Deserteur, Feldwebel: Speerstoß (reicht auch aus der zweiten Reihe)
+  | 'plead'; // Fieberkranker: bittet um Medizin
 
 export interface FoeTactic {
   name: string;
@@ -1557,6 +1575,12 @@ export interface FoeTactic {
   aura?: number;
   /** Fällt er, laufen die anderen planlos auseinander (setzen eine Runde aus). */
   scatter?: boolean;
+  /** Ein Mensch (wilde Menschen): kein Blut, wer fällt, sinkt zu Boden. */
+  human?: boolean;
+  /** Fängt hinten an, im Gebüsch (Verwilderter). */
+  startFar?: boolean;
+  /** Bittet erst so viele Runden um Medizin (Fieberkranker). */
+  pleads?: number;
 }
 
 /** Regeln der Wirte aus dem Bestiarium. */
@@ -1567,6 +1591,16 @@ export const FOE_RULES = {
   thawed: 2,
   /** Nach dem Gebrüll des Brüllers: der nächste Angriff der anderen macht so viel mehr. */
   roused: 1,
+  /** Brandflasche des Schrotters: so viel Schaden am Ende deiner nächsten Runde, wenn du nicht löschst. */
+  burning: 2,
+  /** „Schilde hoch!“ des Feldwebels: so viel Abwehr für jeden anderen. */
+  order: 2,
+  /** So oft lässt der Treiber höchstens einen Wandler von der Kette. */
+  unleash: 2,
+  /** Im Netz des Schrotters gehen diese Karten nicht (Ausweichen, Rolle, Deckung). */
+  netBlocks: ['dodge', 'roll', 'cover'] as CardId[],
+  /** Diese Karten löschen dich, wenn du brennst (abrollen oder Feuerlöscher). */
+  douse: ['dodge', 'roll', 'foam', 'extbash'] as CardId[],
 };
 
 export const FOE_TACTICS: Record<FoeKind, FoeTactic> = {
@@ -1671,6 +1705,86 @@ export const FOE_TACTICS: Record<FoeKind, FoeTactic> = {
     pattern: [{ kind: 'howl' }, { kind: 'attack', dmg: 2 }, { kind: 'roar' }],
     desc: 'Ein alter Heuler mit riesigem Brustkorb. Bleibt hinten, ruft Wandler und brüllt: Danach schlägt jeder andere beim nächsten Angriff 1 stärker zu. Still-Karten bringen ihn zum Schweigen.',
   },
+  // --- Wilde Menschen (Welle 2): nicht krank, aber gefährlich. Sie kämpfen klug, ohne Blut ---
+  feral: {
+    name: 'Verwilderter',
+    hp: 9,
+    armor: 0,
+    human: true,
+    startFar: true,
+    pattern: [{ kind: 'sling', dmg: 3 }, { kind: 'snare' }, { kind: 'attack', dmg: 4 }, { kind: 'retreat' }],
+    desc: 'Lebt seit Jahren allein im Wald und spricht kaum noch. Schießt mit der Schleuder aus dem Gebüsch, legt Schlingen (nächste Runde 1 Kraft weniger), kommt kurz nach vorn und verschwindet wieder im Dickicht. Würfe treffen ihn auch hinten, Fallen erwischen ihn, wenn er vorkommt. Wer gewinnt, findet sein Lager.',
+  },
+  shieldbearer: {
+    name: 'Schildträger',
+    hp: 12,
+    armor: 0,
+    human: true,
+    pattern: [{ kind: 'shield', block: 4 }, { kind: 'attack', dmg: 3 }, { kind: 'attack', dmg: 3 }],
+    desc: 'Wegelagerer mit einem Schild aus Brettern. Hält vorne die Stellung, damit die anderen in Ruhe arbeiten können. Hebt er den Schild, fängt er 4 Schaden ab.',
+  },
+  archer: {
+    name: 'Armbrustschütze',
+    hp: 6,
+    armor: 0,
+    human: true,
+    stayBack: true,
+    pattern: [{ kind: 'aim' }, { kind: 'shot', dmg: 5 }, { kind: 'reload' }],
+    desc: 'Bleibt hinten, legt an und schießt: 5 Schaden. Trifft ihn vorher irgendetwas, verzieht er und muss neu anlegen. Rauch oder Blendung lassen den Schuss danebengehen. Den Schützen zuerst! Allein kommt er nach vorn.',
+  },
+  thief: {
+    name: 'Langfinger',
+    hp: 6,
+    armor: 0,
+    human: true,
+    pattern: [{ kind: 'steal' }, { kind: 'escape' }, { kind: 'attack', dmg: 2 }],
+    desc: 'Schnell und dünn. Greift nach deiner Medizin und rennt damit weg. Erwischst du ihn vorher, bekommst du sie zurück. Verlangsamt oder betäubt kommt er nicht weg.',
+  },
+  scrapper: {
+    name: 'Schrotter',
+    hp: 14,
+    armor: 2,
+    human: true,
+    pattern: [{ kind: 'attack', dmg: 3 }, { kind: 'net' }, { kind: 'light' }, { kind: 'firebomb', dmg: 4 }],
+    desc: 'Birgt nur noch für sich. Rüstung aus Verkehrsschildern und Reifen (Rüstung 2): Schwere Waffen und Nägel helfen. Wirft ein Netz (nächste Runde kein Ausweichen) und eine Brandflasche (4 Schaden, danach brennst du: 2 Schaden, außer du rollst dich ab oder löschst). Zündet er sie an, unterbricht ein Tritt.',
+  },
+  drover: {
+    name: 'Treiber',
+    hp: 9,
+    armor: 0,
+    human: true,
+    stayBack: true,
+    scatter: true,
+    pattern: [{ kind: 'unleash' }, { kind: 'preach' }, { kind: 'attack', dmg: 2 }],
+    desc: 'Ein Kalkjünger mit weiß geschminktem Gesicht. Die Sekte hält das Weinen für eine Läuterung. Er bleibt hinten, lässt angekettete Wandler los und predigt: Dann schlagen sie härter. Ein Steinwurf bringt ihn zum Schweigen. Fällt er, stehen die Wandler planlos herum. Allein kommt er nach vorn.',
+  },
+  deserter: {
+    name: 'Deserteur',
+    hp: 9,
+    armor: 1,
+    human: true,
+    pattern: [{ kind: 'shield', block: 3 }, { kind: 'thrust', dmg: 2 }, { kind: 'thrust', dmg: 3 }],
+    desc: 'Rest einer Einheit aus dem Krieg: ohne Munition, aber diszipliniert. Schild und Speer (Rüstung 1). Der Speer reicht auch aus der zweiten Reihe.',
+  },
+  sergeant: {
+    name: 'Feldwebel',
+    hp: 8,
+    armor: 0,
+    human: true,
+    stayBack: true,
+    scatter: true,
+    pattern: [{ kind: 'order' }, { kind: 'thrust', dmg: 2 }],
+    desc: 'Führt die Deserteure von hinten. Auf sein Kommando gehen die Schilde hoch. Würfe gehen über den Schildwall. Fällt er, bricht die Formation. Allein kommt er nach vorn.',
+  },
+  feverish: {
+    name: 'Fieberkranker',
+    hp: 8,
+    armor: 0,
+    human: true,
+    pleads: 1,
+    pattern: [{ kind: 'attack', dmg: 3 }, { kind: 'grab', dmg: 2 }, { kind: 'attack', dmg: 4 }],
+    desc: 'Erstes Stadium: Er denkt noch klar und weiß, was mit ihm passiert. Er bittet um Medizin. Gibst du ihm eine, geht er (eine gute Tat). Sonst greift er verzweifelt an. Medizin geben geht auch später noch.',
+  },
 };
 
 /** Was Wirte dabeihaben (zusätzlich zur Beute des Trupps). */
@@ -1679,6 +1793,17 @@ export const FOE_LOOT: Partial<Record<FoeKind, { kram: readonly (readonly [KramI
   habit: { kram: [['keyring', 3], ['wallet', 2], ['lunchbox', 2], ['thermos', 2], ['umbrella', 1], ['readingGlasses', 1], ['magazines', 1]], n: 1 },
   // Sein ganzer Haufen
   hoarder: { kram: [['tinCans', 2], ['radio', 1], ['toaster', 1], ['gardenGnome', 1], ['cuckooClock', 1], ['magazines', 2], ['boardGame', 1], ['snowGlobe', 1], ['batteries', 2], ['candles', 2], ['photoAlbum', 1]], n: 3 },
+  // Wilde Menschen: was in ihrem Lager liegt
+  feral: { kram: [['rope', 3], ['tarp', 2], ['blanket', 2], ['mousetrap', 2], ['candles', 2], ['cookingPot', 1], ['lantern', 1], ['binoculars', 1]], n: 2 },
+  shieldbearer: { kram: [['gasCan', 2], ['jack', 1], ['jumperCables', 1], ['carRadio', 1], ['handbag', 2], ['wallet', 2]], n: 1 },
+  archer: { kram: [['binoculars', 1], ['roadAtlas', 2], ['thermos', 1], ['flashlight', 1]], n: 1 },
+  thief: { kram: [['handbag', 2], ['wallet', 3], ['keyring', 2], ['brokenPhone', 1], ['readingGlasses', 1]], n: 1 },
+  scrapper: { kram: [['hubcap', 2], ['licensePlate', 2], ['trafficCone', 1], ['warningTriangle', 1], ['copperWire', 2], ['carBattery', 1], ['spareTire', 1]], n: 2 },
+  drover: { kram: [['candles', 3], ['padlock', 2], ['rope', 2], ['blanket', 1]], n: 1 },
+  deserter: { kram: [['gasMask', 1], ['flashlight', 2], ['firstAidKit', 1], ['batteries', 2], ['thermos', 1]], n: 1 },
+  sergeant: { kram: [['binoculars', 2], ['roadAtlas', 2], ['radio', 1], ['flashlight', 1]], n: 1 },
+  // Was der Fieberkranke dir zum Dank dalässt
+  feverish: { kram: [['photoAlbum', 2], ['readingGlasses', 1], ['thermos', 1], ['umbrella', 1], ['magazines', 1], ['candles', 1]], n: 1 },
 };
 
 /**
@@ -1786,6 +1911,12 @@ export const REGIONS: Record<RegionId, RegionDef> = {
       [['giant'], 8],
       [['leader', 'walker', 'walker'], 8],
       [['hoarder'], 5],
+      // Wilde Menschen
+      [['scrapper'], 8],
+      [['scrapper', 'scrapper'], 3],
+      [['sergeant', 'deserter', 'deserter'], 5],
+      [['thief', 'shieldbearer'], 3],
+      [['feverish'], 3],
     ],
   },
   town: {
@@ -1805,6 +1936,12 @@ export const REGIONS: Record<RegionId, RegionDef> = {
       [['hoarder'], 6],
       [['sleeper', 'walker'], 5],
       [['giant'], 4],
+      [['shieldbearer', 'archer', 'thief'], 6],
+      [['shieldbearer', 'archer'], 5],
+      [['sergeant', 'deserter', 'deserter'], 4],
+      [['deserter', 'deserter'], 3],
+      [['drover', 'walker'], 3],
+      [['feverish'], 3],
     ],
   },
   village: {
@@ -1822,6 +1959,11 @@ export const REGIONS: Record<RegionId, RegionDef> = {
       [['leader', 'walker', 'walker'], 10],
       [['hoarder'], 6],
       [['ramhead'], 6],
+      [['shieldbearer', 'archer'], 5],
+      [['shieldbearer', 'thief'], 4],
+      [['drover', 'walker'], 6],
+      [['drover', 'walker', 'walker'], 3],
+      [['feverish'], 3],
     ],
   },
   wild: {
@@ -1838,6 +1980,9 @@ export const REGIONS: Record<RegionId, RegionDef> = {
       [['ramhead'], 10],
       [['sleeper', 'crawler'], 8],
       [['leader', 'walker', 'walker'], 6],
+      [['feral'], 12],
+      [['feral', 'feral'], 6],
+      [['feverish'], 2],
     ],
   },
   mountain: {
@@ -1853,6 +1998,9 @@ export const REGIONS: Record<RegionId, RegionDef> = {
       [['walker', 'crawler'], 25],
       [['ramhead'], 12],
       [['giant'], 8],
+      [['drover', 'walker', 'walker'], 7],
+      [['feral'], 6],
+      [['feverish'], 2],
     ],
   },
   coast: {
@@ -1867,6 +2015,9 @@ export const REGIONS: Record<RegionId, RegionDef> = {
       [['crawler', 'walker'], 30],
       [['sleeper'], 8],
       [['leader', 'walker', 'walker'], 8],
+      [['sergeant', 'deserter'], 5],
+      [['shieldbearer', 'archer'], 4],
+      [['feverish'], 3],
     ],
   },
   desert: {
@@ -1883,6 +2034,9 @@ export const REGIONS: Record<RegionId, RegionDef> = {
       [['crawler', 'crawler'], 20],
       [['sleeper'], 15],
       [['giant'], 8],
+      [['shieldbearer', 'archer', 'thief'], 7],
+      [['scrapper'], 4],
+      [['feverish'], 2],
     ],
   },
   snow: {
@@ -1898,9 +2052,19 @@ export const REGIONS: Record<RegionId, RegionDef> = {
       [['walker', 'walker'], 40],
       [['frozen', 'frozen'], 25],
       [['frozen', 'walker'], 20],
+      [['feral'], 6],
+      [['deserter', 'deserter'], 4],
+      [['feverish'], 2],
     ],
   },
 };
+
+/**
+ * Wer nur tagsüber oder nur nachts unterwegs ist: Wegelagerer lauern tagsüber an den Straßen,
+ * die Kalkjünger ziehen nachts los. Zur falschen Tageszeit ist dort stattdessen die häufigste
+ * Gruppe der Gegend unterwegs (so ändert sich sonst nichts an den Trupps).
+ */
+export const FOE_TIME: Partial<Record<FoeKind, 'day' | 'night'>> = { shieldbearer: 'day', archer: 'day', thief: 'day', drover: 'night' };
 export const REGION_ORDER = Object.keys(REGIONS) as RegionId[];
 
 // --- Trupps -------------------------------------------------------------------------------

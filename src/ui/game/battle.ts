@@ -8,11 +8,11 @@
 // Die Regeln stehen in core/tactics.ts; hier wird nur angezeigt und abgespielt.
 
 import { WORLD_SEED } from '../../config';
-import { CARDS, DEVICE_NAMES, styleOf, CLIMATE, FOE_TACTICS, KRAM, KRAM_ORDER, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, TACTICS, WEAPONS, type CardId, gearArmor, gearSum } from '../../core/content';
+import { CARDS, DEVICE_NAMES, styleOf, CLIMATE, FOE_RULES, FOE_TACTICS, KRAM, KRAM_ORDER, MAX_HEALTH, RESOURCE_ORDER, RESOURCES, TACTICS, WEAPONS, type CardId, gearArmor, gearSum } from '../../core/content';
 import { isCold, isHot } from '../../core/terrain';
 import { seasonOf } from '../../services/settings';
 import { currentRegion } from './worldState';
-import { aliveFoes, canHowl, createTactics, endTurn, flee, fleeCost, foeById, lacksMedicine, playable, playCard, playPouch, targetsFor, type Intent, type TacticsState, type TEvent, type TFoe } from '../../core/tactics';
+import { aliveFoes, canHowl, createTactics, endTurn, flee, fleeCost, foeById, giveMedicine, lacksMedicine, mercyTarget, playable, playCard, playPouch, targetsFor, type Intent, type TacticsState, type TEvent, type TFoe } from '../../core/tactics';
 import { battleWeapons, bestWeapon, cardKit, currentHealth } from '../../core/rules';
 import { artUrl, CARD_ICON, cardEffect, styleMark } from '../cards';
 import type { DayPhase } from '../../core/sun';
@@ -26,7 +26,7 @@ import type { ShownFoe, TacticsScene } from '../../base/CombatScene';
 import { artStyle } from '../art';
 
 export interface CombatEnd {
-  outcome: 'won' | 'lost' | 'fled';
+  outcome: 'won' | 'lost' | 'fled' | 'spared';
   spot: Spot;
   enemy: EnemyId;
   loot?: Extract<GameEvent, { type: 'loot' }>;
@@ -67,10 +67,28 @@ const INTENT: Record<Intent['kind'], { icon: string; label: string; tone: string
   hurl: { icon: 'smash', label: 'Packt und wirft', tone: 'worst' },
   guard: { icon: 'shield', label: 'Hockt auf dem Haufen', tone: 'calm' },
   roar: { icon: 'howl', label: 'Brüllt', tone: 'warn' },
+  // Wilde Menschen
+  sling: { icon: 'throwStone', label: 'Schleuder', tone: 'bad' },
+  snare: { icon: 'tripwire', label: 'Legt eine Schlinge', tone: 'grab' },
+  retreat: { icon: 'hidden', label: 'Ins Dickicht', tone: 'calm' },
+  shield: { icon: 'shield', label: 'Schild hoch', tone: 'calm' },
+  aim: { icon: 'aim', label: 'Legt an', tone: 'warn' },
+  shot: { icon: 'bolt', label: 'Schuss', tone: 'worst' },
+  reload: { icon: 'clock', label: 'Lädt nach', tone: 'calm' },
+  steal: { icon: 'hands', label: 'Greift nach Medizin', tone: 'grab' },
+  escape: { icon: 'flee', label: 'Will abhauen', tone: 'warn' },
+  net: { icon: 'fence', label: 'Wirft ein Netz', tone: 'grab' },
+  light: { icon: 'flame', label: 'Zündet Brandflasche', tone: 'warn' },
+  firebomb: { icon: 'molotov', label: 'Brandflasche', tone: 'worst' },
+  unleash: { icon: 'advance', label: 'Lässt einen los', tone: 'warn' },
+  preach: { icon: 'howl', label: 'Predigt', tone: 'warn' },
+  order: { icon: 'flag', label: 'Schilde hoch!', tone: 'calm' },
+  thrust: { icon: 'sword', label: 'Speerstoß', tone: 'bad' },
+  plead: { icon: 'hands', label: 'Bittet um Medizin', tone: 'calm' },
 };
 
-/** Schwere Schläge, vor denen er ausgeholt hat (Figur mit erhobenen Armen). */
-const RAISED = new Set(['smash', 'ram', 'hurl']);
+/** Schwere Schläge, vor denen er ausgeholt oder angelegt hat (Figur mit erhobenen Armen). */
+const RAISED = new Set(['smash', 'ram', 'hurl', 'shot', 'firebomb']);
 
 /** Der Teil des Zustands, den man sieht (hinkt beim Abspielen der Gegnerzüge kurz hinterher). */
 interface Shown {
@@ -120,7 +138,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     shown.hp = st.hp;
     shown.block = st.block;
     for (const f of st.foes) {
-      shown.foes.set(f.id, { id: f.id, kind: f.kind, row: f.row, alive: f.hp > 0, stunned: f.stunned, raised: RAISED.has(f.intent.kind), still: stillOf(f), hp: f.hp, maxHp: f.maxHp, block: f.block, intent: f.intent, acted: false });
+      shown.foes.set(f.id, { id: f.id, kind: f.kind, row: f.row, alive: f.hp > 0, gone: f.gone, stunned: f.stunned, raised: RAISED.has(f.intent.kind), still: stillOf(f), hp: f.hp, maxHp: f.maxHp, block: f.block, intent: f.intent, acted: false });
     }
   };
   syncShown();
@@ -136,13 +154,16 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
   const meMomentum = h('span', { class: 't-focus t-momentum', hidden: true, title: 'Schwung für den nächsten Angriff' });
   const meStance = h('span', { class: 't-focus t-stance', hidden: true });
   const meOver = h('span', { class: 't-focus t-momentum', hidden: true, title: 'Mit voller Wucht: nächster Waffenschlag' });
+  const meBurn = h('span', { class: 't-focus t-burn', hidden: true, title: 'Du brennst: Ausweichen oder Feuerlöscher löschen' });
+  const meNet = h('span', { class: 't-focus t-net', hidden: true, title: 'Im Netz: diese Runde kein Ausweichen' });
+  const mercyBtn = h('button', { class: 'btn small t-mercy', type: 'button', hidden: true }, svgEl(resIcon('medicine', 16)), 'Medizin geben');
   const meDevices = h('span', { class: 't-devices' });
   const weaponLine = h('small', { class: 't-weapon' });
   const meFrame = h(
     'div',
     { class: 'battle-me' },
     faceEl(s0.character.look, 44, 'battle-face'),
-    h('div', { class: 'battle-me-main' }, h('b', null, s0.character.name, meBlock, meFocus, meTrap, meMomentum, meOver, meStance), meDevices, h('div', { class: 'bar me' }, meHp, meHpText), weaponLine),
+    h('div', { class: 'battle-me-main' }, h('b', null, s0.character.name, meBlock, meFocus, meTrap, meMomentum, meOver, meStance, meBurn, meNet), meDevices, h('div', { class: 'bar me' }, meHp, meHpText), weaponLine),
   );
   const fleeBtn = h('button', { class: 'btn ghost small battle-flee', type: 'button' }, svgEl(icon('flee', 16)), 'Fliehen');
   const helpBtn = h('button', { class: 'iconbtn small t-help-btn', type: 'button', 'aria-label': 'So geht der Kampf' }, '?');
@@ -164,7 +185,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     floats,
     h('div', { class: 'battle-top' }, meFrame, h('div', { class: 't-top-right' }, helpBtn, fleeBtn)),
     callout,
-    h('div', { class: 't-bottom' }, h('div', { class: 't-bar' }, energyEl, info, pileEl, endBtn), pouchEl, handEl),
+    h('div', { class: 't-bottom' }, h('div', { class: 't-bar' }, energyEl, info, mercyBtn, pileEl, endBtn), pouchEl, handEl),
     loading,
   );
   host.append(el);
@@ -249,6 +270,18 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     if (foes.some((f) => f.intent.kind === 'routine')) return 'Er geht nur seiner Wege. Willst du ihn stören? Der erste Schlag ist frei, danach wird er wütend.';
     if (foes.some((f) => FOE_TACTICS[f.kind].aura)) return 'Der Leithammel treibt die anderen an (1 Schaden mehr). Fällt er, laufen sie auseinander.';
     if (foes.some((f) => f.kind === 'bellower')) return 'Der Brüller ruft Verstärkung und brüllt die anderen stark. Steinwurf bringt ihn zum Schweigen.';
+    // Wilde Menschen
+    if (st.burning > 0) return `Du brennst! Ausweichen (abrollen) oder Feuerlöscher löscht, sonst ${st.burning} Schaden am Rundenende.`;
+    if (st.netted > 0) return 'Im Netz: Diese Runde geht Ausweichen nicht.';
+    if (foes.some((f) => f.intent.kind === 'plead')) return st.medicine > 0 ? 'Er bittet um Medizin. Gibst du ihm eine, geht er. Schlägst du zu, wehrt er sich verzweifelt.' : 'Er bittet um Medizin, aber du hast keine dabei.';
+    if (foes.some((f) => f.intent.kind === 'shot')) return 'Der Schütze hat angelegt! Ein Treffer verzieht ihn, Rauch oder Blendung lassen ihn danebenschießen.';
+    if (foes.some((f) => f.intent.kind === 'escape')) return 'Der Langfinger will mit deiner Medizin abhauen! Erwischst du ihn, bekommst du sie zurück.';
+    if (foes.some((f) => f.intent.kind === 'steal')) return 'Der Langfinger greift nach deiner Medizin.';
+    if (foes.some((f) => f.intent.kind === 'light' || f.intent.kind === 'firebomb')) return 'Der Schrotter zündet eine Brandflasche an! Ein Tritt unterbricht ihn, Ausweichen fängt ab.';
+    if (foes.some((f) => f.kind === 'drover')) return 'Der Treiber lässt Wandler von der Kette und predigt. Erst ihn, dann stehen sie planlos herum. Steinwurf bringt ihn zum Schweigen.';
+    if (foes.some((f) => f.kind === 'sergeant')) return 'Der Feldwebel führt von hinten. Würfe gehen über den Schildwall. Fällt er, bricht die Formation.';
+    if (foes.some((f) => f.kind === 'feral')) return 'Der Verwilderte schießt aus dem Gebüsch. Würfe treffen ihn hinten, vorne erwischst du ihn nur kurz.';
+    if (foes.some((f) => f.kind === 'scrapper')) return 'Der Schrotter trägt Rüstung aus Schildern und Reifen: Schwere Schläge und Nägel helfen.';
     if (st.turn === 1 && mood && foes.some((f) => f.kind === 'walker')) return mood === 'strong' ? 'Nacht, Nebel oder Regen: Die Wandler sind zäher als sonst.' : 'Pralle Sonne: Die Wandler sind träge.';
     if (foes.some((f) => f.kind === 'screamer')) return 'Der Heuler ruft Verstärkung. Erst ihn ausschalten, mit Wurf oder Bolzen.';
     if (st.energy === 0) return 'Keine Kraft mehr: Runde beenden.';
@@ -288,6 +321,10 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     if (def.perTurn && (st.turnPlays[card] ?? 0) >= def.perTurn) {
       if (btn) shake(btn);
       return setInfo(`${def.name}: nur einmal pro Runde.`);
+    }
+    if (st.netted > 0 && FOE_RULES.netBlocks.includes(card)) {
+      if (btn) shake(btn);
+      return setInfo('Im Netz: Diese Runde kannst du nicht ausweichen.');
     }
     if (def.target === 'self') return void doPlay(sel);
     const options = targetsFor(st, card);
@@ -625,7 +662,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           if (nf) shown.foes.set(nf.id, { id: nf.id, kind: nf.kind, row: 'far', alive: nf.hp > 0, stunned: false, raised: false, hp: nf.hp, maxHp: nf.maxHp, block: 0, intent: nf.intent, acted: true });
           scene?.howl(e.by);
           scene?.setFoes(shownList(), [e.id]);
-          say('Der Heuler ruft einen Wandler!', 'bad');
+          say(by?.kind === 'drover' ? 'Der Treiber lässt einen Wandler von der Kette!' : 'Der Heuler ruft einen Wandler!', 'bad');
           vibrate([20, 30, 20, 30, 20]);
           await wait(800);
           break;
@@ -699,6 +736,159 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           floatAt(-1, 'Benommen! −1 Karte', 'hurt');
           await wait(260);
           break;
+        // --- Wilde Menschen ---
+        case 'snared': {
+          const f = sfoe(e.by);
+          if (f) f.acted = true;
+          floatAt(-1, 'Schlinge! −1 Kraft', 'hurt');
+          vibrate(40);
+          await wait(420);
+          break;
+        }
+        case 'retreat': {
+          const f = sfoe(e.id);
+          if (f) {
+            f.acted = true;
+            f.row = 'far';
+            f.block = 2;
+          }
+          scene?.setFoes(shownList());
+          floatAt(e.id, e.hidden ? 'Versteckt sich' : 'Zurück ins Dickicht', 'miss');
+          await wait(460);
+          break;
+        }
+        case 'shield': {
+          const f = sfoe(e.id);
+          if (f) {
+            f.acted = true;
+            f.block = e.block;
+          }
+          floatAt(e.id, `Schild hoch (${e.block})`, 'miss');
+          await wait(360);
+          break;
+        }
+        case 'aim': {
+          const f = sfoe(e.id);
+          if (f) {
+            f.acted = true;
+            f.raised = true;
+          }
+          scene?.setFoes(shownList());
+          floatAt(e.id, 'Legt an …', 'crit');
+          await wait(420);
+          break;
+        }
+        case 'flinch': {
+          const f = sfoe(e.id);
+          if (f) {
+            f.raised = false;
+            f.intent = foeById(st, e.id)?.intent ?? f.intent;
+          }
+          scene?.setFoes(shownList());
+          floatAt(e.id, 'Verzogen!', 'power');
+          await wait(300);
+          break;
+        }
+        case 'steal': {
+          const f = sfoe(e.by);
+          if (f) f.acted = true;
+          say('Der Langfinger schnappt sich eine Medizin!', 'bad');
+          floatAt(-1, '−1 Medizin', 'hurt');
+          vibrate([20, 20, 40]);
+          await wait(600);
+          break;
+        }
+        case 'escape': {
+          const f = sfoe(e.id);
+          if (f) {
+            f.acted = true;
+            f.alive = false;
+            f.gone = true;
+          }
+          scene?.setFoes(shownList());
+          say(e.loot > 0 ? `Weg ist er, mit ${e.loot === 1 ? 'einer Medizin' : `${e.loot} Medizin`}.` : 'Er rennt davon.', 'bad', 1800);
+          await wait(700);
+          break;
+        }
+        case 'recovered':
+          say(e.amount === 1 ? 'Deine Medizin ist wieder da!' : `${e.amount} Medizin wieder da!`, 'good');
+          await wait(400);
+          break;
+        case 'netted': {
+          const f = sfoe(e.by);
+          if (f) f.acted = true;
+          scene?.blocked(e.by);
+          floatAt(-1, 'Im Netz! Kein Ausweichen', 'hurt');
+          vibrate(50);
+          await wait(560);
+          break;
+        }
+        case 'light': {
+          const f = sfoe(e.id);
+          if (f) {
+            f.acted = true;
+            f.raised = true;
+          }
+          scene?.setFoes(shownList());
+          floatAt(e.id, 'Zündet die Flasche an!', 'crit');
+          await wait(480);
+          break;
+        }
+        case 'aflame':
+          fx('fire');
+          floatAt(-1, 'Du brennst!', 'hurt');
+          await wait(400);
+          break;
+        case 'scorched':
+          shown.hp = Math.max(0, shown.hp - e.dmg);
+          fx('fire');
+          floatAt(-1, `Verbrannt −${e.dmg}`, 'hurt');
+          el.classList.remove('hurt');
+          void el.offsetWidth;
+          el.classList.add('hurt');
+          vibrate(50);
+          renderHud();
+          await wait(500);
+          break;
+        case 'doused':
+          floatAt(-1, 'Gelöscht', 'miss');
+          await wait(200);
+          break;
+        case 'preach': {
+          const f = sfoe(e.by);
+          if (f) f.acted = true;
+          scene?.howl(e.by);
+          say('Er predigt: Die Wandler schlagen härter zu.', 'bad');
+          await wait(700);
+          break;
+        }
+        case 'order': {
+          const f = sfoe(e.by);
+          if (f) f.acted = true;
+          for (const x of shown.foes.values()) if (x.alive && x.id !== e.by) x.block = Math.max(x.block, e.block);
+          say('„Schilde hoch!“', 'bad');
+          await wait(600);
+          break;
+        }
+        case 'despair': {
+          const f = sfoe(e.id);
+          if (f) f.intent = foeById(st, e.id)?.intent ?? f.intent;
+          floatAt(e.id, 'Verzweifelt!', 'crit');
+          await wait(360);
+          break;
+        }
+        case 'mercy': {
+          const f = sfoe(e.id);
+          if (f) {
+            f.alive = false;
+            f.gone = true;
+          }
+          scene?.heal();
+          scene?.setFoes(shownList());
+          say('Er nimmt die Medizin, nickt dir zu und geht.', 'gold', 2000);
+          await wait(900);
+          break;
+        }
         case 'turn':
           syncShown();
           scene?.setFoes(shownList());
@@ -756,6 +946,20 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
   };
 
   endBtn.addEventListener('click', () => void doEndTurn());
+  mercyBtn.addEventListener('click', () => {
+    if (busy || st.over) return;
+    const f = mercyTarget(st);
+    if (!f) return;
+    busy = true;
+    const events = giveMedicine(st, f.id);
+    void animate(events, false).then(() => {
+      syncShown();
+      scene?.setFoes(shownList());
+      busy = false;
+      renderAll();
+      if (st.over) void finish();
+    });
+  });
   fleeBtn.addEventListener('click', () => {
     if (busy || st.over) return;
     if (!fleeArmed) {
@@ -815,6 +1019,13 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     meOver.hidden = !st.overdrive;
     clear(meOver);
     if (st.overdrive) meOver.append(svgEl(icon('smash', 13)), `+${st.overdrive.dmg}`);
+    meBurn.hidden = st.burning <= 0;
+    clear(meBurn);
+    meBurn.append(svgEl(icon('flame', 13)), String(st.burning));
+    meNet.hidden = st.netted <= 0;
+    clear(meNet);
+    meNet.append(svgEl(icon('fence', 13)), 'Netz');
+    mercyBtn.hidden = !mercyTarget(st);
     meStance.hidden = !st.stance;
     meStance.dataset.stance = st.stance ?? '';
     meStance.textContent = st.stance === 'calm' ? 'Ruhig' : st.stance === 'wrath' ? 'Rasend' : '';
@@ -893,11 +1104,24 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
   };
   const placeFoeOverlays = () => {
     if (!scene) return;
+    // Schon platzierte Schilder (links, rechts, oben, unten), damit sich keine überdecken
+    const placed: [number, number, number, number][] = [];
     for (const [id, v] of foeEls) {
       if (v.el.hidden) continue;
       // Hintere Gegner etwas höher beschriften, damit sich die Schilder nicht überdecken
       const p = scene.anchor(id, v.el.dataset.row === 'far' ? 0.55 : 0.15);
-      v.el.style.transform = `translate(${Math.round(p.x)}px, ${Math.round(p.y)}px) translate(-50%, -100%)`;
+      const w = v.el.offsetWidth;
+      const hgt = v.el.offsetHeight;
+      // Nicht unter die Knöpfe oben (Hilfe, Fliehen) rutschen
+      let y = Math.max(p.y, hgt + 64);
+      // Überdeckt es ein anderes Schild? Dann darunter
+      for (let k = 0; k < 4; k++) {
+        const hit = placed.find(([l, r, t, b]) => p.x + w / 2 > l && p.x - w / 2 < r && y > t && y - hgt < b);
+        if (!hit) break;
+        y = hit[3] + hgt + 4;
+      }
+      placed.push([p.x - w / 2, p.x + w / 2, y - hgt, y]);
+      v.el.style.transform = `translate(${Math.round(p.x)}px, ${Math.round(y)}px) translate(-50%, -100%)`;
       v.el.style.visibility = p.visible ? '' : 'hidden';
     }
   };
@@ -1055,9 +1279,9 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     busy = true;
     renderBar();
     const outcome = st.over ?? 'fled';
-    const banner = h('div', { class: `battle-banner ${outcome}` }, outcome === 'won' ? 'Sieg!' : outcome === 'lost' ? 'Niedergeschlagen' : 'Rückzug');
+    const banner = h('div', { class: `battle-banner ${outcome === 'spared' ? 'won' : outcome}` }, outcome === 'won' ? 'Sieg!' : outcome === 'spared' ? 'Gute Tat' : outcome === 'lost' ? 'Niedergeschlagen' : 'Rückzug');
     el.append(banner);
-    if (outcome === 'won') vibrate([30, 40, 60]);
+    if (outcome === 'won' || outcome === 'spared') vibrate([30, 40, 60]);
     const res = await app.backend.dispatch({ type: 'battleResult', outcome, health: st.hp, kills: st.kills, usedMedicine: st.usedMedicine, wear: st.wear, used: st.used, lastStand: st.lastStandUsed || undefined });
     const loot = res.events.find((e) => e.type === 'loot');
     const lost = res.events.find((e) => e.type === 'combatLost');
@@ -1072,7 +1296,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
         close();
         onEnd({ outcome, spot, enemy: combat.enemy, loot: loot?.type === 'loot' ? loot : undefined, kills: st.kills, ambush: combat.ambush });
       },
-      outcome === 'won' ? 1300 : 600,
+      outcome === 'won' || outcome === 'spared' ? 1300 : 600,
     );
   };
 

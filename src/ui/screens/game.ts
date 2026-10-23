@@ -1353,6 +1353,8 @@ export function gameScreen(app: App): Screen {
                     ? `${end.kills} Gegner erledigt`
                     : `${ENEMIES[end.enemy].name} erledigt`,
         );
+      else if (end.outcome === 'spared')
+        end.loot ? sheet.showLoot(end.spot, end.loot, 'Er nimmt die Medizin und geht. Zum Dank lässt er dir etwas da.') : app.toast('Er nimmt die Medizin und geht. Eine gute Tat.');
       else if (end.outcome === 'fled') app.toast('Du hast dich zurückgezogen.');
       else if (end.outcome === 'lost') respawnHome();
     });
@@ -1585,6 +1587,13 @@ export function gameScreen(app: App): Screen {
         ['Zwei Erstarrte', ['frozen', 'frozen']],
         ['Hamsterer', ['hoarder']],
         ['Brüller mit Wandlern', ['bellower', 'walker', 'walker']],
+        // Wilde Menschen
+        ['Verwilderte', ['feral', 'feral']],
+        ['Wegelagerer', ['shieldbearer', 'archer', 'thief']],
+        ['Schrotter', ['scrapper']],
+        ['Kalkjünger mit Wandler', ['drover', 'walker']],
+        ['Deserteure', ['sergeant', 'deserter', 'deserter']],
+        ['Fieberkranker', ['feverish']],
       ];
       body.append(
         h('button', { class: 'btn ghost small back-link', type: 'button', onclick: showMain }, svgEl(icon('back', 16)), 'Zurück'),

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { FOE_TIME, REGIONS } from '../src/core/content';
 import { distanceM } from '../src/core/geo';
 import { patrolGroup, patrolsAround, resolvePatrol } from '../src/core/patrols';
 import { applyAction, createPlayer, SCHEMA_VERSION } from '../src/core/rules';
@@ -244,16 +245,37 @@ describe('Trupps', () => {
     for (const p of list) expect(resolvePatrol(seed, p.id, now, false, 'village')?.id).toBe(p.id);
   });
 
-  it('nachts ändert sich die Gruppe nur, wenn der Bleiche Wächter kommt', () => {
+  it('nachts ändert sich die Gruppe nur beim Bleichen Wächter und bei wilden Menschen mit Tageszeit', () => {
     let changed = 0;
+    const timed = (g: string[]) => g.some((k) => FOE_TIME[k as keyof typeof FOE_TIME]);
+    const fallback = REGIONS.town.groups[0][0].join();
     for (const p of patrolsAround(seed, HOME, 900, T0, 'town', false)) {
       const n = patrolGroup(seed, p.id, true, 'town');
       if (n.join() !== p.group.join()) {
         changed++;
-        expect(n).toEqual(['watcher']);
+        expect(n.join() === 'watcher' || timed(n) || timed(p.group) || n.join() === fallback || p.group.join() === fallback).toBe(true);
       }
     }
     expect(changed).toBeGreaterThanOrEqual(0);
+  });
+
+  it('Wegelagerer nur tagsüber, Kalkjünger nur nachts', () => {
+    let day = 0;
+    let night = 0;
+    for (let x = 0; x < 400; x++) {
+      for (const region of ['town', 'village'] as const) {
+        const id = `t:${x}:7:3`;
+        const d = patrolGroup(seed, id, false, region);
+        const n = patrolGroup(seed, id, true, region);
+        expect(d).not.toContain('drover');
+        for (const k of ['shieldbearer', 'archer', 'thief'] as const) expect(n).not.toContain(k);
+        if (d.includes('shieldbearer')) day++;
+        if (n.includes('drover')) night++;
+      }
+    }
+    // Es gibt sie aber, jeweils zu ihrer Zeit
+    expect(day).toBeGreaterThan(0);
+    expect(night).toBeGreaterThan(0);
   });
 
   it('Kampfbeginn: Überraschung, entdeckt, Kälte, Durst', () => {

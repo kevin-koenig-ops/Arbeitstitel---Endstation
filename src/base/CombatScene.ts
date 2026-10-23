@@ -3,7 +3,7 @@
 // Vorrücken, Zurückstoßen, Ausholen, Treffer, Würfe, Heulen.
 
 import * as THREE from 'three';
-import type { FoeKind } from '../core/content';
+import { FOE_TACTICS, type FoeKind } from '../core/content';
 import type { DayPhase } from '../core/sun';
 import type { Character, WeaponId } from '../core/types';
 import { Assembler, bake, GLOW, LIT } from './bake';
@@ -29,6 +29,8 @@ export interface ShownFoe {
   raised: boolean;
   /** Liegt und schläft (Schläfer) oder steht steif vor Kälte (Erstarrter). */
   still?: 'sleep' | 'frozen' | null;
+  /** Nicht besiegt, sondern gegangen (davongerannt oder mit Medizin): läuft aus dem Bild. */
+  gone?: boolean;
 }
 
 interface FoeView {
@@ -42,6 +44,8 @@ interface FoeView {
   /** schneller hinrutschen (zurückgestoßen) */
   fast: number;
   alive: boolean;
+  /** Geht weg (davongerannt oder verschont), statt umzufallen. */
+  leaving: boolean;
 }
 
 interface Bit {
@@ -297,11 +301,18 @@ export class TacticsScene {
         ring.renderOrder = 2;
         this.scene.add(ring);
         const start = enter.includes(f.id) ? target.clone().add(new THREE.Vector3(7, 0, -0.5)) : target.clone();
-        v = { rig, pos: start, target: target.clone(), kick: new THREE.Vector2(), ring, height: f.kind === 'giant' ? 2.9 : f.kind === 'brute' ? 2.5 : f.kind === 'crawler' ? 1.1 : 2, fast: 0, alive: true };
+        v = { rig, pos: start, target: target.clone(), kick: new THREE.Vector2(), ring, height: f.kind === 'giant' ? 2.9 : f.kind === 'brute' ? 2.5 : f.kind === 'crawler' ? 1.1 : 2, fast: 0, alive: true, leaving: false };
         this.foes.set(f.id, v);
       }
       v.target.copy(target);
-      if (v.alive && !f.alive) v.rig.pose = 'dead';
+      if (v.alive && !f.alive) {
+        if (f.gone) {
+          // Geht weg: nach hinten aus dem Bild
+          v.leaving = true;
+          v.rig.pose = 'walk';
+          v.target.copy(v.pos).add(new THREE.Vector3(9, 0, 3));
+        } else v.rig.pose = 'dead';
+      }
       v.alive = f.alive;
       if (f.alive)
         v.rig.pose = f.still === 'sleep' ? 'sleep' : f.still === 'frozen' ? 'frozen' : f.stunned ? 'stagger' : f.raised ? 'windup' : (f.kind === 'screamer' || f.kind === 'bellower') && v.rig.pose === 'scream' ? 'scream' : 'walk';
@@ -365,9 +376,11 @@ export class TacticsScene {
     const k = big ? 0.6 : dmg >= 3 ? 0.4 : 0.22;
     v.kick.set(k, 0);
     const p = v.pos;
-    this.burst(p.x, 1.2, p.z, big ? 14 : 7, dmg >= 4 ? ['#ffd27a', '#ffb22e', '#5a1f1a'] : ['#5a1f1a', '#3a3530', '#7a2a20']);
+    // Wilde Menschen: kein Blut, nur Staub
+    const human = !!FOE_TACTICS[v.rig.kind].human;
+    this.burst(p.x, 1.2, p.z, big ? 14 : 7, dmg >= 4 ? ['#ffd27a', '#ffb22e', human ? '#8a857a' : '#5a1f1a'] : human ? ['#8a857a', '#6a6357', '#a8a090'] : ['#5a1f1a', '#3a3530', '#7a2a20']);
     if (kill) {
-      this.burst(p.x, 0.8, p.z, 16, ['#3a3530', '#5a1f1a', '#6a6357']);
+      this.burst(p.x, 0.8, p.z, 16, human ? ['#6a6357', '#8a857a', '#a8a090'] : ['#3a3530', '#5a1f1a', '#6a6357']);
       this.shake = Math.max(this.shake, 0.25);
     }
   }
@@ -454,7 +467,12 @@ export class TacticsScene {
       const speed = v.fast > 0 ? 9 : 2.6;
       v.fast = Math.max(0, v.fast - dt * 1.5);
       if (len > 0.01) v.pos.addScaledVector(d, Math.min(1, (speed * dt) / len));
-      const moving = len > 0.08 && v.fast <= 0 && v.alive;
+      const moving = len > 0.08 && v.fast <= 0 && (v.alive || v.leaving);
+      if (v.leaving) {
+        // Weggehen: in Laufrichtung schauen, am Ziel verschwinden
+        v.rig.root.rotation.y = Math.atan2(d.x, d.z);
+        if (len < 0.15) v.rig.root.visible = false;
+      }
       v.kick.multiplyScalar(Math.max(0, 1 - dt * 8));
       v.rig.root.position.set(v.pos.x + v.kick.x, 0, v.pos.z + v.kick.y);
       if (v.alive) {

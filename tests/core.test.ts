@@ -168,7 +168,7 @@ describe('Spielstand', () => {
     expect(m.health).toBe(10);
     expect(m.weapons[0].kind).toBe('crowbar');
     expect(m.combat).toBeNull();
-    expect(m.stats).toEqual({ searches: 7, kills: 0, unpacks: 0, dismantled: 0, crafted: 0, caches: 0, cooked: 0 });
+    expect(m.stats).toEqual({ searches: 7, kills: 0, unpacks: 0, dismantled: 0, crafted: 0, caches: 0, cooked: 0, mercy: 0 });
     expect(m.caches).toEqual([]);
     expect(m.dig).toBeNull();
     expect(m.seen).toEqual([]);

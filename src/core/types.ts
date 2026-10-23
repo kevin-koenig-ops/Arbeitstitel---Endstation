@@ -370,7 +370,28 @@ export type Quality = 'miss' | 'good' | 'perfect';
  * Gegner im Kampf (der Heuler kommt nur im Kampf vor, nie als Wache). Dazu die Wirte aus dem
  * Bestiarium: Gewohnheitstier, Leithammel, Hüne, Schläfer, Kalkkopf, Erstarrter, Hamsterer, Brüller.
  */
-export type FoeKind = EnemyId | 'screamer' | 'habit' | 'leader' | 'giant' | 'sleeper' | 'ramhead' | 'frozen' | 'hoarder' | 'bellower';
+export type FoeKind =
+  | EnemyId
+  | 'screamer'
+  | 'habit'
+  | 'leader'
+  | 'giant'
+  | 'sleeper'
+  | 'ramhead'
+  | 'frozen'
+  | 'hoarder'
+  | 'bellower'
+  // Wilde Menschen (Welle 2): Verwilderter, Wegelagerer (Schildträger, Armbrustschütze, Langfinger),
+  // Schrotter, Treiber der Kalkjünger, Deserteure (Deserteur, Feldwebel), Fieberkranker
+  | 'feral'
+  | 'shieldbearer'
+  | 'archer'
+  | 'thief'
+  | 'scrapper'
+  | 'drover'
+  | 'deserter'
+  | 'sergeant'
+  | 'feverish';
 
 /** Eintrag im Sammelbuch. */
 export interface BookEntry {
@@ -645,6 +666,8 @@ export interface Stats {
   caches: number;
   /** Gekochte Eintöpfe. */
   cooked: number;
+  /** Gute Taten: Fieberkranken Medizin gegeben, statt zu kämpfen. */
+  mercy: number;
 }
 
 /** Die Ziele der Zielleiste (Reihenfolge und Inhalt in core/progress.ts). */
@@ -697,7 +720,7 @@ export type Action =
   | { type: 'unpack' }
   | { type: 'engage'; spot: Spot; at: LatLon; accuracyM: number }
   /** Ergebnis eines Echtzeitkampfs (Kampf 2.0). Später prüft der Server es anhand der Eingaben nach. */
-  | { type: 'battleResult'; outcome: 'won' | 'lost' | 'fled'; health: number; kills: number; usedMedicine: number; wear?: Partial<Record<WeaponId, number>>; used?: Partial<Record<CardId, number>>; lastStand?: boolean }
+  | { type: 'battleResult'; outcome: 'won' | 'lost' | 'fled' | 'spared'; health: number; kills: number; usedMedicine: number; wear?: Partial<Record<WeaponId, number>>; used?: Partial<Record<CardId, number>>; lastStand?: boolean }
   | { type: 'craftCard'; card: CardId }
   | { type: 'claimSighting'; id: string; candidate: number; at: LatLon; accuracyM: number }
   /** Nur zum Testen: eine Sammelkarte oder Waffe bekommen. */
@@ -775,7 +798,7 @@ export type RejectReason =
   | 'already';
 
 export type GameEvent =
-  | { type: 'loot'; spotId: string; items: Partial<Inventory>; card?: CardId; weapon?: WeaponId; kram?: KramId; /** Mehr Kram auf einmal (Haufen des Hamsterers, Taschen des Gewohnheitstiers). */ kramMore?: Partial<Record<KramId, number>>; collectible?: CollectibleId; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: BlueprintId; gear?: GearId; site?: SiteId; quality?: Quality; first?: boolean; canDig?: boolean; cart?: boolean; fed?: boolean; clue?: string; newKind?: boolean; discovery?: boolean; tier?: number }
+  | { type: 'loot'; spotId: string; items: Partial<Inventory>; card?: CardId; weapon?: WeaponId; kram?: KramId; /** Mehr Kram auf einmal (Haufen des Hamsterers, Taschen des Gewohnheitstiers). */ kramMore?: Partial<Record<KramId, number>>; /** Dank eines Fieberkranken (Medizin gegeben). */ mercy?: boolean; collectible?: CollectibleId; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: BlueprintId; gear?: GearId; site?: SiteId; quality?: Quality; first?: boolean; canDig?: boolean; cart?: boolean; fed?: boolean; clue?: string; newKind?: boolean; discovery?: boolean; tier?: number }
   | { type: 'siteChosen'; site: SiteId; first: boolean }
   | { type: 'reclaimed'; section: string; cost: Partial<Inventory> }
   | { type: 'obstacleCleared'; id: string; kind: ObstacleKind; reward: Partial<Inventory> }
