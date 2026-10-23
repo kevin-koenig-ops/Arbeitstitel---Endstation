@@ -15,7 +15,9 @@ type Place = Exclude<MusicPlace, 'none'>;
 const PLAYLISTS: Record<Place, string[]> = {
   menu: ['menu'],
   home: ['zuhause-1', 'zuhause-2'],
-  map: ['karte-1', 'karte-2'],
+  // Alle Karten-Stücke laufen überall, zu jeder Zeit und bei jedem Wetter.
+  // Ein Suno-Prompt gibt zwei Lieder: karte-3.1 und karte-3.2 gehören zusammen.
+  map: ['karte-1', 'karte-2', 'karte-3.1', 'karte-3.2', 'karte-4.1', 'karte-4.2'],
 };
 
 /** Stille zwischen zwei Stücken im Modus „ab und zu“ (Sekunden). */
@@ -45,8 +47,10 @@ class MusicPlayer {
   private current: Track | null = null;
   /** Stück, das an einem Ort zuletzt lief (beim Zurückkommen geht es dort weiter). */
   private paused: Partial<Record<Place, Track>> = {};
-  /** Nächstes Stück je Ort (zufälliger Anfang). */
-  private nextIdx: Record<Place, number> = { menu: 0, home: rand(0, 2) | 0, map: rand(0, 2) | 0 };
+  /** Was je Ort in dieser Runde noch kommt (zufällige Reihenfolge). */
+  private queue: Partial<Record<Place, string[]>> = {};
+  /** Zuletzt gespieltes Stück je Ort. */
+  private lastName: Partial<Record<Place, string>> = {};
   private restTimer = 0;
   private fadeTimer = 0;
   private lastTick = 0;
@@ -143,13 +147,24 @@ class MusicPlayer {
     this.play(t);
   }
 
+  /**
+   * Nächstes Stück: jede Runde in neuer zufälliger Reihenfolge, bis jedes einmal lief.
+   * Dasselbe Stück kommt nie zweimal direkt hintereinander.
+   */
   private pickNext(place: Place): Track | null {
     const list = PLAYLISTS[place];
-    for (let i = 0; i < list.length; i++) {
-      const name = list[this.nextIdx[place] % list.length];
-      this.nextIdx[place]++;
+    for (let i = 0; i < list.length * 2; i++) {
+      let queue = this.queue[place];
+      if (!queue?.length) {
+        queue = shuffled(list);
+        if (queue.length > 1 && queue[0] === this.lastName[place]) [queue[0], queue[1]] = [queue[1], queue[0]];
+        this.queue[place] = queue;
+      }
+      const name = queue.shift()!;
       const t = this.track(name);
-      if (!t.broken) return t;
+      if (t.broken) continue;
+      this.lastName[place] = name;
+      return t;
     }
     return null;
   }
@@ -288,3 +303,13 @@ function rand(a: number, b: number) {
 
 /** Die eine Musik für die ganze App. */
 export const music = new MusicPlayer();
+
+/** Kopie der Liste in zufälliger Reihenfolge. */
+function shuffled<T>(list: readonly T[]): T[] {
+  const out = [...list];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
