@@ -100,6 +100,8 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 2. **Kartenplan:** 75 Karten für Version 1.0 in fünf Spielstilen, ausgewogen nach dem Vorbild von Slay the Spire (Plan im Doc, Reiter „Kartenplan“). Als Nächstes der Stil Fallen und Abstand, dann Schwung (mit Kettensäge), Schutz, Rudel
 3. Danach: eine Woche nichts Neues, draußen testen, Akku und Tempo, Einstieg schleifen
 
+Erledigt am 23.10. (Balancing): Balancing-Labor (`npm run balance`); Kämpfe fordernder (Wandler, Kriecher, Borkenmann, Wächter stärker); Medizin halb so oft, Verbinden heilt 4; Fliehen kostet einen letzten Treffer; nicht zweimal hintereinander betäubbar; Bolzen 3 statt 4. Offen: Herausforderung für gut Ausgerüstete über Inhalte (Dungeons, Weltgegner, stärkere Formen).
+
 Erledigt am 23.10.: Kartenplan mit Kevin entschieden; Tasche für Einmal-Karten und 4 Fähigkeiten-Plätze (zu Hause im Lager wählen); Steinwurf macht Heuler still, Axthieb 6 und betäubt, Rundumschlag 1 Kraft, Nagelpistole mit Salve; Feuer-Karten Zunder, Ölkanister, Funkenschlag, Glut, Lauffeuer (Bilder fehlen noch, Prompts im Doc); je eine Nahkampf- und Fernkampfwaffe im Kampf, im Lager wählbar (mit Probe-Simulation: keine Kombination ist zu stark oder zu schwach); Nagelpistole geht durch Rüstung, Salve kostet 1 Kraft.
 
 Erledigt am 22.10. spät: lange Wege über Straßen, Zentrieren zoomt nah ran, Nebel beim Herauszoomen mit gemalter Textur, bekannte Bauwerke in 3D (Kirche mit Turm, Friedhof, Polizei, Feuerwehr, Rathaus, Schule, Kita, Krankenhaus, Bücherei, Museum, Bahnhof, Post), neues Startbild.

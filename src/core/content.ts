@@ -130,7 +130,7 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
       { res: 'food', min: 1, max: 2, chance: 0.55 },
       { res: 'water', min: 1, max: 1, chance: 0.5 },
       { res: 'cloth', min: 1, max: 1, chance: 0.5 },
-      { res: 'medicine', min: 1, max: 1, chance: 0.2 },
+      { res: 'medicine', min: 1, max: 1, chance: 0.1 },
       { res: 'plastic', min: 1, max: 1, chance: 0.3 },
     ],
     kramChance: 0.65,
@@ -164,7 +164,7 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
       { res: 'metal', min: 1, max: 1, chance: 0.4 },
       { res: 'stone', min: 1, max: 2, chance: 0.3 },
       { res: 'wood', min: 1, max: 1, chance: 0.3 },
-      { res: 'medicine', min: 1, max: 1, chance: 0.15 },
+      { res: 'medicine', min: 1, max: 1, chance: 0.08 },
     ],
     kramChance: 0.7,
     kram: [['sneakers', 2], ['blanket', 3], ['leatherJacket', 2], ['handbag', 2], ['rubberBoots', 2], ['toaster', 2], ['hairDryer', 2], ['clothesIron', 2], ['alarmClock', 1], ['umbrella', 1], ['pan', 1], ['bottles', 1], ['mixer', 2], ['waffleIron', 2], ['cookingPot', 1], ['teapot', 2], ['picnicBasket', 1], ['cuckooClock', 1], ['sewingKit', 2], ['typewriter', 1], ['telephone', 2], ['vacuum', 2], ['boombox', 2], ['gameConsole', 1], ['tableLamp', 2], ['powerStrip', 1], ['candles', 1], ['magazines', 2], ['boardGame', 2], ['readingGlasses', 1], ['crutch', 1], ['clayPot', 1], ['sunglasses', 1], ['walkman', 1], ['wallet', 1], ['winterCoat', 3], ['workBoots', 2], ['leatherBelt', 2], ['raincoat', 1], ['gardenGnome', 1], ['blender', 2], ['microwave', 2], ['knittingBasket', 2], ['slideProjector', 1], ['snowGlobe', 2], ['photoAlbum', 2], ['vinylRecords', 2], ['recordPlayer', 1], ['cassetteTapes', 2], ['ashtray', 1], ['fondueSet', 2], ['yogaMat', 1], ['robotVacuum', 1], ['aluFoil', 1], ['storageJars', 2], ['pillOrganizer', 1], ['thermometer', 1], ['hearingAid', 1]],
@@ -207,7 +207,7 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     loot: [
       { res: 'food', min: 1, max: 2, chance: 0.5 },
       { res: 'plastic', min: 1, max: 2, chance: 0.6 },
-      { res: 'medicine', min: 1, max: 1, chance: 0.35 },
+      { res: 'medicine', min: 1, max: 1, chance: 0.18 },
       { res: 'electronics', min: 1, max: 1, chance: 0.35 },
       { res: 'glue', min: 1, max: 1, chance: 0.35 },
       { res: 'cloth', min: 1, max: 1, chance: 0.3 },
@@ -225,7 +225,7 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     cooldownMin: 120,
     loot: [
       { res: 'food', min: 1, max: 3, chance: 1 },
-      { res: 'medicine', min: 1, max: 1, chance: 0.12 },
+      { res: 'medicine', min: 1, max: 1, chance: 0.06 },
     ],
     kramChance: 0,
     kram: [],
@@ -241,7 +241,7 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
       { res: 'water', min: 1, max: 3, chance: 0.9 },
       { res: 'plastic', min: 1, max: 2, chance: 0.5 },
       { res: 'glass', min: 1, max: 1, chance: 0.4 },
-      { res: 'medicine', min: 1, max: 1, chance: 0.2 },
+      { res: 'medicine', min: 1, max: 1, chance: 0.1 },
     ],
     kramChance: 0.55,
     kram: [['bottles', 3], ['fruitCrate', 2], ['tinCans', 2], ['coffeeMachine', 2], ['kettle', 2], ['schnapps', 2], ['cashRegister', 1], ['toaster', 1], ['pan', 1], ['waffleIron', 1], ['cookingPot', 2], ['teapot', 1], ['lightBulbs', 1], ['batteries', 2], ['candles', 1], ['shoppingCart', 2], ['canOpener', 1], ['glassCleaner', 2], ['cookingOil', 3], ['coolBox', 1], ['seedPackets', 1], ['snowGlobe', 1], ['priceGun', 2], ['shopBasket', 3], ['barcodeScanner', 2], ['aluFoil', 2], ['storageJars', 1]],
@@ -253,7 +253,7 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     hint: 'Medikamente und Verbandszeug',
     cooldownMin: 180,
     loot: [
-      { res: 'medicine', min: 1, max: 3, chance: 1 },
+      { res: 'medicine', min: 1, max: 2, chance: 1 },
       { res: 'water', min: 1, max: 1, chance: 0.5 },
       { res: 'plastic', min: 1, max: 1, chance: 0.5 },
       { res: 'glass', min: 1, max: 1, chance: 0.4 },
@@ -334,7 +334,7 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     hint: 'Medizin, Elektronik, Metall aus dem Wrack',
     cooldownMin: 720,
     loot: [
-      { res: 'medicine', min: 1, max: 3, chance: 0.9 },
+      { res: 'medicine', min: 1, max: 2, chance: 0.8 },
       { res: 'electronics', min: 1, max: 3, chance: 0.85 },
       { res: 'metal', min: 2, max: 4, chance: 0.9 },
       { res: 'glass', min: 1, max: 2, chance: 0.5 },
@@ -366,7 +366,7 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     hint: 'Was am Eingang zurückblieb. Drinnen ist eine Rote Zone.',
     cooldownMin: 720,
     loot: [
-      { res: 'medicine', min: 1, max: 2, chance: 0.75 },
+      { res: 'medicine', min: 1, max: 2, chance: 0.6 },
       { res: 'food', min: 1, max: 2, chance: 0.7 },
       { res: 'water', min: 1, max: 2, chance: 0.7 },
       { res: 'electronics', min: 1, max: 2, chance: 0.5 },
@@ -415,7 +415,7 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     loot: [
       { res: 'food', min: 2, max: 4, chance: 0.95 },
       { res: 'water', min: 2, max: 4, chance: 0.95 },
-      { res: 'medicine', min: 1, max: 2, chance: 0.7 },
+      { res: 'medicine', min: 1, max: 2, chance: 0.6 },
       { res: 'cloth', min: 1, max: 2, chance: 0.6 },
     ],
     kramChance: 0.85,
@@ -993,9 +993,9 @@ export const RANKS: { min: number; name: string }[] = [
 export const RANK_POINTS = { search: 1, kill: 3, sector: 5, secured: 10, collectible: 8, set: 25, memento: 4, cache: 6 };
 /** Mit weniger Gesundheit fängt man keinen Kampf an. */
 export const MIN_HEALTH_TO_FIGHT = 2;
-/** Medizin heilt so viel, im Kampf etwas weniger (Verbinden unter Druck). */
+/** Medizin heilt so viel, draußen wie im Kampf (Verbinden). Medizin ist knapp, jede zählt. */
 export const HEAL_AMOUNT = 4;
-export const HEAL_IN_COMBAT = 3;
+export const HEAL_IN_COMBAT = 4;
 
 export interface EnemyDef {
   name: string;
@@ -1230,12 +1230,12 @@ export const CARDS: Record<CardId, CardDef> = {
   throw: { name: 'Steinwurf', kind: 'base', cost: 1, target: 'any', dmg: 1, silence: 1, art: 'steinwurf', desc: '1 Schaden, trifft auch Gegner hinten. Ein getroffener Heuler bleibt 1 Runde still.' },
   dodge: { name: 'Ausweichen', kind: 'base', cost: 1, target: 'self', block: 3, art: 'ausweichen', desc: 'Fängt 3 Schaden ab, bis zu deiner nächsten Runde.' },
   kick: { name: 'Tritt', kind: 'base', cost: 1, target: 'near', dmg: 1, push: true, art: 'tritt', desc: '1 Schaden. Stößt den Gegner nach hinten und unterbricht sein Ausholen.' },
-  bandage: { name: 'Verbinden', kind: 'base', cost: 1, target: 'self', heal: 3, medicine: true, art: 'verbinden', desc: 'Heilt 3 Gesundheit, kostet 1 Medizin.' },
+  bandage: { name: 'Verbinden', kind: 'base', cost: 1, target: 'self', heal: HEAL_IN_COMBAT, medicine: true, art: 'verbinden', desc: `Heilt ${HEAL_IN_COMBAT} Gesundheit, kostet 1 Medizin.` },
   // Waffen
   pry: { name: 'Hebelhieb', kind: 'weapon', cost: 1, target: 'near', dmg: 3, weapon: 'crowbar', art: 'brechstange', desc: '3 Schaden mit der Brechstange.' },
   swing: { name: 'Schwinger', kind: 'weapon', cost: 1, target: 'near', dmg: 4, weapon: 'bat', art: 'nagelschlaeger', desc: '4 Schaden mit dem Nagelschläger.' },
   homerun: { name: 'Volltreffer', kind: 'weapon', cost: 2, target: 'near', dmg: 6, stun: true, weapon: 'bat', art: 'nagelschlaeger', desc: '6 Schaden, der Gegner setzt eine Runde aus.' },
-  bolt: { name: 'Bolzen', kind: 'weapon', cost: 1, target: 'any', dmg: 4, weapon: 'crossbow', art: 'armbrust', desc: '4 Schaden, trifft auch Gegner hinten.' },
+  bolt: { name: 'Bolzen', kind: 'weapon', cost: 1, target: 'any', dmg: 3, weapon: 'crossbow', art: 'armbrust', desc: '3 Schaden, trifft auch Gegner hinten.' },
   aim: { name: 'Zielen', kind: 'weapon', cost: 0, target: 'self', focus: 3, art: 'armbrust', desc: 'Der nächste Bolzen oder Wurf macht 3 mehr Schaden.' },
   spade: { name: 'Spatenstich', kind: 'weapon', cost: 1, target: 'near', dmg: 3, push: true, weapon: 'shovel', art: 'spaten', desc: '3 Schaden und stößt zurück.' },
   chop: { name: 'Axthieb', kind: 'weapon', cost: 2, target: 'near', dmg: 6, stun: true, weapon: 'axe', art: 'axt', desc: '6 Schaden, der Gegner setzt eine Runde aus.' },
@@ -1359,23 +1359,23 @@ export interface FoeTactic {
 export const FOE_TACTICS: Record<FoeKind, FoeTactic> = {
   walker: {
     name: 'Wandler',
-    hp: 8,
+    hp: 10,
     armor: 0,
-    pattern: [{ kind: 'attack', dmg: 2 }, { kind: 'attack', dmg: 3 }, { kind: 'grab', dmg: 1 }],
+    pattern: [{ kind: 'attack', dmg: 2 }, { kind: 'attack', dmg: 3 }, { kind: 'grab', dmg: 2 }],
     desc: 'Das Weinen hat ihn ausgebrannt, nicht getötet. Langsam und unermüdlich. Packt er dich, hast du nächste Runde weniger Kraft.',
   },
   crawler: {
     name: 'Kriecher',
-    hp: 5,
+    hp: 6,
     armor: 0,
-    pattern: [{ kind: 'attack', dmg: 3 }, { kind: 'lurk' }, { kind: 'attack', dmg: 3 }],
+    pattern: [{ kind: 'attack', dmg: 4 }, { kind: 'lurk' }, { kind: 'attack', dmg: 4 }],
     desc: 'Knochen wie Glas, flach am Boden. Beißt schnell zu und duckt sich dann weg.',
   },
   brute: {
     name: 'Borkenmann',
-    hp: 14,
+    hp: 16,
     armor: 1,
-    pattern: [{ kind: 'attack', dmg: 2 }, { kind: 'windup' }, { kind: 'smash', dmg: 6 }],
+    pattern: [{ kind: 'attack', dmg: 3 }, { kind: 'windup' }, { kind: 'smash', dmg: 8 }],
     desc: 'Kalkplatten wie eine Rüstung. Holt er aus, kommt ein schwerer Schlag: ausweichen oder wegtreten!',
   },
   screamer: {
@@ -1388,9 +1388,9 @@ export const FOE_TACTICS: Record<FoeKind, FoeTactic> = {
   },
   watcher: {
     name: 'Bleicher Wächter',
-    hp: 18,
+    hp: 20,
     armor: 0,
-    pattern: [{ kind: 'stare' }, { kind: 'attack', dmg: 4 }, { kind: 'fade' }, { kind: 'pounce', dmg: 6 }],
+    pattern: [{ kind: 'stare' }, { kind: 'attack', dmg: 5 }, { kind: 'fade' }, { kind: 'pounce', dmg: 8 }],
     desc: 'Nur nachts. Sein Blick lähmt: nächste Runde eine Karte und eine Kraft weniger. Dann weicht er ins Dunkel zurück und springt dich an. Solange er hinten lauert, treffen ihn nur Wurf und Bolzen; gegen den Sprung hilft Ausweichen.',
   },
 };

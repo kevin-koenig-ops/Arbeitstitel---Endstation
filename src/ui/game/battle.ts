@@ -12,7 +12,7 @@ import { CARDS, CLIMATE, FOE_TACTICS, KRAM, KRAM_ORDER, MAX_HEALTH, RESOURCE_ORD
 import { isCold, isHot } from '../../core/terrain';
 import { seasonOf } from '../../services/settings';
 import { currentRegion } from './worldState';
-import { aliveFoes, canHowl, createTactics, endTurn, flee, foeById, playable, playCard, playPouch, targetsFor, type Intent, type TacticsState, type TEvent } from '../../core/tactics';
+import { aliveFoes, canHowl, createTactics, endTurn, flee, fleeCost, foeById, playable, playCard, playPouch, targetsFor, type Intent, type TacticsState, type TEvent } from '../../core/tactics';
 import { battleWeapons, bestWeapon, cardKit, currentHealth } from '../../core/rules';
 import { artUrl, CARD_ICON, cardEffect } from '../cards';
 import type { DayPhase } from '../../core/sun';
@@ -42,6 +42,7 @@ const STATUS_TEXT: Record<Extract<TEvent, { type: 'status' }>['status'], string>
   slow: 'Verlangsamt',
   silence: 'Verstummt',
   interrupt: 'Unterbrochen!',
+  steady: 'Lässt sich nicht betäuben',
 };
 
 const INTENT: Record<Intent['kind'], { icon: string; label: string; tone: string }> = {
@@ -611,15 +612,19 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     if (busy || st.over) return;
     if (!fleeArmed) {
       fleeArmed = true;
-      fleeBtn.lastChild!.textContent = 'Wirklich?';
+      // Was Fliehen kostet: Wer vorne steht, schlägt noch einmal zu
+      const cost = Math.min(fleeCost(st), Math.max(0, st.hp - 1));
+      fleeBtn.lastChild!.textContent = cost ? `Wirklich? −${cost}` : 'Wirklich?';
+      setInfo(cost ? `Beim Weglaufen schlagen die Gegner vorne noch einmal zu: ${cost} Schaden. Du kommst aber sicher davon.` : 'Vorne steht niemand: Du kommst ohne Treffer davon.');
       setTimeout(() => {
         fleeArmed = false;
         if (fleeBtn.lastChild) fleeBtn.lastChild.textContent = 'Fliehen';
       }, 2500);
       return;
     }
-    flee(st);
-    void finish();
+    busy = true;
+    const events = flee(st);
+    void animate(events, true).then(() => void finish());
   });
   helpBtn.addEventListener('click', () => showHelp());
 
@@ -853,7 +858,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
         h('li', null, h('b', null, 'Holt einer aus, '), 'kommt ein Wuchtschlag: ausweichen oder wegtreten.'),
         h('li', null, h('b', null, 'Runde beenden: '), 'Die Gegner handeln, dann ziehst du 4 neue Karten.'),
         h('li', null, h('b', null, 'Tasche: '), 'Einmal-Karten liegen über deiner Hand. Du kannst sie jederzeit spielen, danach sind sie weg.'),
-        h('li', null, h('b', null, 'Fliehen '), 'geht immer und kostet nichts.'),
+        h('li', null, h('b', null, 'Fliehen '), 'geht immer und rettet dich. Aber wer vorne steht, schlägt beim Weglaufen noch einmal zu.'),
       ),
       h('button', { class: 'btn wide', type: 'button', onclick: () => box.remove() }, 'Los geht’s'),
     );
@@ -976,8 +981,8 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     .catch(() => {
       clear(loading);
       loading.append('Der Kampf konnte nicht geladen werden.');
-      // ohne 3D: zurückziehen
-      flee(st);
+      // ohne 3D: zurückziehen, ohne Treffer
+      flee(st, true);
       void finish();
     });
 

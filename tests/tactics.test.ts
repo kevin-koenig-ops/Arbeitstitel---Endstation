@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CARDS, FOE_TACTICS, START_WEAPONS, TACTICS, WEAPONS } from '../src/core/content';
-import { aliveFoes, createTactics, deckFor, endTurn, flee, intentOf, playCard, playPouch, pouchFor, targetsFor, type CardKit, type TacticsState } from '../src/core/tactics';
+import { aliveFoes, createTactics, deckFor, endTurn, flee, fleeCost, intentOf, playCard, playPouch, pouchFor, targetsFor, type CardKit, type TacticsState } from '../src/core/tactics';
 import type { FoeKind, Weapon } from '../src/core/types';
 import { autopilotFight } from '../src/core/autopilot';
 
@@ -84,7 +84,7 @@ describe('Taktik-Kampf', () => {
     const brute = st.foes[0];
     brute.step = FOE_TACTICS.brute.pattern.findIndex((p) => p.kind === 'windup') + 1; // als Nächstes: schwerer Schlag
     brute.intent = intentOf(brute);
-    expect(brute.intent).toEqual({ kind: 'smash', dmg: 6 });
+    expect(brute.intent).toEqual({ kind: 'smash', dmg: 8 });
     withHand(st, 'kick');
     const ev = playCard(st, 0, brute.id);
     expect(ev.map((e) => e.type)).toEqual(['play', 'hit', 'push']);
@@ -103,7 +103,7 @@ describe('Taktik-Kampf', () => {
     withHand(st, 'dodge');
     playCard(st, 0);
     const ev = endTurn(st);
-    expect(ev).toContainEqual({ type: 'hurt', by: w.id, dmg: 0, absorbed: 1 });
+    expect(ev).toContainEqual({ type: 'hurt', by: w.id, dmg: 0, absorbed: 2 });
     expect(ev).toContainEqual({ type: 'grabbed', by: w.id });
     expect(st.energy).toBe(TACTICS.energy - 1);
   });
@@ -132,8 +132,8 @@ describe('Taktik-Kampf', () => {
     const st = start(['walker'], { medicine: 1, health: 4 });
     withHand(st, 'bandage', 'bandage');
     st.medicine = 1;
-    expect(playCard(st, 0)).toContainEqual({ type: 'heal', amount: 3 });
-    expect(st.hp).toBe(7);
+    expect(playCard(st, 0)).toContainEqual({ type: 'heal', amount: 4 });
+    expect(st.hp).toBe(8);
     expect(playCard(st, 0)).toEqual([{ type: 'denied', reason: 'medicine' }]);
     expect(st.usedMedicine).toBe(1);
   });
@@ -193,7 +193,7 @@ describe('Bleicher Wächter', () => {
     expect(ev.some((e) => e.type === 'stare')).toBe(true);
     expect(st.hand.length).toBe(3);
     // Runde 2: Angriff
-    expect(w.intent).toEqual({ kind: 'attack', dmg: 4 });
+    expect(w.intent).toEqual({ kind: 'attack', dmg: 5 });
     endTurn(st);
     expect(st.hand.length).toBe(4);
     // Runde 3: ins Dunkel, dann hinten mit Abwehr
@@ -205,12 +205,13 @@ describe('Bleicher Wächter', () => {
     expect(targetsFor(st, 'punch').length).toBe(0);
     expect(targetsFor(st, 'throw').length).toBe(1);
     // Runde 4: Sprung von hinten, mit vollem Schaden
-    expect(w.intent).toEqual({ kind: 'pounce', dmg: 6 });
+    expect(w.intent).toEqual({ kind: 'pounce', dmg: 8 });
+    st.hp = st.maxHp;
     const hp = st.hp;
     ev = endTurn(st);
     expect(ev.some((e) => e.type === 'pounce')).toBe(true);
     expect(w.row).toBe('near');
-    expect(st.hp).toBe(hp - 6);
+    expect(st.hp).toBe(hp - 8);
   });
 
   describe('Sammelkarten', () => {
@@ -432,5 +433,75 @@ describe('Autopilot', () => {
     const easy = start(['walker'], { seed: 'auto-2', kit: { pouch: { grenade: 1 } } });
     autopilotFight(easy, { pouch: 'emergency' });
     expect(easy.used.grenade ?? 0).toBe(0);
+  });
+});
+
+describe('Fliehen', () => {
+  it('kostet einen letzten Treffer von denen vorne, rettet aber immer', () => {
+    const st = start(['walker', 'walker', 'walker']);
+    const [a, b, c] = aliveFoes(st);
+    a.row = 'near';
+    a.stunned = false;
+    a.intent = { kind: 'attack', dmg: 3 };
+    b.row = 'near';
+    b.stunned = true;
+    c.row = 'far';
+    st.block = 1;
+    expect(fleeCost(st)).toBe(2);
+    flee(st);
+    expect(st.over).toBe('fled');
+    expect(st.hp).toBe(8);
+    // Nie tödlich
+    const low = start(['brute']);
+    const br = aliveFoes(low)[0];
+    br.row = 'near';
+    br.stunned = false;
+    br.intent = { kind: 'smash', dmg: 8 };
+    low.hp = 3;
+    flee(low);
+    expect(low.hp).toBe(1);
+    // Nur Gegner hinten: kostenlos
+    const free = start(['walker']);
+    aliveFoes(free)[0].row = 'far';
+    expect(fleeCost(free)).toBe(0);
+  });
+});
+
+describe('Balancing-Ziele (Autopilot, Woche 1: Brechstange, Golfschläger, 2 Einmal-Karten, Konter, Atem holen)', () => {
+  const rate = (group: FoeKind[], weapons: Weapon[], kit: CardKit, n = 150) => {
+    let won = 0;
+    let lost = 0;
+    for (let i = 0; i < n; i++) {
+      const st = start(group, { seed: `ziel-${group.join('-')}-${i}`, weapons: weapons.map((w) => ({ ...w })), medicine: 2, kit: { pouch: { ...(kit.pouch ?? {}) }, skills: kit.skills } });
+      autopilotFight(st, { pouch: 'emergency', fleeAt: null });
+      if (st.over === 'won') won++;
+      lost += 10 - st.hp;
+    }
+    return { won: won / n, lost: lost / n };
+  };
+  const woche = [{ kind: 'crowbar' as const, dur: WEAPONS.crowbar.dur }, { kind: 'golfclub' as const, dur: WEAPONS.golfclub.dur }];
+  const kit: CardKit = { pouch: { molotov: 2, pepper: 1 }, skills: { counter: 1, breath: 1 } };
+  it('ein Wandler ist leicht, kostet aber etwas', () => {
+    const r = rate(['walker'], woche, kit);
+    expect(r.won).toBeGreaterThan(0.97);
+    expect(r.lost).toBeGreaterThan(0.8);
+    expect(r.lost).toBeLessThan(2.5);
+  });
+  it('ein Trupp kostet spürbar Gesundheit', () => {
+    const r = rate(['walker', 'walker'], woche, kit);
+    expect(r.won).toBeGreaterThan(0.9);
+    expect(r.lost).toBeGreaterThan(3);
+    expect(r.lost).toBeLessThan(6);
+  });
+  it('der Borkenmann ist eine echte Gefahr', () => {
+    const r = rate(['brute'], woche, kit);
+    expect(r.lost).toBeGreaterThan(3.5);
+    expect(r.lost).toBeLessThan(6.5);
+  });
+  it('der Bleiche Wächter ist der Schreck der Nacht, aber schaffbar', () => {
+    const r = rate(['watcher'], woche, kit);
+    expect(r.won).toBeGreaterThan(0.7);
+    expect(r.won).toBeLessThan(0.98);
+    expect(r.lost).toBeGreaterThan(4);
   });
 });

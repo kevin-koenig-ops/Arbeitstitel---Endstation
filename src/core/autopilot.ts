@@ -59,7 +59,7 @@ function score(st: TacticsState, card: CardId, target?: TFoe): number {
     v += Math.min(dmg, f.hp);
     if (dmg >= f.hp) v += 2 + (f.intent.dmg ?? 0); // Erledigt: keine Gefahr mehr
     const threat = f.intent.dmg ?? 0;
-    if (d.stun && !f.stunned) v += 1 + threat;
+    if (d.stun && !f.stunned && !f.steady) v += 1 + threat;
     if ((d.push || d.interrupt) && f.row === 'near' && (f.intent.kind === 'smash' || f.intent.kind === 'windup')) v += 4;
     if (d.blind && threat) v += threat;
     if (d.burn) v += Math.min(f.hp, (d.burn ?? 0) * (f.kind === 'walker' ? 2 : 1)) * 0.8;

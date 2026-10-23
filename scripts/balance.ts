@@ -30,7 +30,7 @@ interface Stage {
 const STAGES: Stage[] = [
   { name: 'Tag 1', weapons: ['crowbar'], medicine: 0, pouch: {}, skills: {} },
   { name: 'Woche 1', weapons: ['crowbar', 'golfclub'], medicine: 2, pouch: { molotov: 2, pepper: 1 }, skills: { counter: 1, breath: 1 } },
-  { name: 'Monat 1', weapons: ['axe', 'crossbow'], medicine: 3, pouch: { molotov: 3, smoke: 2, grenade: 1 }, skills: { counter: 2, sweep: 1, steady: 1, secondwind: 1 } },
+  { name: 'Gut ausgerüstet', weapons: ['axe', 'crossbow'], medicine: 3, pouch: { molotov: 3, smoke: 2, grenade: 1 }, skills: { counter: 2, sweep: 1, steady: 1, secondwind: 1 } },
 ];
 
 const GROUPS: FoeKind[][] = [
@@ -173,7 +173,7 @@ function trip(stage: Stage, region: RegionId, night: boolean, seed: string): Tri
       }
       res.fights++;
       res.startHp.push(hp);
-      const st = fight(stage, group, `${seed}|${e.t}`, { hp, medicine: med, pouch, opening }, { pouch: POUCH, fleeAt: 3 });
+      const st = fight(stage, group, `${seed}|${e.t}`, { hp, medicine: med, pouch, opening }, { pouch: POUCH, fleeAt: 5 });
       med -= st.usedMedicine;
       res.medUsed += st.usedMedicine;
       for (const [k, n] of Object.entries(st.used) as [CardId, number][]) {
@@ -201,7 +201,7 @@ function trip(stage: Stage, region: RegionId, night: boolean, seed: string): Tri
   return res;
 }
 
-console.log(`## Ausflüge (eine Stunde, ${SEARCHES_PER_HOUR}× durchsuchen, ${N_TRIP} Ausflüge je Feld, Flucht bei 3 Gesundheit in Lebensgefahr)\n`);
+console.log(`## Ausflüge (eine Stunde, ${SEARCHES_PER_HOUR}× durchsuchen, ${N_TRIP} Ausflüge je Feld, Flucht in Lebensgefahr ab 5 Gesundheit)\n`);
 console.log(`Medizin pro Durchsuchen im Schnitt: ${MED_PER_SEARCH.toFixed(2).replace('.', ',')}\n`);
 {
   const rows: string[][] = [];

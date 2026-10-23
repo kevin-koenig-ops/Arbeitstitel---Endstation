@@ -36,6 +36,8 @@ export interface TFoe {
   step: number;
   intent: Intent;
   stunned: boolean;
+  /** Gerade aus der Betäubung erwacht: lässt sich bis zu seiner nächsten Aktion nicht erneut betäuben. */
+  steady: boolean;
   /** Wie oft er schon geheult hat (Heuler rufen höchstens zweimal). */
   howls: number;
   /** Zustände: Brennt (Runden), Geblendet (verfehlt so oft), Verlangsamt (Runden), Still (Runden). */
@@ -125,7 +127,7 @@ export type TEvent =
   | { type: 'turn'; turn: number }
   | { type: 'burn'; id: number; dmg: number; kill: boolean }
   | { type: 'spread'; from: number; id: number }
-  | { type: 'status'; id: number; status: 'burn' | 'blind' | 'slow' | 'silence' | 'interrupt' }
+  | { type: 'status'; id: number; status: 'burn' | 'blind' | 'slow' | 'silence' | 'interrupt' | 'steady' }
   | { type: 'miss'; id: number }
   | { type: 'ally'; id: number; dmg: number; kill: boolean }
   | { type: 'allyIn'; rounds: number }
@@ -182,7 +184,7 @@ export function pouchFor(kit: CardKit = {}): Partial<Record<CardId, number>> {
 
 function makeFoe(st: TacticsState, kind: FoeKind, row: 'near' | 'far'): TFoe {
   const def = FOE_TACTICS[kind];
-  const f: TFoe = { id: st.nextId++, kind, hp: def.hp, maxHp: def.hp, block: 0, row: def.stayBack ? 'far' : row, step: Math.floor(next(st) * def.pattern.length), intent: { kind: 'advance' }, stunned: false, howls: 0, burn: 0, blind: 0, slow: 0, silence: 0 };
+  const f: TFoe = { id: st.nextId++, kind, hp: def.hp, maxHp: def.hp, block: 0, row: def.stayBack ? 'far' : row, step: Math.floor(next(st) * def.pattern.length), intent: { kind: 'advance' }, stunned: false, steady: false, howls: 0, burn: 0, blind: 0, slow: 0, silence: 0 };
   f.intent = intentOf(f);
   return f;
 }
@@ -536,9 +538,13 @@ function applyEffects(st: TacticsState, card: CardId, f: TFoe, events: TEvent[])
     events.push({ type: 'status', id: f.id, status: 'interrupt' });
   }
   if (def.stun) {
-    f.stunned = true;
-    f.intent = intentOf(f);
-    events.push({ type: 'stun', id: f.id });
+    // Niemand lässt sich zweimal hintereinander betäuben (sonst ginge es endlos)
+    if (f.steady) events.push({ type: 'status', id: f.id, status: 'steady' });
+    else {
+      f.stunned = true;
+      f.intent = intentOf(f);
+      events.push({ type: 'stun', id: f.id });
+    }
   }
   const burn = stat(st, card, 'burn');
   if (burn) setBurn(st, f, burn, events);
@@ -602,8 +608,10 @@ export function endTurn(st: TacticsState): TEvent[] {
     f.block = 0;
     if (f.stunned) {
       f.stunned = false;
+      f.steady = true;
       continue;
     }
+    f.steady = false;
     if (intent.kind === 'advance') {
       if (slowed) {
         events.push({ type: 'status', id: f.id, status: 'slow' });
@@ -705,6 +713,42 @@ export function endTurn(st: TacticsState): TEvent[] {
   return events;
 }
 
-export function flee(st: TacticsState) {
-  if (!st.over) st.over = 'fled';
+/**
+ * Was Fliehen kostet: Wer vorne steht (nicht betäubt, nicht geblendet), schlägt beim Weglaufen
+ * noch einmal zu, mit dem angezeigten Angriff oder sonst seinem leichtesten Schlag. Dein Schutz
+ * fängt davon ab. Wer nur Gegner hinten hat, kommt frei davon.
+ */
+export function fleeHits(st: TacticsState): { id: number; dmg: number }[] {
+  const out: { id: number; dmg: number }[] = [];
+  for (const f of aliveFoes(st)) {
+    if (f.row !== 'near' || f.stunned || f.blind > 0) continue;
+    const k = f.intent.kind;
+    const attacks = FOE_TACTICS[f.kind].pattern.filter((p) => (p.dmg ?? 0) > 0).map((p) => p.dmg!);
+    const dmg = (k === 'attack' || k === 'smash' || k === 'grab' || k === 'pounce') && f.intent.dmg ? f.intent.dmg : attacks.length ? Math.min(...attacks) : 0;
+    if (dmg > 0) out.push({ id: f.id, dmg });
+  }
+  return out;
+}
+
+/** So viel kostet Fliehen gerade (nach deinem Schutz). */
+export function fleeCost(st: TacticsState): number {
+  return Math.max(0, fleeHits(st).reduce((a, h) => a + h.dmg, 0) - st.block);
+}
+
+/**
+ * Fliehen: geht immer und rettet dich (mindestens 1 Gesundheit bleibt), kostet aber einen letzten
+ * Treffer. free: ohne Treffer (zum Beispiel, wenn der Kampf gar nicht erst laden konnte).
+ */
+export function flee(st: TacticsState, free = false): TEvent[] {
+  const events: TEvent[] = [];
+  if (st.over) return events;
+  for (const h of free ? [] : fleeHits(st)) {
+    const absorbed = Math.min(st.block, h.dmg);
+    st.block -= absorbed;
+    const dmg = Math.min(h.dmg - absorbed, Math.max(0, st.hp - 1));
+    st.hp -= dmg;
+    events.push({ type: 'hurt', by: h.id, dmg, absorbed });
+  }
+  st.over = 'fled';
+  return events;
 }
