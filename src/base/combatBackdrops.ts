@@ -24,14 +24,30 @@ export const BACKDROP_REGION: Record<RegionId, string> = {
 export const BACKDROP_SEASON: Record<Season, string> = { spring: 'fruehling', summer: 'sommer', autumn: 'herbst', winter: 'winter' };
 
 /**
+ * Wo im Bild der Boden liegt (Anteil der Bildhöhe von unten): Diese Linie steht im Spiel auf dem
+ * 3D-Boden, alles darunter verschwindet dahinter. So passt auch ein Bild, dessen Häuser höher stehen.
+ */
+const GROUND: Record<string, number> = {
+  // Kevins Dorfrand (23.10.): vorne Wiese, die Zäune stehen gut ein Fünftel über dem unteren Rand
+  dorf: 0.21,
+};
+const DEFAULT_GROUND = 0.03;
+
+export interface Backdrop {
+  url: string;
+  /** Anteil der Bildhöhe (von unten), der auf dem 3D-Boden steht. */
+  ground: number;
+}
+
+/**
  * Das passende Bild: erst Gegend mit Jahreszeit, dann die Gegend allein, sonst das Dorf
  * (solange es erst wenige Bilder gibt). Ohne Bild: null.
  */
-export function backdropUrl(region: RegionId, season: Season): string | null {
+export function backdropFor(region: RegionId, season: Season): Backdrop | null {
   const s = BACKDROP_SEASON[season];
   for (const name of [`${BACKDROP_REGION[region]}-${s}`, BACKDROP_REGION[region], `dorf-${s}`, 'dorf']) {
     const url = BY_NAME.get(name);
-    if (url) return url;
+    if (url) return { url, ground: GROUND[name] ?? GROUND[name.split('-')[0]] ?? DEFAULT_GROUND };
   }
   return null;
 }

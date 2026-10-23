@@ -10,6 +10,7 @@ import { Assembler, bake, GLOW, LIT } from './bake';
 import { CharacterRig, type CharacterAction } from './character';
 import { box, buildRubble, cyl, mat } from './models';
 import { buildBush, buildCarWreck, buildTree } from './structures';
+import type { Backdrop } from './combatBackdrops';
 import { ZombieRig } from './zombie';
 
 const PHASES: Record<DayPhase, { hemi: [string, string, number]; sun: [string, number]; fog: string; exposure: number }> = {
@@ -78,11 +79,11 @@ const CAM = { x: 0.6, y: 3.4, back: 11.5, lookY: 1.1, lookZ: -0.2, fov: 34, fovT
 const SHOULDER_CAM = { x: PLAYER.x - 3.5, y: 2.2, z: PLAYER.z + 0.8, lookX: PLAYER.x + 6, lookY: 0.95, lookZ: PLAYER.z + 1.7, fov: 42, fovTall: 66, mid: 1.3, nearX: 3.8, nearGap: 3.1, farX: 7.8 };
 
 /**
- * Gemaltes Bühnenbild (seit 23.10.): eine Bildwand hinter der Straße. Der Horizont im Bild liegt
- * etwa auf Augenhöhe der Kamera (gut ein Viertel von unten), unten ein Streifen Gras und Büsche,
- * der in den 3D-Boden übergeht. Tönung je Tageszeit, weil das Bild selbst kein Licht bekommt.
+ * Gemaltes Bühnenbild (seit 23.10.): eine Bildwand hinter der Straße, so breit, dass sie auch auf
+ * sehr breiten Handys den ganzen Blick füllt. Im Querformat ist davon gut ein Drittel der Höhe zu
+ * sehen (ab der Bodenlinie des Bildes). Tönung je Tageszeit, weil das Bild selbst kein Licht bekommt.
  */
-const BACKDROP = { z: -16, width: 42, bottom: -0.5 };
+const BACKDROP = { z: -9.5, width: 30 };
 const BACKDROP_TINT: Record<DayPhase, string> = { day: '#ece6da', dusk: '#c99a84', night: '#46506e' };
 /** Mit Bühnenbild: Dunst in der Farbe des Bildes statt dunkler Leere (sonst gibt es eine harte Kante). */
 const BACKDROP_FOG: Record<DayPhase, [string, number, number]> = { day: ['#8c8670', 16, 70], dusk: ['#5e4640', 16, 64], night: ['#161a26', 14, 54] };
@@ -121,8 +122,8 @@ export class TacticsScene {
     weapon: WeaponId | null,
     phase: DayPhase,
     view: 'side' | 'shoulder' = 'side',
-    /** Gemaltes Bühnenbild (URL) oder null für die 3D-Kulisse. Im Schulterblick nicht. */
-    backdrop: string | null = null,
+    /** Gemaltes Bühnenbild oder null für die 3D-Kulisse. Im Schulterblick nicht. */
+    backdrop: Backdrop | null = null,
   ) {
     this.shoulder = view === 'shoulder';
     const painted = !!backdrop && !this.shoulder;
@@ -189,8 +190,8 @@ export class TacticsScene {
   // --- Schauplatz ----------------------------------------------------------------------------
 
   /** Das gemalte Bild als Wand hinter der Straße (Seitenverhältnis aus dem Bild). */
-  private loadBackdrop(url: string, phase: DayPhase) {
-    new THREE.TextureLoader().load(url, (tex) => {
+  private loadBackdrop(b: Backdrop, phase: DayPhase) {
+    new THREE.TextureLoader().load(b.url, (tex) => {
       if (this.disposed) return tex.dispose();
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 4;
@@ -199,7 +200,8 @@ export class TacticsScene {
       // Ungetönt und ohne Dunst: das Bild hat sein Licht schon, die Tönung macht Abend und Nacht
       const m = new THREE.MeshBasicMaterial({ map: tex, color: BACKDROP_TINT[phase], fog: false, toneMapped: false });
       const wall = new THREE.Mesh(new THREE.PlaneGeometry(BACKDROP.width, h), m);
-      wall.position.set(CAM.x, BACKDROP.bottom + h / 2, BACKDROP.z);
+      // Die Bodenlinie des Bildes steht auf dem 3D-Boden, der Rest darunter liegt dahinter verborgen
+      wall.position.set(CAM.x, h / 2 - b.ground * h, BACKDROP.z);
       wall.renderOrder = -1;
       this.backdrop = wall;
       this.scene.add(wall);
