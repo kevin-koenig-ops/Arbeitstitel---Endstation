@@ -230,6 +230,15 @@ export function settingsPanel(app: App, opts: { onDeleted?: () => void } = {}): 
       'graphics',
       'Grafik',
       [
+        row(
+          h('div', { class: 'set-label', id: 'lbl-ui' }, 'Oberfläche', h('small', null, 'Wie groß Knöpfe, Schrift und Leisten sind. Karte, Zuhause und Kampf selbst bleiben gleich. „Groß“ ist die alte Größe.')),
+          segmented('uiScale', 'lbl-ui', [
+            [0.8, 'Klein'],
+            [0.9, 'Normal'],
+            [1, 'Groß'],
+            [1.15, 'Sehr groß'],
+          ]),
+        ),
         row(lbl('set-water', 'Bewegtes Wasser', 'Wellen und Glitzern auf der Karte und am See. Aus spart etwas Akku.'), waterToggle),
         row(
           h('div', { class: 'set-label', id: 'lbl-bview' }, 'Kampfansicht', h('small', null, 'Von der Seite oder über die Schulter deiner Figur. Die Schulteransicht ist noch ein Versuch.')),

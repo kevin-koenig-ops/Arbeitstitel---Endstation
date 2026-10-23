@@ -13,7 +13,8 @@ const T0 = Date.UTC(2026, 9, 20, 12);
 const hero: Character = { name: 'Kim', look: { hair: 0, color: 0, skin: 0 }, background: 'workshop' };
 
 const fresh = (): PlayerState => createPlayer('player-1', hero, T0);
-const ctx = (now = T0) => ({ now, worldSeed: SEED });
+// Ohne Bauzeit (die testet bauzeit.test.ts)
+const ctx = (now = T0) => ({ now, worldSeed: SEED, instantBuild: true });
 
 describe('Welt', () => {
   it('erzeugt für alle Spieler dieselben Fundstellen', () => {

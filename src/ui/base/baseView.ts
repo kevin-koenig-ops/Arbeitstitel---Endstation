@@ -8,8 +8,13 @@ import {
   BLUEPRINT_SOURCES,
   canReclaim,
   cellKey,
+  furnitureMs,
   lineEdges,
+  obstacleMs,
   OBSTACLES,
+  pendingSections,
+  pieceMs,
+  sectionMs,
   PIECE_ORDER,
   PIECES,
   planDemolish,
@@ -55,6 +60,7 @@ import { Joystick, useButton } from '../joystick';
 import { openSitePicker } from './sitePicker';
 import { openWorkshop } from './workshop';
 import { openLager, unpack } from './lager';
+import { durationText, jobOf, jobProgress, leftText } from './buildTime';
 
 export { openSitePicker };
 
@@ -202,13 +208,16 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   setLager(lagerOpen);
   const workChip = h('button', { class: 'work-chip', type: 'button', hidden: true, onclick: () => openWork() });
   const harvestChip = h('button', { class: 'work-chip ready', type: 'button', hidden: true, onclick: () => void harvestAll() });
+  // Bauliste: was gerade gebaut wird (läuft in echter Zeit, auch ohne Spielen)
+  const buildChip = h('button', { class: 'work-chip build-chip', type: 'button', hidden: true, onclick: () => toggleBuildList() });
+  let buildList: HTMLElement | null = null;
   const packCard = h('button', { class: 'pack-card', type: 'button', hidden: true, onclick: () => void doUnpack() });
   const away = h('div', { class: 'base-away', hidden: true });
   const head = h(
     'header',
     { class: 'base-head' },
     h('div', { class: 'base-title-row' }, titleEl, h('button', { class: 'base-exit', type: 'button', onclick: () => close() }, svgEl(MAP_ART, 'exit-art'), h('span', null, 'Zur Karte'))),
-    h('div', { class: 'base-info' }, comfortEl, resEl, workChip, harvestChip),
+    h('div', { class: 'base-info' }, comfortEl, resEl, workChip, buildChip, harvestChip),
     packCard,
     away,
   );
@@ -333,6 +342,14 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     clear(workChip);
     workChip.classList.toggle('ready', ready > 0);
     workChip.append(svgEl(icon('wrench', 15)), ready ? `${ready} fertig` : `${running} in Arbeit`);
+    const jobs = plot().jobs ?? [];
+    buildChip.hidden = !jobs.length;
+    clear(buildChip);
+    if (jobs.length) {
+      const first = jobs[0];
+      buildChip.append(svgEl(icon('hammer', 15)), `${jobs.length === 1 ? (first.keys.length > 1 ? `${first.keys.length} × ${first.label}` : first.label) : `${jobs.length} Baustellen`} · ${leftText(first.endsAt - app.backend.now())}`);
+    }
+    renderBuildList();
     const harvest = pendingHarvest(s, app.backend.now());
     harvestChip.hidden = !Object.keys(harvest).length;
     clear(harvestChip);
@@ -363,6 +380,71 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
       moveBtn.textContent = 'Wirklich? Nochmal tippen';
     });
     append(away, [h('span', null, dist !== null ? `Du bist ${formatDistance(dist)} entfernt. Ansehen geht immer, bauen nur vor Ort.` : 'Ohne Standort kannst du nur ansehen.'), f ? moveBtn : null]);
+  };
+
+  // --- Bauliste ----------------------------------------------------------------------------
+  const toggleBuildList = () => {
+    if (buildList) {
+      buildList.remove();
+      buildList = null;
+      return;
+    }
+    buildList = h('div', { class: 'build-list', role: 'dialog', 'aria-label': 'Bauliste' });
+    el.append(buildList);
+    renderBuildList();
+  };
+
+  const renderBuildList = () => {
+    if (!buildList) return;
+    const jobs = plot().jobs ?? [];
+    if (!jobs.length) {
+      buildList.remove();
+      buildList = null;
+      return;
+    }
+    const now = app.backend.now();
+    const test = app.settings.get().location === 'sim';
+    clear(buildList);
+    append(buildList, [
+      h('div', { class: 'build-list-head' }, svgEl(icon('hammer', 18)), h('b', null, 'Bauliste'), h('button', { class: 'iconbtn small', type: 'button', 'aria-label': 'Schließen', onclick: () => toggleBuildList() }, svgEl(icon('close', 16)))),
+      h('p', { class: 'build-list-note' }, 'Eins nach dem anderen, in echter Zeit. Läuft weiter, auch wenn du nicht spielst. Abreißen gibt alles zurück.'),
+      h(
+        'ul',
+        null,
+        jobs.map((j, i) =>
+          h(
+            'li',
+            null,
+            h('div', { class: 'build-list-main' }, h('b', null, j.keys.length > 1 ? `${j.keys.length} × ${j.label}` : j.label), h('small', null, i === 0 || j.startsAt <= now ? leftText(j.endsAt - now) : `wartet · fertig in ${durationText(j.endsAt - now)}`)),
+            h('span', { class: 'ws-progress' }, h('span', { class: 'ws-bar', style: `width:${Math.round(jobProgress(j, now) * 100)}%` })),
+          ),
+        ),
+      ),
+      test
+        ? h(
+            'button',
+            {
+              class: 'btn small ghost',
+              type: 'button',
+              onclick: async () => {
+                await dispatch({ type: 'testFinishBuilds' });
+                render();
+              },
+            },
+            'Alles sofort fertig (Test)',
+          )
+        : null,
+    ]);
+  };
+
+  /** Meldung nach dem Bauen: wann es fertig ist (und ob es erst noch wartet). */
+  const buildStarted = (key: string) => {
+    const p = plot();
+    const j = jobOf(p, key);
+    if (!j) return;
+    const now = app.backend.now();
+    const waits = j.startsAt > now;
+    app.toast(`${j.keys.length > 1 ? `${j.keys.length} × ` : ''}${j.label}: fertig in ${durationText(j.endsAt - now)}${waits ? ' (wartet in der Bauliste)' : ''}.`);
   };
 
   // --- Unterer Bereich -------------------------------------------------------------------
@@ -405,7 +487,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     requestAnimationFrame(() => {
       const w = el.clientWidth || 1;
       if (work) return shiftForSide();
-      scene.setViewShift(0, building && !focus ? panel.offsetWidth / (2 * w) : 0);
+      scene.setViewShift(0, building && !focus ? panel.getBoundingClientRect().width / (2 * w) : 0);
     });
   };
 
@@ -415,8 +497,10 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     const w = el.clientWidth || 1;
     const hh = el.clientHeight || 1;
     if (!work) return scene.setViewShift(0, 0);
-    if (hh > w) scene.setViewShift(work.el.offsetHeight / (2 * hh), 0);
-    else scene.setViewShift(0, work.el.offsetWidth / (2 * w));
+    // getBoundingClientRect: echte Bildschirmgröße, auch wenn die Oberfläche verkleinert ist
+    const r = work.el.getBoundingClientRect();
+    if (hh > w) scene.setViewShift(r.height / (2 * hh), 0);
+    else scene.setViewShift(0, r.width / (2 * w));
   };
 
   // --- Werktisch ----------------------------------------------------------------------------
@@ -613,6 +697,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
           h('span', { class: 'fthumb' }, thumbs[`f:${k}`] ? h('img', { src: thumbs[`f:${k}`], alt: '' }) : null, known ? null : svgEl(icon('lock', 16), 'flock')),
           h('span', { class: 'fname' }, def.name),
           isCollectible(k) ? h('span', { class: 'fhint found' }, 'Sammelstück') : known ? costChips(def.cost, s.inventory) : h('span', { class: 'fhint' }, whereToFind(k)),
+          known ? h('span', { class: 'ftime' }, svgEl(icon('clock', 12)), durationText(furnitureMs(k))) : null,
         );
       }),
     );
@@ -663,7 +748,8 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     const confirm = ctx.querySelector<HTMLButtonElement>('.confirm-place');
     if (confirm) confirm.disabled = !!problem;
     const hint = ctx.querySelector('.ctx-title small');
-    if (hint) hint.textContent = problem === 'no_wall' ? 'Braucht eine Wand im Rücken. Drehen hilft.' : problem ? 'Hier ist kein Platz.' : 'Ziehen oder Feld antippen';
+    const time = mode.kind === 'place' && mode.uid === undefined ? ` · Bauzeit ${durationText(furnitureMs(mode.item))}` : '';
+    if (hint) hint.textContent = problem === 'no_wall' ? 'Braucht eine Wand im Rücken. Drehen hilft.' : problem ? 'Hier ist kein Platz.' : `Ziehen oder Feld antippen${time}`;
   };
 
   /** Angetipptes Feld liegt im Teil (bei geraden Breiten links/oben davon). */
@@ -701,7 +787,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
         'div',
         { class: 'ctx-bar' },
         ctxClose('Abbrechen', () => ((mode = { kind: 'browse' }), render())),
-        h('div', { class: 'ctx-title' }, FURNITURE[m.item].name, h('small', null, '')),
+        h('div', { class: 'ctx-title' }, FURNITURE[m.item].name, h('small', null, m.uid !== undefined ? 'Umstellen geht sofort' : `Bauzeit ${durationText(furnitureMs(m.item))}`)),
         h(
           'div',
           { class: 'ctx-actions' },
@@ -791,6 +877,8 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     const m = mode;
     const res = m.uid !== undefined ? await dispatch({ type: 'move', uid: m.uid, x: m.x, y: m.y, rot: m.rot }) : await dispatch({ type: 'place', kind: m.item, x: m.x, y: m.y, rot: m.rot });
     if (!res) return;
+    const placed = res.events[0];
+    if (placed.type === 'placed') buildStarted(`i:${placed.uid}`);
     scene.wave();
     mode = { kind: 'browse' };
     render();
@@ -826,17 +914,18 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
           : isCollectible(it.kind)
             ? `Sammelstück · Gemütlichkeit +${def.comfort}`
             : `Gemütlichkeit +${def.comfort}`;
+    const inBuild = jobOf(plot(), `i:${uid}`);
     ctx.append(
       h(
         'div',
         { class: 'ctx-bar' },
         ctxClose('Fertig', () => ((mode = { kind: 'browse' }), render())),
-        h('div', { class: 'ctx-title', title: def.desc }, def.name, h('small', null, sub)),
+        h('div', { class: 'ctx-title', title: def.desc }, def.name, h('small', null, inBuild ? `Im Bau · ${inBuild.startsAt > now ? `wartet, fertig in ${durationText(inBuild.endsAt - now)}` : leftText(inBuild.endsAt - now)}` : sub)),
         h(
           'div',
           { class: 'ctx-actions' },
-          it.kind === 'workbench' ? h('button', { class: 'btn small', type: 'button', onclick: () => openWork() }, svgEl(icon('wrench', 16)), 'Werktisch') : null,
-          it.kind === 'stove'
+          it.kind === 'workbench' && !inBuild ? h('button', { class: 'btn small', type: 'button', onclick: () => openWork() }, svgEl(icon('wrench', 16)), 'Werktisch') : null,
+          it.kind === 'stove' && !inBuild
             ? h(
                 'button',
                 { class: 'btn small', type: 'button', disabled: !canAfford(st().inventory, COOK.cost), onclick: () => void cook() },
@@ -845,7 +934,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
                 costChips(COOK.cost, st().inventory),
               )
             : null,
-          it.kind === 'radioSet'
+          it.kind === 'radioSet' && !inBuild
             ? h('button', { class: 'btn small', type: 'button', disabled: radioReadyIn(st(), now) > 0, onclick: () => void listen() }, svgEl(icon('radioSet', 16)), 'Funk abhören')
             : null,
           prod && ready
@@ -885,7 +974,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
                 }
               },
             },
-            isCollectible(it.kind) ? 'Ins Lager' : 'Einlagern',
+            inBuild ? 'Abbrechen' : isCollectible(it.kind) ? 'Ins Lager' : 'Einlagern',
           ),
         ),
       ),
@@ -901,6 +990,19 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     const def = OBSTACLES[o.kind];
     scene.mark(o.x, o.y, o.w, o.d);
     const keep = o.kind === 'tree' ? ' Du kannst ihn auch stehen lassen und drumherum bauen.' : '';
+    const clearing = jobOf(plot(), `c:${o.id}`);
+    if (clearing) {
+      const now = app.backend.now();
+      ctx.append(
+        h(
+          'div',
+          { class: 'ctx-bar' },
+          ctxClose('Fertig', () => ((mode = { kind: 'browse' }), render())),
+          h('div', { class: 'ctx-title' }, def.name, h('small', null, `Wird weggeräumt · ${clearing.startsAt > now ? `wartet, fertig in ${durationText(clearing.endsAt - now)}` : leftText(clearing.endsAt - now)}`)),
+        ),
+      );
+      return;
+    }
     ctx.append(
       h(
         'div',
@@ -918,13 +1020,14 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
               onclick: async () => {
                 if (!needHere()) return;
                 if (await dispatch({ type: 'clearObstacle', id })) {
-                  app.toast(`${def.verb}: +${itemsLine(def.reward)}`, 'good');
+                  const j = jobOf(plot(), `c:${id}`);
+                  app.toast(`${def.verb}: +${itemsLine(def.reward)}.${j ? ` Weg in ${durationText(j.endsAt - app.backend.now())}.` : ''}`, 'good');
                   mode = { kind: 'browse' };
                   render();
                 }
               },
             },
-            `${def.verb} (+${itemsLine(def.reward)})`,
+            `${def.verb} (+${itemsLine(def.reward)}) · ${durationText(obstacleMs(o.kind))}`,
           ),
         ),
       ),
@@ -977,6 +1080,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
         h('span', { class: 'fthumb' }, thumbs[`p:${piece}`] ? h('img', { src: thumbs[`p:${piece}`], alt: '' }) : null, known ? null : svgEl(icon('lock', 16), 'flock')),
         h('span', { class: 'fname' }, def.name),
         known ? (Object.keys(def.cost).length ? costChips(def.cost, s.inventory) : h('span', { class: 'fhint' }, 'kostenlos')) : h('span', { class: 'fhint' }, whereToFind(piece)),
+        known ? h('span', { class: 'ftime' }, svgEl(icon('clock', 12)), `${durationText(pieceMs(piece))} je ${def.group === 'floor' || def.group === 'roof' ? 'Feld' : 'Stück'}`) : null,
       );
     };
     const list = h('div', { class: 'drawer-list' }, [...pieces.map(card), card(null)]);
@@ -1095,7 +1199,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
                 : plan.blocked.length && !isEdge
                   ? 'Gesperrtes wird ausgelassen'
                   : t.piece
-                    ? ''
+                    ? `Bauzeit ${durationText(n * pieceMs(t.piece))}`
                     : 'Du bekommst alles zurück',
             ),
           ),
@@ -1177,7 +1281,11 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     const ev = res.events[0];
     if (ev.type === 'constructed' || ev.type === 'demolished') {
       if (ev.stored) app.toast(`${ev.stored} ${ev.stored === 1 ? 'Teil' : 'Teile'} von der Wand ins Lager gelegt (Material zurück).`);
-      if (ev.type === 'constructed' && layer === 'roofs' && !roofs) app.toast('Dach gebaut. Mit dem Dach-Knopf rechts kannst du es anzeigen.');
+      if (ev.type === 'constructed' && layer === 'roofs' && !roofs) app.toast('Dach im Bau. Mit dem Dach-Knopf rechts kannst du es anzeigen.');
+      if (ev.type === 'constructed') {
+        const last = (plot().jobs ?? []).at(-1);
+        if (last) buildStarted(last.keys[0]);
+      }
     }
     t.a = t.b = null;
     t.pending = false;
@@ -1194,9 +1302,14 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   };
 
   const renderSections = () => {
-    if (top !== 'land' && mode.kind !== 'section') return scene.showSections([]);
+    // Abschnitte, die gerade zurückerobert werden, schimmern grün (immer sichtbar)
+    const busy = pendingSections(plot()).map((k) => {
+      const [sx, sy] = k.split(',').map(Number);
+      return { sx, sy, color: '#9fd27a' };
+    });
+    if (top !== 'land' && mode.kind !== 'section') return scene.showSections(busy);
     const sel = mode.kind === 'section' ? mode : null;
-    scene.showSections(reclaimable().map((s) => ({ ...s, color: sel && sel.sx === s.sx && sel.sy === s.sy ? '#ffe08a' : COLORS.amber })));
+    scene.showSections([...busy, ...reclaimable().map((s) => ({ ...s, color: sel && sel.sx === s.sx && sel.sy === s.sy ? '#ffe08a' : COLORS.amber }))]);
   };
 
   const renderLand = () => {
@@ -1212,7 +1325,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
         h(
           'div',
           { class: 'land-row' },
-          h('div', null, h('b', null, `${p.sections.length} von ${total} Abschnitten`), h('small', null, 'Tippe einen gelben Abschnitt an, um ihn zurückzuerobern.')),
+          h('div', null, h('b', null, `${p.sections.length} von ${total} Abschnitten`), h('small', null, (p.jobs ?? []).some((j) => j.keys.some((k) => k.startsWith('s:'))) ? 'Ein Abschnitt wird gerade zurückerobert (siehe Bauliste).' : 'Tippe einen gelben Abschnitt an, um ihn zurückzuerobern.')),
           h('div', { class: 'land-cost' }, h('small', null, 'Nächster'), costChips(cost, s.inventory)),
         ),
         h('div', { class: 'land-row' }, h('div', null, h('b', null, left ? `${left} Hindernisse` : 'Alles aufgeräumt'), h('small', null, left ? 'Schutt, Wracks, Gestrüpp: antippen und wegräumen.' : 'Jeder neue Abschnitt bringt neue Fundstücke.'))),
@@ -1234,7 +1347,7 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
         'div',
         { class: 'ctx-bar' },
         ctxClose('Abbrechen', () => ((mode = { kind: 'browse' }), render())),
-        h('div', { class: 'ctx-title' }, 'Abschnitt zurückerobern', h('small', null, `${SECTION} × ${SECTION} m, danach bebaubar`)),
+        h('div', { class: 'ctx-title' }, 'Abschnitt zurückerobern', h('small', null, `${SECTION} × ${SECTION} m, danach bebaubar · Bauzeit ${durationText(sectionMs(plot()))}`)),
         h('div', { class: 'ctx-cost' }, costChips(cost, s.inventory)),
         h(
           'div',
@@ -1248,7 +1361,8 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
               onclick: async () => {
                 if (!needHere()) return;
                 if (await dispatch({ type: 'reclaim', sx, sy })) {
-                  app.toast('Abschnitt zurückerobert! Darin liegt noch einiges herum.', 'good');
+                  const j = jobOf(plot(), `s:${sx},${sy}`);
+                  app.toast(j ? `Du eroberst den Abschnitt zurück: fertig in ${durationText(j.endsAt - app.backend.now())}. Darin liegt noch einiges herum.` : 'Abschnitt zurückerobert! Darin liegt noch einiges herum.', 'good');
                   mode = { kind: 'browse' };
                   render();
                 }
@@ -1330,8 +1444,13 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     if (e.key === 'e' || e.key === 'E') scene.rotateStep(1);
   };
   window.addEventListener('keydown', onKey);
+  // Baustelle fertig geworden (die Spielansicht schaut zur rechten Zeit nach): neu zeichnen
+  const offBuilt = app.backend.onEvents((evs) => {
+    if (evs.some((e) => e.type === 'built')) render();
+  });
   const close = () => {
     work?.close();
+    offBuilt();
     clearInterval(tick);
     clearInterval(useTimer);
     window.removeEventListener('keydown', onKey);

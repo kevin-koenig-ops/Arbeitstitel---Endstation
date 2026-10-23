@@ -24,6 +24,7 @@ export const REJECT_TEXT: Record<RejectReason, string> = {
   not_adjacent: 'Nur Abschnitte direkt neben deinem Gelände.',
   no_workbench: 'Dafür brauchst du zu Hause einen Werktisch.',
   queue_full: 'Der Werktisch ist voll. Hol erst etwas ab oder rüste ihn auf.',
+  building: 'Daran wird schon gebaut. Schau in die Bauliste.',
   no_junk: 'Davon ist nichts im Lager.',
   only_one: 'Davon gibt es nur einen. Aufrüsten statt neu bauen.',
   max_level: 'Schon voll ausgebaut.',

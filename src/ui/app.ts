@@ -62,6 +62,10 @@ export async function createApp(root: HTMLElement) {
   const settings = new SettingsStore();
   music.attach(settings);
   installFrameCap(settings);
+  // Größe der Oberfläche: eine CSS-Variable, styles.css skaliert damit nur die Bedienelemente
+  const applyUiScale = (v: number) => document.documentElement.style.setProperty('--ui-zoom', String(v));
+  applyUiScale(settings.get().uiScale);
+  settings.onChange((st) => applyUiScale(st.uiScale));
 
   const app: App = {
     backend: new LocalBackend(new GuestAuth(), WORLD_SEED),

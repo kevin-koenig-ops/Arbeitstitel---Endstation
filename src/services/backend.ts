@@ -11,7 +11,7 @@
 import { distanceM } from '../core/geo';
 import { applyAction, cartOf, createPlayer, guardOf } from '../core/rules';
 import { migrate } from '../core/save';
-import type { Action, ActionResult, Character, EnemyId, LatLon, PlayerState, RegionId, Spot, WorldEvent } from '../core/types';
+import type { Action, ActionResult, Character, EnemyId, GameEvent, LatLon, PlayerState, RegionId, Spot, WorldEvent } from '../core/types';
 import { patrolsAround, type PatrolPlan } from '../core/patrols';
 import { eventsAround } from '../core/worldEvents';
 import { gridSpotsAround, gridSpotUntil, poiSpots, specialPlacesAround, type PoiCandidate } from '../core/world';
@@ -38,6 +38,8 @@ export interface GameBackend {
   spotUntil(spot: Spot): number | null;
   /** Wo nichts liegen darf (aus den Kartendaten); gilt für neue Verstecke. */
   setPlaceFilter(fn: ((p: LatLon) => boolean) | null): void;
+  /** Nach jedem Schritt: was passiert ist. Für Hinweise, die überall gelten (z. B. „Baustelle fertig“). Gibt das Abmelden zurück. */
+  onEvents(fn: (events: GameEvent[], state: PlayerState) => void): () => void;
   /** Wo keine besonderen Orte liegen sollen (bebaut, Gärten, Höfe): sie liegen draußen im Offenen. */
   setSpecialFilter(fn: ((p: LatLon) => boolean) | null): void;
   /** Weltereignisse im Umkreis (laufende und die, die in soonMs beginnen). Im Mehrspieler vom Server. */
@@ -53,6 +55,7 @@ export class LocalBackend implements GameBackend {
   readonly kind = 'local' as const;
   private state: PlayerState | null = null;
   private placeFilter: ((p: LatLon) => boolean) | null = null;
+  private listeners = new Set<(events: GameEvent[], state: PlayerState) => void>();
 
   constructor(
     private auth: AuthProvider,
@@ -88,7 +91,16 @@ export class LocalBackend implements GameBackend {
       this.state = result.state;
       writeJson(await this.key(), this.state);
     }
+    const st = this.state;
+    this.listeners.forEach((l) => l(result.events, st));
     return result;
+  }
+
+  onEvents(fn: (events: GameEvent[], state: PlayerState) => void) {
+    this.listeners.add(fn);
+    return () => {
+      this.listeners.delete(fn);
+    };
   }
 
   current() {

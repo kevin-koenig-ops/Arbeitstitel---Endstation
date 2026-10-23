@@ -23,6 +23,8 @@ export interface Template {
 export const LIT = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0.02, flatShading: true });
 export const GLOW = new THREE.MeshBasicMaterial({ vertexColors: true });
 GLOW.userData.glow = true;
+/** Baustelle: was noch gebaut wird, halb durchsichtig mit warmem Schimmer (pulsiert, siehe BaseScene). */
+export const BUILDING = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0, flatShading: true, transparent: true, opacity: 0.5, emissive: '#c98a2a', emissiveIntensity: 0.35, depthWrite: false });
 
 /** Runde Formen behalten ihre weichen Normalen, eckige werden flach. */
 function isRound(g: THREE.BufferGeometry): boolean {

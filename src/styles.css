@@ -2278,3 +2278,36 @@ button.base-res { align-items: center; padding: 3px 6px 3px 4px; border: 1px sol
   .pack-btn { width: 70px; height: 70px; }
 }
 .hud .home-badge { top: -5px; right: -5px; width: 24px; height: 24px; font: 800 15px/24px var(--font-ui); text-shadow: none; }
+
+/* Größe der Oberfläche (Einstellungen > Grafik > Oberfläche, app.ts setzt --ui-zoom).
+   Skaliert werden nur Bedienelemente, nie die Karte oder die 3D-Bühnen (dort stimmen sonst Fingertipps nicht).
+   Elemente, die per Bildschirm-Koordinaten sitzen (Kampf-Schilder über den Gegnern, Kartenpfeile), bleiben außen vor. */
+:root { --ui-zoom: 0.9; }
+.hud,
+.sheet-host,
+.toasts,
+.overlay-host > .overlay:not(.base-view):not(.battle),
+.base-view > :not(.base-stage),
+.battle > .battle-top,
+.battle > .battle-callout,
+.battle > .t-bottom,
+.battle > .battle-result,
+.screen.menu > :not(canvas),
+.screen.settings-screen > *,
+.screen.unlocks > *,
+.screen.character > :not(canvas),
+.screen.intro > *,
+.screen.login > :not(canvas) { zoom: var(--ui-zoom); }
+
+/* Bauzeit: Zeit auf den Baukarten, Bauliste im Zuhause */
+.ftime { display: inline-flex; align-items: center; gap: 3px; font: 600 11px var(--font-ui); color: var(--dust); }
+.ftime svg { width: 12px; height: 12px; opacity: 0.8; }
+.work-chip.build-chip { color: var(--amber); border-color: rgba(255, 178, 46, 0.45); }
+.build-list { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 20; width: min(400px, 90vw); max-height: 80%; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--line); background: rgba(18, 17, 15, 0.96); color: var(--bone); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55); animation: sheet-in 0.25s ease-out both; }
+.build-list-head { display: flex; align-items: center; gap: 8px; color: var(--amber); }
+.build-list-head b { flex: 1; font: 700 18px var(--font-head, var(--font-ui)); text-transform: uppercase; letter-spacing: 0.04em; }
+.build-list-note { margin: 0; font-size: 13px; color: var(--dust); }
+.build-list ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.build-list li { display: flex; flex-direction: column; gap: 5px; }
+.build-list-main { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.build-list-main small { color: var(--dust); white-space: nowrap; }

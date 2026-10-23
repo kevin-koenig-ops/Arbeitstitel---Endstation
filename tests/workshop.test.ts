@@ -9,7 +9,8 @@ import type { Action, Character, PlayerState } from '../src/core/types';
 const hero: Character = { name: 'Kim', look: { hair: 0, color: 0, skin: 0 }, background: 'workshop' };
 const T0 = Date.UTC(2026, 9, 20, 12);
 const MIN = 60_000;
-const act = (s: PlayerState, a: Action, now = T0) => applyAction(s, a, { now, worldSeed: 'test-seed' });
+// Ohne Bauzeit (die testet bauzeit.test.ts)
+const act = (s: PlayerState, a: Action, now = T0) => applyAction(s, a, { now, worldSeed: 'test-seed', instantBuild: true });
 const ev = (s: PlayerState, a: Action, now = T0) => act(s, a, now).events[0];
 
 function freeRect(idx: PlotIndex, w: number, h: number, skip = 0): { x: number; y: number } {

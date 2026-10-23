@@ -86,7 +86,15 @@ import {
   BLUEPRINT_SOURCES,
   canReclaim,
   comfortTier,
+  furnitureMs,
   indexPlot,
+  obstacleMs,
+  pendingKeys,
+  pieceMs,
+  queueJob,
+  sectionMs,
+  unqueue,
+  workbenchMs,
   isStarter,
   itemProblem,
   lineEdges,
@@ -155,7 +163,7 @@ import { resolvePatrol } from './patrols';
 import { resolveDropSpot, zonesAt } from './worldEvents';
 import { GOALS } from './progress';
 
-export const SCHEMA_VERSION = 19;
+export const SCHEMA_VERSION = 20;
 
 /** Startausrüstung: alles gefunden und angezogen. */
 export function startGear(now: number): GearState {
@@ -344,8 +352,12 @@ export function isFed(state: PlayerState, now: number): boolean {
   return state.fedUntil > now;
 }
 
+/** Steht so ein Teil fertig im Zuhause? (Im Bau zählt noch nicht.) */
 export function hasItem(state: PlayerState, kind: FurnitureId): boolean {
-  return !!activePlot(state)?.items.some((i) => i.kind === kind);
+  const plot = activePlot(state);
+  if (!plot) return false;
+  const pend = pendingKeys(plot);
+  return plot.items.some((i) => i.kind === kind && !pend.has(`i:${i.uid}`));
 }
 
 /** Wann das Funkgerät wieder etwas Neues bringt (0 = jetzt). */
@@ -437,7 +449,43 @@ export function siteStatus(state: PlayerState, site: SiteId): 'home' | 'found' |
 
 /** Steht am aktiven Schauplatz ein Werktisch? */
 export function hasWorkbench(state: PlayerState): boolean {
-  return !!activePlot(state)?.items.some((i) => i.kind === 'workbench');
+  return hasItem(state, 'workbench');
+}
+
+/**
+ * Fertige Baustellen abschließen (die Bauliste arbeitet in echter Zeit, auch ohne Spielen).
+ * Läuft vor jeder Aktion; was fertig ist, wirkt ab dann.
+ */
+export function settleBuilds(state: PlayerState, now: number): GameEvent[] {
+  const events: GameEvent[] = [];
+  for (const [site, plot] of Object.entries(state.base.plots) as [SiteId, Plot | undefined][]) {
+    if (!plot?.jobs?.length) continue;
+    while (plot.jobs.length && plot.jobs[0].endsAt <= now) {
+      const j = plot.jobs.shift()!;
+      for (const k of j.keys) {
+        if (k.startsWith('s:')) {
+          if (!plot.sections.includes(k.slice(2))) plot.sections.push(k.slice(2));
+        } else if (k.startsWith('c:')) {
+          if (!plot.cleared.includes(k.slice(2))) plot.cleared.push(k.slice(2));
+        } else if (k === 'u:workbench') {
+          state.workshop.level = Math.min(WORKBENCH_LEVELS.length, state.workshop.level + 1);
+        }
+      }
+      events.push({ type: 'built', label: j.label, count: j.keys.length, site });
+    }
+    if (!plot.jobs.length) delete plot.jobs;
+  }
+  return events;
+}
+
+/** Wann das Nächste im Zuhause fertig wird (ms), oder null, wenn nichts im Bau ist. */
+export function nextBuildDone(state: PlayerState): number | null {
+  let t: number | null = null;
+  for (const plot of Object.values(state.base.plots)) {
+    const j = plot?.jobs?.[0];
+    if (j && (t === null || j.endsAt < t)) t = j.endsAt;
+  }
+  return t;
 }
 
 export function workbenchLevel(state: PlayerState) {
@@ -626,8 +674,21 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
   const events: GameEvent[] = [];
   const reject = (reason: RejectReason): ActionResult => ({ state: prev, events: [{ type: 'rejected', reason }] });
   settleHealth(state, ctx.now);
+  // Fertige Baustellen zuerst abschließen (zum Testen: alles sofort fertig). Ihre Meldungen
+  // kommen ans Ende, damit die erste Meldung immer zur Aktion selbst gehört.
+  const builtEvents = settleBuilds(state, ctx.instantBuild ? Infinity : ctx.now);
 
   switch (action.type) {
+    case 'settle':
+      break;
+
+    case 'testFinishBuilds': {
+      const done = settleBuilds(state, Infinity);
+      if (!done.length) return reject('nothing');
+      events.push(...done);
+      break;
+    }
+
     case 'session': {
       if (ctx.now - prev.lastActiveAt > RETURN_BONUS_AFTER_H * HOUR && !prev.returnBonus) {
         state.returnBonus = true;
@@ -1051,11 +1112,13 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       if (!plot) return reject('no_site');
       const key = sectionKey(action.sx, action.sy);
       if (plot.sections.includes(key)) return reject('nothing');
+      if (pendingKeys(plot).has(`s:${key}`)) return reject('building');
       if (!canReclaim(plot, action.sx, action.sy)) return reject('not_adjacent');
       const cost = reclaimCost(plot);
       if (!canAfford(state.inventory, cost)) return reject('cost');
       for (const k of RESOURCE_ORDER) state.inventory[k] -= cost[k] ?? 0;
-      plot.sections.push(key);
+      if (ctx.instantBuild) plot.sections.push(key);
+      else queueJob(plot, [`s:${key}`], sectionMs(plot), 'Abschnitt zurückerobern', ctx.now);
       events.push({ type: 'reclaimed', section: key, cost });
       break;
     }
@@ -1066,8 +1129,12 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       if (!plot || !idx) return reject('no_site');
       const o = idx.obstacles.find((x) => x.id === action.id);
       if (!o) return reject('not_found');
-      plot.cleared.push(o.id);
-      const reward = OBSTACLES[o.kind].reward;
+      if (pendingKeys(plot).has(`c:${o.id}`)) return reject('building');
+      // Was dabei herausspringt, gibt es gleich; weg ist das Hindernis erst nach der Bauzeit
+      const odef = OBSTACLES[o.kind];
+      if (ctx.instantBuild) plot.cleared.push(o.id);
+      else queueJob(plot, [`c:${o.id}`], obstacleMs(o.kind), `${odef.name} ${odef.verb.toLowerCase()}`, ctx.now);
+      const reward = odef.reward;
       for (const k of RESOURCE_ORDER) state.inventory[k] += reward[k] ?? 0;
       events.push({ type: 'obstacleCleared', id: o.id, kind: o.kind, reward });
       break;
@@ -1089,7 +1156,9 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       if (problem) return reject(problem);
       for (const k of RESOURCE_ORDER) state.inventory[k] -= def.cost[k] ?? 0;
       const uid = plot.nextUid++;
-      plot.items.push({ uid, kind: action.kind, x: action.x, y: action.y, rot, ...(def.produces ? { at: ctx.now } : {}) });
+      // Anlagen fangen erst an zu sammeln, wenn sie fertig gebaut sind
+      const done = ctx.instantBuild ? ctx.now : queueJob(plot, [`i:${uid}`], furnitureMs(action.kind), def.name, ctx.now).endsAt;
+      plot.items.push({ uid, kind: action.kind, x: action.x, y: action.y, rot, ...(def.produces ? { at: done } : {}) });
       events.push({ type: 'placed', uid, kind: action.kind });
       break;
     }
@@ -1124,6 +1193,8 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
         refund[prod.res] = (refund[prod.res] ?? 0) + ready;
       }
       plot.items = plot.items.filter((i) => i.uid !== it.uid);
+      // War es noch im Bau: aus der Bauliste, der Rest rückt nach
+      unqueue(plot, [`i:${it.uid}`], ctx.now);
       events.push({ type: 'stored', uid: it.uid, refund });
       break;
     }
@@ -1142,11 +1213,15 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       if (plan.blocked.length) return reject('blocked');
       if (!plan.keys.length) return reject('nothing');
       if (!planAffordable(state.inventory, plan)) return reject('cost');
+      // Andere Art (Wand -> Zaun): eine Öffnung im Bau fällt mit weg
+      const lostOpenings = plan.keys.filter((k) => plot.walls[k] && PIECES[plot.walls[k].k].group !== def.group).map((k) => `o:${k}`);
       const stored = applyPlan(state, plot, plan, (k) => {
         const old = plot.walls[k];
         const keep = old && PIECES[old.k].group === def.group ? old.o : undefined;
         plot.walls[k] = keep ? { k: piece, o: keep } : { k: piece };
       });
+      unqueue(plot, [...plan.keys.map((k) => `w:${k}`), ...lostOpenings, ...plan.store.map((u) => `i:${u}`)], ctx.now);
+      if (!ctx.instantBuild) queueJob(plot, plan.keys.map((k) => `w:${k}`), pieceMs(piece), def.name, ctx.now);
       events.push({ type: 'constructed', layer: 'walls', count: plan.keys.length, cost: plan.cost, refund: sumInv(plan.refund, stored), stored: new Set(plan.store).size });
       break;
     }
@@ -1168,6 +1243,8 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       const stored = applyPlan(state, plot, plan, (k) => {
         plot.walls[k] = { ...plot.walls[k], o: piece };
       });
+      unqueue(plot, [...plan.keys.map((k) => `o:${k}`), ...plan.store.map((u) => `i:${u}`)], ctx.now);
+      if (!ctx.instantBuild) queueJob(plot, plan.keys.map((k) => `o:${k}`), pieceMs(piece), def.name, ctx.now);
       events.push({ type: 'constructed', layer: 'openings', count: plan.keys.length, cost: plan.cost, refund: sumInv(plan.refund, stored), stored: new Set(plan.store).size });
       break;
     }
@@ -1189,6 +1266,9 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       applyPlan(state, plot, plan, (k) => {
         (plot[layer] as Record<string, string>)[k] = piece;
       });
+      const pre = layer === 'floors' ? 'f:' : 'r:';
+      unqueue(plot, plan.keys.map((k) => pre + k), ctx.now);
+      if (!ctx.instantBuild) queueJob(plot, plan.keys.map((k) => pre + k), pieceMs(piece), def.name, ctx.now);
       events.push({ type: 'constructed', layer, count: plan.keys.length, cost: plan.cost, refund: plan.refund, stored: 0 });
       break;
     }
@@ -1211,6 +1291,9 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
         else if (layer === 'openings') plot.walls[k] = { k: plot.walls[k].k };
         else delete plot[layer][k];
       });
+      // Abreißen geht sofort; was noch im Bau war, fällt aus der Bauliste (Material kommt ganz zurück)
+      const gone = plan.keys.flatMap((k) => (layer === 'walls' ? [`w:${k}`, `o:${k}`] : layer === 'openings' ? [`o:${k}`] : [`${layer === 'floors' ? 'f' : 'r'}:${k}`]));
+      unqueue(plot, [...gone, ...plan.store.map((u) => `i:${u}`)], ctx.now);
       events.push({ type: 'demolished', layer, count: plan.keys.length, refund: sumInv(plan.refund, stored), stored: new Set(plan.store).size });
       break;
     }
@@ -1331,10 +1414,15 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       if (!hasWorkbench(state)) return reject('no_workbench');
       const next = WORKBENCH_LEVELS[state.workshop.level];
       if (!next) return reject('max_level');
+      const plot = activePlot(state);
+      if (!plot) return reject('no_site');
+      if (pendingKeys(plot).has('u:workbench')) return reject('building');
       if (!canAfford(state.inventory, next.cost)) return reject('cost');
       for (const k of RESOURCE_ORDER) state.inventory[k] -= next.cost[k] ?? 0;
-      state.workshop.level += 1;
-      events.push({ type: 'workbenchUpgraded', level: state.workshop.level });
+      // Der Umbau braucht Zeit; bis dahin arbeitet der Tisch auf der alten Stufe weiter
+      if (ctx.instantBuild) state.workshop.level += 1;
+      else queueJob(plot, ['u:workbench'], workbenchMs(state.workshop.level), next.name, ctx.now);
+      events.push({ type: 'workbenchUpgraded', level: state.workshop.level + (ctx.instantBuild ? 0 : 1) });
       break;
     }
 
@@ -1378,6 +1466,7 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
   }
 
   state.lastActiveAt = ctx.now;
+  events.push(...builtEvents);
   return { state, events };
 }
 

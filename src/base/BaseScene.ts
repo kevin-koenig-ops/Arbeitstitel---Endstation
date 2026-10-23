@@ -8,6 +8,7 @@ import {
   cellIndex,
   cellKey,
   findRooms,
+  pendingKeys,
   inPlot,
   OBSTACLES,
   parseEdge,
@@ -23,7 +24,7 @@ import { hashString } from '../core/rng';
 import type { DayPhase } from '../core/sun';
 import type { Character, Plot } from '../core/types';
 import type { WeatherKind } from '../services/weather';
-import { Assembler, GLOW, LIT, placeMatrix, TemplateCache, type Template } from './bake';
+import { Assembler, BUILDING, GLOW, LIT, placeMatrix, TemplateCache, type Template } from './bake';
 import { CharacterRig } from './character';
 import { buildEnvironment, type Environment } from './environment';
 import { buildGroundBlend } from './groundBlend';
@@ -116,6 +117,8 @@ export class BaseScene {
     items: new THREE.Group(),
   };
   private sig: Record<string, string> = {};
+  /** Was gerade gebaut wird (Schlüssel wie in der Bauliste): halb durchsichtig zeigen. */
+  private pend = new Set<string>();
   private grid: THREE.LineSegments | null = null;
   private gridVisible = false;
   private flames: { mesh: THREE.Mesh; base: number; seed: number }[] = [];
@@ -247,17 +250,19 @@ export class BaseScene {
       this.sig = {};
     }
     this.roomAt = findRooms(d.plot).roomAt;
+    this.pend = pendingKeys(d.plot);
+    const pendSig = [...this.pend].sort().join(';');
     const sections = [...d.plot.sections].sort().join(';');
     if (this.sig.ground !== sections + d.site) {
       this.sig.ground = sections + d.site;
       this.rebuildGround();
     }
-    const obs = d.idx.obstacles.map((o) => o.id).join(';');
+    const obs = d.idx.obstacles.map((o) => o.id).join(';') + '|' + pendSig;
     if (this.sig.obstacles !== obs + d.site) {
       this.sig.obstacles = obs + d.site;
       this.rebuildObstacles();
     }
-    const floors = JSON.stringify(d.plot.floors);
+    const floors = JSON.stringify(d.plot.floors) + '|' + pendSig;
     if (this.sig.floors !== floors) {
       this.sig.floors = floors;
       this.rebuildFloors();
@@ -501,31 +506,37 @@ export class BaseScene {
     this.obstacleBoxes = [];
     const lit = new Assembler();
     const glow = new Assembler();
+    const busy = new Assembler();
     for (const o of d.idx.obstacles) {
       const variant = hash(o.id) % 4;
       const t = this.cache.get(`o:${o.kind}:${d.site}:${variant}`, () => buildObstacle(o.kind, d.site, variant));
       const turned = o.w !== OBSTACLES[o.kind].w;
       const ry = (turned ? Math.PI / 2 : 0) + (o.w === o.d ? (variant % 4) * (Math.PI / 2) : 0);
       const mm = placeMatrix(W(o.x + o.w / 2), 0, W(o.y + o.d / 2), ry);
-      lit.add(t.lit, mm);
+      // Wird gerade weggeräumt: halb durchsichtig
+      if (this.pend.has(`c:${o.id}`)) busy.add(t.lit, mm);
+      else lit.add(t.lit, mm);
       glow.add(t.glow, mm);
       this.obstacleBoxes.push({ id: o.id, box: t.box.clone().applyMatrix4(mm) });
     }
     this.addMeshes(this.layers.obstacles, lit, glow);
+    this.addBusy(this.layers.obstacles, busy);
   }
 
   private rebuildFloors() {
     const d = this.data!;
     this.clearLayer(this.layers.floors);
     const lit = new Assembler();
+    const busy = new Assembler();
     for (const [key, piece] of Object.entries(d.plot.floors)) {
       const [x, y] = key.split(',').map(Number);
       const variant = hash(key) % 3;
       const t = this.cache.get(`fl:${piece}:${variant}`, () => buildFloor(piece, variant));
-      lit.add(t.lit, placeMatrix(W(x + 0.5), 0, W(y + 0.5)));
+      (this.pend.has(`f:${key}`) ? busy : lit).add(t.lit, placeMatrix(W(x + 0.5), 0, W(y + 0.5)));
     }
     const mesh = lit.mesh(LIT, false);
     if (mesh) this.layers.floors.add(mesh);
+    this.addBusy(this.layers.floors, busy);
   }
 
   private indoor(x: number, y: number): boolean {
@@ -558,6 +569,7 @@ export class BaseScene {
     this.wallBoxes = [];
     const lit = new Assembler();
     const glow = new Assembler();
+    const busy = new Assembler();
     for (const [e, w] of Object.entries(d.plot.walls)) {
       const fence = PIECES[w.k].group === 'fence';
       const cut = !fence && this.isCut(e);
@@ -566,13 +578,17 @@ export class BaseScene {
       const t = this.cache.get(`w:${w.k}:${w.o ?? ''}:${cut ? 1 : 0}:${variant}`, () => buildWall(w.k, w.o, h, variant));
       const p = edgeWorld(e);
       const mm = placeMatrix(p.x, 0, p.z, p.ry);
-      lit.add(t.lit, mm);
-      glow.add(t.glow, mm);
+      if (this.pend.has(`w:${e}`) || this.pend.has(`o:${e}`)) busy.add(t.lit, mm);
+      else {
+        lit.add(t.lit, mm);
+        glow.add(t.glow, mm);
+      }
       const hb = fence ? 1.7 : h;
       const box = new THREE.Box3(new THREE.Vector3(-0.5, 0, -0.12), new THREE.Vector3(0.5, hb, 0.12)).applyMatrix4(mm);
       this.wallBoxes.push({ edge: e, box });
     }
     this.addMeshes(this.layers.walls, lit, glow);
+    this.addBusy(this.layers.walls, busy);
   }
 
   private rebuildRoofs() {
@@ -581,12 +597,13 @@ export class BaseScene {
     this.clearLayer(this.layers.roofs);
     if (!this.roofsVisible) return;
     const lit = new Assembler();
+    const busy = new Assembler();
     const trim = this.cache.get('roofTrim', () => buildRoofTrim());
     for (const [key, piece] of Object.entries(d.plot.roofs)) {
       const [x, y] = key.split(',').map(Number);
       const variant = hash(key) % 3;
       const t = this.cache.get(`r:${piece}:${variant}`, () => buildRoof(piece, variant));
-      lit.add(t.lit, placeMatrix(W(x + 0.5), 0, W(y + 0.5)));
+      (this.pend.has(`r:${key}`) ? busy : lit).add(t.lit, placeMatrix(W(x + 0.5), 0, W(y + 0.5)));
       const sides: [number, number, number][] = [
         [0, -1, 0],
         [1, 0, -Math.PI / 2],
@@ -597,6 +614,16 @@ export class BaseScene {
     }
     const mesh = lit.mesh(LIT);
     if (mesh) this.layers.roofs.add(mesh);
+    this.addBusy(this.layers.roofs, busy);
+  }
+
+  /** Baustellen-Teile als eigenes, halb durchsichtiges Mesh (ohne Schatten, ohne Leuchten). */
+  private addBusy(layer: THREE.Object3D, busy: Assembler) {
+    const m = busy.mesh(BUILDING, false);
+    if (m) {
+      m.renderOrder = 3;
+      layer.add(m);
+    }
   }
 
   private furnitureTemplate(kind: FurnitureId): Template {
@@ -621,13 +648,19 @@ export class BaseScene {
     this.lightSources = [];
     const lit = new Assembler();
     const glow = new Assembler();
+    const busy = new Assembler();
     for (const it of d.plot.items) {
       if (it.uid === this.hiddenUid) continue;
       const t = this.furnitureTemplate(it.kind);
       const mm = this.itemMatrix(it.kind, it.x, it.y, it.rot);
+      this.itemBoxes.push({ uid: it.uid, box: t.box.clone().applyMatrix4(mm) });
+      // Im Bau: halb durchsichtig, noch ohne Feuer und Licht
+      if (this.pend.has(`i:${it.uid}`)) {
+        busy.add(t.lit, mm);
+        continue;
+      }
       lit.add(t.lit, mm);
       glow.add(t.glow, mm);
-      this.itemBoxes.push({ uid: it.uid, box: t.box.clone().applyMatrix4(mm) });
       for (const f of t.flames) {
         const mesh = new THREE.Mesh(f.geo, f.mat);
         (mesh as unknown as { keepGeo: boolean }).keepGeo = true;
@@ -642,6 +675,7 @@ export class BaseScene {
       }
     }
     this.addMeshes(this.layers.items, lit, glow);
+    this.addBusy(this.layers.items, busy);
   }
 
   // --- Licht ---------------------------------------------------------------------------------
@@ -1286,6 +1320,8 @@ export class BaseScene {
 
   private frame(t: number, dt: number) {
     if (this.waterMotion) setWaterTime(t);
+    // Baustellen schimmern langsam
+    if (this.pend.size) BUILDING.opacity = 0.42 + 0.12 * Math.sin(t * 2.4);
     if (this.viewShiftX !== this.viewShiftXTarget) {
       const d = this.viewShiftXTarget - this.viewShiftX;
       this.viewShiftX = Math.abs(d) < 0.001 ? this.viewShiftXTarget : this.viewShiftX + d * Math.min(1, dt * 9);

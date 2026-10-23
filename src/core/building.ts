@@ -10,7 +10,7 @@
 import { RESOURCE_ORDER } from './content';
 import { FURNITURE, footprint, isCollectible, type FurnitureId } from './furniture';
 import { pickWeighted, randInt, rngFrom } from './rng';
-import type { Inventory, PlacedItem, Plot, RejectReason, Resource, SpotKind } from './types';
+import type { BuildJob, Inventory, PlacedItem, Plot, RejectReason, Resource, SpotKind } from './types';
 
 export const PLOT = 72;
 export const SECTION = 12;
@@ -198,6 +198,111 @@ export const PIECES: Record<PieceId, PieceDef> = {
 };
 export const PIECE_ORDER = Object.keys(PIECES) as PieceId[];
 
+// --- Bauzeit -----------------------------------------------------------------------
+// Kevin 23.10.: Alles braucht Bauzeit, kleine Teile nur Minuten. Die Bauliste arbeitet eins
+// nach dem anderen ab, in echter Zeit, auch wenn niemand spielt. Abreißen und Umstellen gehen sofort.
+
+const MIN = 60_000;
+export const BUILD = {
+  /** Sekunden je Rohstoff für Wände und Zäune (Bretterwand 40 s, Ziegelmauer 80 s). */
+  wallS: 40,
+  /** Tür, Fenster, Tor; ein offener Durchgang geht schneller. */
+  openingS: 120,
+  archS: 60,
+  /** Sekunden je Rohstoff für ein Feld Boden bzw. Dach. */
+  floorS: 20,
+  roofS: 30,
+  /** Möbel: Minuten je Rohstoff, mindestens eine Minute (Sammelstücke aufstellen auch). */
+  itemMinPerUnit: 2,
+  itemMinMin: 1,
+  /** Abschnitt zurückerobern: erster 30 Minuten, jeder weitere 15 mehr, höchstens 2 Stunden. */
+  sectionMin: 30,
+  sectionStepMin: 15,
+  sectionMaxMin: 120,
+  /** Hindernis wegräumen: Minuten je Feld, das es belegt. */
+  obstacleMinPerCell: 1,
+  /** Werktisch aufrüsten auf Stufe 2, 3 (Minuten). */
+  workbenchMin: [60, 180],
+};
+
+const units = (cost: Partial<Inventory>) => Math.max(1, Object.values(cost).reduce((a, b) => a + (b ?? 0), 0));
+
+/** Bauzeit eines Bauteils (Wand, Öffnung, Boden, Dach) in ms. */
+export function pieceMs(piece: PieceId): number {
+  const def = PIECES[piece];
+  if (def.group === 'opening') return (piece === 'arch' ? BUILD.archS : BUILD.openingS) * 1000;
+  const per = def.group === 'floor' ? BUILD.floorS : def.group === 'roof' ? BUILD.roofS : BUILD.wallS;
+  return per * units(def.cost) * 1000;
+}
+
+/** Bauzeit eines Möbels in ms. */
+export function furnitureMs(kind: FurnitureId): number {
+  const cost = FURNITURE[kind].cost;
+  const n = Object.values(cost).reduce((a, b) => a + (b ?? 0), 0);
+  return Math.max(BUILD.itemMinMin, n * BUILD.itemMinPerUnit) * MIN;
+}
+
+/** Bauzeit für den nächsten Abschnitt in ms. */
+export function sectionMs(plot: Plot): number {
+  const k = Math.max(0, plot.sections.length + pendingSections(plot).length - START_SECTIONS.length);
+  return Math.min(BUILD.sectionMaxMin, BUILD.sectionMin + BUILD.sectionStepMin * k) * MIN;
+}
+
+/** Bauzeit fürs Wegräumen eines Hindernisses in ms. */
+export function obstacleMs(kind: ObstacleKind): number {
+  const o = OBSTACLES[kind];
+  return o.w * o.d * BUILD.obstacleMinPerCell * MIN;
+}
+
+/** Bauzeit fürs Aufrüsten des Werktischs auf Stufe level+1 (level = jetzige Stufe) in ms. */
+export function workbenchMs(level: number): number {
+  return (BUILD.workbenchMin[level - 1] ?? BUILD.workbenchMin[BUILD.workbenchMin.length - 1]) * MIN;
+}
+
+/** Alles, was gerade im Bau ist (Schlüssel wie in BuildJob). */
+export function pendingKeys(plot: Plot): Set<string> {
+  const out = new Set<string>();
+  for (const j of plot.jobs ?? []) for (const k of j.keys) out.add(k);
+  return out;
+}
+
+/** Abschnitte, die gerade zurückerobert werden ("sx,sy"). */
+export function pendingSections(plot: Plot): string[] {
+  return (plot.jobs ?? []).flatMap((j) => j.keys.filter((k) => k.startsWith('s:')).map((k) => k.slice(2)));
+}
+
+/** Wann die Bauliste frei ist (ms), spätestens jetzt. */
+export function buildQueueEnd(plot: Plot, now: number): number {
+  const jobs = plot.jobs ?? [];
+  return Math.max(now, jobs.length ? jobs[jobs.length - 1].endsAt : 0);
+}
+
+/** Neuen Bauschritt hinten an die Bauliste hängen. */
+export function queueJob(plot: Plot, keys: string[], each: number, label: string, now: number): BuildJob {
+  const startsAt = buildQueueEnd(plot, now);
+  const job: BuildJob = { keys, each, startsAt, endsAt: startsAt + each * keys.length, label };
+  (plot.jobs ??= []).push(job);
+  return job;
+}
+
+/**
+ * Teile aus der Bauliste nehmen (abgerissen, eingelagert, überbaut). Was danach wartet, rückt nach:
+ * Ein Bauschritt, der schon läuft, behält seinen Anfang; alle späteren beginnen, sobald der vorige fertig ist.
+ */
+export function unqueue(plot: Plot, keys: Iterable<string>, now: number) {
+  const drop = new Set(keys);
+  if (!plot.jobs?.length || !drop.size) return;
+  for (const j of plot.jobs) j.keys = j.keys.filter((k) => !drop.has(k));
+  plot.jobs = plot.jobs.filter((j) => j.keys.length);
+  let t = now;
+  for (const j of plot.jobs) {
+    if (j.startsAt > now) j.startsAt = Math.max(t, now);
+    j.endsAt = j.startsAt + j.each * j.keys.length;
+    t = j.endsAt;
+  }
+  if (!plot.jobs.length) delete plot.jobs;
+}
+
 // --- Baupläne ----------------------------------------------------------------------
 
 export type BlueprintId = FurnitureId | PieceId;
@@ -247,7 +352,8 @@ export function sectionOf(x: number, y: number): string {
 
 /** Kosten für den nächsten Abschnitt: wird mit jedem Abschnitt etwas teurer. */
 export function reclaimCost(plot: Plot): Partial<Inventory> {
-  const k = Math.max(0, plot.sections.length - START_SECTIONS.length);
+  // Abschnitte, die gerade zurückerobert werden, zählen schon mit
+  const k = Math.max(0, plot.sections.length + pendingSections(plot).length - START_SECTIONS.length);
   return { wood: 8 + 3 * k, metal: 5 + 2 * k, food: 2 + Math.floor(k / 2) };
 }
 
@@ -255,6 +361,7 @@ export function reclaimCost(plot: Plot): Partial<Inventory> {
 export function canReclaim(plot: Plot, sx: number, sy: number): boolean {
   if (sx < 0 || sy < 0 || sx >= SECTIONS || sy >= SECTIONS) return false;
   if (plot.sections.includes(sectionKey(sx, sy))) return false;
+  if (pendingKeys(plot).has(`s:${sectionKey(sx, sy)}`)) return false;
   return [
     [1, 0],
     [-1, 0],
@@ -586,14 +693,16 @@ export interface Room {
 }
 
 /** Blockiert diese Kante den Durchgang für Räume? Wände ja (auch mit Tür/Fenster), Durchgänge und Zäune nicht. */
-function closes(plot: Plot, edge: EdgeKey): boolean {
+function closes(plot: Plot, edge: EdgeKey, pend: Set<string>): boolean {
   const w = plot.walls[edge];
-  return !!w && PIECES[w.k].group === 'wall' && w.o !== 'arch';
+  // Eine Wand im Bau schließt den Raum noch nicht
+  return !!w && PIECES[w.k].group === 'wall' && w.o !== 'arch' && !pend.has(`w:${edge}`);
 }
 
 /** Geschlossene Bereiche: rundum Wände, kein offener Weg nach draußen. */
 export function findRooms(plot: Plot): { rooms: Room[]; roomAt: Int16Array } {
   const n = PLOT * PLOT;
+  const pend = pendingKeys(plot);
   const comp = new Int32Array(n).fill(-1);
   const roomAt = new Int16Array(n).fill(-1);
   const rooms: Room[] = [];
@@ -616,7 +725,7 @@ export function findRooms(plot: Plot): { rooms: Room[]; roomAt: Int16Array } {
         [x, y - 1, hEdge(x, y)],
       ];
       for (const [nx, ny, e] of steps) {
-        if (closes(plot, e)) continue;
+        if (closes(plot, e, pend)) continue;
         if (!inPlot(nx, ny)) {
           open = true;
           continue;
@@ -633,8 +742,8 @@ export function findRooms(plot: Plot): { rooms: Room[]; roomAt: Int16Array } {
     const key = (c: number) => cellKey(c % PLOT, Math.floor(c / PLOT));
     const room: Room = {
       cells,
-      roofed: cells.every((c) => !!plot.roofs[key(c)]),
-      floored: cells.every((c) => !!plot.floors[key(c)]),
+      roofed: cells.every((c) => !!plot.roofs[key(c)] && !pend.has(`r:${key(c)}`)),
+      floored: cells.every((c) => !!plot.floors[key(c)] && !pend.has(`f:${key(c)}`)),
     };
     for (const c of cells) roomAt[c] = rooms.length;
     rooms.push(room);
@@ -665,9 +774,12 @@ export const COMFORT_TIERS: [number, string][] = [
  */
 export function plotComfort(plot: Plot): { value: number; rooms: number } {
   const { rooms, roomAt } = findRooms(plot);
+  const pend = pendingKeys(plot);
   const seen = new Set<FurnitureId>();
   let c = 0;
   for (const it of plot.items) {
+    // Möbel im Bau zählen erst, wenn sie fertig sind
+    if (pend.has(`i:${it.uid}`)) continue;
     const def = FURNITURE[it.kind];
     let v = seen.has(it.kind) ? def.comfort / 2 : def.comfort;
     seen.add(it.kind);

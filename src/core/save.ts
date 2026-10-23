@@ -11,6 +11,8 @@ import type { PlayerState } from './types';
 type Raw = Record<string, unknown> & { schema?: number };
 
 const MIGRATIONS: Record<number, (s: Raw) => void> = {
+  // Version 19 -> 20: Bauzeit. Jedes Gelände kann eine Bauliste haben (plot.jobs); was bisher steht, ist fertig.
+  19: () => {},
   // Version 18 -> 19: Zähler für gute Taten (Fieberkranken Medizin gegeben)
   18: (s) => {
     const stats = (s.stats ?? {}) as Record<string, unknown>;

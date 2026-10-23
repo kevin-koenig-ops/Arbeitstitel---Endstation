@@ -54,13 +54,18 @@ export interface Settings {
   musicVolume: number;
   /** Höchstens so viele Bilder pro Sekunde (0 = so viele der Bildschirm kann). Weniger schont den Akku. */
   fpsCap: 30 | 60 | 90 | 0;
+  /** Größe der Oberfläche (Knöpfe, Schrift, Leisten). 1 = so groß wie früher, Standard etwas kleiner. Karte und 3D bleiben gleich. */
+  uiScale: UiScale;
   /** Letzter bekannter Standort, nur auf diesem Gerät gespeichert. */
   lastPos?: LatLon;
 }
 
+/** Stufen der Oberflächen-Größe. */
+export type UiScale = 0.8 | 0.9 | 1 | 1.15;
+
 const KEY = 'endstation.settings';
 
-const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', testSeason: 'auto', control: 'tap', lootGames: 'on', fullscreen: true, language: 'de', waterMotion: true, gait: 'fast', battleView: 'side', music: 'loop', musicVolume: 0.8, fpsCap: 60 } as const;
+const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', testSeason: 'auto', control: 'tap', lootGames: 'on', fullscreen: true, language: 'de', waterMotion: true, gait: 'fast', battleView: 'side', music: 'loop', musicVolume: 0.8, fpsCap: 60, uiScale: 0.9 } as const;
 const DEFAULTS: Settings = IS_PREVIEW ? { ...COMMON, map: 'demo', location: 'sim' } : { ...COMMON, map: 'real', location: 'gps' };
 
 export class SettingsStore {

@@ -14,6 +14,8 @@ export class Joystick {
   private cy = 0;
   readonly value = { x: 0, y: 0 };
   private radius = 46;
+  /** Verkleinerung der Oberfläche (CSS zoom): Fingerwege in Bildschirm-Pixeln, Verschieben in CSS-Pixeln. */
+  private zoom = 1;
 
   constructor() {
     this.knob = h('div', { class: 'joy-knob' });
@@ -29,7 +31,8 @@ export class Joystick {
       } catch {
         /* egal */
       }
-      // Ruhelage des Joysticks
+      // Ruhelage des Joysticks (Bildschirm-Pixel; die Oberfläche kann verkleinert sein)
+      this.zoom = (this.el as HTMLElement & { currentCSSZoom?: number }).currentCSSZoom || 1;
       const r = this.ring.getBoundingClientRect();
       const rx = r.left + r.width / 2;
       const ry = r.top + r.height / 2;
@@ -40,7 +43,7 @@ export class Joystick {
         // Daneben gedrückt: Joystick springt unter den Daumen
         this.cx = e.clientX;
         this.cy = e.clientY;
-        this.ring.style.transform = `translate(${e.clientX - rx}px, ${e.clientY - ry}px)`;
+        this.ring.style.transform = `translate(${(e.clientX - rx) / this.zoom}px, ${(e.clientY - ry) / this.zoom}px)`;
       }
       this.move(e.clientX, e.clientY);
       this.el.classList.add('active');
@@ -71,12 +74,13 @@ export class Joystick {
     let dx = x - this.cx;
     let dy = y - this.cy;
     const d = Math.hypot(dx, dy);
-    if (d > this.radius) {
-      dx = (dx / d) * this.radius;
-      dy = (dy / d) * this.radius;
+    const radius = this.radius * this.zoom;
+    if (d > radius) {
+      dx = (dx / d) * radius;
+      dy = (dy / d) * radius;
     }
-    this.knob.style.transform = `translate(${dx}px, ${dy}px)`;
-    const len = Math.min(1, d / this.radius);
+    this.knob.style.transform = `translate(${dx / this.zoom}px, ${dy / this.zoom}px)`;
+    const len = Math.min(1, d / radius);
     // kleine tote Zone in der Mitte
     const k = len < 0.15 ? 0 : (len - 0.15) / 0.85;
     const n = d || 1;

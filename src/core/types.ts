@@ -490,6 +490,22 @@ export interface WallPiece {
   o?: OpeningId;
 }
 
+/**
+ * Eine Baustelle in der Bauliste: alles aus einem Bauschritt (eine Wandreihe, ein Möbel …).
+ * Die Bauliste arbeitet eins nach dem anderen ab, in echter Zeit, auch wenn niemand spielt.
+ * Schlüssel: "w:<Kante>" Wand/Zaun, "o:<Kante>" Tür/Fenster, "f:<x,y>" Boden, "r:<x,y>" Dach,
+ * "i:<uid>" Möbel, "s:<sx,sy>" Abschnitt, "c:<id>" Hindernis, "u:workbench" Werktisch-Stufe.
+ */
+export interface BuildJob {
+  keys: string[];
+  /** Bauzeit je Teil (ms). */
+  each: number;
+  startsAt: number;
+  endsAt: number;
+  /** Was gebaut wird, zum Anzeigen (z. B. „Bretterwand“). */
+  label: string;
+}
+
 /** Ein Gelände (pro Schauplatz eins). */
 export interface Plot {
   /** Zurückeroberte Abschnitte "sx,sy". */
@@ -504,6 +520,8 @@ export interface Plot {
   roofs: Record<string, RoofId>;
   items: PlacedItem[];
   nextUid: number;
+  /** Bauliste: was gerade gebaut wird, der Reihe nach. Was hier steht, wirkt noch nicht (keine Gemütlichkeit, kein Werktisch …). */
+  jobs?: BuildJob[];
 }
 
 /** Dein Zuhause. Sein echter Ort steht NICHT hier, sondern nur auf dem Gerät. */
@@ -759,7 +777,11 @@ export type Action =
   | { type: 'claimGoal'; goal: GoalId }
   | { type: 'openCache'; id: string; at: LatLon; accuracyM: number }
   | { type: 'listenRadio'; at: LatLon }
-  | { type: 'cook' };
+  | { type: 'cook' }
+  /** Nichts tun, nur fertige Baustellen abschließen (die Oberfläche schickt das, wenn eine Baustelle fertig sein müsste). */
+  | { type: 'settle' }
+  /** Nur zum Testen: alle Baustellen sofort fertig. */
+  | { type: 'testFinishBuilds' };
 
 export type RejectReason =
   | 'too_far'
@@ -795,7 +817,8 @@ export type RejectReason =
   | 'zone_closed'
   | 'need_filter'
   | 'gone'
-  | 'already';
+  | 'already'
+  | 'building';
 
 export type GameEvent =
   | { type: 'loot'; spotId: string; items: Partial<Inventory>; card?: CardId; weapon?: WeaponId; kram?: KramId; /** Mehr Kram auf einmal (Haufen des Hamsterers, Taschen des Gewohnheitstiers). */ kramMore?: Partial<Record<KramId, number>>; /** Dank eines Fieberkranken (Medizin gegeben). */ mercy?: boolean; collectible?: CollectibleId; memento?: string; bonus: boolean; perk?: Resource; night?: boolean; blueprint?: BlueprintId; gear?: GearId; site?: SiteId; quality?: Quality; first?: boolean; canDig?: boolean; cart?: boolean; fed?: boolean; clue?: string; newKind?: boolean; discovery?: boolean; tier?: number }
@@ -834,6 +857,8 @@ export type GameEvent =
   | { type: 'cacheOpened'; id: string; items: Partial<Inventory>; kram?: KramId; collectible?: CollectibleId; blueprint?: BlueprintId; next?: string; chainDone?: boolean }
   | { type: 'radio'; line: number; cache?: string }
   | { type: 'cooked'; until: number; healed: number }
+  /** Eine Baustelle ist fertig (count Teile, z. B. 12 × Bretterwand). */
+  | { type: 'built'; label: string; count: number; site: SiteId }
   | { type: 'rejected'; reason: RejectReason };
 
 export interface RuleContext {
@@ -841,6 +866,8 @@ export interface RuleContext {
   worldSeed: string;
   /** Orte, an denen nichts liegen darf (Friedhöfe, Schulen, Gebäude …). Kommt aus den Kartendaten. */
   blocked?: (p: LatLon) => boolean;
+  /** Zum Testen: Bauen ohne Bauzeit (alles sofort fertig). */
+  instantBuild?: boolean;
 }
 
 export interface ActionResult {

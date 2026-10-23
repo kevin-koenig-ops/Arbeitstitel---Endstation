@@ -173,7 +173,6 @@ const CARS = ['#9a5a3a', '#8a4a3a', '#5a6a7a', '#a8a294', '#5a554e', '#7a7a62', 
 const CABIN = '#3a3c40';
 const PLINTH = '#6a6256';
 const CHIMNEY = ['#8a5a44', '#6a6460', '#9a6a52'];
-const RUBBLE = ['#9a9282', '#8a8272', '#a39a88', '#7f786a'];
 const POLE = '#6a5a46';
 // Straßenmöbel, Gärten, Wald
 const LAMP = '#5b5f5c';
@@ -429,14 +428,15 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
 
     const r = rngFrom('haus', key);
     const roll = r();
-    const state = roll < 0.18 ? 'ruin' : roll < 0.28 ? 'burnt' : 'intact';
+    // Kevin 23.10.: keine Ruinen ohne Dach mehr. Ein paar Häuser sind ausgebrannt (verkohltes Dach), der Rest steht.
+    const state = roll < 0.1 ? 'burnt' : 'intact';
     const h0 = Math.min(40, Math.max(3, b.height ?? 6));
     const minH = b.minHeight ?? 0;
-    const k = state === 'ruin' ? 0.4 + 0.25 * r() : state === 'burnt' ? 0.6 : 0.82 + 0.18 * r();
+    const k = state === 'burnt' ? 0.6 : 0.82 + 0.18 * r();
     const wallTop = Math.max(2.4, h0 * k);
     const wall = state === 'burnt' ? pick(r, SOOT) : pick(r, WALLS);
     const simple = ring.length <= 9 && inRing(c, ring);
-    if (minH === 0 && simple && area >= 30 && area <= 280 && state !== 'ruin') houses.push({ c, rad: Math.sqrt(area / Math.PI), key });
+    if (minH === 0 && simple && area >= 30 && area <= 280) houses.push({ c, rad: Math.sqrt(area / Math.PI), key });
     if (opts.houseMeshes) {
       const poi = minH === 0 ? shopFor(ring, c, Math.sqrt(area)) : null;
       if (poi) poi.used = true;
@@ -466,35 +466,13 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
         hs.flatColor = [0.86, 0.88, 0.9];
       }
       houseSpecs.push(hs);
-      // Schutt um Ruinen bleibt als Klötze
-      if (state === 'ruin' && !poi) {
-        const piles = 2 + Math.floor(r() * 4);
-        for (let i = 0; i < piles; i++) {
-          const v = ring[Math.floor(r() * (ring.length - 1))];
-          const px = v[0] + (v[0] - c[0]) * (0.12 + r() * 0.2) + (r() - 0.5) * 2;
-          const py = v[1] + (v[1] - c[1]) * (0.12 + r() * 0.2) + (r() - 0.5) * 2;
-          add(ngon(px, py, 0.7 + r() * 1.1, 5, r() * 3), 0, 0.3 + r() * 0.7, pick(r, RUBBLE));
-        }
-      }
       continue;
     }
     add(ring, minH * k, wallTop, wall);
     // Sockel: dunkler Streifen unten, das Haus steht damit sichtbar auf dem Boden
     if (minH === 0 && simple && area < 450) add(scaleRing(ring, c, 1.04), 0, 0.55, PLINTH);
-    if (minH > 0 || state !== 'intact') {
-      if (state === 'ruin') {
-        // Ruine: eine stehengebliebene Ecke und Schutt drumherum
-        if (area < 400 && r() < 0.6) add(scaleRing(ring, ring[0], 0.35), wallTop, wallTop + 1.6 + r() * 1.8, wall);
-        const piles = 2 + Math.floor(r() * 4);
-        for (let i = 0; i < piles; i++) {
-          const v = ring[Math.floor(r() * (ring.length - 1))];
-          const px = v[0] + (v[0] - c[0]) * (0.12 + r() * 0.2) + (r() - 0.5) * 2;
-          const py = v[1] + (v[1] - c[1]) * (0.12 + r() * 0.2) + (r() - 0.5) * 2;
-          add(ngon(px, py, 0.7 + r() * 1.1, 5, r() * 3), 0, 0.3 + r() * 0.7, pick(r, RUBBLE));
-        }
-      }
-      continue;
-    }
+    // Auch ausgebrannte Häuser behalten ihr Dach (Kevin 23.10.: keine Ruinen ohne Dach)
+    if (minH > 0) continue;
     if (area > 450 || !simple) {
       add(scaleRing(ring, c, 0.93), wallTop, wallTop + 0.45, pick(r, FLAT_ROOF));
     } else {

@@ -5,8 +5,8 @@ import { CACHE, ENEMIES, FOE_TACTICS, GEAR, HINT_NAMES, MAX_HEALTH, PATROL, REGI
 import { ExploredView, SECTOR_LEVELS, sectorOf } from '../../core/explore';
 import { bearingDeg, distanceM, formatDistance, offsetM } from '../../core/geo';
 import { rankOf } from '../../core/progress';
-import { baseTier, currentHealth, dayNumber, packCount, pendingHarvest, readyAt, readyParts, regionTier, searchRangeM, spotKey } from '../../core/rules';
-import type { Cache, FoeKind, LatLon, Opening, RegionId, Spot, WorldEvent } from '../../core/types';
+import { baseTier, currentHealth, dayNumber, nextBuildDone, packCount, pendingHarvest, readyAt, readyParts, regionTier, searchRangeM, spotKey } from '../../core/rules';
+import type { Cache, FoeKind, LatLon, Opening, PlayerState, RegionId, Spot, WorldEvent } from '../../core/types';
 import { classifyRegion, hearRangeM, sightRangeM } from '../../core/terrain';
 import { dropSpot, eventCenter } from '../../core/worldEvents';
 import { PatrolControl, type LivePatrol } from '../game/patrolControl';
@@ -1658,6 +1658,25 @@ export function gameScreen(app: App): Screen {
     overlayHost.append(overlay);
   };
 
+  // --- Bauliste zu Hause: fertige Baustellen melden und zur rechten Zeit nachsehen ----------
+  // (läuft in echter Zeit weiter, auch auf der Karte; die Regeln schließen Fertiges bei jedem Schritt ab)
+  let buildTimer = 0;
+  const scheduleSettle = (s: PlayerState) => {
+    clearTimeout(buildTimer);
+    const t = nextBuildDone(s);
+    if (t === null || destroyed) return;
+    buildTimer = window.setTimeout(() => void app.backend.dispatch({ type: 'settle' }), Math.min(2 ** 31 - 1, Math.max(250, t - app.backend.now() + 250)));
+  };
+  const offBuilt = app.backend.onEvents((events, s) => {
+    const built = events.filter((e) => e.type === 'built');
+    const name = (e: (typeof built)[number]) => (e.type === 'built' ? `${e.count > 1 ? `${e.count} × ` : ''}${e.label}` : '');
+    const atHome = !!el.querySelector('.base-view');
+    const where = atHome ? '' : 'Zuhause: ';
+    if (built.length > 2) app.toast(`${where}${built.length} Baustellen fertig (${built.slice(0, 3).map(name).join(', ')}${built.length > 3 ? ' …' : ''})`, 'good');
+    else for (const e of built) app.toast(`${where}Fertig: ${name(e)}`, 'good');
+    scheduleSettle(s);
+  });
+
   const onVisible = async () => {
     if (document.visibilityState !== 'visible' || !app.backend.current()) return;
     const res = await app.backend.dispatch({ type: 'session' });
@@ -1672,6 +1691,8 @@ export function gameScreen(app: App): Screen {
       renderHud();
       renderLocChip();
       void onVisible();
+      const s0 = app.backend.current();
+      if (s0) scheduleSettle(s0);
       // Ein laufender Kampf geht nach dem Neuladen weiter.
       if (app.backend.current()?.combat) openFight();
       document.addEventListener('visibilitychange', onVisible);
@@ -1846,6 +1867,8 @@ export function gameScreen(app: App): Screen {
     },
     destroy() {
       destroyed = true;
+      offBuilt();
+      clearTimeout(buildTimer);
       particles?.destroy();
       ambience?.destroy();
       clearTimeout(walkTimer);

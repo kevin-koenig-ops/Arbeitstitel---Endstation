@@ -12,7 +12,8 @@ const HOME = { lat: 51.6, lon: 10.2 };
 const HOUR = 3600_000;
 const T0 = Date.UTC(2026, 9, 20, 12);
 const hero: Character = { name: 'Kim', look: { hair: 0, color: 0, skin: 0 }, background: 'workshop' };
-const ctx = (now = T0) => ({ now, worldSeed: SEED });
+// Ohne Bauzeit (die testet bauzeit.test.ts)
+const ctx = (now = T0) => ({ now, worldSeed: SEED, instantBuild: true });
 const act = (s: PlayerState, a: Action, now = T0) => applyAction(s, a, ctx(now));
 const fresh = () => createPlayer('player-1', hero, T0);
 const rich = (): PlayerState => ({ ...fresh(), inventory: { ...emptyInventory(), food: 50, water: 50, medicine: 5, ...Object.fromEntries(MATERIAL_ORDER.map((m) => [m, 500])) } });

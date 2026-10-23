@@ -21,7 +21,8 @@ import type { Action, Character, PlayerState, Spot } from '../src/core/types';
 
 const hero: Character = { name: 'Kim', look: { hair: 0, color: 0, skin: 0 }, background: 'workshop' };
 const T0 = Date.UTC(2026, 9, 20, 12);
-const ctx = { now: T0, worldSeed: 'test-seed' };
+// Ohne Bauzeit (die testet bauzeit.test.ts)
+const ctx = { now: T0, worldSeed: 'test-seed', instantBuild: true };
 const act = (s: PlayerState, a: Action) => applyAction(s, a, ctx);
 const ev = (s: PlayerState, a: Action) => act(s, a).events[0];
 

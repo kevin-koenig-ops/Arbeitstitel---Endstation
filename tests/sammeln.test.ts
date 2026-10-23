@@ -11,7 +11,8 @@ const hero: Character = { name: 'Kim', look: { hair: 0, color: 0, skin: 0 }, bac
 const T0 = Date.UTC(2026, 9, 22, 12);
 const SEED = 'test-seed';
 const HOME = { lat: 52.52, lon: 13.405 };
-const act = (s: PlayerState, a: Action, now = T0) => applyAction(s, a, { now, worldSeed: SEED });
+// Ohne Bauzeit (die testet bauzeit.test.ts)
+const act = (s: PlayerState, a: Action, now = T0) => applyAction(s, a, { now, worldSeed: SEED, instantBuild: true });
 const ev = (s: PlayerState, a: Action, now = T0) => act(s, a, now).events[0];
 
 function freeRect(idx: PlotIndex, w: number, h: number): { x: number; y: number } {

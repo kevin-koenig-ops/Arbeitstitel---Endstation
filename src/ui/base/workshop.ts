@@ -3,7 +3,9 @@
 
 import { CARDS, KRAM, KRAM_ORDER, ONCE_CARDS, WEAPON_ORDER, WEAPONS, WORKBENCH_LEVELS } from '../../core/content';
 import { CARD_ICON } from '../cards';
-import { canAfford, dismantleMs, readyParts, workbenchLevel, workbenchSlots } from '../../core/rules';
+import { activePlot, canAfford, dismantleMs, readyParts, workbenchLevel, workbenchSlots } from '../../core/rules';
+import { workbenchMs } from '../../core/building';
+import { durationText, jobOf, leftText } from './buildTime';
 import type { Action, KramId, PlayerState } from '../../core/types';
 import type { App } from '../app';
 import { clear, h, svgEl } from '../dom';
@@ -240,7 +242,17 @@ export function openWorkshop(app: App, host: HTMLElement, opts: Opts): { el: HTM
 
     // --- Aufrüsten ---
     const next = WORKBENCH_LEVELS[ws.level];
-    if (next) {
+    const upgrading = jobOf(activePlot(s), 'u:workbench');
+    if (next && upgrading) {
+      body.append(
+        h('h3', { class: 'ws-sec' }, 'Aufrüsten'),
+        h(
+          'div',
+          { class: 'ws-upgrade' },
+          h('div', null, h('b', null, next.name), h('small', null, `Umbau läuft · ${upgrading.startsAt > now ? `wartet, fertig in ${durationText(upgrading.endsAt - now)}` : leftText(upgrading.endsAt - now)}. Bis dahin arbeitet der Tisch wie bisher.`)),
+        ),
+      );
+    } else if (next) {
       const faster = Math.round((1 - next.speed / lvl.speed) * 100);
       body.append(
         h('h3', { class: 'ws-sec' }, 'Aufrüsten'),
@@ -257,12 +269,13 @@ export function openWorkshop(app: App, host: HTMLElement, opts: Opts): { el: HTM
               disabled: !canAfford(s.inventory, next.cost),
               onclick: async () => {
                 const res = await dispatch({ type: 'upgradeWorkbench' });
-                if (res) app.toast(`Aufgerüstet: ${next.name}`, 'good');
+                const j = res ? jobOf(activePlot(st()), 'u:workbench') : null;
+                if (res) app.toast(j ? `Umbau zur ${next.name}: fertig in ${durationText(j.endsAt - app.backend.now())}.` : `Aufgerüstet: ${next.name}`, 'good');
                 render();
               },
             },
             svgEl(icon('upgrade', 16)),
-            'Aufrüsten',
+            `Aufrüsten · ${durationText(workbenchMs(ws.level))}`,
           ),
         ),
       );
