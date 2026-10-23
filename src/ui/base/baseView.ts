@@ -87,7 +87,7 @@ const SOURCE_NAMES: Partial<Record<SpotKind, string>> = {
   fuel: 'Tankstellen',
   shed: 'Gartenlauben',
   container: 'Containern',
-  parcel: 'Packstationen',
+  parcel: 'Paketschränke',
   hide: 'Hochsitzen',
   backpack: 'Rucksäcken',
 };

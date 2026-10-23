@@ -57,7 +57,7 @@ export function partsChips(id: KramId) {
   return costChips(KRAM[id].parts);
 }
 
-/** „Dir fehlen 2 Glas. Glas gibt es oft in Autos und Packstationen.“ */
+/** „Dir fehlen 2 Glas. Glas gibt es oft in Autos und Paketschränken.“ */
 export function missingText(cost: Partial<Inventory>, have: Inventory): string {
   const miss = RESOURCE_ORDER.filter((r) => (cost[r] ?? 0) > have[r]);
   if (!miss.length) return '';

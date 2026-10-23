@@ -7,7 +7,7 @@ import type { EnemyId, FoeKind, LatLon, Spot, WorldEventKind } from '../core/typ
 import type { RegionStats } from '../core/terrain';
 import type { PoiCandidate } from '../core/world';
 import { h, svgEl } from '../ui/dom';
-import { icon, spotIcon } from '../ui/icons';
+import { icon, paintedSymbol, spotIcon } from '../ui/icons';
 import { generateDecor, type DecorInput, type RawLine, type RawPolygon } from './decor';
 import { FogOfWar } from './fogOfWar';
 import { WaterAnimation } from './waterAnim';
@@ -440,7 +440,7 @@ export class GameMap {
     this.baseMarker?.remove();
     this.baseMarker = null;
     if (!p) return;
-    const el = h('button', { class: 'base-marker', type: 'button', 'aria-label': 'Dein Zuhause' }, h('span', { class: 'base-sign' }, svgEl(icon('home', 20))), h('span', { class: 'base-pole' }));
+    const el = h('button', { class: 'base-marker', type: 'button', 'aria-label': 'Dein Zuhause' }, h('span', { class: 'base-sign' }, svgEl(paintedSymbol('zuhause', 20) ?? icon('home', 20))), h('span', { class: 'base-pole' }));
     el.addEventListener('click', (ev) => {
       ev.stopPropagation();
       this.lastMarkerTap = Date.now();
@@ -789,7 +789,7 @@ export class GameMap {
       if (m.state !== st) {
         // Unbekannter besonderer Ort: Fragezeichen statt Symbol, darüber Rauch, Licht oder Funkwellen
         const badge = m.el.querySelector('.spot-badge');
-        if (badge) badge.innerHTML = v.unknown ? icon('question', 21) : spotIcon(v.spot.kind, 19);
+        if (badge) badge.innerHTML = v.unknown ? (paintedSymbol('unbekannt', 21) ?? icon('question', 21)) : spotIcon(v.spot.kind, 19);
         if (v.unknown) m.el.dataset.unknown = v.unknown;
         else delete m.el.dataset.unknown;
         m.el.dataset.state = v.state;

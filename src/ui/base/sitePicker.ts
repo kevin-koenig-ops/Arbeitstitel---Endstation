@@ -15,7 +15,7 @@ const FIND_NAMES: Partial<Record<SpotKind, string>> = {
   hide: 'Hochsitzen',
   fuel: 'Tankstellen',
   car: 'Autowracks',
-  parcel: 'Packstationen',
+  parcel: 'Paketschränke',
 };
 
 /** Kleine Landschaftsbilder für die Karten (eigene Zeichnungen). */

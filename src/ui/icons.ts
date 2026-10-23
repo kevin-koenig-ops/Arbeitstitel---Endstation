@@ -251,4 +251,18 @@ export function icon(name: string, size = 22): string {
 
 /** Rohstoffe, Essen, Wasser, Medizin: farbig im Sticker-Look (ui/colorIcons.ts). */
 export const resIcon = (r: Resource, size?: number) => colorIcon(r, size) ?? icon(r, size);
-export const spotIcon = (k: SpotKind, size?: number) => icon(k, size);
+
+/**
+ * Gemalte Kartensymbole (Kevin, seit 23.10.): src/assets/symbole/symbol-<name>.webp, rund und
+ * schon freigestellt (scripts/kartensymbol.py). Gibt es eins, ersetzt es das Strich-Symbol.
+ */
+const SYMBOLS = import.meta.glob<string>('../assets/symbole/symbol-*.webp', { eager: true, import: 'default' });
+const symbolUrl = (name: string): string | undefined => SYMBOLS[`../assets/symbole/symbol-${name}.webp`];
+
+/** Gemaltes Symbol als kleines SVG (füllt das Abzeichen), sonst null. */
+export function paintedSymbol(name: string, size = 22): string | null {
+  const url = symbolUrl(name);
+  return url ? `<svg class="sym" viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true"><image href="${url}" x="0" y="0" width="24" height="24"/></svg>` : null;
+}
+
+export const spotIcon = (k: SpotKind, size?: number) => paintedSymbol(k, size) ?? icon(k, size);

@@ -40,7 +40,7 @@ export const REJECT_TEXT: Record<RejectReason, string> = {
   too_many: 'Dafür ist kein Platz mehr frei.',
 };
 
-/** Fundstellen in der Mehrzahl, für Hinweise wie "Zu finden in: Autos, Packstationen". */
+/** Fundstellen in der Mehrzahl, für Hinweise wie "Zu finden in: Autos, Paketschränke". */
 export const SPOT_PLURAL: Partial<Record<SpotKind, string>> = {
   car: 'Autos',
   backpack: 'Rucksäcken',
@@ -48,7 +48,7 @@ export const SPOT_PLURAL: Partial<Record<SpotKind, string>> = {
   container: 'Containern',
   hide: 'Hochsitzen',
   barrel: 'Fässern',
-  parcel: 'Packstationen',
+  parcel: 'Paketschränke',
   market: 'Supermärkten',
   pharmacy: 'Apotheken',
   hardware: 'Baumärkten',

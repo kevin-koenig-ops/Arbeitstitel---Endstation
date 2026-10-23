@@ -125,7 +125,7 @@ export function openWorkshop(app: App, host: HTMLElement, opts: Opts): { el: HTM
     const owned = KRAM_ORDER.filter((j) => (s.kram[j] ?? 0) > 0);
     const full = ws.jobs.length >= slots;
     body.append(h('h3', { class: 'ws-sec' }, 'Zerlegen', h('small', null, full ? 'Der Tisch ist voll' : 'Eins nach dem anderen, in echter Zeit')));
-    if (!owned.length) body.append(h('p', { class: 'ws-empty' }, s.packKram && Object.keys(s.packKram).length ? 'Kein Kram im Lager. Pack erst deinen Rucksack aus.' : 'Kein Kram im Lager. Draußen in Autos, Containern und Packstationen findest du welchen.'));
+    if (!owned.length) body.append(h('p', { class: 'ws-empty' }, s.packKram && Object.keys(s.packKram).length ? 'Kein Kram im Lager. Pack erst deinen Rucksack aus.' : 'Kein Kram im Lager. Draußen in Autos, Containern und Paketschränken findest du welchen.'));
     else
       body.append(
         h(

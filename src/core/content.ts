@@ -201,7 +201,7 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     mementoChance: 0.02,
   },
   parcel: {
-    names: ['Packstation', 'Stapel Pakete', 'Liegengebliebener Paketwagen'],
+    names: ['Paketschrank', 'Stapel Pakete', 'Liegengebliebener Paketwagen'],
     hint: 'Alles Mögliche. Selten, aber ergiebig.',
     cooldownMin: 90,
     loot: [
@@ -249,7 +249,7 @@ export const SPOT_KINDS: Record<SpotKind, SpotKindDef> = {
     mementoChance: 0.12,
   },
   pharmacy: {
-    names: ['Apotheke', 'Arztpraxis', 'Notaufnahme'],
+    names: ['Apotheke', 'Drogerie', 'Sanitätshaus'],
     hint: 'Medikamente und Verbandszeug',
     cooldownMin: 180,
     loot: [
@@ -2429,7 +2429,7 @@ export const PLACE_WHERE: Record<SpotKind, string> = {
   container: 'An Sammelstellen und Straßenecken',
   hide: 'Am Waldrand, mit Blick aufs Feld',
   barrel: 'Bei Höfen, Werkstätten und Baustellen',
-  parcel: 'Vor Häusern und an Packstationen',
+  parcel: 'Vor Häusern und an Paketschränken',
   mushrooms: 'Nur im Wald, im Herbst besonders oft',
   market: 'Supermärkte und Läden in der Stadt',
   pharmacy: 'Apotheken und Drogerien',

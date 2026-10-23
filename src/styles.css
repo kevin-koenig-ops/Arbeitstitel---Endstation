@@ -398,6 +398,10 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .spot[data-source="poi"] .spot-badge { left: 2px; width: 42px; height: 40px; border-radius: 6px; background: var(--paper); box-shadow: 0 0 0 2px #15130f, inset 0 0 0 2px #2f4a3c, 0 0 16px rgba(227, 214, 184, 0.35); color: #2f4a3c; }
 .spot[data-source="poi"] .spot-stake { left: 22px; top: 40px; height: 17px; }
 .spot[data-source="poi"]::before { left: 16px; }
+.spot-badge > svg.sym, .spot-badge > .svg > svg.sym, .sheet-badge svg.sym, .base-sign svg.sym { width: 100%; height: 100%; display: block; }
+.spot-badge > .svg:has(svg.sym), .sheet-badge > .svg:has(svg.sym), .base-sign > .svg:has(svg.sym) { width: 100%; height: 100%; display: block; }
+.spot-badge:has(svg.sym) { background: transparent; }
+.spot[data-state="cooldown"] .spot-badge svg.sym { filter: grayscale(0.85) brightness(0.6); }
 .spot[data-state="cooldown"] .spot-badge { background: #4f4a40; color: #26231e; box-shadow: 0 0 0 2px #15130f; }
 .spot[data-state="inrange"] .spot-badge { transform: scale(1.12); animation: glow 1.3s ease-in-out infinite; }
 @keyframes glow { 50% { box-shadow: 0 0 0 2px #15130f, 0 0 0 7px rgba(255, 178, 46, 0.35), 0 0 26px var(--amber-glow); } }
