@@ -24,7 +24,7 @@
 // Alles hier ist rein und vorhersagbar: gleicher Startwert, gleiche Züge, gleiches Ergebnis.
 // Dadurch kann es später auch der Server nachrechnen.
 
-import { BASE_DECK, CARDS, cardStat, DEVICES, FOE_RULES, FOE_TACTICS, MAX_DEVICES, ONCE_CARRY, POUCH_SLOTS, STANCE, TACTICS, WEAPON_CARDS, WEAPONS, type CardId, type CardStat, type DeviceId, type IntentKind, type Stance } from './content';
+import { BASE_DECK, CARDS, cardAmmoKind, cardStat, DEVICES, FOE_RULES, FOE_TACTICS, gunAmmo, MAX_DEVICES, ONCE_CARRY, POUCH_SLOTS, STANCE, TACTICS, WEAPON_CARDS, WEAPONS, type CardId, type CardStat, type DeviceId, type IntentKind, type Stance } from './content';
 import { hashString } from './rng';
 import type { AmmoId, FoeKind, Opening, Weapon, WeaponId } from './types';
 
@@ -208,9 +208,9 @@ export type TEvent =
   | { type: 'summon'; by: number; id: number; kind: FoeKind }
   | { type: 'weaponBroke'; weapon: WeaponId }
   /** Ein Schuss (left: Munition danach; loud: auf der Karte zu hören). */
-  | { type: 'fired'; weapon: WeaponId; left: number; loud: boolean }
+  | { type: 'fired'; weapon: WeaponId; ammo: AmmoId; left: number; loud: boolean }
   /** Keine Munition mehr: ab jetzt Kolbenschläge. */
-  | { type: 'outOfAmmo'; weapon: WeaponId }
+  | { type: 'outOfAmmo'; weapon: WeaponId; ammo: AmmoId }
   | { type: 'turn'; turn: number }
   | { type: 'burn'; id: number; dmg: number; kill: boolean }
   | { type: 'spread'; from: number; id: number }
@@ -482,9 +482,9 @@ export function createTactics(o: {
   for (const w of o.weapons) if (w.dur > 0) st.weaponDur[w.kind] = Math.max(st.weaponDur[w.kind] ?? 0, w.dur);
   st.draw = shuffle(st, deckFor(o.weapons, o.medicine, kit));
   // Schusswaffe ohne Munition: ihre Schüsse sind von Anfang an Kolbenschläge
+  // (beim Drilling je Lauf: ohne Schrot bleibt der Kugellauf und umgekehrt)
   for (const w of Object.keys(st.weaponDur) as WeaponId[]) {
-    const a = WEAPONS[w].ammo;
-    if (a && !((st.ammo[a] ?? 0) > 0)) emptyGun(st, w);
+    for (const a of gunAmmo(w)) if (!((st.ammo[a] ?? 0) > 0)) emptyGun(st, w, a);
   }
   let near = 0;
   for (const kind of o.group.slice(0, TACTICS.maxFoes)) {
@@ -623,8 +623,8 @@ function startTurn(st: TacticsState, events: TEvent[]) {
 }
 
 /** Munition alle: Jeder Schuss dieser Waffe wird zum Kolbenschlag (Anlegen bleibt). */
-function emptyGun(st: TacticsState, w: WeaponId) {
-  const swap = (l: CardId[]) => l.map((c): CardId => (CARDS[c].weapon === w && CARDS[c].ammo ? 'buttstroke' : c));
+function emptyGun(st: TacticsState, w: WeaponId, a: AmmoId) {
+  const swap = (l: CardId[]) => l.map((c): CardId => (CARDS[c].weapon === w && cardAmmoKind(c) === a ? 'buttstroke' : c));
   st.hand = swap(st.hand);
   st.draw = swap(st.draw);
   st.discard = swap(st.discard);
@@ -632,9 +632,8 @@ function emptyGun(st: TacticsState, w: WeaponId) {
 
 /** Reicht die Munition für diese Karte? (Karten ohne Munition: immer) */
 export function hasAmmo(st: TacticsState, card: CardId): boolean {
-  const def = CARDS[card];
-  const a = def.ammo && def.weapon ? WEAPONS[def.weapon].ammo : undefined;
-  return !a || (st.ammo[a] ?? 0) >= (def.ammo ?? 0);
+  const a = cardAmmoKind(card);
+  return !a || (st.ammo[a] ?? 0) >= (CARDS[card].ammo ?? 0);
 }
 
 function removeWeaponCards(st: TacticsState, w: WeaponId) {
@@ -886,15 +885,15 @@ function resolve(st: TacticsState, card: CardId, target: number | undefined, tak
   events.push({ type: 'play', card, target: foe?.id });
   // Schusswaffe: Munition verschießen; laut zählt für die Karte (Trupps kommen nachsehen)
   const gun = def.ammo && def.weapon ? def.weapon : null;
-  const gunAmmo = gun ? WEAPONS[gun].ammo : undefined;
-  if (gun && gunAmmo && def.ammo) {
-    st.ammo[gunAmmo] = (st.ammo[gunAmmo] ?? 0) - def.ammo;
-    st.usedAmmo[gunAmmo] = (st.usedAmmo[gunAmmo] ?? 0) + def.ammo;
+  const shell = cardAmmoKind(card);
+  if (gun && shell && def.ammo) {
+    st.ammo[shell] = (st.ammo[shell] ?? 0) - def.ammo;
+    st.usedAmmo[shell] = (st.usedAmmo[shell] ?? 0) + def.ammo;
     if (WEAPONS[gun].loud) st.shots += def.ammo;
-    events.push({ type: 'fired', weapon: gun, left: st.ammo[gunAmmo] ?? 0, loud: !!WEAPONS[gun].loud });
-    if ((st.ammo[gunAmmo] ?? 0) <= 0) {
-      emptyGun(st, gun);
-      events.push({ type: 'outOfAmmo', weapon: gun });
+    events.push({ type: 'fired', weapon: gun, ammo: shell, left: st.ammo[shell] ?? 0, loud: !!WEAPONS[gun].loud });
+    if ((st.ammo[shell] ?? 0) <= 0) {
+      emptyGun(st, gun, shell);
+      events.push({ type: 'outOfAmmo', weapon: gun, ammo: shell });
     }
   }
   // Du brennst: abrollen (Ausweichen) oder den Feuerlöscher nehmen

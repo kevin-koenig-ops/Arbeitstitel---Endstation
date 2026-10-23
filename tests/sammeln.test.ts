@@ -196,10 +196,10 @@ describe('Für den Kampf packen (Tasche und Fähigkeiten)', () => {
       { kind: 'crowbar', dur: 20 },
       { kind: 'bat', dur: 30 },
       { kind: 'axe', dur: 5 },
-      { kind: 'golfclub', dur: 10 },
+      { kind: 'bow', dur: 10 },
       { kind: 'slingshot', dur: 30 },
     ];
-    expect(battleWeapons(s).map((w) => w.kind)).toEqual(['axe', 'golfclub']);
+    expect(battleWeapons(s).map((w) => w.kind)).toEqual(['axe', 'bow']);
     expect(ev(s, { type: 'setLoadout', ranged: 'crowbar' })).toEqual({ type: 'rejected', reason: 'not_found' });
     expect(ev(s, { type: 'setLoadout', melee: 'crossbow' })).toEqual({ type: 'rejected', reason: 'not_found' });
     let r = act(s, { type: 'setLoadout', melee: 'crowbar', ranged: 'slingshot' });
@@ -210,7 +210,7 @@ describe('Für den Kampf packen (Tasche und Fähigkeiten)', () => {
     // null: wieder automatisch
     r = act(r.state, { type: 'setLoadout', ranged: null });
     expect(r.state.loadout.ranged).toBeUndefined();
-    expect(battleWeapons(r.state).map((w) => w.kind)).toEqual(['axe', 'golfclub']);
+    expect(battleWeapons(r.state).map((w) => w.kind)).toEqual(['axe', 'bow']);
     // Ohne Fernkampfwaffe: nur die Nahkampfwaffe
     const start = createPlayer('p', hero, T0);
     expect(battleWeapons(start).map((w) => w.kind)).toEqual(['crowbar']);

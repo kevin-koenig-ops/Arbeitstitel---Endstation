@@ -1053,6 +1053,24 @@ export interface WeaponDef {
   loud?: boolean;
   /** So viel Munition steckt drin, wenn man sie findet. */
   loaded?: number;
+  /** Zweite Munition (Drilling: Kugel und Schrot) und wie viel davon drin ist. */
+  ammo2?: AmmoId;
+  loaded2?: number;
+  /** Ausgedachtes Modell (Kevin 23.10.: echte Waffenart, ausgedachter Hersteller, keine echten Marken). */
+  model?: string;
+}
+
+/** Welche Munition eine Waffe braucht (keine, eine oder zwei Sorten). */
+export function gunAmmo(kind: WeaponId): AmmoId[] {
+  const d = WEAPONS[kind];
+  return [d.ammo, d.ammo2].filter((a): a is AmmoId => !!a);
+}
+
+/** Welche Munition eine Karte verschießt (oder keine). */
+export function cardAmmoKind(card: CardId): AmmoId | undefined {
+  const def = CARDS[card];
+  if (!def.ammo || !def.weapon) return undefined;
+  return def.ammoKind ?? WEAPONS[def.weapon].ammo;
 }
 
 /** Ohne Waffe kämpft man mit den Fäusten. */
@@ -1067,7 +1085,7 @@ export const WEAPONS: Record<WeaponId, WeaponDef> = {
   // Nur zu finden (Fundorte und Sichtungen)
   shovel: { name: 'Spaten', range: 'melee', dmg: 3, dur: 30, cost: {}, level: 0, rarity: 'common', where: 'Kleingärten, Baumärkte, Schuppen', art: 'spaten', desc: 'Gräbt und stößt Gegner zurück.' },
   axe: { name: 'Axt', range: 'melee', dmg: 5, dur: 26, cost: {}, level: 0, rarity: 'rare', where: 'Scheunen, Hofläden, Baumärkte', art: 'axt', desc: 'Schwer und langsam, aber wer getroffen wird, bleibt liegen.' },
-  golfclub: { name: 'Golfschläger', range: 'ranged', dmg: 3, dur: 24, cost: {}, level: 0, rarity: 'rare', where: 'Autos, Garagen, Sichtungen', art: 'golfschlaeger', desc: 'Reicht weit, trifft auch Gegner hinten.' },
+  golfclub: { name: 'Golfschläger', range: 'melee', dmg: 3, dur: 24, cost: {}, level: 0, rarity: 'rare', where: 'Autos, Garagen, Sichtungen', art: 'golfschlaeger', desc: 'Holt weit aus und schlägt Gegner nach hinten weg.' },
   slingshot: { name: 'Schleuder', range: 'ranged', dmg: 2, dur: 30, cost: {}, level: 0, rarity: 'rare', where: 'Kioske, Rucksäcke, Sichtungen', art: 'schleuder', desc: 'Kostet keine Kraft, einmal pro Runde.' },
   pipewrench: { name: 'Rohrzange', range: 'melee', dmg: 5, dur: 16, cost: {}, level: 0, rarity: 'common', where: 'Werkstätten, Baumärkte, Autos', art: 'rohrzange', desc: 'Schwer und wuchtig, aber das Gelenk wackelt schon. Hält nicht lange.' },
   lid: { name: 'Tonnendeckel', range: 'melee', dmg: 2, dur: 24, cost: {}, level: 0, rarity: 'common', where: 'Container, Haltestellen', art: 'tonnendeckel', desc: 'Verbeult, aber er hält. Mehr Schild als Waffe.' },
@@ -1079,20 +1097,29 @@ export const WEAPONS: Record<WeaponId, WeaponDef> = {
   nailgun: { name: 'Nagelpistole', range: 'ranged', dmg: 2, dur: 24, cost: {}, level: 0, rarity: 'epic', where: 'Baumärkte, Werkstätten', art: 'nagelpistole', desc: 'Trifft zwei Gegner mit einem Druck, mit einer Salve sogar alle.' },
   // Schusswaffen (Kevin 23.10.): stark und selten, jede mit eigener Munition, die es nur draußen gibt.
   // Laute Schüsse locken auf der Karte Trupps an. Ist die Munition alle, wird jeder Schuss ein Kolbenschlag.
-  airrifle: { name: 'Luftgewehr', range: 'ranged', dmg: 3, dur: 50, cost: {}, level: 0, rarity: 'rare', where: 'Schuppen, Sichtungen', art: 'luftgewehr', ammo: 'pellets', loaded: 12, desc: 'Leise. Die kleinen Bleikugeln tun weh, mehr nicht. Auf Abstand trifft es genauer.' },
-  pistol: { name: 'Pistole', range: 'ranged', dmg: 5, dur: 40, cost: {}, level: 0, rarity: 'rare', where: 'Konvoi-Wracks, Bunker, Hubschrauber', art: 'pistole', ammo: 'pistol', loud: true, loaded: 4, desc: 'Ein paar Patronen noch im Magazin. Laut: Trupps in der Nähe kommen nachsehen.' },
-  revolver: { name: 'Revolver', range: 'ranged', dmg: 6, dur: 44, cost: {}, level: 0, rarity: 'epic', where: 'Zeltlager, Autos, Rucksäcke', art: 'revolver', ammo: 'revolver', loud: true, loaded: 3, desc: 'Alt, schwer, zuverlässig. Wer die Trommel leert, trifft alle. Laut.' },
-  shotgun: { name: 'Schrotflinte', range: 'ranged', dmg: 4, dur: 40, cost: {}, level: 0, rarity: 'epic', where: 'Hochsitze, Zeltlager, Konvoi-Wracks', art: 'schrotflinte', ammo: 'shells', loud: true, loaded: 2, desc: 'Trifft alle vorne auf einmal und stößt sie zurück. Sehr laut.' },
-  huntingrifle: { name: 'Jagdgewehr', range: 'ranged', dmg: 10, dur: 40, cost: {}, level: 0, rarity: 'legendary', where: 'Hochsitze, Bunker, Sichtungen (sehr selten)', art: 'jagdgewehr', ammo: 'rifle', loud: true, loaded: 3, desc: 'Mit Zielfernrohr. Ein Schuss, und der Größte liegt. Laut, weit zu hören.' },
+  // Luftdruck: leise, schwach, viel Munition
+  airpistol: { name: 'Luftpistole', model: 'Lindmark LP 7', range: 'ranged', dmg: 3, dur: 50, cost: {}, level: 0, rarity: 'common', where: 'Gartenlauben, Autos, Rucksäcke, Märkte', art: 'luftpistole', ammo: 'pellets', loaded: 10, desc: 'Eine Luftpistole aus dem Schützenverein. Leise und schwach, aber besser als ein Stein.' },
+  airrifle: { name: 'Luftgewehr', model: 'Lindmark LG 52', range: 'ranged', dmg: 3, dur: 50, cost: {}, level: 0, rarity: 'rare', where: 'Gartenlauben, Sichtungen', art: 'luftgewehr', ammo: 'pellets', loaded: 12, desc: 'Leise. Die kleinen Bleikugeln tun weh, mehr nicht. Auf Abstand trifft es genauer.' },
+  // Pistolen und Revolver
+  pocketpistol: { name: 'Taschenpistole', model: 'Morhardt TP 3', range: 'ranged', dmg: 3, dur: 30, cost: {}, level: 0, rarity: 'rare', where: 'Autos, Rucksäcke, Zeltlager, Sichtungen', art: 'taschenpistole', ammo: 'pistol', loud: true, loaded: 2, desc: 'Klein und schnell gezogen: Ein Schuss kostet keine Kraft. Laut.' },
+  pistol: { name: 'Dienstpistole', model: 'Morhardt DP 11', range: 'ranged', dmg: 5, dur: 40, cost: {}, level: 0, rarity: 'rare', where: 'Konvoi-Wracks, Bunker, Hubschrauber', art: 'dienstpistole', ammo: 'pistol', loud: true, loaded: 4, desc: 'Ein paar Patronen noch im Magazin. Laut: Trupps in der Nähe kommen nachsehen.' },
+  revolver: { name: 'Revolver', model: 'Grauhof R 61', range: 'ranged', dmg: 6, dur: 44, cost: {}, level: 0, rarity: 'epic', where: 'Zeltlager, Autos, Rucksäcke', art: 'revolver', ammo: 'revolver', loud: true, loaded: 3, desc: 'Alt, schwer, zuverlässig. Wer die Trommel leert, trifft alle. Laut.' },
+  // Flinten (Schrot)
+  shotgun: { name: 'Doppelflinte', model: 'Rennwald DF 16', range: 'ranged', dmg: 4, dur: 40, cost: {}, level: 0, rarity: 'epic', where: 'Hochsitze, Zeltlager, Konvoi-Wracks', art: 'doppelflinte', ammo: 'shells', loud: true, loaded: 2, desc: 'Zwei Läufe nebeneinander. Trifft alle vorne auf einmal und stößt sie zurück. Sehr laut.' },
+  pumpshotgun: { name: 'Pumpflinte', model: 'Grauhof PF 8', range: 'ranged', dmg: 4, dur: 44, cost: {}, level: 0, rarity: 'epic', where: 'Konvoi-Wracks, Bunker, Zeltlager', art: 'pumpflinte', ammo: 'shells', loud: true, loaded: 4, desc: 'Schrot für die Meute vorne, eine Flintenkugel für den Großen. Sehr laut.' },
+  // Büchsen (Jagdgewehre)
+  breakrifle: { name: 'Kipplaufbüchse', model: 'Rennwald KB 2', range: 'ranged', dmg: 9, dur: 40, cost: {}, level: 0, rarity: 'epic', where: 'Hochsitze, Jagdhütten, Sichtungen', art: 'kipplaufbuechse', ammo: 'rifle', loud: true, loaded: 2, desc: 'Ein Jagdgewehr mit nur einem Schuss: einmal pro Runde, dafür sitzt er. Laut.' },
+  huntingrifle: { name: 'Repetierbüchse', model: 'Rennwald RB 70', range: 'ranged', dmg: 10, dur: 40, cost: {}, level: 0, rarity: 'legendary', where: 'Hochsitze, Bunker, Sichtungen (sehr selten)', art: 'repetierbuechse', ammo: 'rifle', loud: true, loaded: 3, desc: 'Ein Jagdgewehr mit Zielfernrohr. Ein Schuss, und der Größte liegt. Laut, weit zu hören.' },
+  drilling: { name: 'Drilling', model: 'Rennwald D 3', range: 'ranged', dmg: 8, dur: 40, cost: {}, level: 0, rarity: 'legendary', where: 'Hochsitze, Jagdhütten, Sichtungen (sehr selten)', art: 'drilling', ammo: 'rifle', loaded: 1, ammo2: 'shells', loaded2: 2, loud: true, desc: 'Drei Läufe: zwei für Schrot, einer für die Kugel. Braucht Gewehr- und Schrotpatronen. Laut.' },
 };
 
-/** Munition: jede Schusswaffe hat ihre eigene. Wirkt sofort (wie Medizin), gibt es nur draußen. */
-export const AMMO: Record<AmmoId, { name: string; one: string }> = {
-  pellets: { name: 'Luftgewehrkugeln', one: 'Kugel' },
-  pistol: { name: 'Pistolenpatronen', one: 'Patrone' },
-  revolver: { name: 'Revolverpatronen', one: 'Patrone' },
-  shells: { name: 'Schrotpatronen', one: 'Patrone' },
-  rifle: { name: 'Gewehrpatronen', one: 'Patrone' },
+/** Munition: je Waffenart eine eigene (alle Büchsen nehmen Gewehrpatronen, alle Flinten Schrot). Gibt es nur draußen. */
+export const AMMO: Record<AmmoId, { name: string; one: string; /** Kurz, für zwei Sorten in einer Zeile (Drilling). */ short: string }> = {
+  pellets: { name: 'Luftdruckkugeln', one: 'Kugel', short: 'Kugeln' },
+  pistol: { name: 'Pistolenpatronen', one: 'Patrone', short: 'Pistole' },
+  revolver: { name: 'Revolverpatronen', one: 'Patrone', short: 'Revolver' },
+  shells: { name: 'Schrotpatronen', one: 'Patrone', short: 'Schrot' },
+  rifle: { name: 'Gewehrpatronen', one: 'Patrone', short: 'Kugel' },
 };
 export const AMMO_ORDER: AmmoId[] = ['pellets', 'pistol', 'revolver', 'shells', 'rifle'];
 
@@ -1127,7 +1154,7 @@ export const NOISE = {
 };
 export const RANGE_NAMES: Record<WeaponDef['range'], string> = { melee: 'Nahkampf', ranged: 'Fernkampf' };
 /** Waffen, die man nur findet (Sammelbuch). */
-export const FOUND_WEAPONS: WeaponId[] = ['shovel', 'pitchfork', 'lid', 'pipewrench', 'axe', 'machete', 'golfclub', 'slingshot', 'nailgun', 'extinguisher', 'bow', 'sledgehammer', 'airrifle', 'pistol', 'revolver', 'shotgun', 'huntingrifle'];
+export const FOUND_WEAPONS: WeaponId[] = ['shovel', 'pitchfork', 'lid', 'pipewrench', 'axe', 'machete', 'golfclub', 'slingshot', 'nailgun', 'extinguisher', 'bow', 'sledgehammer', 'airrifle', 'pistol', 'revolver', 'shotgun', 'huntingrifle', 'airpistol', 'pocketpistol', 'pumpshotgun', 'breakrifle', 'drilling'];
 
 export const START_WEAPONS: Weapon[] = [{ kind: 'crowbar', dur: WEAPONS.crowbar.dur }];
 
@@ -1214,6 +1241,7 @@ export type CardId =
   | 'spade' | 'chop' | 'drive' | 'pellet' | 'nail' | 'salvo' | 'prong' | 'fend' | 'arrow' | 'drawbow' | 'cleave' | 'hack' | 'swath' | 'sledge' | 'heave' | 'lidup' | 'lidbash' | 'foam' | 'extbash' | 'wrenchhit'
   // Schusswaffen (und der Kolbenschlag, wenn die Munition alle ist)
   | 'airshot' | 'shot' | 'doubletap' | 'revshot' | 'fan' | 'buck' | 'rifleshot' | 'scope' | 'buttstroke'
+  | 'golfhit' | 'airpshot' | 'snapshot' | 'pumpbuck' | 'slug' | 'stalkshot' | 'drillball' | 'drillshot'
   // Erzeugte Karten (kommen durch andere Karten auf die Hand, sind nach dem Spielen weg)
   | 'marble' | 'pebble' | 'lathhit'
   // Einmal-Karten (nach dem Ausspielen weg)
@@ -1330,6 +1358,8 @@ export interface CardDef {
   weapon?: WeaponId;
   /** Schusswaffe: verschießt so viele Patronen (ihrer Waffe). Ohne genug Munition geht der Schuss nicht. */
   ammo?: number;
+  /** Andere Munition als die Waffe sonst nimmt (Drilling: Schrotlauf). */
+  ammoKind?: AmmoId;
   /** Verbraucht 1 Medizin. */
   medicine?: boolean;
   /** Sammelkarten: Seltenheit und wo man sie findet (Hinweis im Sammelbuch). */
@@ -1356,7 +1386,8 @@ export const CARDS: Record<CardId, CardDef> = {
   aim: { name: 'Zielen', kind: 'weapon', cost: 0, target: 'self', focus: 3, art: 'armbrust', desc: 'Der nächste Bolzen oder Wurf macht 3 mehr Schaden.' },
   spade: { name: 'Spatenstich', kind: 'weapon', cost: 1, target: 'near', dmg: 3, push: true, weapon: 'shovel', art: 'spaten', desc: '3 Schaden und stößt zurück.' },
   chop: { name: 'Axthieb', kind: 'weapon', cost: 2, target: 'near', dmg: 6, stun: true, weapon: 'axe', art: 'axt', desc: '6 Schaden, der Gegner setzt eine Runde aus.' },
-  drive: { name: 'Abschlag', kind: 'weapon', cost: 1, target: 'any', dmg: 3, weapon: 'golfclub', art: 'golfschlaeger', desc: '3 Schaden, trifft auch Gegner hinten.' },
+  drive: { name: 'Abschlag', kind: 'weapon', cost: 1, target: 'near', dmg: 3, push: true, weapon: 'golfclub', art: 'golfschlaeger', desc: '3 Schaden vorne, schlägt den Gegner nach hinten weg.' },
+  golfhit: { name: 'Durchschwung', kind: 'weapon', cost: 1, target: 'near', dmg: 3, weapon: 'golfclub', art: 'golfschlaeger', desc: '3 Schaden mit dem Golfschläger.' },
   pellet: { name: 'Stahlkugel', kind: 'weapon', cost: 0, target: 'any', dmg: 2, perTurn: 1, weapon: 'slingshot', art: 'schleuder', desc: '2 Schaden ohne Kraft, trifft auch hinten. Einmal pro Runde.' },
   nail: { name: 'Nagel', kind: 'weapon', cost: 1, target: 'any', dmg: 2, chain: true, pierce: true, weapon: 'nailgun', art: 'nagelpistole', desc: '2 Schaden an einem Gegner und noch einem zweiten. Geht durch Rüstung.' },
   wrenchhit: { name: 'Zangenhieb', kind: 'weapon', cost: 1, target: 'near', dmg: 5, weapon: 'pipewrench', art: 'rohrzange', desc: '5 Schaden vorne.' },
@@ -1374,14 +1405,21 @@ export const CARDS: Record<CardId, CardDef> = {
   heave: { name: 'Ausholen', kind: 'weapon', cost: 1, target: 'self', momentum: 3, art: 'vorschlaghammer', desc: 'Schwung: Dein nächster Angriff in dieser Runde macht 3 mehr.' },
   prong: { name: 'Gabelstich', kind: 'weapon', cost: 1, target: 'near', dmg: 3, weapon: 'pitchfork', art: 'mistgabel', desc: '3 Schaden an einem Gegner vorne.' },
   fend: { name: 'Auf Abstand', kind: 'weapon', cost: 1, target: 'self', area: 'near', push: true, weapon: 'pitchfork', art: 'mistgabel', desc: 'Stößt alle vorne zurück und unterbricht ihr Ausholen.' },
-  airshot: { name: 'Luftgewehrschuss', kind: 'weapon', cost: 1, target: 'any', dmg: 3, farBonus: 1, ammo: 1, weapon: 'airrifle', art: 'luftgewehr', desc: '3 Schaden, an Gegnern hinten 4. Leise. 1 Kugel.' },
-  shot: { name: 'Schuss', kind: 'weapon', cost: 1, target: 'any', dmg: 5, ammo: 1, weapon: 'pistol', art: 'pistole', desc: '5 Schaden an einem Gegner, auch hinten. 1 Patrone.' },
-  doubletap: { name: 'Doppelschuss', kind: 'weapon', cost: 2, target: 'any', dmg: 9, ammo: 2, weapon: 'pistol', art: 'pistole', desc: '9 Schaden an einem Gegner, auch hinten. 2 Patronen.' },
+  airpshot: { name: 'Luftpistolenschuss', kind: 'weapon', cost: 0, target: 'any', dmg: 2, perTurn: 1, ammo: 1, weapon: 'airpistol', art: 'luftpistole', desc: '2 Schaden ohne Kraft, auch hinten. Einmal pro Runde. Leise. 1 Kugel.' },
+  snapshot: { name: 'Schnellschuss', kind: 'weapon', cost: 0, target: 'any', dmg: 3, ammo: 1, weapon: 'pocketpistol', art: 'taschenpistole', desc: '3 Schaden ohne Kraft, auch hinten. 1 Patrone.' },
+  pumpbuck: { name: 'Schrotschuss', kind: 'weapon', cost: 1, target: 'self', area: 'near', dmg: 3, push: true, ammo: 1, weapon: 'pumpshotgun', art: 'pumpflinte', desc: '3 Schaden an allen vorne, stößt sie zurück. 1 Patrone.' },
+  slug: { name: 'Flintenkugel', kind: 'weapon', cost: 1, target: 'any', dmg: 7, ammo: 1, weapon: 'pumpshotgun', art: 'pumpflinte', desc: '7 Schaden an einem Gegner, auch hinten. 1 Schrotpatrone.' },
+  stalkshot: { name: 'Pirschschuss', kind: 'weapon', cost: 1, target: 'any', dmg: 9, pierce: true, perTurn: 1, ammo: 1, weapon: 'breakrifle', art: 'kipplaufbuechse', desc: '9 Schaden, auch hinten, geht durch Rüstung. Einmal pro Runde. 1 Patrone.' },
+  drillball: { name: 'Kugellauf', kind: 'weapon', cost: 1, target: 'any', dmg: 8, pierce: true, ammo: 1, weapon: 'drilling', art: 'drilling', desc: '8 Schaden, auch hinten, geht durch Rüstung. 1 Gewehrpatrone.' },
+  drillshot: { name: 'Schrotlauf', kind: 'weapon', cost: 1, target: 'self', area: 'near', dmg: 3, push: true, ammo: 1, ammoKind: 'shells', weapon: 'drilling', art: 'drilling', desc: '3 Schaden an allen vorne, stößt sie zurück. 1 Schrotpatrone.' },
+  airshot: { name: 'Luftgewehrschuss', kind: 'weapon', cost: 0, target: 'any', dmg: 3, farBonus: 1, perTurn: 1, ammo: 1, weapon: 'airrifle', art: 'luftgewehr', desc: '3 Schaden ohne Kraft, an Gegnern hinten 4. Einmal pro Runde. Leise. 1 Kugel.' },
+  shot: { name: 'Schuss', kind: 'weapon', cost: 1, target: 'any', dmg: 5, ammo: 1, weapon: 'pistol', art: 'dienstpistole', desc: '5 Schaden an einem Gegner, auch hinten. 1 Patrone.' },
+  doubletap: { name: 'Doppelschuss', kind: 'weapon', cost: 2, target: 'any', dmg: 9, ammo: 2, weapon: 'pistol', art: 'dienstpistole', desc: '9 Schaden an einem Gegner, auch hinten. 2 Patronen.' },
   revshot: { name: 'Revolverschuss', kind: 'weapon', cost: 1, target: 'any', dmg: 6, ammo: 1, weapon: 'revolver', art: 'revolver', desc: '6 Schaden an einem Gegner, auch hinten. 1 Patrone.' },
-  fan: { name: 'Trommel leeren', kind: 'weapon', cost: 2, target: 'self', area: 'all', dmg: 4, ammo: 3, weapon: 'revolver', art: 'revolver', desc: '4 Schaden an allen Gegnern, vorne und hinten. 3 Patronen.' },
-  buck: { name: 'Schrotschuss', kind: 'weapon', cost: 1, target: 'self', area: 'near', dmg: 4, push: true, ammo: 1, weapon: 'shotgun', art: 'schrotflinte', desc: '4 Schaden an allen vorne, stößt sie zurück. 1 Patrone.' },
-  rifleshot: { name: 'Gewehrschuss', kind: 'weapon', cost: 2, target: 'any', dmg: 10, pierce: true, ammo: 1, weapon: 'huntingrifle', art: 'jagdgewehr', desc: '10 Schaden an einem Gegner, auch hinten, geht durch Rüstung. 1 Patrone.' },
-  scope: { name: 'Anlegen', kind: 'weapon', cost: 0, target: 'self', focus: 4, art: 'jagdgewehr', desc: 'Der nächste Schuss, Bolzen oder Wurf macht 4 mehr Schaden.' },
+  fan: { name: 'Trommel leeren', kind: 'weapon', cost: 1, target: 'self', area: 'all', dmg: 4, ammo: 3, weapon: 'revolver', art: 'revolver', desc: '4 Schaden an allen Gegnern, vorne und hinten. 3 Patronen.' },
+  buck: { name: 'Schrotschuss', kind: 'weapon', cost: 1, target: 'self', area: 'near', dmg: 3, push: true, ammo: 1, weapon: 'shotgun', art: 'doppelflinte', desc: '3 Schaden an allen vorne, stößt sie zurück. 1 Patrone.' },
+  rifleshot: { name: 'Büchsenschuss', kind: 'weapon', cost: 1, target: 'any', dmg: 10, pierce: true, ammo: 1, weapon: 'huntingrifle', art: 'repetierbuechse', desc: '10 Schaden an einem Gegner, auch hinten, geht durch Rüstung. 1 Patrone.' },
+  scope: { name: 'Anlegen', kind: 'weapon', cost: 0, target: 'self', focus: 4, art: 'repetierbuechse', desc: 'Der nächste Schuss, Bolzen oder Wurf macht 4 mehr Schaden.' },
   buttstroke: { name: 'Kolbenschlag', kind: 'weapon', cost: 1, target: 'near', dmg: 2, push: true, art: 'kolbenschlag', desc: 'Keine Munition mehr: 2 Schaden mit dem Kolben, stößt zurück.' },
   arrow: { name: 'Pfeil', kind: 'weapon', cost: 1, target: 'any', dmg: 3, farBonus: 2, thrown: true, weapon: 'bow', art: 'sportbogen', desc: '3 Schaden, an Gegnern hinten sogar 5.' },
   drawbow: { name: 'Spannen', kind: 'weapon', cost: 0, target: 'self', focus: 2, art: 'sportbogen', desc: 'Der nächste Pfeil, Bolzen oder Wurf macht 2 mehr Schaden.' },
@@ -1550,21 +1588,21 @@ export function cardStat(id: CardId, stat: CardStat, level = 1): number {
  */
 export const CARD_LOOT: Partial<Record<SpotKind, [CardId | `w:${WeaponId}`, number][]>> = {
   fuel: [['molotov', 0.22], ['oilcan', 0.06], ['flare', 0.03], ['w:extinguisher', 0.005]],
-  car: [['molotov', 0.05], ['tape', 0.04], ['w:golfclub', 0.02], ['w:pipewrench', 0.02], ['flare', 0.02], ['w:pistol', 0.003], ['w:revolver', 0.002]],
+  car: [['molotov', 0.05], ['tape', 0.04], ['w:golfclub', 0.02], ['w:pipewrench', 0.02], ['flare', 0.02], ['w:pistol', 0.003], ['w:revolver', 0.002], ['w:airpistol', 0.006], ['w:pocketpistol', 0.004]],
   hardware: [['smoke', 0.1], ['caltrops', 0.1], ['tripwire', 0.08], ['motionlamp', 0.06], ['tape', 0.06], ['w:pipewrench', 0.03], ['w:machete', 0.01], ['w:shovel', 0.05], ['w:axe', 0.03], ['w:nailgun', 0.005], ['w:extinguisher', 0.004]],
-  market: [['lure', 0.12], ['marblesack', 0.03], ['firecracker', 0.08], ['fireworks', 0.004], ['w:slingshot', 0.015], ['w:pitchfork', 0.01]],
+  market: [['lure', 0.12], ['marblesack', 0.03], ['firecracker', 0.08], ['fireworks', 0.004], ['w:slingshot', 0.015], ['w:pitchfork', 0.01], ['w:airpistol', 0.006]],
   pharmacy: [['pepper', 0.1], ['painkiller', 0.06], ['dressing', 0.05], ['adrenaline', 0.025]],
-  shed: [['tinder', 0.08], ['lath', 0.08], ['fencer', 0.03], ['caltrops', 0.05], ['w:shovel', 0.05], ['w:pitchfork', 0.04], ['w:axe', 0.02], ['w:machete', 0.015], ['w:airrifle', 0.01]],
-  hide: [['tripwire', 0.06], ['lath', 0.06], ['w:shotgun', 0.008], ['w:huntingrifle', 0.004]],
+  shed: [['tinder', 0.08], ['lath', 0.08], ['fencer', 0.03], ['caltrops', 0.05], ['w:shovel', 0.05], ['w:pitchfork', 0.04], ['w:axe', 0.02], ['w:machete', 0.015], ['w:airrifle', 0.01], ['w:airpistol', 0.012]],
+  hide: [['tripwire', 0.06], ['lath', 0.06], ['w:shotgun', 0.008], ['w:huntingrifle', 0.004], ['w:breakrifle', 0.006], ['w:drilling', 0.002]],
   parcel: [['alarm', 0.08], ['boombox', 0.06], ['tape', 0.04]],
   barrel: [['oilcan', 0.05]],
-  camp: [['tinder', 0.2], ['oilcan', 0.06], ['fireworks', 0.008], ['w:revolver', 0.006], ['w:shotgun', 0.005]],
-  backpack: [['firecracker', 0.04], ['alarm', 0.04], ['marblesack', 0.05], ['boombox', 0.03], ['dressing', 0.03], ['w:slingshot', 0.02]],
+  camp: [['tinder', 0.2], ['oilcan', 0.06], ['fireworks', 0.008], ['w:revolver', 0.006], ['w:shotgun', 0.005], ['w:pumpshotgun', 0.004], ['w:pocketpistol', 0.004]],
+  backpack: [['firecracker', 0.04], ['alarm', 0.04], ['marblesack', 0.05], ['boombox', 0.03], ['dressing', 0.03], ['w:slingshot', 0.02], ['w:airpistol', 0.006], ['w:pocketpistol', 0.004]],
   container: [['pepper', 0.03], ['lure', 0.03], ['w:lid', 0.03]],
   stop: [['flare', 0.04], ['firecracker', 0.03], ['w:lid', 0.03]],
-  convoy: [['flare', 0.35], ['flashbang', 0.04], ['grenade', 0.02], ['w:pistol', 0.03], ['w:shotgun', 0.008], ['w:huntingrifle', 0.002]],
+  convoy: [['flare', 0.35], ['flashbang', 0.04], ['grenade', 0.02], ['w:pistol', 0.03], ['w:shotgun', 0.008], ['w:huntingrifle', 0.002], ['w:pumpshotgun', 0.006]],
   heli: [['dressing', 0.2], ['painkiller', 0.1], ['adrenaline', 0.1], ['grenade', 0.015], ['w:pistol', 0.02]],
-  bunker: [['flashbang', 0.05], ['grenade', 0.02], ['adrenaline', 0.1], ['w:pistol', 0.03], ['w:huntingrifle', 0.003]],
+  bunker: [['flashbang', 0.05], ['grenade', 0.02], ['adrenaline', 0.1], ['w:pistol', 0.03], ['w:huntingrifle', 0.003], ['w:pumpshotgun', 0.004]],
   airdrop: [['dressing', 0.25], ['adrenaline', 0.15], ['grenade', 0.02]],
 };
 
@@ -1582,7 +1620,7 @@ export const WEAPON_CARDS: Record<WeaponId, CardId[]> = {
   pipewrench: ['wrenchhit', 'wrenchhit', 'wrenchhit'],
   extinguisher: ['foam', 'extbash', 'extbash'],
   sledgehammer: ['sledge', 'sledge', 'heave'],
-  golfclub: ['drive', 'drive'],
+  golfclub: ['drive', 'golfhit', 'golfhit'],
   slingshot: ['pellet', 'pellet', 'pellet'],
   nailgun: ['nail', 'nail', 'salvo'],
   pitchfork: ['prong', 'prong', 'fend'],
@@ -1592,6 +1630,11 @@ export const WEAPON_CARDS: Record<WeaponId, CardId[]> = {
   revolver: ['revshot', 'revshot', 'fan'],
   shotgun: ['buck', 'buck', 'buck'],
   huntingrifle: ['rifleshot', 'rifleshot', 'scope'],
+  airpistol: ['airpshot', 'airpshot'],
+  pocketpistol: ['snapshot', 'snapshot'],
+  pumpshotgun: ['pumpbuck', 'pumpbuck', 'slug'],
+  breakrifle: ['stalkshot', 'stalkshot'],
+  drilling: ['drillball', 'drillshot', 'drillshot'],
 };
 
 export const TACTICS = {

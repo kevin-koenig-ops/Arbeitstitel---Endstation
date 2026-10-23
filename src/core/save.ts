@@ -11,6 +11,11 @@ import type { PlayerState } from './types';
 type Raw = Record<string, unknown> & { schema?: number };
 
 const MIGRATIONS: Record<number, (s: Raw) => void> = {
+  // Version 21 -> 22: Der Golfschläger ist jetzt eine Nahkampfwaffe. War er als Fernwaffe gewählt, wählt das Spiel neu.
+  21: (s) => {
+    const lo = s.loadout as { ranged?: string } | undefined;
+    if (lo && lo.ranged === 'golfclub') delete lo.ranged;
+  },
   // Version 20 -> 21: Schusswaffen. Munition je Sorte und gemerkte Lärm-Orte (Trupps kommen nachsehen).
   20: (s) => {
     if (!s.ammo || typeof s.ammo !== 'object') s.ammo = {};

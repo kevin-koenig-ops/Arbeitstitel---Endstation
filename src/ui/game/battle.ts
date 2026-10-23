@@ -12,6 +12,7 @@ import { AMMO, CARDS, DEVICE_NAMES, styleOf, CLIMATE, FOE_RULES, FOE_TACTICS, KR
 import { isCold, isHot } from '../../core/terrain';
 import { seasonOf } from '../../services/settings';
 import { currentRegion } from './worldState';
+import { gunAmmoText } from './chips';
 import { aliveFoes, canHowl, createTactics, endTurn, flee, fleeCost, foeById, giveMedicine, lacksMedicine, mercyTarget, playable, playCard, playPouch, targetsFor, type Intent, type TacticsState, type TEvent, type TFoe } from '../../core/tactics';
 import { battleWeapons, bestWeapon, cardKit, currentHealth } from '../../core/rules';
 import { artUrl, CARD_ICON, cardEffect, styleMark } from '../cards';
@@ -572,7 +573,12 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           if (e.loud) vibrate(25);
           break;
         case 'outOfAmmo':
-          say(`${WEAPONS[e.weapon].name}: keine Munition mehr. Ab jetzt Kolbenschläge.`, 'bad');
+          say(
+            WEAPONS[e.weapon].ammo2
+              ? `${WEAPONS[e.weapon].name}: keine ${AMMO[e.ammo].name} mehr. Dieser Lauf wird zum Kolbenschlag.`
+              : `${WEAPONS[e.weapon].name}: keine Munition mehr. Ab jetzt Kolbenschläge.`,
+            'bad',
+          );
           break;
         case 'advance': {
           const f = sfoe(e.id);
@@ -1067,8 +1073,8 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     const kinds = (Object.keys(st.weaponDur) as (keyof typeof WEAPONS)[]).filter((k) => (st.weaponDur[k] ?? 0) > 0);
     // Schusswaffen: Munition statt Haltbarkeit zeigen (die Haltbarkeit hält lange)
     const label = (k: (typeof kinds)[number]) => {
-      const a = WEAPONS[k].ammo;
-      return a ? `${WEAPONS[k].name} · ${st.ammo[a] ?? 0} ${(st.ammo[a] ?? 0) === 1 ? AMMO[a].one : AMMO[a].one === 'Kugel' ? 'Kugeln' : 'Patronen'}` : `${WEAPONS[k].name} ${st.weaponDur[k]}`;
+      const a = gunAmmoText(k, st.ammo);
+      return a ? `${WEAPONS[k].name} · ${a}` : `${WEAPONS[k].name} ${st.weaponDur[k]}`;
     };
     weaponLine.textContent = kinds.length ? kinds.map(label).join(' · ') : 'Keine Waffe: Fäuste und Steine';
   };

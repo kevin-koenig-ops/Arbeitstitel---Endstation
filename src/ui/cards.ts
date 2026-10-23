@@ -2,6 +2,7 @@
 // nach Seltenheit, Wirkung in kurzen Worten. Gebraucht im Kampf, im Sammelbuch und beim Fund.
 
 import {
+  AMMO,
   CARDS,
   cardStat,
   FOUND_WEAPONS,
@@ -20,7 +21,7 @@ import {
   type CardId,
   type CardRarity,
 } from '../core/content';
-import type { WeaponId } from '../core/types';
+import type { AmmoId, WeaponId } from '../core/types';
 import { h, svgEl } from './dom';
 import { icon } from './icons';
 
@@ -42,6 +43,7 @@ export const CARD_ICON: Record<CardId, string> = {
   spade: 'shovel',
   chop: 'axe',
   drive: 'golfclub',
+  golfhit: 'golfclub',
   pellet: 'slingshot',
   nail: 'nailgun',
   salvo: 'salvo',
@@ -137,9 +139,16 @@ export const CARD_ICON: Record<CardId, string> = {
   rifleshot: 'longgun',
   scope: 'aim',
   buttstroke: 'fist',
+  airpshot: 'pistol',
+  snapshot: 'pistol',
+  pumpbuck: 'spread',
+  slug: 'longgun',
+  stalkshot: 'longgun',
+  drillball: 'longgun',
+  drillshot: 'spread',
 };
 
-export const WEAPON_ICON: Record<WeaponId, string> = { crowbar: 'crowbar', bat: 'bat', crossbow: 'bolt', shovel: 'shovel', axe: 'axe', golfclub: 'golfclub', slingshot: 'slingshot', nailgun: 'nailgun', pitchfork: 'pitchfork', bow: 'bow', machete: 'machete', sledgehammer: 'sledgehammer', lid: 'lid', extinguisher: 'extinguisher', pipewrench: 'pipewrench', airrifle: 'longgun', pistol: 'pistol', revolver: 'revolver', shotgun: 'longgun', huntingrifle: 'longgun' };
+export const WEAPON_ICON: Record<WeaponId, string> = { crowbar: 'crowbar', bat: 'bat', crossbow: 'bolt', shovel: 'shovel', axe: 'axe', golfclub: 'golfclub', slingshot: 'slingshot', nailgun: 'nailgun', pitchfork: 'pitchfork', bow: 'bow', machete: 'machete', sledgehammer: 'sledgehammer', lid: 'lid', extinguisher: 'extinguisher', pipewrench: 'pipewrench', airrifle: 'longgun', pistol: 'pistol', revolver: 'revolver', shotgun: 'longgun', huntingrifle: 'longgun', airpistol: 'pistol', pocketpistol: 'pistol', pumpshotgun: 'longgun', breakrifle: 'longgun', drilling: 'longgun' };
 
 export const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
 
@@ -184,7 +193,7 @@ export function bookItem(key: BookKey): BookItem {
       name: d.name,
       rarity: d.rarity ?? 'common',
       where: d.where ?? 'Irgendwo da draußen',
-      desc: `${d.desc} Bringt im Kampf: ${cardCounts(cards)}.`,
+      desc: `${d.model ? `${d.model}. ` : ''}${d.desc}${d.ammo ? ` Munition: ${[d.ammo, d.ammo2].filter((a): a is AmmoId => !!a).map((a) => AMMO[a].name).join(' und ')}.` : ''} Bringt im Kampf: ${cardCounts(cards)}.`,
       icon: WEAPON_ICON[w],
       art: artUrl(d.art),
       weapon: w,

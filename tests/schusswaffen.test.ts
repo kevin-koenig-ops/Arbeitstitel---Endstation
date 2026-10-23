@@ -1,6 +1,6 @@
 // Schusswaffen (Kevin 23.10.): eigene Munition je Waffe, nur zu finden; laute Schüsse locken Trupps an.
 import { describe, expect, it } from 'vitest';
-import { NOISE, WEAPON_CARDS, WEAPONS, emptyInventory } from '../src/core/content';
+import { FOUND_WEAPONS, NOISE, WEAPON_CARDS, WEAPONS, emptyInventory } from '../src/core/content';
 import { patrolsAround } from '../src/core/patrols';
 import { applyAction, battleWeapons, createPlayer, SCHEMA_VERSION } from '../src/core/rules';
 import { migrate } from '../src/core/save';
@@ -21,11 +21,17 @@ const withHand = (st: TacticsState, ...cards: TacticsState['hand']) => {
 
 describe('Schusswaffen im Kampf', () => {
   it('jede Schusswaffe hat eigene Munition und eigene Karten', () => {
+    // Je Waffenart eine Munition: Luftdruck, Pistole, Revolver, Schrot, Gewehr
     const ammo = new Set((['airrifle', 'pistol', 'revolver', 'shotgun', 'huntingrifle'] as WeaponId[]).map((w) => WEAPONS[w].ammo));
     expect(ammo.size).toBe(5);
+    expect(WEAPONS.breakrifle.ammo).toBe(WEAPONS.huntingrifle.ammo);
+    expect(WEAPONS.pumpshotgun.ammo).toBe(WEAPONS.shotgun.ammo);
     expect(WEAPON_CARDS.pistol).toEqual(['shot', 'shot', 'doubletap']);
     expect(WEAPONS.airrifle.loud).toBeFalsy();
     expect(WEAPONS.huntingrifle.rarity).toBe('legendary');
+    // Echte Waffenart, ausgedachtes Modell
+    expect(WEAPONS.huntingrifle.name).toBe('Repetierbüchse');
+    expect(FOUND_WEAPONS.filter((w) => WEAPONS[w].ammo).every((w) => !!WEAPONS[w].model)).toBe(true);
   });
 
   it('ein Schuss verschießt Munition und zählt als laut', () => {
@@ -33,7 +39,7 @@ describe('Schusswaffen im Kampf', () => {
     const target = st.foes[0].id;
     const hp = st.foes[0].hp;
     const ev = playCard(st, 0, target);
-    expect(ev).toContainEqual({ type: 'fired', weapon: 'pistol', left: 2, loud: true });
+    expect(ev).toContainEqual({ type: 'fired', weapon: 'pistol', ammo: 'pistol', left: 2, loud: true });
     expect(st.foes[0].hp).toBe(Math.max(0, hp - 5));
     expect(st.ammo.pistol).toBe(2);
     expect(st.usedAmmo.pistol).toBe(1);
@@ -45,7 +51,7 @@ describe('Schusswaffen im Kampf', () => {
     expect(playable(st, 'doubletap')).toBe(false);
     expect(playCard(st, 0, st.foes[0].id)[0]).toEqual({ type: 'denied', reason: 'ammo' });
     const ev = playCard(st, 1, st.foes[0].id);
-    expect(ev).toContainEqual({ type: 'outOfAmmo', weapon: 'pistol' });
+    expect(ev).toContainEqual({ type: 'outOfAmmo', weapon: 'pistol', ammo: 'pistol' });
     // Die übrigen Schüsse in Hand, Stapel und Ablage sind jetzt Kolbenschläge
     expect([...st.hand, ...st.draw, ...st.discard].filter((c) => c === 'shot' || c === 'doubletap')).toHaveLength(0);
     expect([...st.hand, ...st.draw, ...st.discard]).toContain('buttstroke');
@@ -67,6 +73,49 @@ describe('Schusswaffen im Kampf', () => {
     const before = sg.foes.map((f) => f.hp);
     playCard(sg, 0);
     sg.foes.forEach((f, i) => expect(f.hp).toBeLessThan(before[i]));
+  });
+
+  it('Drilling: Kugel und Schrot getrennt; ohne Schrot bleibt der Kugellauf', () => {
+    const st = fight('drilling', { rifle: 1 });
+    const all = [...st.hand, ...st.draw];
+    expect(all).toContain('drillball');
+    expect(all).not.toContain('drillshot');
+    expect(all.filter((c) => c === 'buttstroke')).toHaveLength(2);
+    const full = withHand(fight('drilling', { rifle: 1, shells: 1 }), 'drillshot', 'drillball');
+    const ev = playCard(full, 0);
+    expect(ev).toContainEqual({ type: 'fired', weapon: 'drilling', ammo: 'shells', left: 0, loud: true });
+    expect(ev).toContainEqual({ type: 'outOfAmmo', weapon: 'drilling', ammo: 'shells' });
+    expect(full.hand).toEqual(['drillball']);
+    expect(full.ammo).toEqual({ rifle: 1, shells: 0 });
+  });
+
+  it('Taschenpistole schießt ohne Kraft, Kipplaufbüchse einmal pro Runde', () => {
+    const tp = withHand(fight('pocketpistol', { pistol: 2 }), 'snapshot');
+    tp.energy = 0;
+    expect(playable(tp, 'snapshot')).toBe(true);
+    const kb = withHand(fight('breakrifle', { rifle: 2 }), 'stalkshot', 'stalkshot');
+    playCard(kb, 0, kb.foes[0].id);
+    expect(playable(kb, 'stalkshot')).toBe(false);
+  });
+});
+
+describe('Golfschläger (seit 23.10. Nahkampf)', () => {
+  it('ist eine Nahkampfwaffe, der Abschlag trifft vorne und stößt weg', () => {
+    expect(WEAPONS.golfclub.range).toBe('melee');
+    const st = withHand(fight('golfclub', {}), 'drive');
+    const f = st.foes.find((x) => x.row === 'near')!;
+    const ev = playCard(st, 0, f.id);
+    expect(ev).toContainEqual({ type: 'push', id: f.id });
+    expect(f.row).toBe('far');
+  });
+
+  it('alte Spielstände: als Fernwaffe gewählt, wählt das Spiel neu', () => {
+    const old = { ...createPlayer('p', hero, T0), schema: 21 } as Record<string, unknown>;
+    old.loadout = { pouch: [], skills: [], ranged: 'golfclub' };
+    old.weapons = [gun('crowbar'), gun('golfclub'), gun('slingshot')];
+    const m = migrate(old)!;
+    expect(m.loadout.ranged).toBeUndefined();
+    expect(battleWeapons(m).map((w) => w.kind)).toEqual(['golfclub', 'slingshot']);
   });
 });
 
@@ -118,7 +167,7 @@ describe('Munition und Lärm im Spiel', () => {
     expect(r.state.noise).toHaveLength(0);
   });
 
-  it('alte Spielstände bekommen Munition und Lärm (Version 21)', () => {
+  it('alte Spielstände bekommen Munition und Lärm (ab Version 21)', () => {
     const old = { ...createPlayer('p', hero, T0), schema: 20 } as Record<string, unknown>;
     delete old.ammo;
     delete old.noise;

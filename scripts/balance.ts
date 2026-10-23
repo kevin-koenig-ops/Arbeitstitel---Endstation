@@ -31,22 +31,27 @@ interface Stage {
 
 const STAGES: Stage[] = [
   { name: 'Tag 1', weapons: ['crowbar'], medicine: 0, pouch: {}, skills: {} },
-  { name: 'Woche 1', weapons: ['crowbar', 'golfclub'], medicine: 2, pouch: { molotov: 2, pepper: 1 }, skills: { counter: 1, breath: 1 } },
+  { name: 'Woche 1', weapons: ['crowbar', 'slingshot'], medicine: 2, pouch: { molotov: 2, pepper: 1 }, skills: { counter: 1, breath: 1 } },
   { name: 'Gut ausgerüstet', weapons: ['axe', 'crossbow'], medicine: 3, pouch: { molotov: 3, smoke: 2, grenade: 1 }, skills: { counter: 2, sweep: 1, steady: 1, secondwind: 1 } },
 ];
-// Schusswaffen zum Vergleich (--waffen): Woche 1 mit Golfschläger gegen die Schusswaffen (mit wenig und ohne Munition)
+// Schusswaffen zum Vergleich (--waffen): Woche 1 mit Schleuder gegen die Schusswaffen (mit wenig und ohne Munition)
 if (args.has('--waffen')) {
   const base = { medicine: 2, pouch: { molotov: 2, pepper: 1 }, skills: { counter: 1, breath: 1 } };
   STAGES.length = 0;
   STAGES.push(
-    { name: 'Golfschläger', weapons: ['crowbar', 'golfclub'], ...base },
+    { name: 'Schleuder', weapons: ['crowbar', 'slingshot'], ...base },
+    { name: 'Golfschläger + Schleuder', weapons: ['golfclub', 'slingshot'], ...base },
+    { name: 'Luftpistole (10)', weapons: ['crowbar', 'airpistol'], ...base, ammo: { pellets: 10 } },
     { name: 'Luftgewehr (12)', weapons: ['crowbar', 'airrifle'], ...base, ammo: { pellets: 12 } },
-    { name: 'Pistole (4)', weapons: ['crowbar', 'pistol'], ...base, ammo: { pistol: 4 } },
-    { name: 'Pistole (12)', weapons: ['crowbar', 'pistol'], ...base, ammo: { pistol: 12 } },
+    { name: 'Taschenpistole (4)', weapons: ['crowbar', 'pocketpistol'], ...base, ammo: { pistol: 4 } },
+    { name: 'Dienstpistole (4)', weapons: ['crowbar', 'pistol'], ...base, ammo: { pistol: 4 } },
     { name: 'Revolver (5)', weapons: ['crowbar', 'revolver'], ...base, ammo: { revolver: 5 } },
-    { name: 'Schrotflinte (3)', weapons: ['crowbar', 'shotgun'], ...base, ammo: { shells: 3 } },
-    { name: 'Jagdgewehr (3)', weapons: ['crowbar', 'huntingrifle'], ...base, ammo: { rifle: 3 } },
-    { name: 'Pistole leer', weapons: ['crowbar', 'pistol'], ...base, ammo: {} },
+    { name: 'Doppelflinte (3)', weapons: ['crowbar', 'shotgun'], ...base, ammo: { shells: 3 } },
+    { name: 'Pumpflinte (4)', weapons: ['crowbar', 'pumpshotgun'], ...base, ammo: { shells: 4 } },
+    { name: 'Kipplaufbüchse (3)', weapons: ['crowbar', 'breakrifle'], ...base, ammo: { rifle: 3 } },
+    { name: 'Repetierbüchse (3)', weapons: ['crowbar', 'huntingrifle'], ...base, ammo: { rifle: 3 } },
+    { name: 'Drilling (1 + 2)', weapons: ['crowbar', 'drilling'], ...base, ammo: { rifle: 1, shells: 2 } },
+    { name: 'Dienstpistole leer', weapons: ['crowbar', 'pistol'], ...base, ammo: {} },
   );
 }
 
@@ -54,18 +59,18 @@ if (args.has('--waffen')) {
 if (args.has('--stile')) {
   STAGES.length = 0;
   STAGES.push(
-    { name: 'Woche 1', weapons: ['crowbar', 'golfclub'], medicine: 2, pouch: { molotov: 2, pepper: 1 }, skills: { counter: 1, breath: 1 } },
-    { name: 'Woche 1 Fallen', weapons: ['pitchfork', 'golfclub'], medicine: 2, pouch: { tripwire: 2, alarm: 1 }, skills: { trapper: 1, distract: 1 } },
-    { name: 'Woche 1 Feuer', weapons: ['crowbar', 'golfclub'], medicine: 2, pouch: { molotov: 2, tinder: 1 }, skills: { spark: 1, embers: 1 } },
+    { name: 'Woche 1', weapons: ['crowbar', 'slingshot'], medicine: 2, pouch: { molotov: 2, pepper: 1 }, skills: { counter: 1, breath: 1 } },
+    { name: 'Woche 1 Fallen', weapons: ['pitchfork', 'slingshot'], medicine: 2, pouch: { tripwire: 2, alarm: 1 }, skills: { trapper: 1, distract: 1 } },
+    { name: 'Woche 1 Feuer', weapons: ['crowbar', 'slingshot'], medicine: 2, pouch: { molotov: 2, tinder: 1 }, skills: { spark: 1, embers: 1 } },
     { name: 'Später Fallen', weapons: ['pitchfork', 'bow'], medicine: 3, pouch: { tripwire: 3, caltrops: 2, alarm: 1 }, skills: { trapper: 2, distract: 1, pitcher: 1, steady: 1 } },
     { name: 'Später Feuer', weapons: ['crowbar', 'crossbow'], medicine: 3, pouch: { molotov: 3, oilcan: 1, tinder: 2 }, skills: { spark: 2, embers: 1, wildfire: 1, counter: 1 } },
-    { name: 'Woche 1 Schwung', weapons: ['machete', 'golfclub'], medicine: 2, pouch: { adrenaline: 1, molotov: 1 }, skills: { followup: 1, sweep: 1 } },
+    { name: 'Woche 1 Schwung', weapons: ['machete', 'slingshot'], medicine: 2, pouch: { adrenaline: 1, molotov: 1 }, skills: { followup: 1, sweep: 1 } },
     { name: 'Später Schwung', weapons: ['sledgehammer', 'nailgun'], medicine: 3, pouch: { adrenaline: 2, grenade: 1 }, skills: { followup: 2, rage: 1, sweep: 1, counter: 1 } },
-    { name: 'Woche 1 Schutz', weapons: ['lid', 'golfclub'], medicine: 2, pouch: { painkiller: 1, smoke: 1 }, skills: { headbutt: 1, cover: 1 } },
-    { name: 'Woche 1 Tüftler', weapons: ['crowbar', 'golfclub'], medicine: 2, pouch: { fencer: 1, motionlamp: 1, boombox: 1 }, skills: { charger: 1, tinkerbox: 1 } },
-    { name: 'Woche 1 Raubbau', weapons: ['pipewrench', 'golfclub'], medicine: 2, pouch: { tape: 1, lath: 1 }, skills: { fullforce: 1, toolroll: 1 } },
+    { name: 'Woche 1 Schutz', weapons: ['lid', 'slingshot'], medicine: 2, pouch: { painkiller: 1, smoke: 1 }, skills: { headbutt: 1, cover: 1 } },
+    { name: 'Woche 1 Tüftler', weapons: ['crowbar', 'slingshot'], medicine: 2, pouch: { fencer: 1, motionlamp: 1, boombox: 1 }, skills: { charger: 1, tinkerbox: 1 } },
+    { name: 'Woche 1 Raubbau', weapons: ['pipewrench', 'slingshot'], medicine: 2, pouch: { tape: 1, lath: 1 }, skills: { fullforce: 1, toolroll: 1 } },
     { name: 'Woche 1 Kleinkram', weapons: ['crowbar', 'slingshot'], medicine: 2, pouch: { marblesack: 2 }, skills: { pockets: 1, pitcher: 1 } },
-    { name: 'Woche 1 Ruhe/Wut', weapons: ['crowbar', 'golfclub'], medicine: 2, pouch: { pepper: 1, molotov: 1 }, skills: { breathe: 1, grit: 1 } },
+    { name: 'Woche 1 Ruhe/Wut', weapons: ['crowbar', 'slingshot'], medicine: 2, pouch: { pepper: 1, molotov: 1 }, skills: { breathe: 1, grit: 1 } },
     { name: 'Später Schutz', weapons: ['extinguisher', 'crossbow'], medicine: 3, pouch: { painkiller: 2, fireworks: 1 }, skills: { headbutt: 2, roll: 1, retaliate: 1, firstaid: 1 } },
   );
 }

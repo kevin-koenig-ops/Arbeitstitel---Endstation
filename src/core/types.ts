@@ -384,7 +384,12 @@ export type WeaponId =
   | 'pistol'
   | 'revolver'
   | 'shotgun'
-  | 'huntingrifle';
+  | 'huntingrifle'
+  | 'airpistol'
+  | 'pocketpistol'
+  | 'pumpshotgun'
+  | 'breakrifle'
+  | 'drilling';
 /** Munition: jede Schusswaffe hat ihre eigene. Gibt es nur draußen zu finden. */
 export type AmmoId = 'pellets' | 'pistol' | 'revolver' | 'shells' | 'rifle';
 /** Schüsse waren zu hören: Trupps aus der Gegend kommen nachsehen (nur auf der Karte). */

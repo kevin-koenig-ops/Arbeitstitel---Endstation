@@ -20,7 +20,11 @@ export function showCardReveal(host: HTMLElement, ev: Claimed, state: PlayerStat
   if (ev.weapon) lines.push(ev.repaired ? `Deine ${WEAPONS[ev.weapon].name} ist wieder wie neu.` : `${WEAPONS[ev.weapon].name}: ab jetzt im Kampf dabei.`);
   // Schusswaffe: ein paar Schuss stecken noch drin
   const gun = ev.weapon ? WEAPONS[ev.weapon] : undefined;
-  if (gun?.ammo && gun.loaded) lines.push(`Darin: ${gun.loaded} ${AMMO[gun.ammo].name}. Mehr Munition findest du nur draußen.`);
+  if (gun?.model) lines.push(`Modell: ${gun.model}.`);
+  if (gun?.ammo && gun.loaded) {
+    const inside = [`${gun.loaded} ${AMMO[gun.ammo].name}`, gun.ammo2 && gun.loaded2 ? `${gun.loaded2} ${AMMO[gun.ammo2].name}` : ''].filter(Boolean).join(' und ');
+    lines.push(`Darin: ${inside}. Mehr Munition findest du nur draußen.`);
+  }
   else if (ev.card && CARDS[ev.card].kind === 'once') lines.push('Steckt im Rucksack. Bis zu 3 davon nimmst du in jeden Kampf mit.');
   else if (ev.card && CARDS[ev.card].kind === 'skill') {
     const p = levelProgress(n, CARDS[ev.card].rarity);

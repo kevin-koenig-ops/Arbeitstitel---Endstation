@@ -11,7 +11,7 @@ import type { App } from '../app';
 import { clear, h, svgEl } from '../dom';
 import { icon, resIcon } from '../icons';
 import { REJECT_TEXT } from '../texts';
-import { itemsLine, kramLine, thingThumb } from '../game/chips';
+import { gunAmmoText, itemsLine, kramLine, thingThumb } from '../game/chips';
 import { kramRow } from '../game/packPanel';
 
 interface Opts {
@@ -253,11 +253,11 @@ export function openLager(app: App, host: HTMLElement, opts: Opts): { el: HTMLEl
                       class: `loadout-weapon${on ? ' on' : ''}`,
                       type: 'button',
                       'aria-pressed': String(on),
-                      title: `${WEAPONS[k].desc} Im Kampf: ${cardCounts(WEAPON_CARDS[k] ?? [])}.`,
+                      title: `${WEAPONS[k].model ? `${WEAPONS[k].model}. ` : ''}${WEAPONS[k].desc} Im Kampf: ${cardCounts(WEAPON_CARDS[k] ?? [])}.`,
                       onclick: () => void pick(range, k),
                     },
                     svgEl(icon(WEAPON_ICON[k], 20)),
-                    h('span', null, h('b', null, WEAPONS[k].name), h('small', null, WEAPONS[k].ammo ? `${s.ammo[WEAPONS[k].ammo!] ?? 0} Schuss · ${dur} Haltbarkeit` : `${dur} Haltbarkeit`)),
+                    h('span', null, h('b', null, WEAPONS[k].name), h('small', null, gunAmmoText(k, s.ammo) ? `${gunAmmoText(k, s.ammo)} · ${dur} Haltbarkeit` : `${dur} Haltbarkeit`)),
                   );
                 }))
               : h('span', { class: 'ws-empty' }, range === 'ranged' ? 'Noch keine. Bis dahin trifft dein Steinwurf auch hinten.' : 'Noch keine. Du kämpfst mit den Fäusten.'),

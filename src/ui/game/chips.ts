@@ -1,10 +1,10 @@
 // Kleine Bausteine für Rohstoffe, Kram und Sammelstücke (Kosten-Chips, Zeilen, Vorschaubilder).
 
-import { AMMO, AMMO_ORDER, isMaterial, KRAM, KRAM_ORDER, RESOURCE_ORDER, RESOURCES } from '../../core/content';
+import { AMMO, AMMO_ORDER, gunAmmo, isMaterial, KRAM, KRAM_ORDER, RESOURCE_ORDER, RESOURCES } from '../../core/content';
 import { whereToFind } from '../../core/rules';
 import { SPOT_PLURAL } from '../texts';
 import type { FurnitureId } from '../../core/furniture';
-import type { AmmoId, Inventory, KramId, Resource } from '../../core/types';
+import type { AmmoId, Inventory, KramId, Resource, WeaponId } from '../../core/types';
 import { clear, h, svgEl } from '../dom';
 import { icon, resIcon } from '../icons';
 
@@ -91,6 +91,16 @@ export function ammoLine(ammo: Partial<Record<AmmoId, number>>) {
   return AMMO_ORDER.filter((a) => (ammo[a] ?? 0) > 0)
     .map((a) => `${ammo[a]} ${AMMO[a].name}`)
     .join(', ');
+}
+
+/** Munition einer Waffe: "3 Patronen", "12 Kugeln", beim Drilling "Kugel 1 · Schrot 2"; null ohne Munition. */
+export function gunAmmoText(kind: WeaponId, ammo: Partial<Record<AmmoId, number>>): string | null {
+  const kinds = gunAmmo(kind);
+  if (!kinds.length) return null;
+  if (kinds.length > 1) return kinds.map((a) => `${AMMO[a].short} ${ammo[a] ?? 0}`).join(' · ');
+  const a = kinds[0];
+  const n = ammo[a] ?? 0;
+  return `${n} ${n === 1 ? AMMO[a].one : AMMO[a].one === 'Kugel' ? 'Kugeln' : 'Patronen'}`;
 }
 
 /** "2 Kram" / "Toaster" / "Toaster, 2 × Konserven" */

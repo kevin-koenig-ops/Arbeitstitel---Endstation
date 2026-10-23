@@ -472,7 +472,7 @@ describe('Fliehen', () => {
   });
 });
 
-describe('Balancing-Ziele (Autopilot, Woche 1: Brechstange, Golfschläger, 2 Einmal-Karten, Konter, Atem holen)', () => {
+describe('Balancing-Ziele (Autopilot, Woche 1: Brechstange, Schleuder, 2 Einmal-Karten, Konter, Atem holen)', () => {
   const rate = (group: FoeKind[], weapons: Weapon[], kit: CardKit, n = 150) => {
     let won = 0;
     let lost = 0;
@@ -484,7 +484,8 @@ describe('Balancing-Ziele (Autopilot, Woche 1: Brechstange, Golfschläger, 2 Ein
     }
     return { won: won / n, lost: lost / n };
   };
-  const woche = [{ kind: 'crowbar' as const, dur: WEAPONS.crowbar.dur }, { kind: 'golfclub' as const, dur: WEAPONS.golfclub.dur }];
+  // Seit 23.10. ist der Golfschläger eine Nahkampfwaffe; Woche 1 heißt jetzt Brechstange und Schleuder
+  const woche = [{ kind: 'crowbar' as const, dur: WEAPONS.crowbar.dur }, { kind: 'slingshot' as const, dur: WEAPONS.slingshot.dur }];
   const kit: CardKit = { pouch: { molotov: 2, pepper: 1 }, skills: { counter: 1, breath: 1 } };
   it('ein Wandler ist leicht, kostet aber etwas', () => {
     const r = rate(['walker'], woche, kit);

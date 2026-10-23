@@ -71,6 +71,7 @@ import {
   AMMO,
   AMMO_LOOT,
   NOISE,
+  gunAmmo,
   cardStat,
   ONCE_CARDS,
   ONCE_CARRY,
@@ -167,7 +168,7 @@ import { resolvePatrol } from './patrols';
 import { resolveDropSpot, zonesAt } from './worldEvents';
 import { GOALS } from './progress';
 
-export const SCHEMA_VERSION = 21;
+export const SCHEMA_VERSION = 22;
 
 /** Startausrüstung: alles gefunden und angezogen. */
 export function startGear(now: number): GearState {
@@ -301,7 +302,8 @@ export function strongestWeapon(state: PlayerState, range: 'melee' | 'ranged'): 
   const score = (w: Weapon) => {
     const def = WEAPONS[w.kind];
     // Schusswaffe ohne Munition: nur Kolbenschläge, also nur, wenn sonst nichts da ist
-    if (def.ammo && !((state.ammo?.[def.ammo] ?? 0) > 0)) return 1;
+    const kinds = gunAmmo(w.kind);
+    if (kinds.length && !kinds.some((a) => (state.ammo?.[a] ?? 0) > 0)) return 1;
     return def.dmg * 100 + (RARITY_RANK[def.rarity ?? ''] ?? 0) * 10;
   };
   for (const w of state.weapons) {
@@ -319,7 +321,7 @@ export function battleWeapons(state: PlayerState): Weapon[] {
   const out: Weapon[] = [];
   for (const range of ['melee', 'ranged'] as const) {
     const want = state.loadout[range];
-    const chosen = want ? state.weapons.filter((w) => w.kind === want && w.dur > 0).sort((a, b) => b.dur - a.dur)[0] : undefined;
+    const chosen = want && WEAPONS[want].range === range ? state.weapons.filter((w) => w.kind === want && w.dur > 0).sort((a, b) => b.dur - a.dur)[0] : undefined;
     const w = chosen ?? strongestWeapon(state, range);
     if (w) out.push(w);
   }
@@ -612,6 +614,7 @@ function gainWeapon(state: PlayerState, kind: WeaponId): boolean {
   // Eine gefundene Schusswaffe hat noch ein paar Schuss drin
   const def = WEAPONS[kind];
   if (def.ammo && def.loaded) state.ammo[def.ammo] = (state.ammo[def.ammo] ?? 0) + def.loaded;
+  if (def.ammo2 && def.loaded2) state.ammo[def.ammo2] = (state.ammo[def.ammo2] ?? 0) + def.loaded2;
   const have = state.weapons.find((w) => w.kind === kind && w.dur > 0);
   if (have) {
     have.dur = Math.max(have.dur, WEAPONS[kind].dur);
@@ -1708,6 +1711,7 @@ function lootSpot(state: PlayerState, spot: Spot, ctx: RuleContext, o: { guarded
   const ammo: Partial<Record<AmmoId, number>> = { ...drop };
   const gunDef = foundWeapon ? WEAPONS[foundWeapon] : undefined;
   if (gunDef?.ammo && gunDef.loaded) ammo[gunDef.ammo] = (ammo[gunDef.ammo] ?? 0) + gunDef.loaded;
+  if (gunDef?.ammo2 && gunDef.loaded2) ammo[gunDef.ammo2] = (ammo[gunDef.ammo2] ?? 0) + gunDef.loaded2;
 
   // Lageplan für einen neuen Schauplatz (erst, wenn man schon irgendwo wohnt)
   let site: SiteId | undefined;
