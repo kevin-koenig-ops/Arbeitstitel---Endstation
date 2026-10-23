@@ -1298,6 +1298,7 @@ export function gameScreen(app: App): Screen {
   let lastControl = app.settings.get().control;
   const offSettings = app.settings.onChange((st) => {
     gm?.setWaterMotion(st.waterMotion);
+    gm?.setGroundPaint(st.ground === 'paint');
     void gm?.setSeason(seasonOf(st));
     if (st.control === lastControl) return;
     lastControl = st.control;
@@ -1799,6 +1800,7 @@ export function gameScreen(app: App): Screen {
         mode: mapMode,
         start,
         waterMotion: app.settings.get().waterMotion,
+        groundPaint: app.settings.get().ground === 'paint',
         season: seasonOf(app.settings.get()),
         onTap: (p) => {
           sheet.close();

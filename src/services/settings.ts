@@ -58,6 +58,8 @@ export interface Settings {
   uiScale: UiScale;
   /** Zum Testen: zu Hause ohne Bauzeit bauen (alles sofort fertig). */
   instantBuild: boolean;
+  /** Boden der Karte: selbst gemalt (weiche Ränder, Höfe, Gehwege; Probe im Demo-Dorf) oder die alten Muster. */
+  ground: 'paint' | 'pattern';
   /** Letzter bekannter Standort, nur auf diesem Gerät gespeichert. */
   lastPos?: LatLon;
 }
@@ -67,7 +69,7 @@ export type UiScale = 0.8 | 0.9 | 1 | 1.15;
 
 const KEY = 'endstation.settings';
 
-const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', testSeason: 'auto', control: 'tap', lootGames: 'on', fullscreen: true, language: 'de', waterMotion: true, gait: 'fast', battleView: 'side', music: 'loop', musicVolume: 0.8, fpsCap: 60, uiScale: 0.9, instantBuild: false } as const;
+const COMMON = { vibration: true, realWeather: true, testPhase: 'auto', testWeather: 'auto', testSeason: 'auto', control: 'tap', lootGames: 'on', fullscreen: true, language: 'de', waterMotion: true, gait: 'fast', battleView: 'side', music: 'loop', musicVolume: 0.8, fpsCap: 60, uiScale: 0.9, instantBuild: false, ground: 'paint' } as const;
 const DEFAULTS: Settings = IS_PREVIEW ? { ...COMMON, map: 'demo', location: 'sim' } : { ...COMMON, map: 'real', location: 'gps' };
 
 export class SettingsStore {

@@ -13,6 +13,7 @@ import { FogOfWar } from './fogOfWar';
 import { WaterAnimation } from './waterAnim';
 import demoWorld from './demoWorld.json';
 import { hasOptionalTexture, loadTextures, patternImage, textureColor } from './patterns';
+import { GroundPainter, geojsonQuery } from './groundPaint';
 import { seasonMonth, type Season } from '../services/settings';
 import { buildStyle, DECOR_MINZOOM, loadRealSource } from './style';
 import type { WalkInput } from './walkNet';
@@ -101,11 +102,31 @@ export const DEMO = demoWorld as unknown as {
   geojson: GeoJSON.FeatureCollection;
 };
 
+// Boden selbst malen: Die Karte holt Kacheln über die Adresse boden://z/x/y, das Spiel malt sie (groundPaint.ts)
+let groundPainter: GroundPainter | null = null;
+let groundProtocol = false;
+function registerGround() {
+  if (groundProtocol) return;
+  groundProtocol = true;
+  maplibregl.addProtocol('boden', async (params) => {
+    const m = /^boden:\/\/(\d+)\/(\d+)\/(\d+)/.exec(params.url);
+    if (!m || !groundPainter) throw new Error('kein Boden');
+    const t0 = performance.now();
+    const data = await groundPainter.paint(Number(m[1]), Number(m[2]), Number(m[3]));
+    if (localStorage.getItem('endstation.debug')) console.log(`[Boden] ${m[1]}/${m[2]}/${m[3]} ${Math.round(performance.now() - t0)} ms`);
+    return { data };
+  });
+}
+/** Alte Musterflächen, die der gemalte Boden ersetzt (Friedhöfe bleiben schlicht darüber). */
+const PATTERN_LAYERS = /^(landuse-(residential|industrial|green)|landcover-|soft-)/;
+
 interface Options {
   mode: 'real' | 'demo';
   start: LatLon;
   /** Wasser bewegt sich (Einstellung). */
   waterMotion: boolean;
+  /** Boden selbst malen (Probe, bisher nur im Demo-Dorf). */
+  groundPaint?: boolean;
   /** Jahreszeit für die Optik (Laub, Schnee, Bodenbilder). */
   season: Season;
   onTap: (p: LatLon) => void;
@@ -278,6 +299,7 @@ export class GameMap {
     this.applySnow();
     this.applySoftColors();
     this.applyRoadTextures();
+    this.setGroundPaint(!!this.opts.groundPaint);
     if (this.pendingRange) this.setRange(this.pendingRange.c, this.pendingRange.r);
     if (this.pendingCaches) this.setCaches(this.pendingCaches);
     void this.initTrees();
@@ -1147,6 +1169,46 @@ export class GameMap {
     }
     this.applySoftColors();
     this.applyRoadTextures();
+    this.refreshGround();
+  }
+
+  private groundOn = false;
+  private groundRev = 0;
+
+  /**
+   * Boden selbst malen an oder aus (Einstellung „Boden“). Bisher nur im Demo-Dorf: Für die echte
+   * Karte fehlt noch das Lesen der Kartenkacheln.
+   */
+  setGroundPaint(on: boolean) {
+    this.opts.groundPaint = on;
+    if (!this.loaded) return;
+    const want = on && this.opts.mode === 'demo';
+    if (want === this.groundOn) return;
+    this.groundOn = want;
+    if (want) {
+      registerGround();
+      groundPainter ??= new GroundPainter(geojsonQuery(DEMO.geojson), { image: (id) => patternImage(id)?.data ?? null, color: textureColor });
+      if (!this.map.getSource('boden')) {
+        const [[w, s], [e, n]] = DEMO.bounds;
+        this.map.addSource('boden', { type: 'raster', tiles: [`boden://{z}/{x}/{y}?v=${this.groundRev}`], tileSize: 512, minzoom: 14, maxzoom: 19, bounds: [w, s, e, n] });
+      }
+      const before = this.map.getStyle().layers.find((l) => PATTERN_LAYERS.test(l.id))?.id;
+      if (!this.map.getLayer('boden')) this.map.addLayer({ id: 'boden', type: 'raster', source: 'boden', paint: { 'raster-fade-duration': 0, 'raster-resampling': 'linear' } }, before);
+    }
+    for (const l of this.map.getStyle().layers) if (PATTERN_LAYERS.test(l.id)) this.map.setLayoutProperty(l.id, 'visibility', want ? 'none' : 'visible');
+    if (this.map.getLayer('boden')) this.map.setLayoutProperty('boden', 'visibility', want ? 'visible' : 'none');
+    // Unter den Kacheln (solange sie noch gemalt werden) die mittlere Bodenfarbe statt des Musters
+    this.map.setPaintProperty('ground', 'background-pattern', want ? undefined : 'pat-ground');
+    if (want) this.map.setPaintProperty('ground', 'background-color', textureColor('pat-ground') ?? '#7a6a4c');
+  }
+
+  /** Neue Bodenbilder (Jahreszeit): gemalte Kacheln neu malen lassen. */
+  private refreshGround() {
+    if (!this.groundOn) return;
+    groundPainter?.invalidate();
+    this.groundRev++;
+    (this.map.getSource('boden') as maplibregl.RasterTileSource | undefined)?.setTiles([`boden://{z}/{x}/{y}?v=${this.groundRev}`]);
+    this.map.setPaintProperty('ground', 'background-color', textureColor('pat-ground') ?? '#7a6a4c');
   }
 
   /** Straßen und Wege mit Bild, sobald es eins gibt; sonst die gezeichneten Linien. */
