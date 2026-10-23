@@ -6,7 +6,9 @@
 // Reine Rechnung ohne Browser. Die Schilder sind Bilder, die map/treeLayer.ts aus dem
 // Schlüssel malt: "TEXT|Hintergrund|Schrift" oder "@A" (Apotheken-A), "@cross", "@H", "@fuel".
 
-import { block, dist, emptyMesh, flat, prism, signQuad, tri, type MeshData, type P3, type Pt, type RGB } from './meshKit';
+import { block, dist, emptyMesh, flat, prism, tri, type MeshData, type P3, type Pt, type RGB } from './meshKit';
+import { CONCRETE, DOOR, frontWall, GREY, onWall, rgb, sign, SIGN_RATIO, WHITE, type Signs } from './landmarkKit';
+import { HALL_AREA, hallShop, smallShop, type ShopCtx } from './shopLooks';
 
 export type ShopKind = 'supermarket' | 'shop' | 'pharmacy' | 'doctor' | 'hardware' | 'garage';
 export type PropKind = 'fuel' | 'stop' | 'well';
@@ -44,9 +46,9 @@ const LANDMARKS: Record<string, { kind: LandmarkKind; sign: string }> = {
 };
 
 /** Wie bei den Fundstellen: nur die genaue Art zählt (sonst wird jede Ladesäule eine Tankstelle). */
-export function landmarkOf(cls?: string, subclass?: string): { kind: LandmarkKind; sign: string } | null {
+export function landmarkOf(cls?: string, subclass?: string): { kind: LandmarkKind; sign: string; sub: string } | null {
   const v = subclass || cls;
-  return v && LANDMARKS[v] ? LANDMARKS[v] : null;
+  return v && LANDMARKS[v] ? { ...LANDMARKS[v], sub: v } : null;
 }
 
 export const isShopKind = (k: LandmarkKind): k is ShopKind => k !== 'fuel' && k !== 'stop' && k !== 'well';
@@ -60,6 +62,10 @@ export interface ShopSpec {
   toward: Pt;
   /** Farbvariante 0–2 */
   variant: number;
+  /** Genaue Art aus den Kartendaten (bakery, butcher …): eigenes Aussehen je Art. */
+  sub?: string;
+  /** Eigene Halle (großer Grundriss) statt Laden im Erdgeschoss. */
+  hall?: boolean;
 }
 
 export interface PropSpec {
@@ -71,15 +77,11 @@ export interface PropSpec {
   /** Zur Straße hin: +1 oder -1 quer zur Richtung */
   side: number;
   variant: number;
+  /** Genaue Art (fountain, water_well, bus_station …) */
+  sub?: string;
 }
 
-/** Schilder: ein Topf je Bild. */
-export type Signs = Record<string, MeshData>;
-
-/** Seitenverhältnis der Text-Schilder (Breite : Höhe), so malt sie auch die Ebene. */
-export const SIGN_RATIO = 5.5;
-
-const rgb = (hex: string): RGB => [parseInt(hex.slice(1, 3), 16) / 255, parseInt(hex.slice(3, 5), 16) / 255, parseInt(hex.slice(5, 7), 16) / 255];
+export { frontWall, SIGN_RATIO, type Signs } from './landmarkKit';
 
 // Farben je Art und Variante: [Schild-Hintergrund, Schrift, Akzent (Markise, Band, Vordach)]
 const PALETTE: Record<LandmarkKind, [string, string, string][]> = {
@@ -124,194 +126,30 @@ const PALETTE: Record<LandmarkKind, [string, string, string][]> = {
 
 const pal = (k: LandmarkKind, v: number) => PALETTE[k][v % PALETTE[k].length];
 
-const GLASS: RGB = [0.2, 0.27, 0.32];
-const GLASS_HI: RGB = [0.34, 0.44, 0.5];
-const FRAME: RGB = [0.56, 0.56, 0.54];
-const DOOR: RGB = [0.14, 0.15, 0.17];
-const KICK: RGB = [0.36, 0.34, 0.31];
-const WHITE: RGB = [0.9, 0.9, 0.88];
-const GREY: RGB = [0.55, 0.57, 0.58];
-const CONCRETE: RGB = [0.66, 0.64, 0.6];
-
-/** Die Wand, die am meisten zur Straße (toward) schaut: Ladenfront, Haustür. */
-export function frontWall(ring: Pt[], toward: Pt) {
-  let sa = 0;
-  for (let i = 0; i < ring.length; i++) {
-    const a = ring[i];
-    const b = ring[(i + 1) % ring.length];
-    sa += a[0] * b[1] - b[0] * a[1];
-  }
-  const ccw = sa > 0;
-  let best = { i: 0, score: -Infinity };
-  for (let i = 0; i < ring.length; i++) {
-    const a = ring[i];
-    const b = ring[(i + 1) % ring.length];
-    const len = dist(a, b);
-    if (len < 2.5) continue;
-    const ex = (b[0] - a[0]) / len;
-    const ey = (b[1] - a[1]) / len;
-    const nx = ccw ? ey : -ey;
-    const ny = ccw ? -ex : ex;
-    const mid: Pt = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-    const tx = toward[0] - mid[0];
-    const ty = toward[1] - mid[1];
-    const tl = Math.hypot(tx, ty) || 1;
-    const score = (nx * tx + ny * ty) / tl + Math.min(len, 20) * 0.02 - tl * 0.004;
-    if (score > best.score) best = { i, score };
-  }
-  const a = ring[best.i];
-  const b = ring[(best.i + 1) % ring.length];
-  const len = dist(a, b);
-  const e: Pt = [(b[0] - a[0]) / len, (b[1] - a[1]) / len];
-  const n: Pt = ccw ? [e[1], -e[0]] : [-e[1], e[0]];
-  /** Punkt an der Wand: t entlang, off nach außen. */
-  const at = (t: number, off: number): Pt => [a[0] + e[0] * t + n[0] * off, a[1] + e[1] * t + n[1] * off];
-  return { i: best.i, len, e, n, at, ang: Math.atan2(e[1], e[0]) };
-}
-
-/** Senkrechtes Rechteck vor der Wand, von t0 bis t1, Höhe z0 bis z1, off vor der Wand. */
-function onWall(m: MeshData, f: ReturnType<typeof frontWall>, t0: number, t1: number, z0: number, z1: number, off: number, col: RGB) {
-  const a = f.at(t0, off);
-  const b = f.at(t1, off);
-  flat(m, [a[0], a[1], z0], [b[0], b[1], z0], [b[0], b[1], z1], [a[0], a[1], z1], col);
-}
-
-function sign(signs: Signs, key: string, a: Pt, b: Pt, z0: number, z1: number) {
-  const m = (signs[key] ??= emptyMesh());
-  signQuad(m, a, b, z0, z1);
-}
-
-const textKey = (text: string, c: [string, string, string]) => `${text}|${c[0]}|${c[1]}`;
-
-/** Ladenfront, Schild und Kleinkram an einem Gebäude. top: Traufhöhe. */
+/** Ladenfront, Schild und Kleinkram an einem Gebäude, je nach Art und Größe. top: Traufhöhe. */
 export function addShop(shop: ShopSpec, ring: Pt[], top: number, plain: MeshData, signs: Signs) {
   const f = frontWall(ring, shop.toward);
   const c = pal(shop.kind, shop.variant);
-  const accent = rgb(c[2]);
-  const L = f.len;
-  const mid = L / 2;
-  const hall = isHallKind(shop.kind) && top > 4.2;
-
-  if (!hall) {
-    // Laden im Erdgeschoss: Schaufenster mit Tür, darüber Schild, oft eine Markise
-    const w = Math.min(L - 1.2, 9);
-    const t0 = mid - w / 2;
-    const t1 = mid + w / 2;
-    if (shop.kind !== 'doctor') {
-      onWall(plain, f, t0, t1, 0, 0.45, 0.05, KICK);
-      onWall(plain, f, t0, t1, 0.45, 2.35, 0.05, GLASS);
-      onWall(plain, f, t0, t1, 1.95, 2.35, 0.055, GLASS_HI);
-      const bays = Math.max(1, Math.round(w / 1.8));
-      for (let k = 0; k <= bays; k++) {
-        const t = t0 + (w * k) / bays;
-        onWall(plain, f, t - 0.05, t + 0.05, 0.45, 2.35, 0.065, FRAME);
-      }
-    }
-    onWall(plain, f, mid - 0.55, mid + 0.55, 0, 2.3, 0.07, DOOR);
-    // Markise: Streifen in zwei Farben, schräg nach vorn
-    if (shop.kind === 'shop' || (shop.kind === 'pharmacy' && shop.variant === 2)) {
-      const n = Math.max(2, Math.round(w / 0.55));
-      const stripe = (k: number): RGB => (k % 2 ? [0.95, 0.93, 0.88] : accent);
-      for (let k = 0; k < n; k++) {
-        const ta = t0 + (w * k) / n;
-        const tb = t0 + (w * (k + 1)) / n;
-        const a0 = f.at(ta, 0.08);
-        const b0 = f.at(tb, 0.08);
-        const a1 = f.at(ta, 1.35);
-        const b1 = f.at(tb, 1.35);
-        flat(plain, [a0[0], a0[1], 2.78], [b0[0], b0[1], 2.78], [b1[0], b1[1], 2.38], [a1[0], a1[1], 2.38], stripe(k));
-        flat(plain, [a1[0], a1[1], 2.38], [b1[0], b1[1], 2.38], [b1[0], b1[1], 2.15], [a1[0], a1[1], 2.15], stripe(k));
-      }
-    }
-    // Schild über der Tür
-    const sw = Math.min(w + 0.4, 0.75 * SIGN_RATIO);
-    const sh = sw / SIGN_RATIO;
-    sign(signs, textKey(shop.sign, c), f.at(mid - sw / 2, 0.09), f.at(mid + sw / 2, 0.09), 2.82, 2.82 + sh);
-    // Apotheke: Würfel-Schild an einem Arm, quer zur Wand
-    if (shop.kind === 'pharmacy') {
-      const t = Math.max(0.6, t0 - 0.1);
-      const p = f.at(t, 0.95);
-      const ang = f.ang;
-      block(plain, f.at(t, 0.3)[0], f.at(t, 0.3)[1], ang + Math.PI / 2, 0.6, 0.08, 3.42, 3.5, GREY);
-      block(plain, p[0], p[1], ang, 0.12, 0.8, 3.0, 3.8, [0.95, 0.95, 0.95]);
-      const key = shop.variant === 1 ? '@cross' : '@A';
-      // beide Seiten des Würfels (die Seiten quer zur Wand)
-      for (const s of [-1, 1]) {
-        const q0 = f.at(t + s * 0.07, 0.55);
-        const q1 = f.at(t + s * 0.07, 1.35);
-        sign(signs, key, s > 0 ? q0 : q1, s > 0 ? q1 : q0, 3.0, 3.8);
-      }
-    }
-    return;
+  let area = 0;
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i];
+    const b = ring[(i + 1) % ring.length];
+    area += a[0] * b[1] - b[0] * a[1];
   }
+  const ctx: ShopCtx = { f, L: f.len, mid: f.len / 2, top, area: Math.abs(area) / 2, plain, signs, variant: shop.variant, c, accent: rgb(c[2]), text: shop.sign };
+  const sub = shop.sub ?? DEFAULT_SUB[shop.kind];
+  const hall = shop.hall ?? (isHallKind(shop.kind) && top > 4.2);
+  if (hall) hallShop(sub, ctx);
+  else smallShop(sub, ctx);
+}
 
-  // Halle: großes Schild oben, Glasfront oder Rolltore, Kleinkram davor
-  const sh = Math.min(1.3, Math.max(0.8, (top - 3.6) * 0.6));
-  const zs = Math.max(3.7, top - sh - 0.35);
-  const sw = Math.min(L * 0.7, sh * SIGN_RATIO);
-  onWall(plain, f, mid - sw / 2 - 0.15, mid + sw / 2 + 0.15, zs - 0.15, zs + sh + 0.15, 0.08, accent);
-  sign(signs, textKey(shop.sign, c), f.at(mid - sw / 2, 0.11), f.at(mid + sw / 2, 0.11), zs, zs + sh);
+/** Alte Spielstände und Tests ohne genaue Art: so wie früher je Gruppe. */
+const DEFAULT_SUB: Record<ShopKind, string> = { supermarket: 'supermarket', shop: 'grocery', pharmacy: 'pharmacy', doctor: 'doctors', hardware: 'doityourself', garage: 'car_repair' };
 
-  if (shop.kind === 'garage') {
-    const doors = Math.max(1, Math.min(3, Math.floor((L - 2) / 4.2)));
-    for (let k = 0; k < doors; k++) {
-      const t = mid + (k - (doors - 1) / 2) * 4.2;
-      onWall(plain, f, t - 1.6, t + 1.6, 0, 3.2, 0.05, [0.62, 0.64, 0.65]);
-      for (let s = 1; s < 8; s++) onWall(plain, f, t - 1.6, t + 1.6, s * 0.4 - 0.03, s * 0.4 + 0.03, 0.06, [0.42, 0.44, 0.45]);
-    }
-    // Reifenstapel neben dem Tor
-    for (const [t, n] of [
-      [mid - doors * 2.1 - 1.2, 5],
-      [mid + doors * 2.1 + 1.2, 3],
-    ] as [number, number][]) {
-      if (t < 0.6 || t > L - 0.6) continue;
-      const p = f.at(t, 1.1);
-      for (let k = 0; k < n; k++) prism(plain, p[0], p[1], 0.36, 8, k * 0.24, k * 0.24 + 0.22, [0.14, 0.14, 0.15], [0.3, 0.3, 0.32]);
-    }
-    return;
-  }
-
-  // Supermarkt und Baumarkt: Glasfront mit Eingang
-  const gw = shop.kind === 'supermarket' ? Math.min(L * 0.55, 16) : Math.min(L * 0.3, 7);
-  onWall(plain, f, mid - gw / 2, mid + gw / 2, 0.15, 3.1, 0.05, GLASS);
-  onWall(plain, f, mid - gw / 2, mid + gw / 2, 2.5, 3.1, 0.055, GLASS_HI);
-  for (let k = 0, n = Math.max(1, Math.round(gw / 2)); k <= n; k++) onWall(plain, f, mid - gw / 2 + (gw * k) / n - 0.06, mid - gw / 2 + (gw * k) / n + 0.06, 0.15, 3.1, 0.065, FRAME);
-  onWall(plain, f, mid - 1.2, mid + 1.2, 0, 2.6, 0.07, DOOR);
-
-  if (shop.kind === 'supermarket') {
-    // Vordach über dem Eingang, auf zwei Stützen
-    const cw = Math.min(gw * 0.6, 9);
-    const cp = f.at(mid, 1.5);
-    block(plain, cp[0], cp[1], f.ang, cw, 3, 3.35, 3.6, accent, [0.85, 0.85, 0.83], true);
-    for (const s of [-1, 1]) {
-      const pp = f.at(mid + (s * cw) / 2 - s * 0.3, 2.7);
-      block(plain, pp[0], pp[1], f.ang, 0.18, 0.18, 0, 3.35, WHITE);
-    }
-    // Einkaufswagen, ein paar in einer Reihe, einer verloren
-    const n = 3 + shop.variant;
-    for (let k = 0; k < n; k++) {
-      const lost = k === n - 1;
-      const p = f.at(mid + cw / 2 + 1.2 + (lost ? 3 : k * 0.35), lost ? 6.5 : 4.2);
-      const ang = f.ang + Math.PI / 2 + (lost ? 0.7 : 0);
-      block(plain, p[0], p[1], ang, 0.95, 0.58, 0.3, 0.92, [0.66, 0.7, 0.74], [0.5, 0.54, 0.58]);
-      block(plain, p[0], p[1], ang, 0.9, 0.5, 0, 0.3, [0.25, 0.26, 0.28]);
-    }
-  } else {
-    // Baumarkt: Paletten mit Säcken, Steinen und Kartons vor der Tür
-    const loads: RGB[] = [
-      [0.86, 0.8, 0.66],
-      [0.7, 0.36, 0.26],
-      [0.74, 0.6, 0.42],
-      [0.6, 0.6, 0.58],
-    ];
-    for (let k = 0; k < 4; k++) {
-      const t = mid + gw / 2 + 1.5 + k * 1.6;
-      if (t > L - 0.5) break;
-      const p = f.at(t, 2.2 + (k % 2) * 0.4);
-      block(plain, p[0], p[1], f.ang, 1.2, 1.0, 0, 0.15, [0.62, 0.46, 0.3]);
-      block(plain, p[0], p[1], f.ang, 1.1, 0.9, 0.15, 0.75 + (k % 3) * 0.2, loads[(k + shop.variant) % loads.length]);
-    }
-  }
+/** Wird dieser Laden eine eigene Halle? (Art und Grundfläche) */
+export function shopIsHall(kind: ShopKind, sub: string | undefined, area: number): boolean {
+  const need = HALL_AREA[sub ?? DEFAULT_SUB[kind]];
+  return need !== undefined && area > need;
 }
 
 /** Freistehende Wahrzeichen: Tankstelle, Haltestelle, Brunnen. */
@@ -352,6 +190,51 @@ export function addProp(pr: PropSpec, plain: MeshData, signs: Signs) {
       const q1 = at(len / 2 + 1.5 + s * 0.19, -wid / 2 - 1.5 + 0.8);
       sign(signs, `@fuel|${c[0]}`, s > 0 ? q0 : q1, s > 0 ? q1 : q0, 4.7, 7.2);
     }
+    // Kassenhäuschen hinter den Zapfsäulen, Glasfront zur Straße, Luft und Wasser an der Seite
+    const kb = wid / 2 + 3.4;
+    const k = at(0, kb);
+    block(plain, k[0], k[1], pr.ang, 7, 4.4, 0, 3.1, [0.86, 0.86, 0.84], [0.62, 0.62, 0.6]);
+    block(plain, k[0], k[1], pr.ang, 7.1, 4.5, 2.55, 3.0, accent);
+    const fb = kb - 2.23;
+    const g0 = at(-2.9, fb);
+    const g1 = at(2.9, fb);
+    flat(plain, [g0[0], g0[1], 0.35], [g1[0], g1[1], 0.35], [g1[0], g1[1], 2.4], [g0[0], g0[1], 2.4], [0.24, 0.32, 0.36]);
+    const d0 = at(-0.6, fb - 0.02);
+    const d1 = at(0.6, fb - 0.02);
+    flat(plain, [d0[0], d0[1], 0], [d1[0], d1[1], 0], [d1[0], d1[1], 2.3], [d0[0], d0[1], 2.3], DOOR);
+    const air = at(-len / 2 - 0.4, wid / 2 + 0.4);
+    block(plain, air[0], air[1], pr.ang, 0.4, 0.3, 0, 1.4, [0.2, 0.38, 0.66], WHITE);
+    return;
+  }
+
+  if (pr.kind === 'stop' && pr.sub === 'bus_station') {
+    // Busbahnhof: Bussteig mit langer Überdachung, mehreren Bänken, Fahrplänen und zwei H-Schildern
+    const n = 4;
+    const L = n * 3.6;
+    const kerb = at(0, 0.6);
+    block(plain, kerb[0], kerb[1], pr.ang, L + 2, 3.2, 0, 0.16, CONCRETE, [0.6, 0.58, 0.54]);
+    const roof = at(0, 0.8);
+    block(plain, roof[0], roof[1], pr.ang, L, 2.8, 3.0, 3.18, [0.36, 0.38, 0.4], [0.46, 0.48, 0.5], true);
+    for (let k = 0; k <= n; k++) {
+      const q = at(-L / 2 + k * (L / n), 1.8);
+      block(plain, q[0], q[1], pr.ang, 0.14, 0.14, 0.16, 3.0, [0.36, 0.38, 0.4]);
+    }
+    for (let k = 0; k < n; k++) {
+      const a = -L / 2 + (k + 0.5) * (L / n);
+      const b = at(a, 1.55);
+      block(plain, b[0], b[1], pr.ang, 1.8, 0.4, 0.58, 0.66, [0.62, 0.46, 0.3]);
+      if (k % 2 === 0) {
+        // Fahrplan-Tafel an der Rückseite
+        const t0 = at(a + 1.0, 1.95);
+        const t1 = at(a + 1.7, 1.95);
+        flat(plain, [t0[0], t0[1], 1.0], [t1[0], t1[1], 1.0], [t1[0], t1[1], 2.0], [t0[0], t0[1], 2.0], [0.9, 0.9, 0.86]);
+      }
+    }
+    for (const e of [-1, 1]) {
+      const pole = at(e * (L / 2 + 0.6), -0.6);
+      block(plain, pole[0], pole[1], pr.ang, 0.08, 0.08, 0, 2.7, GREY);
+      sign(signs, '@H', at(e * (L / 2 + 0.6) - 0.3, -0.6), at(e * (L / 2 + 0.6) + 0.3, -0.6), 2.2, 2.8);
+    }
     return;
   }
 
@@ -376,12 +259,65 @@ export function addProp(pr: PropSpec, plain: MeshData, signs: Signs) {
     return;
   }
 
-  // Brunnen: achteckiges Becken mit Wasser, Säule mit Ausguss
-  prism(plain, pr.p[0], pr.p[1], 1.4, 8, 0, 0.6, [0.62, 0.6, 0.56], [0.3, 0.44, 0.52]);
-  prism(plain, pr.p[0], pr.p[1], 0.25, 8, 0.6, 1.8, [0.66, 0.64, 0.6]);
-  prism(plain, pr.p[0], pr.p[1], 0.36, 8, 1.8, 1.95, [0.58, 0.56, 0.52]);
+  const WATER: RGB = [0.3, 0.44, 0.52];
+  const STONE_W: RGB = [0.62, 0.6, 0.56];
+  const [x, y] = pr.p;
+  if (pr.sub === 'drinking_water') {
+    // Trinkbrunnen: schlanke Säule mit kleiner Schale, ein Gitter am Boden
+    block(plain, x, y, pr.ang, 0.7, 0.7, 0, 0.04, [0.32, 0.33, 0.34]);
+    prism(plain, x, y, 0.16, 10, 0.04, 1.0, [0.5, 0.54, 0.56]);
+    prism(plain, x, y, 0.28, 10, 1.0, 1.1, [0.56, 0.6, 0.62], WATER);
+    const sp = at(0.12, 0);
+    block(plain, sp[0], sp[1], pr.ang, 0.22, 0.06, 1.18, 1.24, [0.4, 0.42, 0.44]);
+    return;
+  }
+  if (pr.sub === 'water_well') {
+    // Ziehbrunnen: runder Steinschacht, zwei Pfosten, kleines Dach, Kurbel und Eimer
+    prism(plain, x, y, 0.95, 12, 0, 0.85, STONE_W, [0.1, 0.12, 0.14]);
+    prism(plain, x, y, 1.02, 12, 0.85, 0.95, [0.56, 0.54, 0.5], [0.1, 0.12, 0.14]);
+    const wood: RGB = [0.45, 0.31, 0.19];
+    for (const a of [-1.05, 1.05]) {
+      const q = at(a, 0);
+      block(plain, q[0], q[1], pr.ang, 0.14, 0.14, 0, 2.15, wood);
+    }
+    const ax = at(0, 0);
+    block(plain, ax[0], ax[1], pr.ang, 2.3, 0.08, 1.6, 1.68, [0.35, 0.33, 0.3]);
+    const cr = at(1.25, 0);
+    block(plain, cr[0], cr[1], pr.ang, 0.06, 0.4, 1.4, 1.68, [0.35, 0.33, 0.3]);
+    prism(plain, ax[0], ax[1], 0.16, 8, 1.0, 1.3, [0.5, 0.36, 0.22]);
+    // Satteldach über dem Schacht
+    const roof: RGB = [0.48, 0.24, 0.18];
+    for (const b of [-1, 1]) {
+      const e0 = at(-1.3, b * 0.85);
+      const e1 = at(1.3, b * 0.85);
+      const r0 = at(-1.3, 0);
+      const r1 = at(1.3, 0);
+      flat(plain, [e0[0], e0[1], 2.05], [e1[0], e1[1], 2.05], [r1[0], r1[1], 2.65], [r0[0], r0[1], 2.65], roof);
+    }
+    return;
+  }
+  if (pr.sub === 'water_point') {
+    // Schwengelpumpe: eiserne Säule auf einem Stein, Hebel, Ausguss über einem Trog
+    const iron: RGB = [0.22, 0.26, 0.24];
+    block(plain, x, y, pr.ang, 0.6, 0.6, 0, 0.3, STONE_W);
+    prism(plain, x, y, 0.12, 8, 0.3, 1.3, iron);
+    block(plain, x, y, pr.ang, 0.3, 0.3, 1.3, 1.5, iron);
+    const lv = at(-0.45, 0);
+    block(plain, lv[0], lv[1], pr.ang, 0.9, 0.06, 1.42, 1.5, iron);
+    const sp = at(0.22, 0.12);
+    block(plain, sp[0], sp[1], pr.ang + Math.PI / 2, 0.3, 0.08, 0.98, 1.06, iron);
+    const tr = at(0.2, 0.75);
+    block(plain, tr[0], tr[1], pr.ang, 1.2, 0.55, 0, 0.45, [0.56, 0.54, 0.5], WATER);
+    return;
+  }
+  // Zierbrunnen (Marktbrunnen): achteckiges Becken, Säule mit Schale und Kugel obendrauf
+  prism(plain, x, y, 1.4, 8, 0, 0.6, STONE_W, WATER);
+  prism(plain, x, y, 0.25, 8, 0.6, 1.45, [0.66, 0.64, 0.6]);
+  prism(plain, x, y, 0.75, 8, 1.45, 1.6, [0.6, 0.58, 0.54], WATER);
+  prism(plain, x, y, 0.14, 8, 1.6, 2.15, [0.66, 0.64, 0.6]);
+  prism(plain, x, y, 0.24, 8, 2.15, 2.4, [0.6, 0.58, 0.54]);
   const sp = at(0.3, 0);
-  block(plain, sp[0], sp[1], pr.ang, 0.4, 0.1, 1.3, 1.4, [0.4, 0.38, 0.35]);
+  block(plain, sp[0], sp[1], pr.ang, 0.4, 0.1, 1.25, 1.35, [0.4, 0.38, 0.35]);
 }
 
 /** Für Tests: alle Teile eines Wahrzeichens als ein Topf. */
@@ -627,9 +563,25 @@ export function addCivic(cv: CivicSpec, ring: Pt[], top: number, plain: MeshData
       flat(plain, [f0[0], f0[1], 6.3], [f1[0], f1[1], 6.4], [f1[0], f1[1], 7.3], [f0[0], f0[1], 7.4], [0.82, 0.78, 0.66]);
     }
     if (cv.kind === 'station') {
-      // Bahnsteigdach an der Seite zur Straße
+      // Bahnsteigdach an der Seite zur Straße, darunter Bank und Fahrkartenautomat, daneben Fahrräder
+      const cw = Math.min(L * 0.8, 14);
       const cp = f.at(mid, 1.6);
-      block(plain, cp[0], cp[1], f.ang, Math.min(L * 0.8, 14), 3.2, 3.2, 3.45, [0.36, 0.38, 0.4], [0.5, 0.52, 0.54], true);
+      block(plain, cp[0], cp[1], f.ang, cw, 3.2, 3.2, 3.45, [0.36, 0.38, 0.4], [0.5, 0.52, 0.54], true);
+      for (const s of [-1, 1]) {
+        const pp = f.at(mid + s * (cw / 2 - 0.4), 2.9);
+        block(plain, pp[0], pp[1], f.ang, 0.14, 0.14, 0, 3.2, [0.36, 0.38, 0.4]);
+      }
+      const bp = f.at(mid - 2.6, 1.0);
+      block(plain, bp[0], bp[1], f.ang, 1.8, 0.42, 0.42, 0.5, [0.62, 0.46, 0.3]);
+      const tm = f.at(mid + 2.2, 0.45);
+      block(plain, tm[0], tm[1], f.ang, 0.7, 0.45, 0, 1.75, [0.72, 0.2, 0.16], [0.4, 0.4, 0.42]);
+      onWall(plain, { ...f, at: (t, o) => f.at(t, o + 0.46) }, mid + 1.95, mid + 2.45, 1.05, 1.5, 0.23, [0.2, 0.24, 0.26]);
+      for (let k = 0; k < 6; k++) {
+        const t = mid + cw / 2 + 0.8 + k * 0.7;
+        if (t > L - 0.3) break;
+        const p = f.at(t, 1.2);
+        block(plain, p[0], p[1], f.ang + Math.PI / 2, 0.9, 0.06, 0.3, 0.75, GREY);
+      }
     }
     if (cv.kind === 'school') {
       // Fahrradständer neben dem Eingang
@@ -652,6 +604,18 @@ export function addCivic(cv: CivicSpec, ring: Pt[], top: number, plain: MeshData
     ];
     for (let k = 0, t = 0.4; t + 0.9 < L - 0.4; k++, t += 1.1) if (Math.abs(t + 0.45 - mid) > 1.3) onWall(plain, f, t, t + 0.9, 0.9, 1.8, 0.05, cols[k % cols.length]);
     signAbove(2.85);
+    // Niedriger Holzzaun vor dem Haus, eine Sandkiste
+    for (let t = 0.4; t < L - 0.3; t += 1.2) {
+      if (Math.abs(t - mid) < 1.2) continue;
+      const p = f.at(t, 3.2);
+      block(plain, p[0], p[1], f.ang, 0.08, 0.08, 0, 0.9, [0.55, 0.38, 0.24]);
+    }
+    onWall(plain, { ...f, at: (t, o) => f.at(t, o + 3.2) }, 0.4, mid - 1.2, 0.5, 0.62, 0, [0.6, 0.42, 0.26]);
+    onWall(plain, { ...f, at: (t, o) => f.at(t, o + 3.2) }, mid + 1.2, L - 0.3, 0.5, 0.62, 0, [0.6, 0.42, 0.26]);
+    if (L > 8) {
+      const sb = f.at(Math.max(1.4, mid - 3), 1.8);
+      block(plain, sb[0], sb[1], f.ang, 1.8, 1.6, 0, 0.28, [0.56, 0.4, 0.26], [0.86, 0.78, 0.6]);
+    }
     return;
   }
   if (cv.kind === 'museum') {
@@ -675,9 +639,31 @@ export function addCivic(cv: CivicSpec, ring: Pt[], top: number, plain: MeshData
     const p = f.at(mid + 1.6, 0.6);
     block(plain, p[0], p[1], f.ang, 0.5, 0.4, 0.6, 1.4, [0.95, 0.76, 0.12]);
     block(plain, p[0], p[1], f.ang, 0.08, 0.08, 0, 0.6, GREY);
+    // Schließfächer für Pakete an der Wand
+    if (mid - 4 > 0.3) {
+      onWall(plain, f, mid - 4, mid - 1.6, 0, 2.0, 0.28, [0.62, 0.64, 0.64]);
+      for (let k = 1; k < 4; k++) onWall(plain, f, mid - 4 + k * 0.6 - 0.02, mid - 4 + k * 0.6 + 0.02, 0.1, 1.9, 0.3, [0.42, 0.44, 0.44]);
+      for (const z of [0.6, 1.1, 1.5]) onWall(plain, f, mid - 4, mid - 1.6, z - 0.02, z + 0.02, 0.3, [0.42, 0.44, 0.44]);
+    }
     return;
   }
-  // Bücherei und Rest: Schild über dem Eingang
+  if (cv.kind === 'library') {
+    // Bücherei: Rückgabekasten, Bank, Fahrradständer
+    signAbove(2.85);
+    const box = f.at(mid + 1.7, 0.45);
+    block(plain, box[0], box[1], f.ang, 0.7, 0.55, 0, 1.15, [0.22, 0.36, 0.28], [0.18, 0.28, 0.22]);
+    onWall(plain, { ...f, at: (t, o) => f.at(t, o + 0.73) }, mid + 1.45, mid + 1.95, 0.85, 0.92, 0, [0.08, 0.08, 0.08]);
+    const bp = f.at(mid - 2.4, 1.1);
+    block(plain, bp[0], bp[1], f.ang, 1.6, 0.4, 0.42, 0.5, [0.62, 0.46, 0.3]);
+    for (let k = 0; k < 4; k++) {
+      const t = mid + 2.8 + k * 0.7;
+      if (t > L - 0.3) break;
+      const p = f.at(t, 1.2);
+      block(plain, p[0], p[1], f.ang + Math.PI / 2, 0.9, 0.06, 0.3, 0.75, GREY);
+    }
+    return;
+  }
+  // Der Rest: Schild über dem Eingang
   signAbove(2.85);
 }
 

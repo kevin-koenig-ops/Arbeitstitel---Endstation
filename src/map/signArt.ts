@@ -1,6 +1,7 @@
 // Schilder für die Wahrzeichen auf der Karte, auf eine Leinwand gemalt.
 // Schlüssel: "TEXT|Hintergrund|Schrift" (Text-Schild, Seitenverhältnis wie SIGN_RATIO)
-// oder "@A" (Apotheken-A), "@cross" (grünes Kreuz), "@H" (Haltestelle), "@fuel|Farbe" (Preismast).
+// oder "@A" (Apotheken-A), "@cross" (grünes Kreuz), "@H" (Haltestelle), "@fuel|Farbe" (Preismast),
+// "@brezel", "@schwein", "@zahn" (runde Ausleger), "@eis", "@tafel" (Kundenstopper).
 
 import { SIGN_RATIO } from './landmarks';
 
@@ -98,6 +99,138 @@ export function drawSign(key: string): HTMLCanvasElement {
     g.textBaseline = 'middle';
     g.fillText('H', 128, 138);
     grime(g, 256, 256, hash(key));
+    return c;
+  }
+  // Ausleger-Schilder (rund) und Kundenstopper der Läden
+  if (key === '@brezel' || key === '@schwein' || key === '@zahn') {
+    c.width = c.height = 256;
+    const g = c.getContext('2d')!;
+    const [ring, fill] = key === '@brezel' ? ['#c9a24a', '#2e4a32'] : key === '@schwein' ? ['#b8322a', '#f4efe6'] : ['#e8eef4', '#2f5f9a'];
+    g.beginPath();
+    g.arc(128, 128, 122, 0, Math.PI * 2);
+    g.fillStyle = ring;
+    g.fill();
+    g.beginPath();
+    g.arc(128, 128, 104, 0, Math.PI * 2);
+    g.fillStyle = fill;
+    g.fill();
+    if (key === '@brezel') {
+      // Brezel: zwei Schlaufen und gekreuzte Enden, goldbraun
+      g.strokeStyle = '#d49a3a';
+      g.lineWidth = 26;
+      g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(92, 180);
+      g.bezierCurveTo(40, 150, 46, 70, 100, 70);
+      g.bezierCurveTo(140, 70, 150, 120, 128, 140);
+      g.bezierCurveTo(106, 120, 116, 70, 156, 70);
+      g.bezierCurveTo(210, 70, 216, 150, 164, 180);
+      g.stroke();
+      g.beginPath();
+      g.moveTo(128, 140);
+      g.lineTo(96, 186);
+      g.moveTo(128, 140);
+      g.lineTo(160, 186);
+      g.stroke();
+      g.fillStyle = '#f6efe0';
+      for (const [x, y] of [[80, 112], [118, 92], [150, 100], [182, 128], [100, 160], [160, 156]]) g.fillRect(x, y, 6, 4);
+    } else if (key === '@schwein') {
+      // Schwein im Profil: Körper, Kopf, Ohr, Rüssel, Beine
+      g.fillStyle = '#e8a0a0';
+      g.beginPath();
+      g.ellipse(120, 136, 62, 40, 0, 0, Math.PI * 2);
+      g.fill();
+      g.beginPath();
+      g.arc(184, 120, 28, 0, Math.PI * 2);
+      g.fill();
+      g.fillRect(204, 116, 18, 18);
+      g.beginPath();
+      g.moveTo(176, 96);
+      g.lineTo(196, 78);
+      g.lineTo(198, 104);
+      g.fill();
+      for (const x of [76, 100, 140, 160]) g.fillRect(x, 160, 14, 30);
+      g.fillStyle = '#3a2a24';
+      g.beginPath();
+      g.arc(190, 112, 4, 0, Math.PI * 2);
+      g.fill();
+    } else {
+      // Zahn
+      g.fillStyle = '#ffffff';
+      g.beginPath();
+      g.moveTo(80, 92);
+      g.bezierCurveTo(80, 50, 120, 60, 128, 72);
+      g.bezierCurveTo(136, 60, 176, 50, 176, 92);
+      g.bezierCurveTo(176, 130, 164, 150, 160, 196);
+      g.bezierCurveTo(156, 210, 140, 206, 138, 190);
+      g.lineTo(130, 156);
+      g.lineTo(124, 156);
+      g.lineTo(118, 190);
+      g.bezierCurveTo(116, 206, 100, 210, 96, 196);
+      g.bezierCurveTo(92, 150, 80, 130, 80, 92);
+      g.fill();
+    }
+    grime(g, 256, 256, hash(key));
+    return c;
+  }
+  if (key === '@eis' || key === '@tafel') {
+    c.width = 200;
+    c.height = 320;
+    const g = c.getContext('2d')!;
+    g.fillStyle = '#6a4a2e';
+    g.fillRect(0, 0, 200, 320);
+    if (key === '@eis') {
+      g.fillStyle = '#f3ecdc';
+      g.fillRect(14, 14, 172, 292);
+      // Eistüte mit zwei Kugeln
+      g.fillStyle = '#d9a45a';
+      g.beginPath();
+      g.moveTo(64, 170);
+      g.lineTo(136, 170);
+      g.lineTo(100, 280);
+      g.fill();
+      g.strokeStyle = '#b07a38';
+      g.lineWidth = 4;
+      for (let i = 0; i < 4; i++) {
+        g.beginPath();
+        g.moveTo(70 + i * 18, 172);
+        g.lineTo(100, 270);
+        g.stroke();
+      }
+      g.fillStyle = '#f2a8b8';
+      g.beginPath();
+      g.arc(80, 150, 30, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = '#9ad0a0';
+      g.beginPath();
+      g.arc(120, 150, 30, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = '#f6e7c2';
+      g.beginPath();
+      g.arc(100, 112, 30, 0, Math.PI * 2);
+      g.fill();
+    } else {
+      // Kreidetafel mit ein paar Zeilen, nicht zu lesen
+      g.fillStyle = '#22302a';
+      g.fillRect(14, 14, 172, 292);
+      g.strokeStyle = 'rgba(240, 236, 226, 0.85)';
+      g.lineCap = 'round';
+      g.lineWidth = 7;
+      let s = hash(key);
+      const rnd = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
+      for (let y = 60; y < 280; y += 42) {
+        let x = 34;
+        while (x < 160) {
+          const w = 14 + rnd() * 30;
+          g.beginPath();
+          g.moveTo(x, y + rnd() * 4);
+          g.lineTo(Math.min(166, x + w), y + rnd() * 4);
+          g.stroke();
+          x += w + 10;
+        }
+      }
+    }
+    grime(g, 200, 320, hash(key));
     return c;
   }
   if (key === '@H') {

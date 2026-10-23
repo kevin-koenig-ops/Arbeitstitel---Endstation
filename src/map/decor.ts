@@ -9,7 +9,7 @@ import { rngFrom, type Rng } from '../core/rng';
 import type { LatLon } from '../core/types';
 import { joinBridges, type BridgeKind, type BridgeSpec } from './bridges';
 import type { FacadeKind, HouseSpec, RoofKind } from './houseMesh';
-import { civicOf, isHallKind, isShopKind, landmarkOf, type CivicKind, type GraveyardSpec, type LandmarkKind, type PropKind, type PropSpec, type ShopKind } from './landmarks';
+import { civicOf, isShopKind, landmarkOf, shopIsHall, type CivicKind, type GraveyardSpec, type LandmarkKind, type PropKind, type PropSpec, type ShopKind } from './landmarks';
 
 type Pt = [number, number];
 type Ring = Pt[];
@@ -352,7 +352,7 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
   const houseSpecs: HouseSpec[] = [];
   const snowRoofs = opts.month !== undefined && (opts.month === 12 || opts.month <= 2);
   // Echte Orte: Läden kommen an ihr Gebäude, Tankstellen, Haltestellen und Brunnen frei dazu
-  type Poi = { p: Pt; kind: LandmarkKind; sign: string; key: string; used: boolean };
+  type Poi = { p: Pt; kind: LandmarkKind; sign: string; sub: string; key: string; used: boolean };
   const shopPois = new Grid<Poi>(40);
   const propPois: Poi[] = [];
   if (opts.houseMeshes)
@@ -361,7 +361,7 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
       if (!def) continue;
       const p = P.toM([q.lon, q.lat]);
       if (!near(p, 30)) continue;
-      const poi: Poi = { p, kind: def.kind, sign: def.sign, key: `${q.lon.toFixed(5)}:${q.lat.toFixed(5)}`, used: false };
+      const poi: Poi = { p, kind: def.kind, sign: def.sign, sub: def.sub, key: `${q.lon.toFixed(5)}:${q.lat.toFixed(5)}`, used: false };
       if (isShopKind(def.kind)) shopPois.addBox({ x0: p[0], y0: p[1], x1: p[0], y1: p[1] }, poi);
       else propPois.push(poi);
     }
@@ -440,7 +440,7 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
       const poi = minH === 0 ? shopFor(ring, c, Math.sqrt(area)) : null;
       if (poi) poi.used = true;
       const hs = houseSpec(ring, key, 'intact', h0, minH * k, poi ? Math.max(3.4, h0 * 0.9) : wallTop, wall, simple, area, poi ? 'home' : civic.some((q) => inRing(q, ring)) ? 'civic' : zoneOf(c));
-      if (poi) dressShop(hs, poi.kind as ShopKind, poi.sign, poi.p, rngFrom('laden', poi.key)(), area, h0);
+      if (poi) dressShop(hs, poi.kind as ShopKind, poi.sub, poi.sign, poi.p, rngFrom('laden', poi.key)(), area, h0);
       const cv = !poi && minH === 0 ? civicFor(ring) : null;
       if (cv) {
         cv.used = true;
@@ -721,7 +721,7 @@ export function generateDecor(input: DecorInput, center: LatLon, radiusM: number
       if (q.kind !== 'fuel') continue;
       p = q.p;
     }
-    props.push({ kind: q.kind as PropKind, p, ang, side, variant });
+    props.push({ kind: q.kind as PropKind, p, ang, side, variant, sub: q.sub });
   }
   scatter(input.forests, 10, 0.9, 'w', 'forest', offPath);
   scatter(input.greens, 22, 0.45, 'g', 'green', freeSpot);
@@ -1162,16 +1162,25 @@ const HALL_TINTS: [number, number, number][] = [
   [0.72, 0.74, 0.76],
   [0.82, 0.8, 0.7],
 ];
-function dressShop(hs: HouseSpec, kind: ShopKind, sign: string, toward: Pt, rnd: number, area: number, h0: number) {
+function dressShop(hs: HouseSpec, kind: ShopKind, sub: string, sign: string, toward: Pt, rnd: number, area: number, h0: number) {
   const variant = Math.floor(rnd * 3);
-  hs.shop = { kind, sign, toward, variant };
+  const hall = shopIsHall(kind, sub, area);
+  hs.shop = { kind, sign, toward, variant, sub, hall };
   hs.state = 'intact';
   hs.plinth = true;
-  if (isHallKind(kind) && area > 150) {
+  if (hall && sub === 'farm') {
+    // Großer Hofladen: in der Scheune (Holz, Satteldach)
+    hs.facade = 'holz';
+    hs.tint = [1, 1, 1];
+    hs.chimney = false;
+    hs.top = Math.max(4.6, Math.min(7, h0 * 0.7));
+  } else if (hall) {
     hs.facade = null;
-    hs.tint = HALL_TINTS[variant];
+    // Gartencenter: helles Glas statt Wand
+    hs.tint = sub === 'garden_centre' ? [0.7, 0.8, 0.82] : HALL_TINTS[variant];
     hs.roof = 'flat';
     hs.flatKind = hs.flatKind === 'wellblech' ? 'flach' : hs.flatKind;
+    if (sub === 'garden_centre') hs.flatColor = [0.78, 0.84, 0.86];
     hs.chimney = false;
     hs.top = Math.max(5.2, Math.min(9, h0 * 0.85));
   } else if ((!hs.facade || hs.facade === 'holz' || hs.facade === 'halle') && area >= 30) {

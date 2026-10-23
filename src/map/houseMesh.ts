@@ -10,6 +10,7 @@ import { ShapeUtils, Vector2 } from 'three';
 
 import { addBridge, type BridgeSpec } from './bridges';
 import { addCivic, addGraveyard, addProp, addShop, addSpire, frontWall, isHallKind, type CivicSpec, type GraveyardSpec, type PropSpec, type ShopSpec, type Signs } from './landmarks';
+import { greenhouseFrames } from './shopLooks';
 import { BOARDED, BROKEN, DOOR_H, DOOR_W, DOORS, doorUV, GATE_M, gateUV, STRIP, stripUV, WINDOW_SETS, windowUV } from './windows';
 import { block, dist, emptyMesh, quad, tri, type MeshData, type P3, type Pt, type RGB } from './meshKit';
 
@@ -280,7 +281,9 @@ function buildOne(h: HouseSpec, ring: Pt[], M: Record<MatKey, MeshData>, shadow:
   }
 
   // Fenster und Haustür (nicht bei Ruinen und nicht an großen Hallen mit Ladenfront)
-  if (h.state !== 'ruin' && !(h.shop && isHallKind(h.shop.kind) && !h.facade)) {
+  // Gartencenter-Halle: Glasrahmen auf allen Wänden
+  if (h.shop?.hall && h.shop.sub === 'garden_centre') greenhouseFrames(ring, h.top, M.plain);
+  if (h.state !== 'ruin' && !((h.shop?.hall ?? (h.shop && isHallKind(h.shop.kind))) && !h.facade)) {
     if (h.facade === 'halle') hallOpenings(h, ring, M.win, rnd);
     else if (h.civic?.kind === 'church' || h.spire) churchWindows(h, ring, M.plain);
     else openings(h, ring, M.win, M.plain, rnd);
