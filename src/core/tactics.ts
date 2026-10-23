@@ -73,8 +73,6 @@ export interface TacticsState {
   /** Verbleibende Haltbarkeit je Waffe (die beste ihrer Art). */
   weaponDur: Partial<Record<WeaponId, number>>;
   kills: number;
-  /** So viele Wandler hat der lange Kampf schon angelockt. */
-  lured: number;
   over: null | 'won' | 'lost' | 'fled';
   /** Konter: wer dich bis zu deiner nächsten Runde trifft, nimmt so viel Schaden. */
   thorns: number;
@@ -141,7 +139,6 @@ export type TEvent =
   | { type: 'windup'; id: number }
   | { type: 'lurk'; id: number; block: number }
   | { type: 'summon'; by: number; id: number; kind: FoeKind }
-  | { type: 'lured'; id: number }
   | { type: 'weaponBroke'; weapon: WeaponId }
   | { type: 'turn'; turn: number }
   | { type: 'burn'; id: number; dmg: number; kill: boolean }
@@ -270,7 +267,6 @@ export function createTactics(o: {
     wear: {},
     weaponDur: {},
     kills: 0,
-    lured: 0,
     over: null,
     thorns: 0,
     ally: null,
@@ -809,13 +805,6 @@ export function endTurn(st: TacticsState): TEvent[] {
     }
   }
   if (!st.over && !aliveFoes(st).length) st.over = 'won';
-  // Lange Kämpfe machen Lärm: Ab einer Runde kommt ab und zu ein Wandler dazu
-  if (!st.over && TACTICS.lureFrom && st.turn >= TACTICS.lureFrom && (st.turn - TACTICS.lureFrom) % TACTICS.lureEvery === 0 && st.lured < TACTICS.lureMax && aliveFoes(st).length < TACTICS.maxFoes) {
-    st.lured += 1;
-    const nf = makeFoe(st, 'walker', 'far');
-    st.foes.push(nf);
-    events.push({ type: 'lured', id: nf.id });
-  }
   if (!st.over) startTurn(st, events);
   return events;
 }

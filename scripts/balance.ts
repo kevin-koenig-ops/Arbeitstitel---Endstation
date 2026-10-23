@@ -5,7 +5,7 @@
 // Teil 2: Ausflüge (eine Stunde draußen): mehrere Kämpfe hintereinander, Erholung,
 //         Heilen mit Medizin, Medizin finden. Zeigt, ob Gesundheit und Medizin knapp sind.
 
-import { TACTICS, ENEMY_WEIGHTS, GRID_KIND_WEIGHTS, HEAL_AMOUNT, HEALTH_REGEN_MIN, MAX_HEALTH, MIN_HEALTH_TO_FIGHT, NIGHT_ENEMY_WEIGHTS, NIGHT_GUARD_FACTOR, GUARD_CHANCE, GUARD_LOOT_FACTOR, REGIONS, SPOT_KINDS, WEAPONS, type CardId } from '../src/core/content';
+import { ENEMY_WEIGHTS, GRID_KIND_WEIGHTS, HEAL_AMOUNT, HEALTH_REGEN_MIN, MAX_HEALTH, MIN_HEALTH_TO_FIGHT, NIGHT_ENEMY_WEIGHTS, NIGHT_GUARD_FACTOR, GUARD_CHANCE, GUARD_LOOT_FACTOR, REGIONS, SPOT_KINDS, WEAPONS, type CardId } from '../src/core/content';
 import { autopilotFight, type AutopilotOptions } from '../src/core/autopilot';
 import { encounter } from '../src/core/rules';
 import { rngFrom, pickWeighted } from '../src/core/rng';
@@ -14,8 +14,6 @@ import type { FoeKind, RegionId, SpotKind, WeaponId } from '../src/core/types';
 
 const args = new Set(process.argv.slice(2));
 const QUICK = args.has('--schnell');
-// Zum Ausprobieren: --lockt=6 (lange Kämpfe locken ab Runde 6 Wandler an)
-for (const a of args) if (a.startsWith('--lockt=')) TACTICS.lureFrom = Number(a.slice(8));
 const N_FIGHT = QUICK ? 150 : 400;
 const N_TRIP = QUICK ? 300 : 1000;
 /** Einmal-Karten: klug (Standard), nur im Notfall (--sparsam) oder nie (--ohne-tasche). */

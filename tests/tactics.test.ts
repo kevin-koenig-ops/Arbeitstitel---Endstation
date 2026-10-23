@@ -673,24 +673,3 @@ describe('Schutz', () => {
     expect(st.block).toBe(6);
   });
 });
-
-describe('Lange Kämpfe (Regel zum Ausprobieren)', () => {
-  it('lockt ab der eingestellten Runde Wandler an, höchstens zwei', () => {
-    const before = TACTICS.lureFrom;
-    TACTICS.lureFrom = 2;
-    try {
-      const st = start(['brute']);
-      aliveFoes(st)[0].hp = 999;
-      let lured = 0;
-      for (let i = 0; i < 8 && !st.over; i++) {
-        st.hand = [];
-        st.block = 99;
-        lured += endTurn(st).filter((e) => e.type === 'lured').length;
-      }
-      expect(lured).toBe(2);
-      expect(st.foes.filter((f) => f.kind === 'walker').length).toBe(2);
-    } finally {
-      TACTICS.lureFrom = before;
-    }
-  });
-});

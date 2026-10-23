@@ -583,14 +583,6 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           await wait(800);
           break;
         }
-        case 'lured': {
-          const nf = foeById(st, e.id);
-          if (nf) shown.foes.set(nf.id, { id: nf.id, kind: nf.kind, row: 'far', alive: nf.hp > 0, stunned: false, raised: false, hp: nf.hp, maxHp: nf.maxHp, block: 0, intent: nf.intent, acted: true });
-          scene?.setFoes(shownList(), [e.id]);
-          say('Der Lärm lockt einen Wandler an!', 'bad');
-          await wait(700);
-          break;
-        }
         case 'turn':
           syncShown();
           scene?.setFoes(shownList());

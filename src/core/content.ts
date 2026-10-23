@@ -1395,11 +1395,6 @@ export const TACTICS = {
   maxFoes: 3,
   /** So oft heult ein Heuler höchstens */
   maxHowls: 2,
-  /** Lange Kämpfe locken an: ab dieser Runde kommt alle paar Runden ein Wandler dazu (0 = nie). */
-  lureFrom: 0,
-  lureEvery: 2,
-  /** Höchstens so viele kommen so dazu. */
-  lureMax: 2,
 };
 
 export type IntentKind = 'attack' | 'windup' | 'smash' | 'grab' | 'advance' | 'howl' | 'lurk' | 'stunned' | 'stare' | 'fade' | 'pounce';
