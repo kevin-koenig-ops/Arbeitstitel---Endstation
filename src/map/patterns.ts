@@ -101,6 +101,24 @@ const OPTIONAL: Record<string, { key: string; pr: number }> = {
   'pat-ice': { key: 'eis', pr: 2.5 },
 };
 
+/** Linien mit Bild: Straßen, Wege und Gleise laufen oben und unten weich in den Boden aus. */
+const LINE_PATTERNS = new Set(['pat-road-major', 'pat-road-minor', 'pat-track', 'pat-path', 'pat-footway', 'pat-rail']);
+/** So viel vom Bild (je Rand, Anteil der Höhe) wird nach außen hin durchsichtig. */
+const EDGE_FADE = 0.22;
+
+/** Oberen und unteren Rand eines Linienbilds weich ausblenden (sanfte S-Kurve). */
+function fadeEdges(d: ImageData, band = EDGE_FADE) {
+  const { width: w, height: h, data } = d;
+  const n = Math.max(1, Math.min(Math.floor(h / 2), Math.round(h * band)));
+  for (let y = 0; y < n; y++) {
+    const t = (y + 0.5) / n;
+    const a = t * t * (3 - 2 * t);
+    for (const row of [y, h - 1 - y]) {
+      for (let x = 0, i = row * w * 4 + 3; x < w; x++, i += 4) data[i] = Math.round(data[i] * a);
+    }
+  }
+}
+
 /** Gibt es für dieses Muster gerade ein geliefertes Bild? */
 export function hasOptionalTexture(id: string): boolean {
   return id in OPTIONAL && loaded.has(id);
@@ -135,7 +153,9 @@ export async function loadTextures(season?: Season): Promise<string[]> {
         const ctx = c.getContext('2d')!;
         ctx.drawImage(img, 0, 0);
         const data = ctx.getImageData(0, 0, c.width, c.height);
-        loaded.set(id, { data, pixelRatio: pr, url: want, mean: meanColor(data) });
+        const mean = meanColor(data);
+        if (LINE_PATTERNS.has(id)) fadeEdges(data);
+        loaded.set(id, { data, pixelRatio: pr, url: want, mean });
         if (cur) changed.push(id);
       } catch (err) {
         console.warn('[Textur]', id, err);

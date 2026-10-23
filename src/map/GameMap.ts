@@ -152,6 +152,8 @@ export class GameMap {
   private pendingRange: { c: LatLon; r: number } | null = null;
   private decorCenter: LatLon | null = null;
   private tilesDirty = true;
+  /** Ursprüngliche Breite der Straßen ohne Bild (zum Zurückstellen). */
+  private roadWidth: Record<string, unknown> = {};
   private decorTimer = 0;
   /** 3D-Bäume (three.js), wird nach dem Laden nachgeladen. Bis dahin Klötzchen-Bäume. */
   private trees: TreeLayer | null = null;
@@ -1126,11 +1128,21 @@ export class GameMap {
     };
     const major = use('road-major', 'pat-road-major');
     const minor = use('road-minor', 'pat-road-minor');
-    // Feld- und Fußwege, Gleise mit Bild etwas breiter, sonst sieht man vom Bild nur die Farbe
+    // Straßen mit Bild: ohne dunkle Kante, dafür so breit wie die Kante, damit der weiche Rand
+    // (patterns.ts, fadeEdges) in den Boden ausläuft und die Fahrbahn gleich breit bleibt
+    const casing = (layer: string, edge: string, on: boolean) => {
+      if (!this.map.getLayer(layer) || !this.map.getLayer(edge)) return;
+      this.roadWidth[layer] ??= this.map.getPaintProperty(layer, 'line-width');
+      this.map.setPaintProperty(layer, 'line-width', on ? this.map.getPaintProperty(edge, 'line-width') : this.roadWidth[layer]);
+      this.map.setLayoutProperty(edge, 'visibility', on ? 'none' : 'visible');
+    };
+    casing('road-major', 'road-major-casing', major);
+    casing('road-minor', 'road-minor-casing', minor);
+    // Feld- und Fußwege, Gleise mit Bild breiter (auch wegen des weichen Rands), sonst sieht man vom Bild nur die Farbe
     const width = (layer: string, on: boolean, plain: [number, number][], wide: [number, number][]) => {
       if (this.map.getLayer(layer)) this.map.setPaintProperty(layer, 'line-width', ['interpolate', ['exponential', 1.6], ['zoom'], ...(on ? wide : plain).flat()]);
     };
-    width('road-track', use('road-track', 'pat-track'), [[14, 1], [17, 4.5], [20, 14]], [[14, 1.5], [17, 7], [20, 21]]);
+    width('road-track', use('road-track', 'pat-track'), [[14, 1], [17, 4.5], [20, 14]], [[14, 1.8], [17, 8.4], [20, 25]]);
     // Fußwege: gepflasterte Gehwege (footway) und Pfade im Grünen, je mit eigenem Bild
     const path = has('pat-path');
     const footway = has('pat-footway');
@@ -1138,8 +1150,8 @@ export class GameMap {
       const pattern = footway ? ['match', ['coalesce', ['get', 'subclass'], ''], ['footway', 'pedestrian'], 'pat-footway', path ? 'pat-path' : 'pat-footway'] : path ? 'pat-path' : undefined;
       this.map.setPaintProperty('road-path', 'line-pattern', pattern);
     }
-    width('road-path', path || footway, [[14, 0.6], [17, 2.6], [20, 7]], [[14, 1], [17, 4.2], [20, 11]]);
-    width('road-rail', use('road-rail', 'pat-rail'), [[13, 1], [18, 5]], [[13, 1.5], [17, 6], [20, 18]]);
+    width('road-path', path || footway, [[14, 0.6], [17, 2.6], [20, 7]], [[14, 1.2], [17, 5], [20, 13]]);
+    width('road-rail', use('road-rail', 'pat-rail'), [[13, 1], [18, 5]], [[13, 1.8], [17, 7.2], [20, 22]]);
     if (this.map.getLayer('landcover-ice')) this.map.setPaintProperty('landcover-ice', 'fill-pattern', has('pat-ice') ? 'pat-ice' : undefined);
     // Die gemalten Straßen haben ihre Risse schon im Bild
     if (this.map.getLayer('road-cracks')) this.map.setLayoutProperty('road-cracks', 'visibility', major && minor ? 'none' : 'visible');
