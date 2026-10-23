@@ -110,6 +110,49 @@ describe('Wegenetz: Wasser', () => {
     expect(distanceM(r.end, ll(340, 150))).toBeLessThan(1);
   });
 
+  it('läuft nicht übers Wasser zur nächsten Straße am anderen Ufer', () => {
+    // Du stehst westlich vom Bach (x = 300), die nächste Straße liegt drüben; die Brücke ist bei y = 0
+    const side = new WalkNet({
+      center: C,
+      ways: [[at(250, 0), at(350, 0)], [at(320, 0), at(320, 300)]],
+      buildings: [],
+      water: [],
+      built: [],
+      forest: [],
+      waterLines: [[at(300, -2000), at(300, 2000)]],
+    });
+    const r = side.route(ll(290, 200), ll(320, 250))!;
+    expect(r).not.toBeNull();
+    // Über den Bach nur auf der Brücke (y nahe 0)
+    for (let i = 1; i < r.path.length; i++) {
+      const a = r.path[i - 1];
+      const b = r.path[i];
+      const xa = (a.lon - C.lon) * 111320 * Math.cos((C.lat * Math.PI) / 180);
+      const xb = (b.lon - C.lon) * 111320 * Math.cos((C.lat * Math.PI) / 180);
+      if ((xa - 300) * (xb - 300) < 0) expect(Math.abs((a.lat - C.lat) * 111320)).toBeLessThan(12);
+    }
+  });
+
+  it('läuft nicht durch einen Teich zur Straße dahinter', () => {
+    const pond = new WalkNet({
+      center: C,
+      ways: [[at(100, -300), at(100, 300)]],
+      buildings: [],
+      water: [rect(20, -40, 80, 40)],
+      built: [],
+      forest: [],
+    });
+    const r = pond.route(ll(10, 0), ll(100, 200))!;
+    expect(r).not.toBeNull();
+    for (const p of r.path) {
+      const x = (p.lon - C.lon) * 111320 * Math.cos((C.lat * Math.PI) / 180);
+      const y = (p.lat - C.lat) * 111320;
+      expect(x > 21 && x < 79 && y > -39 && y < 39).toBe(false);
+    }
+    expect(pond.wetBetween(ll(10, 0), ll(90, 0))).toBe(true);
+    expect(pond.wetBetween(ll(10, 100), ll(90, 100))).toBe(false);
+  });
+
   it('der Joystick bleibt am Ufer stehen', () => {
     const p = wet.step(ll(298, 150), ll(302, 150));
     expect(distanceM(p, ll(298, 150))).toBeLessThan(0.01);

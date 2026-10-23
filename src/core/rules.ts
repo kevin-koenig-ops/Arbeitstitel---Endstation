@@ -961,8 +961,9 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
         events.push(loot);
       } else if (action.outcome === 'lost') {
         // Niedergeschlagen: alles aus dem Rucksack ist weg. Lager zu Hause, Waffen und
-        // Ausrüstung bleiben. Du kommst zu Hause wieder zu dir (das zeigt die Oberfläche).
-        state.health = 0;
+        // Ausrüstung bleiben. Du kommst zu Hause wieder zu dir, bei voller Gesundheit
+        // (Kevin 23.10.: nach dem Tod ist das Leben wieder voll; die Strafe ist der Rucksack).
+        state.health = MAX_HEALTH;
         state.healthAt = ctx.now;
         const dropped = { ...state.pack };
         const droppedKram = { ...state.packKram };

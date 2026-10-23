@@ -481,6 +481,14 @@ export class GameMap {
     (this.map.getSource('route') as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features });
   }
 
+  /**
+   * Weit herausgezoomt hat die echte Karte nur grobe Daten (keine Bäche, Feldwege und kleinen Teiche).
+   * Ein Wegenetz daraus würde quer übers Wasser führen.
+   */
+  walkDataCoarse(): boolean {
+    return this.opts.mode === 'real' && this.map.getZoom() < 13;
+  }
+
   /** Straßen, Wege, Häuser, Wasser, Ortsflächen und Wald rund um einen Punkt (für das Wegenetz). */
   /**
    * patrol: Wege für die Strecken der Trupps. Ohne große Straßen (Bundes- und Hauptstraßen),

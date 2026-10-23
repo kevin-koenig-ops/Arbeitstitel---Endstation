@@ -1363,7 +1363,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
               ...kram.map((k) => h('li', null, `${droppedKram[k]} × ${KRAM[k].name}`)),
               ...cards.map((k) => h('li', null, svgEl(icon(CARD_ICON[k], 16)), `${droppedCards[k]} × ${CARDS[k].name}`)),
             ]),
-        h('p', { class: 'note' }, 'Dein Lager zu Hause, deine Waffen und deine Ausrüstung hast du noch. Die Gesundheit kommt von selbst zurück, schneller mit Medizin oder einem Eintopf. Tipp: Bring Gutes öfter nach Hause, bevor du dich mit einem Trupp anlegst.'),
+        h('p', { class: 'note' }, 'Dein Lager zu Hause, deine Waffen und deine Ausrüstung hast du noch, und du bist wieder voll bei Kräften. Tipp: Bring Gutes öfter nach Hause, bevor du dich mit einem Trupp anlegst.'),
         h(
           'button',
           {

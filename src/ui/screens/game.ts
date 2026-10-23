@@ -735,6 +735,8 @@ export function gameScreen(app: App): Screen {
 
   // --- Wegenetz (nur Testmodus): im Ort über Straßen und Wege, draußen auch quer ------------
   let net: WalkNet | null = null;
+  /** Wie weit das Wegenetz um seine Mitte reicht. */
+  let netR = 0;
   let netAt = 0;
   let netZones = '';
   /** Neue Kartendaten sind da: Wegenetz beim nächsten Mal neu bauen. */
@@ -746,6 +748,8 @@ export function gameScreen(app: App): Screen {
     if (!gm) return null;
     const now = performance.now();
     const stale = !net || netZones !== zoneSig || netDirty || distanceM(net.center, p) + needM > 450 || (!net.wayCount && now - netAt > 3000);
+    // Weit herausgezoomt: lieber das alte, genaue Netz behalten als ein grobes bauen
+    if (stale && net && gm.walkDataCoarse()) return net;
     if (stale) {
       try {
         const s = app.backend.current();
@@ -753,7 +757,8 @@ export function gameScreen(app: App): Screen {
         const noGo = worldEvents.filter((e) => e.kind === 'quarantine' && t >= e.from && t < e.until).map((e) => ({ center: eventCenter(e, t), radiusM: e.radiusM }));
         netZones = zoneSig;
         netDirty = false;
-        net = new WalkNet(gm.walkInput(p, Math.max(700, needM + 300), { noGo, season: seasonOf(app.settings.get()), wade: !!s && Object.values(s.gear.worn).some((g) => g && GEAR[g].wade) }));
+        netR = Math.max(700, needM + 300);
+        net = new WalkNet(gm.walkInput(p, netR, { noGo, season: seasonOf(app.settings.get()), wade: !!s && Object.values(s.gear.worn).some((g) => g && GEAR[g].wade) }));
         netAt = now;
       } catch {
         net = null;
@@ -802,9 +807,23 @@ export function gameScreen(app: App): Screen {
     // Ein neues Ziel ersetzt das alte, ein Tippen auf die Karte löst nichts aus
     arrival = arrive ? { pos: p, reachM: arrive.reachM, run: arrive.run } : null;
     const from = provider.position;
+    // Weit herausgezoomt kennt die Karte die Wege nicht genau: nur innerhalb des genauen Netzes laufen
+    if (gm?.walkDataCoarse() && !(net && distanceM(net.center, from) < netR - 100 && distanceM(net.center, p) < netR - 100)) {
+      arrival = null;
+      app.toast('So weit draußen kennt die Karte Wege und Wasser nicht genau. Zoom etwas näher heran, dann läufst du los.');
+      return;
+    }
     const n = walkNet(from, distanceM(from, p));
     const gait = app.settings.get().gait;
     const r = n?.wayCount ? n.route(from, p, gait) : null;
+    if (!r && n?.wetBetween(from, p)) {
+      // Kein Weg gefunden und geradeaus wäre durchs Wasser: gar nicht erst loslaufen
+      arrival = null;
+      gm?.setRoute(null);
+      gm?.setTarget(null);
+      app.toast('Dort kommst du nicht hin: Wasser im Weg und keine Brücke in der Nähe.', 'warn');
+      return;
+    }
     if (r) {
       // Leise gehen ist etwas langsamer
       provider.walkPath(r.path, gait === 'quiet' ? r.speeds.map((v) => v * 0.8) : r.speeds);

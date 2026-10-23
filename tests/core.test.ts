@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emptyInventory, KRAM_ORDER } from '../src/core/content';
+import { emptyInventory, KRAM_ORDER, MAX_HEALTH } from '../src/core/content';
 import { distanceM, offsetM } from '../src/core/geo';
 import { activePlot, applyAction, createPlayer, currentHealth, guardOf, pendingHarvest, placementProblem, readyAt, SCHEMA_VERSION, searchRangeM } from '../src/core/rules';
 import { migrate } from '../src/core/save';
@@ -228,7 +228,7 @@ describe('Kampf', () => {
     expect(r.state.dig?.spot.id).toBe(s.id);
   });
 
-  it('verliert man, ist alles aus dem Rucksack weg (Lager bleibt), und die Gesundheit kommt zurück', () => {
+  it('verliert man, ist alles aus dem Rucksack weg (Lager bleibt), und man ist wieder voll gesund', () => {
     const s = guarded('brute');
     let st: PlayerState = { ...fresh(), health: 2, pack: { metal: 4, cloth: 4 }, packKram: { [KRAM_ORDER[0]]: 2 } };
     const home = { ...st.inventory };
@@ -238,9 +238,8 @@ describe('Kampf', () => {
     expect(r.state.pack).toEqual({});
     expect(r.state.packKram).toEqual({});
     expect(r.state.inventory).toEqual(home);
-    expect(r.state.health).toBe(0);
-    expect(engage(r.state, s).events[0]).toEqual({ type: 'rejected', reason: 'exhausted' });
-    expect(currentHealth(r.state, T0 + 3 * HOUR)).toBe(9);
+    expect(r.state.health).toBe(MAX_HEALTH);
+    expect(currentHealth(r.state, T0)).toBe(MAX_HEALTH);
   });
 
   it('Fliehen geht immer und kostet nichts', () => {

@@ -348,6 +348,28 @@ export class WalkNet {
     return false;
   }
 
+  /**
+   * Geht die gerade Strecke a→b über Wasser (Fluss, Bach, See, Teich)?
+   * Ein See, in dem man schon steht (GPS ungenau), zählt nicht.
+   */
+  private wetLeg(a: P, b: P): boolean {
+    if (this.crossesWater(a, b)) return true;
+    if (!this.water.length) return false;
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const n = Math.max(1, Math.ceil(len / 6));
+    for (let i = 1; i <= n; i++) {
+      const x = a.x + ((b.x - a.x) * i) / n;
+      const y = a.y + ((b.y - a.y) * i) / n;
+      for (const k of this.waterGrid.at(x, y)) if (inArea(x, y, this.water[k]) && !inArea(a.x, a.y, this.water[k])) return true;
+    }
+    return false;
+  }
+
+  /** Für die Anzeige: Liegt zwischen den beiden Punkten Wasser? (Dann nicht einfach geradeaus laufen.) */
+  wetBetween(fromLL: LatLon, toLL: LatLon): boolean {
+    return this.wetLeg(this.toXY(fromLL), this.toXY(toLL));
+  }
+
   get wayCount() {
     return this.segs.length;
   }
@@ -402,6 +424,35 @@ export class WalkNet {
       }
       if (best || r >= maxM) return best;
     }
+  }
+
+  /**
+   * Nächster Punkt auf einem Weg, den man von p aus geradeaus erreicht (kein Haus, kein Wasser dazwischen).
+   * Liegt die nächste Straße am anderen Ufer, nimmt es die nächste auf dieser Seite.
+   */
+  private nearestReachable(p: P, maxM: number): Hit | null {
+    const ok = (h: Hit) => h.d <= 1 || (!this.crossesHouse(p, { x: h.x, y: h.y }) && !this.wetLeg(p, { x: h.x, y: h.y }));
+    const first = this.nearest(p, maxM);
+    if (!first || ok(first)) return first;
+    const cands: Hit[] = [];
+    const seen = new Set<number>();
+    for (const s of this.segGrid.around(p.x, p.y, maxM)) {
+      if (seen.has(s) || this.closedSegs.has(s)) continue;
+      seen.add(s);
+      const a = this.nodes[this.segs[s][0]];
+      const b = this.nodes[this.segs[s][1]];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const l2 = dx * dx + dy * dy;
+      const t = l2 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2)) : 0;
+      const x = a.x + dx * t;
+      const y = a.y + dy * t;
+      const d = Math.hypot(p.x - x, p.y - y);
+      if (d <= maxM) cands.push({ x, y, seg: s, t, d });
+    }
+    cands.sort((u, v) => u.d - v.d);
+    for (const c of cands.slice(0, 40)) if (ok(c)) return c;
+    return null;
   }
 
   private any(grid: Grid<number>, list: Area[], p: P) {
@@ -684,10 +735,9 @@ export class WalkNet {
       if (leg.cost < Infinity) cands.push({ cost: leg.cost * pen(F, T), pts: leg.pts, speeds: leg.speeds, off: leg.speeds.map((v) => v !== road), snapped: false });
     }
     // 2. Über die Wege
-    let A = this.nearest(F, 400);
+    // Zum ersten Weg nur, wenn kein Haus und kein Wasser dazwischen ist (sonst der nächste auf dieser Seite)
+    const A = this.nearestReachable(F, 400);
     const B = this.nearest(T, 400);
-    // Zum ersten Weg nur, wenn kein Haus dazwischen steht (sonst sucht das Raster einen Weg herum)
-    if (A && A.d > 1 && this.crossesHouse(F, { x: A.x, y: A.y })) A = null;
     if (A && B) {
       const way = this.viaWays(A, B);
       if (way) {
