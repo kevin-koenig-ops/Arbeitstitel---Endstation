@@ -1,7 +1,7 @@
 // Der Spielbildschirm: Karte, Standort, Fundstellen, HUD und Overlays.
 
 import { FALLBACK_START, IS_PREVIEW, RADIO_POPUPS, VIEW_RADIUS_M } from '../../config';
-import { CACHE, ENEMIES, FOE_TACTICS, GEAR, HINT_NAMES, MAX_HEALTH, PATROL, REGIONS, RESOURCE_ORDER, RESOURCES, SIGHT, SPECIAL, SPECIAL_HINT, SURVIVAL_ORDER, TIER, WILD_SPOT_MIN_M, WORLD_EVENT, WORLD_EVENTS } from '../../core/content';
+import { CACHE, ENEMIES, FOE_TACTICS, GEAR, HINT_NAMES, MAX_HEALTH, PATROL, REGIONS, RESOURCE_ORDER, RESOURCES, SCOUT, SIGHT, SPECIAL, SPECIAL_HINT, SURVIVAL_ORDER, TIER, WILD_SPOT_MIN_M, WORLD_EVENT, WORLD_EVENTS } from '../../core/content';
 import { ExploredView, SECTOR_LEVELS, sectorOf } from '../../core/explore';
 import { bearingDeg, distanceM, formatDistance, offsetM } from '../../core/geo';
 import { rankOf } from '../../core/progress';
@@ -488,6 +488,34 @@ export function gameScreen(app: App): Screen {
     return SIGHT.baseM * REGIONS[currentRegion()].view * viewBonus * (a.phase === 'night' ? SIGHT.nightFactor : 1) * (a.weather === 'fog' || dust ? SIGHT.fogFactor : 1);
   };
 
+  // Was du schon gesehen hast, bleibt auf der Karte (auf diesem Gerät gemerkt, gut einen Tag lang)
+  const SPOTTED_KEY = 'endstation.spotted';
+  const spotted = new Map<string, number>();
+  let spottedDirty = false;
+  try {
+    const old = JSON.parse(localStorage.getItem(SPOTTED_KEY) ?? '{}') as Record<string, number>;
+    for (const [id, at] of Object.entries(old)) if (Date.now() - at < SCOUT.rememberH * 3_600_000) spotted.set(id, at);
+  } catch {
+    // Kein Speicher: dann merkt es sich nur diese Runde
+  }
+  const saveSpotted = () => {
+    if (!spottedDirty) return;
+    spottedDirty = false;
+    try {
+      const keep = [...spotted].filter(([, at]) => Date.now() - at < SCOUT.rememberH * 3_600_000).slice(-4000);
+      localStorage.setItem(SPOTTED_KEY, JSON.stringify(Object.fromEntries(keep)));
+    } catch {
+      // egal
+    }
+  };
+  /** Ab welcher Entfernung man eine Fundstelle sieht (Echte Orte immer, Entdecktes auch). */
+  const seeSpotM = (spot: Spot, s: PlayerState, sight: number, range: number) => {
+    if (spot.source === 'poi' || s.discovered[spot.id]) return Infinity;
+    if (spot.id.startsWith('e:')) return Math.max(SCOUT.smokeM, range);
+    if (spot.source === 'special') return Math.max(SPECIAL.nearM, range);
+    return Math.max(SIGHT.smallKinds.includes(spot.kind) ? sight : sight * SCOUT.bigFactor, range);
+  };
+
   const updateSpots = () => {
     const s = app.backend.current();
     if (!gm || !s) return;
@@ -498,9 +526,14 @@ export function gameScreen(app: App): Screen {
     for (const spot of spots.values()) {
       const wait = readyAt(s, spot) - now;
       const d = fix ? distanceM(fix.pos, spot.pos) : Infinity;
-      // Kleines (Pilze, Rucksack, Fass …) taucht erst auf, wenn man nah genug ist
+      // Erst aus der Nähe zu sehen (Kleines noch später), dann bleibt es auf der Karte
       const small = SIGHT.smallKinds.includes(spot.kind);
-      if (small && d > Math.max(sight, range)) continue;
+      if (d <= seeSpotM(spot, s, sight, range)) {
+        if (!spotted.has(spot.id) && spot.source !== 'poi') {
+          spotted.set(spot.id, Date.now());
+          spottedDirty = true;
+        }
+      } else if (!spotted.has(spot.id)) continue;
       const st = wait > 0 ? 'cooldown' : d <= range ? 'inrange' : 'ready';
       // Bei Nebel sieht man Wächter erst aus der Nähe
       const guard = wait > 0 || d > guardSightM() ? null : app.backend.guardFor(spot);
@@ -519,6 +552,7 @@ export function gameScreen(app: App): Screen {
       views.push({ spot, state: st, guard, cart: !!cart, fresh: !seenSet(s).has(spotKey(spot.id)), unknown, pop: small });
     }
     gm.setSpots(views);
+    saveSpotted();
     updatePointers();
     if (cartNews.length) {
       const sp = cartNews.splice(0)[0];
@@ -1014,10 +1048,11 @@ export function gameScreen(app: App): Screen {
     clear(eventChip);
     eventChip.dataset.kind = e.kind;
     eventChip.dataset.inside = String(inside);
-    eventChip.append(svgEl(icon(EVENT_ICON[e.kind], 15)), inside ? def.name : `${def.name} · ${formatDistance(d)}`);
-    eventChip.setAttribute('aria-label', `${def.name}${inside ? ', du bist mittendrin' : `, ${formatDistance(d)} entfernt`}. Antippen für mehr`);
-    eventChip.onclick = () =>
-      app.toast(`${def.name}${inside ? ' (du bist mittendrin)' : ` (${formatDistance(d)} Richtung ${compassWord(bearingDeg(here, eventCenter(e, now)))})`}: ${def.desc} Noch ${remaining(e)}.`);
+    // Nur die Richtung, keine Meter (Kevin 23.10.: selbst suchen)
+    const dir = compassWord(bearingDeg(here, eventCenter(e, now)));
+    eventChip.append(svgEl(icon(EVENT_ICON[e.kind], 15)), inside ? def.name : `${def.name} · ${dir}`);
+    eventChip.setAttribute('aria-label', `${def.name}${inside ? ', du bist mittendrin' : `, Richtung ${dir}`}. Antippen für mehr`);
+    eventChip.onclick = () => app.toast(`${def.name}${inside ? ' (du bist mittendrin)' : ` (irgendwo Richtung ${dir})`}: ${def.desc} Noch ${remaining(e)}.`);
   };
 
   const patrolLabel = (group: FoeKind[]) => {
@@ -1887,6 +1922,7 @@ export function gameScreen(app: App): Screen {
         quiet: () => !!overlay,
         hints: () => horizonHints(),
         focus: (f) => focusOn(f),
+        sightM: () => sightM(),
       });
       radarSlot.append(sightings.chip);
       hud.append(...sightings.els);

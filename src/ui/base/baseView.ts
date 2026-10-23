@@ -64,10 +64,7 @@ import { durationText, jobOf, jobProgress, leftText } from './buildTime';
 
 export { openSitePicker };
 
-/** Merkt sich auf diesem Gerät, ob das Lager oben aufgeklappt ist. */
-const LAGER_OPEN_KEY = 'endstation.lagerOpen';
-
-/** Bunte gefaltete Karte mit Stecknadel für das Schild „Zur Karte“. */
+/** Bunte gefaltete Karte mit Stecknadel für den Knopf „Karte“ oben links. */
 const MAP_ART =
   '<svg viewBox="0 0 48 42" width="44" height="38" aria-hidden="true">' +
   '<path d="M3 9.5l13-5 15 5 14-5v28l-14 5-15-5-13 5z" fill="#2a1a0e"/>' +
@@ -161,51 +158,26 @@ function ctxClose(label: string, onClick: () => void): HTMLElement {
 
 export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLElement {
   const stage = h('div', { class: 'base-stage' });
-  const titleEl = h('div', { class: 'base-title' });
-  // Antippen: was die Stufe bringt und was die nächste bringen würde
+  // Antippen: wo du bist, was die Stufe bringt und was die nächste bringen würde
   const comfortEl = h('button', {
     class: 'comfort',
     type: 'button',
+    title: 'Gemütlichkeit',
     onclick: () => {
-      const t = baseTier(st());
+      const s = st();
+      const site = s.base.active ? SITES[s.base.active] : null;
+      const c = plotComfort(plot());
+      const tier = comfortTier(c.value);
+      const t = baseTier(s);
       const have = TIER_PERKS.slice(1, t + 1).map((p) => p.desc);
       const next = TIER_PERKS[t + 1];
-      app.toast(`${have.length ? `Deine Vorteile: ${have.join(' ')}` : 'Noch keine Vorteile.'}${next ? ` Nächste Stufe: ${next.desc}` : ''}`);
+      const where = site ? `${site.name} (${site.where}). ` : '';
+      const rooms = c.rooms ? `, ${c.rooms} ${c.rooms === 1 ? 'Raum' : 'Räume'}` : '';
+      app.toast(`${where}Gemütlichkeit ${c.value}: ${tier.name}${rooms}. ${have.length ? `Deine Vorteile: ${have.join(' ')}` : 'Noch keine Vorteile.'}${next ? ` Nächste Stufe: ${next.desc}` : ''}`);
     },
   });
-  // Lager: zugeklappt nur das Schild, aufgeklappt alle Rohstoffe. Die Zahlen antippen öffnet das Lager.
-  const resToggle = h('button', { class: 'base-res-label', type: 'button', onclick: () => setLager(!lagerOpen) });
-  // Eine Zeile zum Wischen (kein <button>, darin scrollt es nicht überall); Antippen öffnet das Lager
-  const resChips = h('div', {
-    class: 'base-res-chips',
-    role: 'button',
-    tabindex: '0',
-    'aria-label': 'Lager öffnen',
-    title: 'Lager öffnen',
-    onclick: () => openStore(),
-    onkeydown: (e: KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') openStore();
-    },
-  });
-  const resEl = h('div', { class: 'base-res' }, resToggle, resChips);
-  let lagerOpen = false;
-  try {
-    lagerOpen = localStorage.getItem(LAGER_OPEN_KEY) === '1';
-  } catch {
-    // Kein Speicher (privates Fenster): bleibt zu
-  }
-  const setLager = (open: boolean) => {
-    lagerOpen = open;
-    resEl.dataset.open = String(open);
-    resToggle.setAttribute('aria-expanded', String(open));
-    resToggle.setAttribute('aria-label', open ? 'Lager zuklappen' : 'Lager aufklappen');
-    try {
-      localStorage.setItem(LAGER_OPEN_KEY, open ? '1' : '0');
-    } catch {
-      // egal, dann eben nur für jetzt
-    }
-  };
-  setLager(lagerOpen);
+  // Rohstoffe am oberen Rand: die sechs Grundstoffe, Antippen öffnet das Lager mit allem
+  const resChips = h('button', { class: 'base-res', type: 'button', 'aria-label': 'Lager öffnen', title: 'Lager öffnen', onclick: () => openStore() });
   const workChip = h('button', { class: 'work-chip', type: 'button', hidden: true, onclick: () => openWork() });
   const harvestChip = h('button', { class: 'work-chip ready', type: 'button', hidden: true, onclick: () => void harvestAll() });
   // Bauliste: was gerade gebaut wird (läuft in echter Zeit, auch ohne Spielen)
@@ -216,9 +188,15 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   const head = h(
     'header',
     { class: 'base-head' },
-    h('div', { class: 'base-title-row' }, titleEl, h('button', { class: 'base-exit', type: 'button', onclick: () => close() }, svgEl(MAP_ART, 'exit-art'), h('span', null, 'Zur Karte'))),
-    h('div', { class: 'base-info' }, comfortEl, resEl, workChip, buildChip, harvestChip),
-    packCard,
+    h(
+      'div',
+      { class: 'base-bar' },
+      h('button', { class: 'base-exit', type: 'button', 'aria-label': 'Zur Karte', onclick: () => close() }, svgEl(MAP_ART, 'exit-art'), h('span', null, 'Karte')),
+      comfortEl,
+      h('span', { class: 'base-bar-gap' }),
+      resChips,
+    ),
+    h('div', { class: 'base-info' }, harvestChip, packCard, workChip, buildChip),
     away,
   );
   // Seitenleiste im Baumodus und schwebende Leiste für Auswahl/Bestätigung
@@ -230,19 +208,19 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     panelBody,
   );
   const ctx = h('div', { class: 'base-ctx' });
-  const buildToggle = h('button', { class: 'build-toggle', type: 'button', onclick: () => setBuilding(true) }, svgEl(icon('hammer', 22)), h('span', null, 'Bauen'));
+  const buildToggle = h('button', { class: 'build-toggle', type: 'button', onclick: () => setBuilding(true) }, svgEl(icon('hammer', 18)), h('span', null, 'Bauen'));
   const controls = h('div', { class: 'base-controls' });
   // Ansicht: farbige runde Knöpfe mit Beschriftung, unten links
   const camBtn = (color: string, ic: string, label: string, aria: string, onClick?: () => void) =>
-    h('button', { class: `cam-btn ${color}`, type: 'button', 'aria-label': aria, title: aria, onclick: onClick }, h('span', { class: 'cam-disc' }, svgEl(icon(ic, 22))), h('span', { class: 'cam-label' }, label));
+    h('button', { class: `cam-btn ${color}`, type: 'button', 'aria-label': aria, title: aria, onclick: onClick }, h('span', { class: 'cam-disc' }, svgEl(icon(ic, 18))), h('span', { class: 'cam-label' }, label));
   const roofBtn = camBtn('c-orange', 'roof', 'Dächer', 'Dächer zeigen');
   roofBtn.setAttribute('aria-pressed', 'false');
   const wallBtn = camBtn('c-rose', 'cutaway', 'Wände', 'Wände: Ausschnitt');
   const cam = h(
     'div',
     { class: 'base-cam' },
-    camBtn('c-red', 'rotl', 'Links drehen', 'Ansicht nach links drehen', () => scene.rotateStep(-1)),
-    camBtn('c-blue', 'rotr', 'Rechts drehen', 'Ansicht nach rechts drehen', () => scene.rotateStep(1)),
+    camBtn('c-red', 'rotl', 'Links', 'Ansicht nach links drehen', () => scene.rotateStep(-1)),
+    camBtn('c-blue', 'rotr', 'Rechts', 'Ansicht nach rechts drehen', () => scene.rotateStep(1)),
     roofBtn,
     wallBtn,
     camBtn('c-green', 'fit', 'Übersicht', 'Ganzes Gelände zeigen', () => scene.fitPlot()),
@@ -314,28 +292,22 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
   // --- Kopfzeile -------------------------------------------------------------------------
   const renderHead = () => {
     const s = st();
-    const site = s.base.active ? SITES[s.base.active] : null;
-    clear(titleEl);
-    titleEl.append(h('h1', { class: 'sign-title' }, 'Zuhause'), site ? h('span', { class: 'base-site' }, `${site.name} · ${site.where}`) : '');
     const c = plotComfort(plot());
     const tier = comfortTier(c.value);
     clear(comfortEl);
     append(comfortEl, [
-      h('span', { class: 'comfort-label' }, 'Gemütlichkeit'),
+      svgEl(icon('flame', 16), 'comfort-flame'),
       h('b', null, String(c.value)),
       h('span', { class: 'comfort-tier' }, tier.name),
-      svgEl(icon('flame', 18), 'comfort-flame'),
       h('span', { class: 'mini-bar' }, h('span', { style: `width:${tier.next ? Math.min(100, (c.value / tier.next) * 100) : 100}%` })),
-      c.rooms ? h('span', { class: 'comfort-rooms' }, `${c.rooms} ${c.rooms === 1 ? 'Raum' : 'Räume'}`) : null,
     ]);
-    clear(resToggle);
-    resToggle.append(svgEl(icon('home', 16)), h('span', null, 'Lager'), svgEl(icon('chevron', 16), 'res-chevron'));
     clear(resChips);
-    // In Sechsergruppen: Grundstoffe, Bauteile, Seltenes
-    MATERIAL_ORDER.forEach((r, i) => {
-      if (i && i % 6 === 0) resChips.append(h('span', { class: 'res-sep', 'aria-hidden': 'true' }));
-      resChips.append(h('span', { class: 'cost-chip' + (s.inventory[r] ? '' : ' zero'), title: RESOURCES[r].name }, svgEl(resIcon(r, 16)), String(s.inventory[r])));
-    });
+    for (const r of MATERIAL_ORDER.slice(0, 6)) {
+      resChips.append(h('span', { class: 'cost-chip' + (s.inventory[r] ? '' : ' zero'), title: RESOURCES[r].name }, svgEl(resIcon(r, 15)), String(s.inventory[r])));
+    }
+    // Was es sonst noch gibt, steckt hinter dem Lager-Knopf
+    const more = MATERIAL_ORDER.slice(6).filter((r) => s.inventory[r] > 0).length;
+    resChips.append(h('span', { class: 'res-more' }, svgEl(icon('home', 14)), h('span', { class: 'res-more-t' }, 'Lager'), more ? h('small', null, `+${more}`) : null));
     const ready = readyParts(s, app.backend.now()).count;
     const running = s.workshop.jobs.length - ready;
     workChip.hidden = !s.workshop.jobs.length;
@@ -353,11 +325,11 @@ export function openBaseView(app: App, host: HTMLElement, opts: Opts): HTMLEleme
     const harvest = pendingHarvest(s, app.backend.now());
     harvestChip.hidden = !Object.keys(harvest).length;
     clear(harvestChip);
-    harvestChip.append(svgEl(icon('check', 15)), `Abholen: ${itemsLine(harvest)}`);
+    harvestChip.append(svgEl(icon('check', 14)), `Abholen: ${itemsLine(harvest)}`);
     const n = packCount(s);
     packCard.hidden = !(n > 0 && here());
     clear(packCard);
-    packCard.append(svgEl(icon('backpack', 22)), h('span', null, h('b', null, 'Rucksack auspacken'), h('small', null, `${n} ${n === 1 ? 'Sache' : 'Sachen'} kommen ins Lager`)));
+    packCard.append(svgEl(icon('backpack', 16)), h('b', null, 'Auspacken'), h('small', null, `${n} ${n === 1 ? 'Sache' : 'Sachen'}`));
     const f = opts.getFix();
     const place = getBasePlace();
     if (here()) {

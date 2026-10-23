@@ -24,5 +24,8 @@ export const VIEW_RADIUS_M = 650;
  */
 export const RADIO_POPUPS = false;
 
+/** Funk-Radar oben (Liste mit Richtung zu Sichtungen und Rauch am Horizont). Kevin 23.10.: raus, man soll suchen. */
+export const RADAR_CHIP = false;
+
 /** Startpunkt für "echte Karte + Simulation", falls noch kein GPS-Standort bekannt ist. */
 export const FALLBACK_START = { lat: 52.5163, lon: 13.3777 };

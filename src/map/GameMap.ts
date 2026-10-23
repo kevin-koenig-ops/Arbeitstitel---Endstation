@@ -126,8 +126,11 @@ const ll = (p: LatLon): [number, number] => [p.lon, p.lat];
 const PERSON_M = 1.8;
 /** So klein wird sie beim Herauszoomen höchstens, damit man sich noch findet. */
 const FIGURE_MIN_PX = 11;
-/** Start-Zoom: nah genug, dass die Figur in echter Größe gut zu sehen ist. */
-export const PLAY_ZOOM = 18.7;
+/**
+ * Start-Zoom: nah genug, dass die Figur in echter Größe gut zu sehen ist.
+ * Ganze Stufe, weil die Karte nach dem Zoomen auf ganze Stufen einrastet (siehe snapZoom).
+ */
+export const PLAY_ZOOM = 19;
 
 export class GameMap {
   map!: MLMap;
@@ -192,7 +195,11 @@ export class GameMap {
     // MapLibre ein begonnenes Ziehen ab, deshalb ließ sich die Karte beim Laufen nicht verschieben.
     const canvas = this.map.getCanvasContainer();
     canvas.addEventListener('pointerdown', (e) => this.pointers.add(e.pointerId));
-    const up = (e: PointerEvent) => this.pointers.delete(e.pointerId);
+    const up = (e: PointerEvent) => {
+      this.pointers.delete(e.pointerId);
+      // Finger weg: falls der Zoom zwischen zwei Stufen stehen geblieben ist, jetzt einrasten
+      if (!this.pointers.size) setTimeout(() => !this.map.isMoving() && this.snapZoom(), 60);
+    };
     window.addEventListener('pointerup', up);
     window.addEventListener('pointercancel', up);
     this.offPointers = () => {
@@ -217,6 +224,10 @@ export class GameMap {
       }
     };
     this.map.on('dragstart', breakFollow);
+    // Bodentexturen wachsen zwischen zwei Zoomstufen bis aufs Doppelte und springen dann zurück
+    // (so zeichnet die Karte Muster). Kevin 23.10.: Sie sollen klein bleiben. Darum rastet der Zoom
+    // nach dem Loslassen auf die nächste ganze Stufe ein, dort sind die Texturen immer gleich klein.
+    this.map.on('zoomend', () => this.snapZoom());
     this.map.on('move', () => {
       this.scaleFigure();
       this.opts.onCameraMove();
@@ -728,9 +739,22 @@ export class GameMap {
     } else this.target.setLngLat(ll(p));
   }
 
+  /** Bis wann der Zoom gerade auf eine ganze Stufe einrastet (dann nicht dazwischen zentrieren). */
+  private snapUntil = 0;
+
+  /** Zoom auf die nächste ganze Stufe einrasten lassen (dort sind die Bodentexturen am kleinsten). */
+  private snapZoom() {
+    if (this.pointers.size) return;
+    const z = this.map.getZoom();
+    const t = Math.min(Math.floor(this.map.getMaxZoom()), Math.max(Math.ceil(this.map.getMinZoom()), Math.round(z)));
+    if (Math.abs(z - t) < 0.01) return;
+    this.snapUntil = performance.now() + 240;
+    this.map.easeTo({ zoom: t, duration: 200 });
+  }
+
   centerOn(p: LatLon, smooth: boolean) {
     // Hält jemand die Karte fest, nicht dazwischenfunken (er will sie vielleicht verschieben)
-    if (this.pointers.size) return;
+    if (this.pointers.size || performance.now() < this.snapUntil) return;
     if (smooth) this.map.easeTo({ center: ll(p), duration: 900 });
     else this.map.jumpTo({ center: ll(p) });
   }

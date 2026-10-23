@@ -278,11 +278,11 @@ export class SpotSheet {
     return h(
       'div',
       { class: 'receipt-find' },
-      thingThumb(id, 64),
+      thingThumb(id, 46),
       h(
         'div',
         null,
-        h('div', { class: 'receipt-find-kicker' }, svgEl(icon('memento', 14)), 'Neu im Fundbuch'),
+        h('div', { class: 'receipt-find-kicker' }, svgEl(icon('memento', 12)), 'Neu im Fundbuch'),
         h('b', null, COLLECTIBLES[id].name),
         h('small', null, COLLECTIBLES[id].desc),
         set
@@ -323,27 +323,40 @@ export class SpotSheet {
         'div',
         { class: 'receipt' + (ev.collectible ? ' epic' : '') },
         h('div', { class: 'receipt-head' }, h('span', { class: 'receipt-title' }, 'Fundbeleg'), h('span', { class: 'receipt-no' }, `Nr. ${String(state.stats.searches).padStart(4, '0')} • ${time}`)),
-        ev.discovery ? h('div', { class: 'receipt-discovery' }, svgEl(icon('sparkle', 16)), 'Entdeckt! Ein besonderer Ort') : null,
-        h('div', { class: 'receipt-place' }, spot.name),
-        h('p', { class: 'receipt-story' }, spotStory(spot)),
-        tags.length ? h('div', { class: 'receipt-tags' }, tags.map(([tone, t]) => h('span', { class: 'rtag', 'data-tone': tone }, t))) : null,
-        ev.collectible ? this.collectibleNote(ev.collectible) : null,
-        items,
-        ev.ammo ? h('p', { class: 'receipt-note receipt-ammo' }, svgEl(icon('cartridge', 16)), `Munition: ${ammoLine(ev.ammo)}`) : null,
-        ev.perk ? h('p', { class: 'receipt-note' }, `${perkBg}: +1 ${RESOURCES[ev.perk].name} extra`) : null,
-        note ? h('p', { class: 'receipt-note' }, note) : null,
-        ev.kram ? kramCard(ev.kram) : null,
-        ev.kramMore ? (Object.keys(ev.kramMore) as KramId[]).map((k) => kramCard(k, ev.kramMore![k])) : null,
-        ev.card || ev.weapon ? cardNote(state, ev) : null,
-        state.stats.searches <= 4 && RESOURCE_ORDER.some((r) => ev.items[r] && isMaterial(r))
-          ? h('p', { class: 'receipt-note' }, 'Rohstoffe und Kram kommen in den Rucksack. Zu Hause packst du aus.')
-          : null,
-        ev.blueprint ? findCard('blue', svgEl(icon('blueprint', 26)), `Bauplan gefunden: ${blueprintName(ev.blueprint)}`) : null,
-        ev.gear ? findCard('blue', svgEl(icon(GEAR_ICON[GEAR[ev.gear].slot], 26)), `Ausrüstung: ${GEAR[ev.gear].name}`, 'Anziehen im Charakterfenster (Rucksack-Knopf).') : null,
-        ev.site ? findCard('gold', svgEl(icon('map', 26)), `Lageplan gefunden: ${SITES[ev.site].name}!`, 'Ein neuer Ort für dein Zuhause.') : null,
-        ev.clue ? this.clueNote(ev.clue) : null,
-        digBox,
-        memento ? [h('div', { class: 'receipt-tear', 'aria-hidden': 'true' }), mementoNote(memento)] : null,
+        // Quer: links der Ort, rechts die Beute. Hochkant untereinander.
+        h(
+          'div',
+          { class: 'receipt-cols' },
+          h(
+            'div',
+            { class: 'receipt-about' },
+            ev.discovery ? h('div', { class: 'receipt-discovery' }, svgEl(icon('sparkle', 14)), 'Entdeckt! Ein besonderer Ort') : null,
+            h('div', { class: 'receipt-place' }, spot.name),
+            h('p', { class: 'receipt-story' }, spotStory(spot)),
+            tags.length ? h('div', { class: 'receipt-tags' }, tags.map(([tone, t]) => h('span', { class: 'rtag', 'data-tone': tone }, t))) : null,
+            ev.perk ? h('p', { class: 'receipt-note' }, `${perkBg}: +1 ${RESOURCES[ev.perk].name} extra`) : null,
+            note ? h('p', { class: 'receipt-note' }, note) : null,
+            state.stats.searches <= 4 && RESOURCE_ORDER.some((r) => ev.items[r] && isMaterial(r))
+              ? h('p', { class: 'receipt-note' }, 'Rohstoffe und Kram kommen in den Rucksack. Zu Hause packst du aus.')
+              : null,
+            memento ? [h('div', { class: 'receipt-tear', 'aria-hidden': 'true' }), mementoNote(memento)] : null,
+          ),
+          h(
+            'div',
+            { class: 'receipt-loot' },
+            ev.collectible ? this.collectibleNote(ev.collectible) : null,
+            items,
+            ev.ammo ? h('p', { class: 'receipt-note receipt-ammo' }, svgEl(icon('cartridge', 14)), `Munition: ${ammoLine(ev.ammo)}`) : null,
+            ev.kram ? kramCard(ev.kram) : null,
+            ev.kramMore ? (Object.keys(ev.kramMore) as KramId[]).map((k) => kramCard(k, ev.kramMore![k])) : null,
+            ev.card || ev.weapon ? cardNote(state, ev) : null,
+            ev.blueprint ? findCard('blue', svgEl(icon('blueprint', 22)), `Bauplan gefunden: ${blueprintName(ev.blueprint)}`) : null,
+            ev.gear ? findCard('blue', svgEl(icon(GEAR_ICON[GEAR[ev.gear].slot], 22)), `Ausrüstung: ${GEAR[ev.gear].name}`, 'Anziehen im Charakterfenster (Rucksack-Knopf).') : null,
+            ev.site ? findCard('gold', svgEl(icon('map', 22)), `Lageplan gefunden: ${SITES[ev.site].name}!`, 'Ein neuer Ort für dein Zuhause.') : null,
+            ev.clue ? this.clueNote(ev.clue) : null,
+            digBox,
+          ),
+        ),
       ),
       packButton(() => this.pack(items)),
     ]);
@@ -415,13 +428,25 @@ export class SpotSheet {
           h('span', { class: 'receipt-title' }, ev.chainDone ? 'Ende der Kette!' : 'Versteck ausgegraben'),
           h('span', { class: 'receipt-no' }, c.via === 'radio' ? 'Funk' : c.via === 'tracks' ? 'Spuren' : c.chain ? `Zettel ${c.chain.step}/${c.chain.of}` : 'Kreide'),
         ),
-        h('div', { class: 'receipt-place' }, c.spot.name),
-        ev.chainDone ? h('p', { class: 'receipt-story' }, `Der letzte Zettel hat sich gelohnt: ×${CHAIN.finalFactor} Beute und etwas fürs Fundbuch.`) : null,
-        ev.next ? this.clueNote(ev.next) : null,
-        ev.collectible ? this.collectibleNote(ev.collectible) : null,
-        items,
-        ev.kram ? kramCard(ev.kram) : null,
-        ev.blueprint ? findCard('blue', svgEl(icon('blueprint', 26)), `Bauplan gefunden: ${blueprintName(ev.blueprint)}`) : null,
+        h(
+          'div',
+          { class: 'receipt-cols' },
+          h(
+            'div',
+            { class: 'receipt-about' },
+            h('div', { class: 'receipt-place' }, c.spot.name),
+            ev.chainDone ? h('p', { class: 'receipt-story' }, `Der letzte Zettel hat sich gelohnt: ×${CHAIN.finalFactor} Beute und etwas fürs Fundbuch.`) : null,
+            ev.next ? this.clueNote(ev.next) : null,
+          ),
+          h(
+            'div',
+            { class: 'receipt-loot' },
+            ev.collectible ? this.collectibleNote(ev.collectible) : null,
+            items,
+            ev.kram ? kramCard(ev.kram) : null,
+            ev.blueprint ? findCard('blue', svgEl(icon('blueprint', 22)), `Bauplan gefunden: ${blueprintName(ev.blueprint)}`) : null,
+          ),
+        ),
       ),
       packButton(() => this.pack(items)),
     ]);
@@ -485,8 +510,8 @@ export class SpotSheet {
       if (ev.type === 'dug') {
         this.ctx.onChanged();
         addItems(items, ev.items);
-        if (ev.kram) items.append(h('li', { class: 'new', 'data-rarity': 'uncommon' }, svgEl(icon('junk', 26), 'ri-icon'), h('span', { class: 'ri-name' }, `Kram: ${KRAM[ev.kram].name}`), h('b', null, '+1')));
-        if (ev.collectible) items.append(h('li', { class: 'new', 'data-rarity': 'epic' }, svgEl(icon('memento', 26), 'ri-icon'), h('span', { class: 'ri-name' }, `Sammelstück: ${COLLECTIBLES[ev.collectible].name}`), h('b', null, '!')));
+        if (ev.kram) items.append(h('li', { class: 'new', 'data-rarity': 'uncommon' }, svgEl(icon('junk', 22), 'ri-icon'), h('span', { class: 'ri-name', title: KRAM[ev.kram].name }, KRAM[ev.kram].name), h('b', null, '+1')));
+        if (ev.collectible) items.append(h('li', { class: 'new', 'data-rarity': 'epic' }, svgEl(icon('memento', 22), 'ri-icon'), h('span', { class: 'ri-name', title: COLLECTIBLES[ev.collectible].name }, COLLECTIBLES[ev.collectible].name), h('b', null, '!')));
       }
       this.renderDig(box, items);
     });
@@ -549,7 +574,7 @@ function itemRow(r: Resource, n: number, i: number, cls?: string) {
   return h(
     'li',
     { class: cls, style: i >= 0 ? `--i:${i}` : undefined, 'data-rarity': RARITY[r], 'data-res': r },
-    svgEl(resIcon(r, 26), 'ri-icon'),
+    svgEl(resIcon(r, 22), 'ri-icon'),
     h('span', { class: 'ri-name' }, RESOURCES[r].name),
     h('b', null, `+${n}`),
   );
@@ -574,12 +599,12 @@ function findCard(tone: 'kram' | 'blue' | 'gold' | 'clue', art: HTMLElement, tit
 }
 
 function kramCard(id: KramId, n = 1) {
-  return findCard('kram', thingThumb(id, 44), `Kram: ${KRAM[id].name}${n > 1 ? ` ×${n}` : ''}`, h('span', { class: 'junk-parts' }, 'Enthält ', partsChips(id)));
+  return findCard('kram', thingThumb(id, 36), `Kram: ${KRAM[id].name}${n > 1 ? ` ×${n}` : ''}`, h('span', { class: 'junk-parts' }, 'Enthält ', partsChips(id)));
 }
 
 /** Großer gelber Knopf unten: alles in den Rucksack. */
 function packButton(onclick: () => void) {
-  return h('button', { class: 'btn wide pack-in', type: 'button', onclick }, h('span', null, 'Einpacken'), svgEl(icon('backpack', 26), 'pack-in-ico'));
+  return h('button', { class: 'btn wide pack-in', type: 'button', onclick }, h('span', null, 'Einpacken'), svgEl(icon('backpack', 20), 'pack-in-ico'));
 }
 
 /** Erinnerungsstück unter der Abrisskante: ein Polaroid mit Büroklammer, daneben der Text. */
@@ -591,7 +616,7 @@ function mementoNote(m: (typeof MEMENTOS)[number]) {
       'div',
       { class: 'polaroid', 'aria-hidden': 'true' },
       h('span', { class: 'polaroid-clip', html: CLIP_SVG }),
-      h('span', { class: 'polaroid-photo' }, svgEl(icon(MEMENTO_ICON[m.id] ?? 'memento', 40))),
+      h('span', { class: 'polaroid-photo' }, svgEl(icon(MEMENTO_ICON[m.id] ?? 'memento', 30))),
       h('span', { class: 'polaroid-cap' }, 'Erinnerung'),
     ),
     h(

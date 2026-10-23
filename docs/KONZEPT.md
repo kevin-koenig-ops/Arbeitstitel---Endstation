@@ -19,7 +19,7 @@ Wie es zum Weltuntergang kam (Phosphat-Krieg, das Weinen, Elysis, der Flux), ste
 
 ## Kernschleife
 
-1. **Erkunden:** Fundstellen leuchten auf der Karte. Wenn man nah genug ist (ca. 45 m), kann man sie durchsuchen. Die kleinen Fundstellen (Autos, Rucksäcke, Schuppen …) wandern: Jede liegt etwa einen Tag, dann liegt in der Ecke etwas Neues an anderer Stelle, nicht überall gleichzeitig. Echte Orte (Supermarkt, Apotheke …) und besondere Orte bleiben. Ecken, in denen man noch nie gesucht hat, haben einen grünen Punkt: Der erste Fund dort bringt doppelt so viel.
+1. **Erkunden:** Fundstellen tauchen auf der Karte auf, sobald man nah genug ist, um sie zu sehen (seit 23.10., siehe „Erkunden ohne Hilfen“). Wenn man ganz nah ist (ca. 45 m), kann man sie durchsuchen. Die kleinen Fundstellen (Autos, Rucksäcke, Schuppen …) wandern: Jede liegt etwa einen Tag, dann liegt in der Ecke etwas Neues an anderer Stelle, nicht überall gleichzeitig. Echte Orte (Supermarkt, Apotheke …) und besondere Orte bleiben. Ecken, in denen man noch nie gesucht hat, haben einen grünen Punkt: Der erste Fund dort bringt doppelt so viel.
 2. **Durchsuchen:** ein kurzes Geschicklichkeitsspiel je nach Fundort: Schloss knacken (Auto, Paketschrank, Tankstelle, Haltestelle), Aufhebeln (Schuppen, Hochsitz, Apotheke, Baumarkt, Brunnen) oder Durchwühlen (Container, Rucksack, Supermarkt, Fass). Perfekt gibt etwas Glück (öfter Kram und Seltenes); die Menge ändert das Minispiel seit 23.10. nicht mehr. In den Einstellungen abschaltbar (dann immer „gut“). Danach darf man bis zu dreimal **weiter wühlen**: kleine Extrafunde, aber jedes Mal lauter. Wird es zu laut, kommt etwas (Überfall-Kampf).
 3. **Sammeln:** Nahrung, Wasser, Medizin zum Überleben, dazu Rohstoffe, Kram und Sammelstücke. Alles außer den Vorräten kommt in den Rucksack und ist erst zu Hause im Lager sicher. Echte Orte bringen mehr: Supermarkt → Nahrung, Apotheke → Medizin, Baumarkt → Holz, Metall, Schrauben, Kleber.
 4. **Ausbauen:** Mit Rohstoffen aus dem Lager wird das Zuhause ausgebaut. Manche Anlagen produzieren von allein (Regentonne, Hochbeet).
@@ -253,7 +253,13 @@ Die Figur aus der Charaktererstellung ist ein Low-Poly-Modell (Frisur, Hautton, 
 Drei Dinge wecken ihn: Man sieht etwas, weiß aber nicht, was es ist. Etwas führt einen irgendwohin. Je weiter man geht, desto seltsamer wird es.
 
 - **Besondere Orte:** Einmal pro Gegend (~1,5 km) ein abgestürzter Hubschrauber, ein ausgebrannter Konvoi, eine verriegelte Bunkertür (Rote Zone), ein verlassenes Zeltlager, ein Funkmast oder eine abgeworfene Hilfslieferung. Fest aus dem Weltstartwert, also für alle gleich, aber bei jedem woanders. Nie an sensiblen Orten, nie im Ort oder in Gärten, sondern draußen im Offenen. Reiche Beute, beim ersten Besuch ein eigenes Erinnerungsstück.
-- **Das sichtbare Unbekannte:** Bis 3 km weit zeigen Pfeile am Bildschirmrand Rauch, ein Licht, ein Funksignal oder einen Fallschirm, mit Entfernung. Auf der Karte steht nur ein Fragezeichen mit Rauch, Flackern oder Funkwellen. Was es ist, sieht man erst vor Ort.
+- **Erkunden ohne Hilfen (seit 23.10., Kevin):** „Es fördert total die Erkundung, wenn du überhaupt keine Ahnung hast, wo was ist.“ Darum zeigt die Karte nicht mehr, wo was liegt:
+  - Fundstellen siehst du erst aus der Nähe: Kleines (Rucksack, Fass, Pilze) ab etwa 110 m, Großes (Auto, Schuppen, Container) ab etwa 150 m. Nachts, im Nebel und im Staub weniger. Was du einmal gesehen hast, bleibt auf der Karte, solange es dort liegt.
+  - Echte Orte (Supermarkt, Apotheke …) bleiben sichtbar, die Häuser stehen ja da.
+  - Besondere Orte zeigen Rauch, Licht oder Funkwellen erst ab etwa 150 m. Das rote Rauchzeichen eines Hilfsabwurfs sieht man ab etwa 300 m. Oben steht nur die Richtung, keine Entfernung.
+  - Kein Funk-Radar und vorerst keine Funksprüche auf der Karte (Sichtungen, Hinweise am Horizont, Händlerkarren). Sichtungen findet man, wenn man darüber stolpert.
+  - Verstecke aus Zetteln, Kreidezeichen und Spuren behalten ihren Suchkreis: Den Hinweis hat man sich ja verdient.
+- **Das sichtbare Unbekannte:** Auf der Karte steht an einem besonderen Ort zuerst nur ein Fragezeichen mit Rauch, Flackern oder Funkwellen. Was es ist, sieht man erst vor Ort.
 - **Spuren und Zettel-Ketten:** Blut-, Schleif- oder Fußspuren führen sichtbar zu einem Versteck. Manche Zettel sind der Anfang einer Kette aus drei Verstecken, am Ende wartet dreifache Beute und etwas fürs Fundbuch. Im Zeltlager liegt immer der Anfang einer Kette.
 - **Neuland:** Wo man noch kaum war, ist die Beute besser (Neuland +10 %, fernes Land +30 %, öfter Seltenes). Bewusst nicht nach Abstand zum Zuhause gerechnet, dessen Ort bleibt privat.
 - **Fundbuch der Orte:** Jeder Ortstyp zählt beim ersten Fund (mit kleinem Bonus). Fehlende stehen als Fragezeichen mit Hinweis drin („Am Waldrand, mit Blick aufs Feld“).
@@ -309,6 +315,21 @@ Beim ersten Fund einer Art wird sie bestimmt, wie in einem Bestimmungsbuch. Alle
 | Walderdbeere (*Fragaria vesca*) | Waldrand, Lichtung | Juni bis August | essbar |
 | Hagebutte (*Rosa canina*) | Hecken, Waldrand | September bis November | Tee |
 | Tollkirsche (*Atropa belladonna*) | Lichtungen, Kahlschläge | Beeren August bis September | sehr giftig |
+
+## Rasten draußen: das Camp (Idee, Kevin 23.10.2026)
+
+Wer weit draußen unterwegs ist, soll nicht für jede Pause nach Hause laufen müssen. Ein kleines Camp ist ein sicherer Rastplatz unterwegs.
+
+- **Aufschlagen:** Mit einem Lagerbündel (Plane, Schlafsack, kleiner Kocher), gebaut am Werktisch. Nur draußen im Offenen: nie an heiklen Orten (Friedhof, Schule, Kirche, Privatgrund), nicht in einem Sperrgebiet und nicht mitten im Ort. Es gibt immer nur ein Camp. Es bleibt bis zum nächsten Morgen stehen oder bis du es abbaust.
+- **Was es bringt:**
+  - Rasten: Solange du im Camp bist, erholst du dich so schnell wie in einem Notlager.
+  - Sicher: Im Camp greift dich niemand an, wie zu Hause. Gekämpft wird weiter nur, wenn du stehst und dich entscheidest.
+  - Kochen: Am Kocher wird aus Nahrung eine kleine Mahlzeit (wie der Eintopf, nur schwächer).
+  - Wieder zu dir kommen: Wirst du niedergeschlagen, wachst du im Camp auf statt zu Hause. Der Rucksack ist trotzdem weg.
+- **Was es nicht ist:** kein zweites Lager. Was im Rucksack ist, bleibt im Rucksack und ist erst zu Hause sicher. Gebaut wird nur zu Hause.
+- **Kein Zwang:** Das Camp ist ein Angebot für lange Touren. Wer es nie aufschlägt, verpasst nichts, und wer weggeht, verliert nichts. Das Bündel kommt beim Abbauen zurück in den Rucksack.
+- **Stimmung:** Abends ein kleines Feuer, die Plane im Wind, das Funkgerät leise. Ein Gegenstück zum Zuhause im Kleinen. Später vielleicht: Freunde setzen sich dazu.
+- **Sicherheit im echten Leben:** Das Camp gibt es nur im Spiel. Niemand muss dort wirklich bleiben oder übernachten. Rasten zählt, solange die App offen ist und du in der Nähe bist.
 
 ## Karte freilaufen, Tageszeit, Wetter
 

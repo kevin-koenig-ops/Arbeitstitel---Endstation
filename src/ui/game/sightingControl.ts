@@ -5,8 +5,8 @@
 // einem Weg liegt und an keinem heiklen Ort (Friedhof, Schule, Kirche, Krankenhaus, Gedenkstätte,
 // in Häusern oder im Wasser). Nie auf Gleisen, Dächern oder Baustellen, nie in fremden Gärten.
 
-import { RADIO_POPUPS, WORLD_SEED } from '../../config';
-import { RARITY_NAMES, type CardRarity } from '../../core/content';
+import { RADAR_CHIP, RADIO_POPUPS, WORLD_SEED } from '../../config';
+import { RARITY_NAMES, SCOUT, type CardRarity } from '../../core/content';
 import { bearingDeg, distanceM, formatDistance } from '../../core/geo';
 import { SIGHT, SIGHTING_NAMES, sightingsNear, type Sighting } from '../../core/sightings';
 import type { LatLon } from '../../core/types';
@@ -53,6 +53,8 @@ export class SightingControl {
   private announced = new Set<string>();
   private arrived = new Set<string>();
   private first = true;
+  /** Schon einmal aus der Nähe gesehen: bleibt auf der Karte, solange die Sichtung liegt. */
+  private revealed = new Set<string>();
   private sensitive: { at: number; fn: (p: LatLon, grid?: boolean) => boolean } | null = null;
   private busy = false;
   /** Liste hinter dem Radar-Knopf. */
@@ -78,6 +80,8 @@ export class SightingControl {
       hints: () => RadarHint[];
       /** Kurz einen Pfeil zu etwas zeigen. */
       focus: (t: RadarFocus) => void;
+      /** So weit sieht man gerade Kleines (Tageszeit, Wetter, Gegend). */
+      sightM: () => number;
     },
   ) {
     this.chip = h('button', { class: 'env-chip radar-chip', type: 'button', hidden: true, 'aria-haspopup': 'true', onclick: (e: Event) => (e.stopPropagation(), this.togglePop()) });
@@ -190,7 +194,11 @@ export class SightingControl {
       this.live.set(s.id, { s, idx, pos, d });
     }
     const reach = SIGHT.rangeM + Math.min(25, Math.max(0, f.accuracyM));
-    const views: SightingMapView[] = [...this.live.values()].map((v) => ({
+    // Erst aus der Nähe zu sehen (ein Konvoi-Wrack etwas früher), dann bleibt es (Kevin 23.10.)
+    const sight = this.o.sightM();
+    for (const v of this.live.values()) if (v.d <= Math.max(reach, v.s.kind === 'convoy' ? sight * SCOUT.bigFactor : sight)) this.revealed.add(v.s.id);
+    if (this.revealed.size > 300) for (const id of [...this.revealed].slice(0, 100)) if (!this.live.has(id)) this.revealed.delete(id);
+    const views: SightingMapView[] = [...this.live.values()].filter((v) => this.revealed.has(v.s.id)).map((v) => ({
       id: v.s.id,
       pos: v.pos,
       kind: v.s.kind,
@@ -240,6 +248,11 @@ export class SightingControl {
   }
 
   private renderChip() {
+    if (!RADAR_CHIP) {
+      this.chip.hidden = true;
+      this.pop.hidden = true;
+      return;
+    }
     const n = this.live.size;
     const hints = this.o.hints().length;
     this.chip.hidden = n + hints === 0;

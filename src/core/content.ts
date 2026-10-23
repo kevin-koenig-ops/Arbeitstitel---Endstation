@@ -100,6 +100,20 @@ export const SIGHT = {
   smallKinds: ['mushrooms', 'backpack', 'barrel', 'parcel', 'hide'] as readonly SpotKind[],
 };
 
+/**
+ * Erkunden ohne Hilfen (Kevin 23.10.: „es fördert total die Erkundung, wenn du keine Ahnung hast, wo was ist“).
+ * Fundstellen, Sichtungen und besondere Orte siehst du erst aus der Nähe; was du einmal gesehen hast, bleibt.
+ * Echte Orte (Supermarkt, Apotheke …) bleiben sichtbar: die Häuser stehen ja da.
+ */
+export const SCOUT = {
+  /** Großes (Auto, Schuppen, Container, Konvoi-Wrack) sieht man so viel weiter als Kleines. */
+  bigFactor: 1.4,
+  /** Das rote Rauchzeichen eines Hilfsabwurfs sieht man von hier (Meter). */
+  smokeM: 300,
+  /** So lange merkt sich die Karte, was du gesehen hast (Stunden). */
+  rememberH: 26,
+};
+
 /** Hochsitze, Jagdhütten und Unterstände: so weit weg von Häusern und Siedlungen (Meter). */
 export const WILD_SPOT_MIN_M = 150;
 
@@ -2368,8 +2382,8 @@ export const SPECIAL = {
   candidates: 6,
   /** Bis zu dieser Entfernung sieht man am Horizont, dass da etwas ist */
   hintM: 3000,
-  /** Ab hier zeigt die Karte das Fragezeichen an der echten Stelle */
-  nearM: 250,
+  /** Ab hier zeigt die Karte das Fragezeichen an der echten Stelle (Kevin 23.10.: erst aus der Nähe, vorher 250) */
+  nearM: 150,
 };
 export const SPECIAL_KINDS: SpotKind[] = ['heli', 'convoy', 'bunker', 'camp', 'mast', 'airdrop'];
 export const SPECIAL_WEIGHTS: readonly (readonly [SpotKind, number])[] = [
