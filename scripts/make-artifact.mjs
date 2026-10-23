@@ -14,12 +14,12 @@ const keep = head
   .replace(/<meta name="(apple-mobile-web-app-capable|mobile-web-app-capable|theme-color)"[^>]*>\s*/gi, '');
 
 // <title> zuerst, Module-Skripte ans Ende (nach #app)
-const title = /<title>[\s\S]*?<\/title>/i.exec(keep)?.[0] ?? '<title>Endstation</title>';
+const title = /<title>[\s\S]*?<\/title>/i.exec(keep)?.[0] ?? '<title>Projekt Heimweg</title>';
 const rest = keep.replace(title, '');
 const moduleScripts = [...rest.matchAll(/<script type="module"[\s\S]*?<\/script>/gi)].map((m) => m[0]);
 const headWithoutModules = moduleScripts.reduce((s, m) => s.replace(m, ''), rest);
 
 const out = `${title}\n${headWithoutModules.trim()}\n${body.trim()}\n${moduleScripts.join('\n')}\n`;
-const dest = new URL('../dist-preview/endstation-vorschau.html', import.meta.url);
+const dest = new URL('../dist-preview/heimweg-vorschau.html', import.meta.url);
 writeFileSync(dest, out);
-console.log(`Vorschau: ${(out.length / 1024).toFixed(0)} KB -> dist-preview/endstation-vorschau.html`);
+console.log(`Vorschau: ${(out.length / 1024).toFixed(0)} KB -> dist-preview/heimweg-vorschau.html`);

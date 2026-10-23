@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   // Eindeutige Kennung der App. Nie mehr ändern, sonst gilt sie als neue App
   // (deshalb steht hier noch der alte Arbeitstitel drin).
   appId: 'io.github.kevinkoenigops.endstation',
-  appName: 'Home',
+  appName: 'Projekt Heimweg',
   webDir: 'dist',
   backgroundColor: '#12110f',
   android: {

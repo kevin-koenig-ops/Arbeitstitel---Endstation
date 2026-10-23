@@ -1,4 +1,4 @@
-// Passt das von Capacitor erzeugte Android-Projekt an Endstation an.
+// Passt das von Capacitor erzeugte Android-Projekt an Projekt Heimweg an.
 // Läuft auf GitHub nach `npx cap add android` (siehe .github/workflows/apk.yml).
 //
 //  - eigenes Icon und Startbild (aus native/android/res)

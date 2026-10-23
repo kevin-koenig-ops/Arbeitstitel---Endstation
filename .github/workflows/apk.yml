@@ -1,6 +1,6 @@
 # Baut bei jedem Push auf main eine Android-App (APK) und legt sie unter "Releases" ab.
 # Download fürs Handy (immer die neueste):
-#   https://github.com/kevin-koenig-ops/Arbeitstitel---Endstation/releases/latest/download/endstation.apk
+#   https://github.com/kevin-koenig-ops/Projekt-Heimweg/releases/latest/download/projekt-heimweg.apk
 #
 # Signiert wird mit einem Test-Schlüssel aus dem Repo (native/android/test-signing.jks).
 # Der ist nur zum Testen gedacht. Für den Play Store kommt später ein geheimer Schlüssel.
@@ -65,17 +65,17 @@ jobs:
           TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           "$TOOLS/zipalign" -p -f 4 android/app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
           "$TOOLS/apksigner" sign --ks native/android/test-signing.jks --ks-key-alias endstation \
-            --ks-pass pass:endstation-test --key-pass pass:endstation-test --out endstation.apk aligned.apk
-          "$TOOLS/apksigner" verify endstation.apk
-          ls -la endstation.apk
+            --ks-pass pass:endstation-test --key-pass pass:endstation-test --out projekt-heimweg.apk aligned.apk
+          "$TOOLS/apksigner" verify projekt-heimweg.apk
+          ls -la projekt-heimweg.apk
 
       - name: Als Release veröffentlichen
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete app-test --yes --cleanup-tag || true
-          gh release create app-test endstation.apk \
+          gh release create app-test projekt-heimweg.apk \
             --target "${{ github.sha }}" \
             --latest \
-            --title "Endstation zum Testen (Build ${{ github.run_number }})" \
-            --notes "Android-App zum Testen. Am Handy endstation.apk antippen, herunterladen und öffnen. Beim ersten Mal fragt Android, ob der Browser Apps installieren darf: erlauben. Neue Builds einfach drüber installieren, der Spielstand bleibt."
+            --title "Projekt Heimweg zum Testen (Build ${{ github.run_number }})" \
+            --notes "Android-App zum Testen. Am Handy projekt-heimweg.apk antippen, herunterladen und öffnen. Beim ersten Mal fragt Android, ob der Browser Apps installieren darf: erlauben. Neue Builds einfach drüber installieren, der Spielstand bleibt."

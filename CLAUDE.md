@@ -1,6 +1,6 @@
 # Hinweise für Claude
 
-Endzeit-Erkundungsspiel auf der echten Karte (Titel „Home“, früher „Nachhall“ und „Endstation“; die Basis im Spiel heißt „Zuhause“). Web-App mit Vite + TypeScript + MapLibre, ohne UI-Framework. Konzept: `docs/KONZEPT.md`, Architektur: `docs/ARCHITEKTUR.md`, nächste Schritte: `docs/ROADMAP.md`. Hintergrundgeschichte (Lore): `docs/LORE.md`.
+Endzeit-Erkundungsspiel auf der echten Karte (Titel „Projekt Heimweg“, früher „Home“, „Nachhall“ und „Endstation“; die Basis im Spiel heißt „Zuhause“). Web-App mit Vite + TypeScript + MapLibre, ohne UI-Framework. Konzept: `docs/KONZEPT.md`, Architektur: `docs/ARCHITEKTUR.md`, nächste Schritte: `docs/ROADMAP.md`. Hintergrundgeschichte (Lore): `docs/LORE.md`.
 
 ## Regeln
 
@@ -18,7 +18,7 @@ Endzeit-Erkundungsspiel auf der echten Karte (Titel „Home“, früher „Nachh
 - `npm run dev`: Entwicklungsserver
 - `npm test`: Tests der Spiellogik (müssen grün sein)
 - `npm run build`: Typprüfung + Build nach `dist/`
-- `npm run build:preview`: Einzeldatei-Vorschau nach `dist-preview/endstation-vorschau.html`
+- `npm run build:preview`: Einzeldatei-Vorschau nach `dist-preview/heimweg-vorschau.html`
 - `npm run gen:world`: Demo-Dorf neu erzeugen
 - `npm run balance`: Balancing-Labor (Autopilot kämpft tausende Kämpfe und Ausflüge; `--schnell`, `--sparsam`, `--ohne-tasche`). Nach Änderungen an Karten, Gegnern oder Medizin laufen lassen.
 - Android-APK: baut GitHub bei jedem Push (`.github/workflows/apk.yml`), Download unter Releases

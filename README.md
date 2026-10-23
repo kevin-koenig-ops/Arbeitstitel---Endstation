@@ -1,4 +1,4 @@
-# Home
+# Projekt Heimweg
 
 Ein Endzeit-Erkundungsspiel auf der echten Karte. Tagsüber gehst du draußen herum, findest Vorräte und Baupläne an echten Orten. Abends baust du dein Zuhause aus: ein eigenes Gelände in 3D, das du Stück für Stück zurückeroberst. Kein Zwang, kein Stress: Wer eine Pause macht, verliert nichts.
 
@@ -42,7 +42,7 @@ Für GPS auf dem Handy braucht der Browser **HTTPS**. Am einfachsten über GitHu
 
 ## Android-App
 
-GitHub baut bei jedem Push eine APK zum Selbst-Installieren (`.github/workflows/apk.yml`). Download aufs Handy: [neueste APK](https://github.com/kevin-koenig-ops/Arbeitstitel---Endstation/releases/latest/download/endstation.apk).
+GitHub baut bei jedem Push eine APK zum Selbst-Installieren (`.github/workflows/apk.yml`). Download aufs Handy: [neueste APK](https://github.com/kevin-koenig-ops/Projekt-Heimweg/releases/latest/download/projekt-heimweg.apk).
 
 ## Eigenes Logo einbauen
 

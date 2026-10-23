@@ -1,4 +1,4 @@
-/* Home: Endzeit, aber zu Hause warm.
+/* Projekt Heimweg: Endzeit, aber zu Hause warm.
    Ein einziger dunkler Look (bewusst, wie ein Spiel), Akzent = warmes Bernstein. */
 :root {
   --ink: #12110f;
@@ -152,7 +152,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .logo { display: inline-flex; flex-direction: column; align-items: center; gap: 10px; }
 .logo-mark { width: 16px; height: 16px; border-radius: 50%; background: #ffc35a; box-shadow: 0 0 0 7px rgba(255, 178, 46, 0.35), 0 0 0 15px rgba(255, 178, 46, 0.14), 0 0 26px var(--amber-glow); margin-bottom: 12px; }
 .logo-word { font: 800 clamp(48px, 12vw, 96px)/0.9 var(--font-display); text-transform: uppercase; letter-spacing: 0.1em; color: var(--bone); text-shadow: 0 4px 28px rgba(0, 0, 0, 0.75); }
-.logo-sub { font: 600 12px/1 var(--font-ui); letter-spacing: 0.32em; text-transform: uppercase; color: var(--amber); }
+.logo-kicker { font: 700 clamp(13px, 2.2vw, 20px)/1 var(--font-ui); letter-spacing: 0.5em; text-transform: uppercase; color: var(--amber); text-shadow: 0 2px 14px rgba(0, 0, 0, 0.8); margin-bottom: -4px; padding-left: 0.12em; }
 
 /* --- Hauptmenü ---------------------------------------------------------------------- */
 .menu { display: flex; flex-direction: column; overflow: hidden; }

@@ -24,7 +24,7 @@ const MAPLIBRE_CDN = 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/mapli
 
 function previewHtml(): Plugin {
   return {
-    name: 'endstation-preview-html',
+    name: 'heimweg-preview-html',
     transformIndexHtml(html) {
       return html
         .replace(/<link rel="manifest"[^>]*>\s*/, '')

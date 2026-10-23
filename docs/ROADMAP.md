@@ -18,7 +18,7 @@ Version 1.0 ist fertig, wenn der ganze Kreislauf ohne Lücken läuft: rausgehen,
 16. **Wahrzeichen auf der Karte:** echte Apotheken, Supermärkte, Baumärkte, Tankstellen und Haltestellen als 3D-Gebäude aus dem echten Grundriss plus Modell-Teilen (Schild, vernagelte Fenster, Einkaufswagen). Nur in der Nähe geladen, nie an sensiblen Orten. Kommt nach der Entscheidung zur Stilprobe, damit es gleich im richtigen Stil ist. Details im [Konzept](KONZEPT.md).
 17. **Gemütliche Rituale, erste Fassung:** Samstagabend am Lagerfeuer mit einem Lagerfeuerlied pro Woche, die Leiste „Heute zu Hause“ mit 2 bis 3 Überraschungen am Tag und „Willkommen zurück“ nach einer Pause. Braucht Klang (Punkt 11). Details im [Konzept](KONZEPT.md).
 
-**Entschieden:** Kampf als kurze Taktik mit Karten statt Echtzeit. **Noch offen:** Grafikstil (Comic-Look nach Referenz), Endziel (Idee aus der Lore: mit deinen Leuten zur Küste aufbrechen), Spieltitel: seit 22.10. „Home“ (vorher Platzhalter „Nachhall“).
+**Entschieden:** Kampf als kurze Taktik mit Karten statt Echtzeit. **Noch offen:** Grafikstil (Comic-Look nach Referenz), Endziel (Idee aus der Lore: mit deinen Leuten zur Küste aufbrechen), Spieltitel: seit 23.10. „Projekt Heimweg“ (vorher „Home“, davor Platzhalter „Nachhall“).
 
 ## Version 1.1: Karten, Klassen, Dungeons
 
