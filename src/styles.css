@@ -1142,6 +1142,23 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
   .t-energy .orb { width: 24px; height: 24px; }
   .t-end { padding: 7px 12px; }
 }
+/* Tasche: Einmal-Karten über der Hand, jederzeit spielbar */
+.t-pouch { display: flex; justify-content: center; align-items: center; gap: 6px; flex-wrap: nowrap; }
+.t-pouch[hidden] { display: none; }
+.t-pouch-label { display: flex; align-items: center; gap: 3px; font: 600 10px var(--font-ui); letter-spacing: 0.04em; text-transform: uppercase; color: var(--dust); flex: none; }
+.t-pc { position: relative; display: flex; align-items: center; gap: 5px; min-width: 0; max-width: 132px; height: 38px; padding: 0 8px 0 14px; border: 0; border-radius: 9px; cursor: pointer; touch-action: manipulation; font-family: var(--font-ui); color: var(--paper-ink); background: linear-gradient(#f2cdb8, #d48a68); box-shadow: 0 0 0 2px var(--rar), 0 0 0 3.5px #2b261e, 0 4px 10px rgba(0, 0, 0, 0.5); transition: transform 0.15s, filter 0.15s; }
+.t-pc.rar-epic, .t-pc.rar-legendary { box-shadow: 0 0 0 2px var(--rar), 0 0 0 3.5px #2b261e, 0 0 12px var(--rar-dim), 0 4px 10px rgba(0, 0, 0, 0.5); }
+.t-pc b { font: 700 11px/1.1 var(--font-ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.t-pc small { font: 800 11px var(--font-ui); color: #5a2a14; flex: none; }
+.t-pc-art { width: 26px; height: 26px; border-radius: 5px; object-fit: cover; flex: none; box-shadow: 0 0 0 1px rgba(43, 38, 30, 0.6); }
+.t-pc-icon { color: #3a2e1e; flex: none; }
+.t-pc-cost { position: absolute; top: -6px; left: -6px; width: 19px; height: 19px; border-radius: 50%; display: grid; place-items: center; font: 900 11px/1 var(--font-ui); color: #3a2208; background: radial-gradient(circle at 35% 30%, #ffe9a0, #ffb22e 60%, #c07a10); box-shadow: 0 0 0 1.5px #2b261e; }
+.t-pc.picked { transform: translateY(-6px); box-shadow: 0 0 0 3px var(--amber), 0 0 18px var(--amber-glow), 0 6px 12px rgba(0, 0, 0, 0.6); }
+.t-pc.off { filter: grayscale(0.7) brightness(0.65); }
+.t-pc.empty { opacity: 0.45; cursor: default; }
+.t-pc.shake { animation: shake 0.3s ease-in-out; }
+@media (max-width: 420px) { .t-pc { max-width: 104px; padding-left: 12px; } .t-pc b { font-size: 10px; } .t-pouch-label { display: none; } }
+@media (max-height: 420px) { .t-pc { height: 32px; } .t-pc-art { width: 22px; height: 22px; } }
 .t-help { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 5; width: min(460px, 92vw); max-height: 90%; overflow: auto; padding: 16px 18px; border-radius: 16px; background: rgba(27, 26, 23, 0.97); border: 1px solid var(--line); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6); }
 .t-help h2 { margin: 0 0 8px; font: 700 20px var(--font-ui); color: var(--amber); }
 .t-help ul { margin: 0 0 12px; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; font-size: 14px; line-height: 1.35; }
@@ -1848,6 +1865,16 @@ button.base-res { align-items: center; padding: 3px 6px 3px 4px; border: 1px sol
 .cbook-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; justify-items: center; }
 .cbook-cell { padding: 4px; border: 0; border-radius: 12px; background: none; cursor: pointer; }
 .cbook-cell.sel { background: rgba(255, 178, 46, 0.18); }
+/* Lager: für den Kampf packen */
+.loadout-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 4px 0 0; font: 700 13px var(--font-ui); color: var(--bone); }
+.loadout-head small { font: 400 12px var(--font-ui); color: var(--dust); }
+.loadout-grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.loadout-grid .cc { width: 80px; }
+.loadout-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.loadout-cell:not(.on) .cc { filter: grayscale(0.75) brightness(0.6); }
+.loadout-cell.on { background: rgba(255, 178, 46, 0.16); }
+.loadout-mark { font: 700 10px var(--font-ui); letter-spacing: 0.06em; text-transform: uppercase; color: var(--dust); }
+.loadout-cell.on .loadout-mark { color: var(--amber); }
 .cbook-cell:focus-visible { outline: 2px solid var(--amber); }
 .cbook-detail { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 12px; border-radius: 12px; background: var(--steel-2); }
 .cbook-lines { width: 100%; }

@@ -2,7 +2,8 @@
 //
 // Oben die 3D-Straßenecke mit deiner Figur und den Gegnern. Über jedem Gegner steht,
 // was er als Nächstes vorhat. Unten deine Hand: Karte antippen (bei mehreren möglichen
-// Zielen danach den Gegner). Jede Karte kostet Kraft, pro Runde gibt es 3.
+// Zielen danach den Gegner). Jede Karte kostet Kraft, pro Runde gibt es 3. Darüber die
+// Tasche mit Einmal-Karten: jederzeit spielbar, danach weg.
 // „Runde beenden“: Die Gegner handeln, dann ziehst du neue Karten.
 // Die Regeln stehen in core/tactics.ts; hier wird nur angezeigt und abgespielt.
 
@@ -11,7 +12,7 @@ import { CARDS, CLIMATE, FOE_TACTICS, KRAM, KRAM_ORDER, MAX_HEALTH, RESOURCE_ORD
 import { isCold, isHot } from '../../core/terrain';
 import { seasonOf } from '../../services/settings';
 import { currentRegion } from './worldState';
-import { aliveFoes, createTactics, endTurn, flee, foeById, playCard, targetsFor, type Intent, type TacticsState, type TEvent } from '../../core/tactics';
+import { aliveFoes, canHowl, createTactics, endTurn, flee, foeById, playable, playCard, playPouch, targetsFor, type Intent, type TacticsState, type TEvent } from '../../core/tactics';
 import { bestWeapon, cardKit, currentHealth } from '../../core/rules';
 import { artUrl, CARD_ICON, cardEffect } from '../cards';
 import type { DayPhase } from '../../core/sun';
@@ -89,7 +90,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     opening,
     cold,
     thirst,
-    // Einmal-Karten aus dem Rucksack und Fähigkeiten aus dem Sammelbuch
+    // Die Tasche (Einmal-Karten) und die zu Hause gewählten Fähigkeiten
     kit: cardKit(s0, now0),
   });
   const firstFight = s0.stats.kills === 0;
@@ -131,6 +132,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
   const endBtn = h('button', { class: 'btn t-end', type: 'button' }, 'Runde beenden');
   const pileEl = h('span', { class: 't-pile' });
   const handEl = h('div', { class: 't-hand' });
+  const pouchEl = h('div', { class: 't-pouch', role: 'group', 'aria-label': 'Tasche' });
   const loading = h('div', { class: 'battle-loading has-art', style: artStyle('battle') }, 'Achtung …');
   const el = h(
     'div',
@@ -140,7 +142,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     floats,
     h('div', { class: 'battle-top' }, meFrame, h('div', { class: 't-top-right' }, helpBtn, fleeBtn)),
     callout,
-    h('div', { class: 't-bottom' }, h('div', { class: 't-bar' }, energyEl, info, pileEl, endBtn), handEl),
+    h('div', { class: 't-bottom' }, h('div', { class: 't-bar' }, energyEl, info, pileEl, endBtn), pouchEl, handEl),
     loading,
   );
   host.append(el);
@@ -193,7 +195,11 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
 
   // --- Eingaben -----------------------------------------------------------------------------
   let busy = false;
-  let selected: number | null = null; // Index der Karte auf der Hand, die auf ein Ziel wartet
+  // Karte, die auf ein Ziel wartet: von der Hand (Index) oder aus der Tasche
+  type Sel = { hand: number } | { pouch: CardId };
+  let selected: Sel | null = null;
+  const selCard = (sel = selected): CardId | undefined => (!sel ? undefined : 'hand' in sel ? st.hand[sel.hand] : sel.pouch);
+  const sameSel = (a: Sel | null, b: Sel) => !!a && ('hand' in a ? 'hand' in b && a.hand === b.hand : 'pouch' in b && a.pouch === b.pouch);
   let locked: number | null = null; // Anvisierter Gegner: Karten treffen ihn, bis man einen anderen antippt
 
   const lockOn = (id: number | null) => {
@@ -223,16 +229,19 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     selected = null;
     scene?.setTargets(null);
     renderHand();
+    renderPouch();
     setInfo();
   };
 
-  const tryCard = (i: number) => {
+  const tryCard = (i: number) => tryPlay({ hand: i });
+  const tryPouch = (card: CardId) => tryPlay({ pouch: card });
+  const tryPlay = (sel: Sel) => {
     if (busy || st.over) return;
-    const card = st.hand[i];
+    const card = 'hand' in sel ? st.hand[sel.hand] : (st.pouch[sel.pouch] ?? 0) > 0 ? sel.pouch : undefined;
     if (!card) return;
-    if (selected === i) return cancelSelect();
+    if (sameSel(selected, sel)) return cancelSelect();
     const def = CARDS[card];
-    const btn = handEl.children[i];
+    const btn = 'hand' in sel ? handEl.children[sel.hand] : pouchEl.querySelector(`[data-card="${card}"]`);
     if (def.cost > st.energy) {
       if (btn) shake(btn);
       return setInfo('Nicht genug Kraft. Runde beenden für neue.');
@@ -249,25 +258,26 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
       if (btn) shake(btn);
       return setInfo(`${def.name}: nur einmal pro Runde.`);
     }
-    if (def.target === 'self') return void doPlay(i);
+    if (def.target === 'self') return void doPlay(sel);
     const options = targetsFor(st, card);
     if (!options.length) {
       if (btn) shake(btn);
       return setInfo(def.target === 'near' ? 'Vorne steht niemand. Diese Karte trifft nur Gegner vorne.' : 'Kein Ziel.');
     }
     // Anvisierter Gegner ist ein gültiges Ziel: gleich auf ihn
-    if (locked !== null && options.some((f) => f.id === locked)) return void doPlay(i, locked);
-    if (options.length === 1) return void doPlay(i, options[0].id);
-    selected = i;
+    if (locked !== null && options.some((f) => f.id === locked)) return void doPlay(sel, locked);
+    if (options.length === 1) return void doPlay(sel, options[0].id);
+    selected = sel;
     scene?.setTargets(options.map((f) => f.id));
     renderHand();
+    renderPouch();
     setInfo(`${def.name}: Wähle ein Ziel.`);
   };
 
   const tapFoe = (id: number) => {
     if (busy || st.over) return;
     if (selected !== null) {
-      const card = st.hand[selected];
+      const card = selCard();
       if (card && targetsFor(st, card).some((f) => f.id === id)) {
         // Wer ein Ziel wählt, visiert es gleich für die nächsten Karten an
         lockOn(id);
@@ -294,22 +304,24 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           const c = e.card;
           const def = CARDS[c];
           if (def.kind === 'once') say(def.name, def.rarity === 'legendary' || def.rarity === 'epic' ? 'gold' : 'good', 900);
-          if (c === 'throw' || c === 'bolt' || c === 'pellet' || c === 'drive' || c === 'lure' || c === 'flare') {
+          if (c === 'throw' || c === 'bolt' || c === 'pellet' || c === 'drive' || c === 'lure' || c === 'flare' || c === 'tinder') {
             if (id !== undefined) scene?.shoot(id, c === 'bolt' ? 'bolt' : 'stone');
             if (c === 'flare') fx('flare');
+            if (c === 'tinder') fx('fire');
             await wait(c === 'bolt' ? 160 : 300);
           } else if (c === 'dodge' || c === 'counter') scene?.shieldUp();
           else if (c === 'bandage' || c === 'dressing' || c === 'adrenaline' || c === 'secondwind') scene?.heal();
           else if (c === 'aim' || c === 'steady') scene?.focus();
-          else if (c === 'molotov' || c === 'grenade' || c === 'flashbang' || c === 'smoke' || c === 'firecracker' || c === 'caltrops' || c === 'radio') {
-            fx(c === 'molotov' ? 'fire' : c === 'grenade' ? 'blast' : c === 'flashbang' ? 'flash' : c === 'smoke' ? 'smoke' : c === 'firecracker' ? 'spark' : c === 'radio' ? 'radio' : 'dust');
+          else if (c === 'molotov' || c === 'oilcan' || c === 'grenade' || c === 'flashbang' || c === 'smoke' || c === 'firecracker' || c === 'caltrops' || c === 'radio') {
+            fx(c === 'molotov' || c === 'oilcan' ? 'fire' : c === 'grenade' ? 'blast' : c === 'flashbang' ? 'flash' : c === 'smoke' ? 'smoke' : c === 'firecracker' ? 'spark' : c === 'radio' ? 'radio' : 'dust');
             vibrate(c === 'grenade' ? [40, 30, 90] : 30);
             await wait(c === 'grenade' ? 420 : 300);
           } else if (c === 'breath' || c === 'packleader') {
             await wait(120);
           } else {
             if (c === 'pepper') fx('smoke');
-            scene?.act(c === 'homerun' || c === 'chop' || c === 'sweep' ? 'power' : c === 'kick' || c === 'spade' || c === 'pepper' ? 'shove' : 'swing', id);
+            if (c === 'spark' || c === 'salvo') fx('spark');
+            scene?.act(c === 'homerun' || c === 'chop' || c === 'sweep' || c === 'salvo' ? 'power' : c === 'kick' || c === 'spade' || c === 'pepper' ? 'shove' : 'swing', id);
             await wait(c === 'homerun' || c === 'chop' ? 260 : 150);
           }
           break;
@@ -331,6 +343,10 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
           } else await wait(e.type === 'ally' ? 260 : 160);
           break;
         }
+        case 'spread':
+          floatAt(e.id, 'Fängt Feuer!', 'power');
+          await wait(260);
+          break;
         case 'status':
           floatAt(e.id, STATUS_TEXT[e.status], e.status === 'burn' ? 'power' : 'crit');
           if (e.status === 'interrupt') {
@@ -546,21 +562,23 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     }
   };
 
-  const doPlay = async (i: number, target?: number) => {
+  const doPlay = async (sel: Sel, target?: number) => {
     if (busy) return;
     busy = true;
     selected = null;
     scene?.setTargets(null);
-    const events = playCard(st, i, target);
+    const events = 'hand' in sel ? playCard(st, sel.hand, target) : playPouch(st, sel.pouch, target);
     if (events[0]?.type === 'denied') {
       busy = false;
       renderHand();
-      const btn = handEl.children[i];
+      renderPouch();
+      const btn = 'hand' in sel ? handEl.children[sel.hand] : pouchEl.querySelector(`[data-card="${sel.pouch}"]`);
       if (btn) shake(btn);
       if (events[0].reason === 'target') setInfo('Da steht gerade niemand, den diese Karte trifft.');
       return;
     }
     renderHand();
+    renderPouch();
     await animate(events, false);
     syncShown();
     scene?.setFoes(shownList());
@@ -674,7 +692,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
       if (live?.burn) sts.push(['burn', `Brennt ${live.burn}`]);
       if (live?.blind) sts.push(['blind', 'Geblendet']);
       if (live?.slow) sts.push(['slow', `Langsam ${live.slow}`]);
-      if (live?.silence) sts.push(['silence', 'Still']);
+      if (live?.silence && canHowl(live.kind)) sts.push(['silence', 'Still']);
       const skey = sts.map((x) => x[1]).join('|');
       if (skey !== v.skey) {
         v.skey = skey;
@@ -695,7 +713,8 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
         void v.intent.offsetWidth;
         v.intent.classList.add('pop');
       }
-      const targetable = selected !== null && st.hand[selected] ? targetsFor(st, st.hand[selected]).some((x) => x.id === f.id) : false;
+      const sc = selCard();
+      const targetable = sc ? targetsFor(st, sc).some((x) => x.id === f.id) : false;
       v.el.classList.toggle('targetable', targetable);
       // Anvisierter Gegner gefallen: Markierung weg
       if (locked === f.id && !f.alive) lockOn(null);
@@ -718,7 +737,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     for (let i = 0; i < Math.max(TACTICS.energy, st.energy); i++) energyEl.append(h('span', { class: 'orb' + (i < st.energy ? ' on' : '') }, svgEl(icon('energy', 14))));
     energyEl.setAttribute('aria-label', `Kraft ${st.energy} von ${TACTICS.energy}`);
     endBtn.disabled = busy || !!st.over;
-    endBtn.classList.toggle('glow', !busy && !st.over && st.hand.every((c) => CARDS[c].cost > st.energy || (CARDS[c].heal && !CARDS[c].gain && st.hp >= st.maxHp) || (CARDS[c].target !== 'self' && !targetsFor(st, c).length)));
+    endBtn.classList.toggle('glow', !busy && !st.over && st.hand.every((c) => !playable(st, c)));
     pileEl.textContent = `Stapel ${st.draw.length}`;
     pileEl.title = `Noch ${st.draw.length} Karten im Stapel, ${st.discard.length} abgelegt`;
   };
@@ -728,18 +747,13 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     st.hand.forEach((card, i) => {
       const def = CARDS[card];
       const eff = cardEffect(card, st.levels[card] ?? 1);
-      const playable =
-        def.cost <= st.energy &&
-        (!def.medicine || st.medicine > 0) &&
-        (!def.heal || !!def.gain || st.hp < st.maxHp) &&
-        (!def.perTurn || (st.turnPlays[card] ?? 0) < def.perTurn) &&
-        (def.target === 'self' || targetsFor(st, card).length > 0);
+      const ok = playable(st, card);
       let pressTimer = 0;
       let longPressed = false;
       const btn = h(
         'button',
         {
-          class: `t-card kind-${def.kind}${def.target === 'self' ? ' self' : ''}${def.kind === 'once' || def.kind === 'skill' ? ` collect rar-${def.rarity ?? 'common'}` : ''}${playable ? '' : ' off'}${selected === i ? ' picked' : ''}${deal ? ' deal' : ''}`,
+          class: `t-card kind-${def.kind}${def.target === 'self' ? ' self' : ''}${def.kind === 'once' || def.kind === 'skill' ? ` collect rar-${def.rarity ?? 'common'}` : ''}${ok ? '' : ' off'}${sameSel(selected, { hand: i }) ? ' picked' : ''}${deal ? ' deal' : ''}`,
           type: 'button',
           style: `--i:${i}`,
           'aria-label': `${def.name}, kostet ${def.cost} Kraft: ${def.desc}`,
@@ -769,9 +783,55 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
     });
   };
 
+  /** Die Tasche: Einmal-Karten, jederzeit spielbar. Aufgebrauchte Sorten bleiben als „leer“ stehen. */
+  const renderPouch = () => {
+    clear(pouchEl);
+    const ids = Object.keys(st.pouch) as CardId[];
+    pouchEl.hidden = !ids.length;
+    if (!ids.length) return;
+    pouchEl.append(h('small', { class: 't-pouch-label' }, svgEl(icon('backpack', 14)), 'Tasche'));
+    for (const id of ids) {
+      const def = CARDS[id];
+      const n = st.pouch[id] ?? 0;
+      const ok = n > 0 && playable(st, id);
+      let pressTimer = 0;
+      let longPressed = false;
+      pouchEl.append(
+        h(
+          'button',
+          {
+            class: `t-pc rar-${def.rarity ?? 'common'}${ok ? '' : ' off'}${n ? '' : ' empty'}${sameSel(selected, { pouch: id }) ? ' picked' : ''}`,
+            type: 'button',
+            'data-card': id,
+            disabled: !n,
+            'aria-label': `${def.name}, noch ${n}, kostet ${def.cost} Kraft: ${def.desc}`,
+            onpointerdown: () => {
+              longPressed = false;
+              pressTimer = window.setTimeout(() => {
+                longPressed = true;
+                setInfo(`${def.name}: ${def.desc}`);
+              }, 450);
+            },
+            onpointerup: () => clearTimeout(pressTimer),
+            onpointerleave: () => clearTimeout(pressTimer),
+            onclick: () => {
+              if (longPressed) return;
+              tryPouch(id);
+            },
+          },
+          h('span', { class: 't-pc-cost' }, String(def.cost)),
+          artUrl(def.art) ? h('img', { class: 't-pc-art', src: artUrl(def.art)!, alt: '', draggable: 'false' }) : svgEl(icon(CARD_ICON[id], 20), 't-pc-icon'),
+          h('b', null, def.name),
+          h('small', null, n ? `×${n}` : 'leer'),
+        ),
+      );
+    }
+  };
+
   const renderAll = (deal = false) => {
     renderHud();
     renderBar();
+    renderPouch();
     renderHand(deal);
     renderFoeOverlays();
     setInfo();
@@ -791,6 +851,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
         h('li', null, h('b', null, 'Vorne und hinten: '), 'Schläge treffen nur Gegner vorne. Würfe und Bolzen auch hinten.'),
         h('li', null, h('b', null, 'Holt einer aus, '), 'kommt ein Wuchtschlag: ausweichen oder wegtreten.'),
         h('li', null, h('b', null, 'Runde beenden: '), 'Die Gegner handeln, dann ziehst du 4 neue Karten.'),
+        h('li', null, h('b', null, 'Tasche: '), 'Einmal-Karten liegen über deiner Hand. Du kannst sie jederzeit spielen, danach sind sie weg.'),
         h('li', null, h('b', null, 'Fliehen '), 'geht immer und kostet nichts.'),
       ),
       h('button', { class: 'btn wide', type: 'button', onclick: () => box.remove() }, 'Los geht’s'),

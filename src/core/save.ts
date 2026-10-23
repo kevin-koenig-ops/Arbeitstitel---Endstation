@@ -3,7 +3,7 @@
 // Umzug vom Gerät in ein Konto).
 
 import { cellIndex, PLOT, SECTION, sectionObstacles, START_SECTIONS, type SiteId } from './building';
-import { COLLECTIBLES, KRAM, MAX_HEALTH, portraitIndex, RESOURCE_ORDER, START_WEAPONS } from './content';
+import { CARDS, COLLECTIBLES, KRAM, MAX_HEALTH, ONCE_CARDS, POUCH_SLOTS, portraitIndex, RESOURCE_ORDER, SKILL_CARDS, SKILL_SLOTS, skillLevel, START_WEAPONS, type CardId } from './content';
 import { FURNITURE, type FurnitureId } from './furniture';
 import { checkSets, SCHEMA_VERSION, startGear } from './rules';
 import type { PlayerState } from './types';
@@ -11,6 +11,22 @@ import type { PlayerState } from './types';
 type Raw = Record<string, unknown> & { schema?: number };
 
 const MIGRATIONS: Record<number, (s: Raw) => void> = {
+  // Version 16 -> 17: Tasche (3 Sorten Einmal-Karten) und Fähigkeiten-Plätze (4). Vorbelegt mit
+  // den Sorten, von denen man am meisten hat, und den seltensten Fähigkeiten.
+  16: (s) => {
+    const pack = (s.packCards ?? {}) as Record<string, number>;
+    const stash = (s.stash ?? {}) as Record<string, number>;
+    const book = (s.book ?? {}) as Record<string, { n: number }>;
+    const own = (id: CardId) => (pack[id] ?? 0) + (stash[id] ?? 0);
+    const pouch = ONCE_CARDS.filter((id) => own(id) > 0)
+      .sort((a, b) => own(b) - own(a))
+      .slice(0, POUCH_SLOTS);
+    const rank = { legendary: 0, epic: 1, rare: 2, common: 3 };
+    const skills = SKILL_CARDS.filter((id) => skillLevel(book[id]?.n ?? 0) > 0)
+      .sort((a, b) => rank[CARDS[a].rarity ?? 'common'] - rank[CARDS[b].rarity ?? 'common'] || (book[b]?.n ?? 0) - (book[a]?.n ?? 0))
+      .slice(0, SKILL_SLOTS);
+    s.loadout = { pouch, skills };
+  },
   // Version 15 -> 16: Sammelkarten (Rucksack, Lager, Sammelbuch) und Sichtungen. Alles leer.
   15: (s) => {
     s.packCards = {};

@@ -66,7 +66,10 @@ import {
   gearSum,
   CARDS,
   CARD_LOOT,
+  ONCE_CARDS,
   ONCE_CARRY,
+  POUCH_SLOTS,
+  SKILL_SLOTS,
   skillLevel,
   type CardId,
   type CardRarity,
@@ -149,7 +152,7 @@ import { resolvePatrol } from './patrols';
 import { resolveDropSpot, zonesAt } from './worldEvents';
 import { GOALS } from './progress';
 
-export const SCHEMA_VERSION = 16;
+export const SCHEMA_VERSION = 17;
 
 /** Startausrüstung: alles gefunden und angezogen. */
 export function startGear(now: number): GearState {
@@ -209,6 +212,7 @@ export function createPlayer(playerId: string, character: Character, now: number
     book: {},
     sightings: {},
     pity: { rare: 0, legendary: 0 },
+    loadout: { pouch: [], skills: [] },
   };
 }
 
@@ -450,16 +454,60 @@ export function skillOf(state: PlayerState, id: CardId): number {
   return CARDS[id].kind === 'skill' ? skillLevel(state.book[id]?.n ?? 0) : 0;
 }
 
-/** Was du für den Kampf mitbringst: Einmal-Karten aus dem Rucksack, Fähigkeiten mit Stufe. */
-export function cardKit(state: PlayerState, now: number): { once: Partial<Record<CardId, number>>; skills: Partial<Record<CardId, number>>; lastStand: boolean } {
+/** So viele Fähigkeiten gehen mit in den Kampf. Später mit Charakterstufen: ab Stufe 10 fünf, ab 20 sechs. */
+export function skillSlots(_state: PlayerState): number {
+  return SKILL_SLOTS;
+}
+
+/** Stufe einer Fähigkeit, die du zu Hause für den Kampf gewählt hast (0 = nicht dabei). */
+export function equippedSkill(state: PlayerState, id: CardId): number {
+  return state.loadout.skills.includes(id) ? skillOf(state, id) : 0;
+}
+
+/** Wie viele Einmal-Karten einer Sorte du hast (dabei und im Lager). */
+export function onceOwned(state: PlayerState, id: CardId): number {
+  return (state.packCards[id] ?? 0) + (state.stash[id] ?? 0);
+}
+
+/**
+ * Die Tasche für den nächsten Kampf: erst die gewählten Sorten, freie Plätze füllen andere
+ * Einmal-Karten, die du gerade dabeihast (unterwegs Gefundenes). Höchstens 3 Sorten, je 3.
+ */
+export function pouchKit(state: PlayerState): Partial<Record<CardId, number>> {
+  const out: Partial<Record<CardId, number>> = {};
+  const carried = (id: CardId) => state.packCards[id] ?? 0;
+  const order = [...state.loadout.pouch, ...ONCE_CARDS.filter((id) => !state.loadout.pouch.includes(id))];
+  for (const id of order) {
+    if (Object.keys(out).length >= POUCH_SLOTS) break;
+    if (CARDS[id]?.kind === 'once' && carried(id) > 0) out[id] = Math.min(ONCE_CARRY, carried(id));
+  }
+  return out;
+}
+
+/** Was du für den Kampf mitbringst: die Tasche und die gewählten Fähigkeiten mit Stufe. */
+export function cardKit(state: PlayerState, now: number): { pouch: Partial<Record<CardId, number>>; skills: Partial<Record<CardId, number>>; lastStand: boolean } {
   const skills: Partial<Record<CardId, number>> = {};
-  for (const id of Object.keys(state.book) as CardId[]) {
+  for (const id of state.loadout.skills) {
     const lvl = CARDS[id] ? skillOf(state, id) : 0;
     if (lvl) skills[id] = lvl;
   }
-  const once: Partial<Record<CardId, number>> = {};
-  for (const [id, n] of Object.entries(state.packCards) as [CardId, number][]) if (n > 0) once[id] = Math.min(ONCE_CARRY, n);
-  return { once, skills, lastStand: !state.lastStandAt || now - state.lastStandAt >= 24 * HOUR };
+  return { pouch: pouchKit(state), skills, lastStand: !state.lastStandAt || now - state.lastStandAt >= 24 * HOUR };
+}
+
+/**
+ * Neu bekommen: Ist noch ein Platz frei, kommt es gleich in die Tasche bzw. zu den Fähigkeiten.
+ * Eine leere Sorte (keine mehr da) macht ihren Platz für die neue frei.
+ */
+function autoLoadout(state: PlayerState, card: CardId) {
+  const def = CARDS[card];
+  const lo = state.loadout;
+  if (def.kind === 'once' && !lo.pouch.includes(card)) {
+    if (lo.pouch.length >= POUCH_SLOTS) {
+      const empty = lo.pouch.findIndex((id) => onceOwned(state, id) <= 0);
+      if (empty >= 0) lo.pouch.splice(empty, 1);
+    }
+    if (lo.pouch.length < POUCH_SLOTS) lo.pouch.push(card);
+  } else if (def.kind === 'skill' && !lo.skills.includes(card) && lo.skills.length < skillSlots(state)) lo.skills.push(card);
 }
 
 /** Ins Sammelbuch eintragen (Karte oder „w:Waffe“). Gibt die neue Anzahl zurück. */
@@ -499,13 +547,15 @@ function grantCollectible(
   const before = skillOf(state, card);
   addToBook(state, card, now, shiny);
   if (CARDS[card].kind === 'once') state.packCards[card] = (state.packCards[card] ?? 0) + 1;
+  autoLoadout(state, card);
   const level = skillOf(state, card) || undefined;
   return { card, level, levelUp: !!level && level > before && before > 0 };
 }
 
-/** Zu Hause: aus dem Lager wieder bis zu 3 je Sorte in den Rucksack packen. */
+/** Zu Hause: die Sorten der Tasche aus dem Lager wieder auf je 3 auffüllen. */
 function refillPackCards(state: PlayerState) {
-  for (const [id, n] of Object.entries(state.stash) as [CardId, number][]) {
+  for (const id of state.loadout.pouch) {
+    const n = state.stash[id] ?? 0;
     const want = Math.max(0, ONCE_CARRY - (state.packCards[id] ?? 0));
     const take = Math.min(want, n ?? 0);
     if (!take) continue;
@@ -732,7 +782,7 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
         else delete state.packCards[id];
       }
       // Letztes Gefecht hat gerettet: heute nicht noch einmal
-      if (action.lastStand && skillOf(state, 'laststand') && cardKit(state, ctx.now).lastStand) state.lastStandAt = ctx.now;
+      if (action.lastStand && equippedSkill(state, 'laststand') && cardKit(state, ctx.now).lastStand) state.lastStandAt = ctx.now;
       if (action.outcome === 'won') {
         // Mehr als die Gruppe (und was ein Heuler herbeiruft) kann man nicht erledigen
       const kills = Math.max(1, Math.min(c.patrol ? c.group.length + TACTICS.maxHowls : 6, Math.floor(action.kills)));
@@ -813,6 +863,7 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       for (const r of RESOURCE_ORDER) state.inventory[r] -= def.craft[r] ?? 0;
       state.stash[action.card] = (state.stash[action.card] ?? 0) + 1;
       addToBook(state, action.card, ctx.now);
+      autoLoadout(state, action.card);
       refillPackCards(state);
       state.stats.crafted += 1;
       events.push({ type: 'crafted', card: action.card });
@@ -856,6 +907,22 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
       const got = grantCollectible(state, { card: action.card, weapon: action.weapon }, ctx.now, false);
       if (!got) return reject('nothing');
       events.push({ type: 'gifted', ...got });
+      break;
+    }
+
+    case 'setLoadout': {
+      // Nur zu Hause (die Oberfläche bietet es nur dort an). Was nicht in die Tasche kommt, bleibt im Lager.
+      const uniq = (l: CardId[]) => [...new Set(l)];
+      const pouch = action.pouch ? uniq(action.pouch) : state.loadout.pouch;
+      const skills = action.skills ? uniq(action.skills) : state.loadout.skills;
+      if (pouch.some((id) => CARDS[id]?.kind !== 'once' || !state.book[id])) return reject('not_found');
+      if (skills.some((id) => CARDS[id]?.kind !== 'skill' || !skillOf(state, id))) return reject('not_found');
+      if (pouch.length > POUCH_SLOTS || skills.length > skillSlots(state)) return reject('too_many');
+      state.loadout = { pouch, skills };
+      for (const [k, n] of Object.entries(state.packCards) as [CardId, number][]) state.stash[k] = (state.stash[k] ?? 0) + n;
+      state.packCards = {};
+      refillPackCards(state);
+      events.push({ type: 'loadoutSet', pouch: [...pouch], skills: [...skills] });
       break;
     }
 
@@ -1228,7 +1295,8 @@ export function applyAction(prev: PlayerState, action: Action, ctx: RuleContext)
     }
 
     case 'unpack': {
-      const extraCards = Object.values(state.packCards).some((n) => (n ?? 0) > ONCE_CARRY);
+      // Karten, die nicht in die Tasche gehören, kommen beim Auspacken ins Lager
+      const extraCards = (Object.entries(state.packCards) as [CardId, number][]).some(([id, n]) => n > 0 && (n > ONCE_CARRY || !state.loadout.pouch.includes(id)));
       if (!packCount(state) && !extraCards) return reject('nothing');
       const items = { ...state.pack };
       const kram = { ...state.packKram };
@@ -1313,7 +1381,7 @@ function startDig(state: PlayerState, spot: Spot, ctx: RuleContext) {
 /** Besondere Beute vom Bleichen Wächter: Dinge aus den Kellern, beim ersten Mal sein Tagebuch. */
 /** Fähigkeit „Plündererin“: nach einem Sieg pro Stufe ein Stück mehr vom Haupt-Rohstoff. */
 function scavengerBonus(state: PlayerState, loot: Extract<GameEvent, { type: 'loot' }>, spot: Spot) {
-  const lvl = skillOf(state, 'scavenger');
+  const lvl = equippedSkill(state, 'scavenger');
   if (!lvl) return;
   const main = SPOT_KINDS[spot.kind]?.loot.find((l) => isMaterial(l.res))?.res ?? 'metal';
   loot.items[main] = (loot.items[main] ?? 0) + lvl;

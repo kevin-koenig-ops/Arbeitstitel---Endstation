@@ -6,15 +6,16 @@
 // (Angriff mit Schaden, Ausholen, Heulen …). Wer vorne steht, kann zuschlagen; wer hinten
 // steht, kommt erst nach vorne (außer dem Heuler, der bleibt hinten und ruft Verstärkung).
 // Der Bleiche Wächter (nur nachts) starrt dich an, weicht ins Dunkel zurück und springt dich an.
-// Dazu kommen Einmal-Karten (Brandflasche, Granate …, nach dem Ausspielen weg) und Fähigkeiten
-// (Konter, Rundumschlag …, mit Stufen I–III; manche wirken von selbst). Zustände der Gegner:
+// Dazu kommen Einmal-Karten (Brandflasche, Granate …) und Fähigkeiten (Konter, Rundumschlag …,
+// mit Stufen I–III; manche wirken von selbst). Einmal-Karten liegen nicht im Stapel, sondern in
+// der Tasche (3 Plätze): Man kann sie jederzeit spielen, danach sind sie weg. Zustände der Gegner:
 // Brennt (Schaden jede Runde), Geblendet (nächster Angriff geht daneben), Verlangsamt (kommt nicht
 // nach vorn), Still (Heuler rufen niemanden).
 //
 // Alles hier ist rein und vorhersagbar: gleicher Startwert, gleiche Züge, gleiches Ergebnis.
 // Dadurch kann es später auch der Server nachrechnen.
 
-import { BASE_DECK, CARDS, cardStat, FOE_TACTICS, ONCE_CARRY, TACTICS, WEAPON_CARDS, type CardId, type CardStat, type IntentKind } from './content';
+import { BASE_DECK, CARDS, cardStat, FOE_TACTICS, ONCE_CARRY, POUCH_SLOTS, TACTICS, WEAPON_CARDS, type CardId, type CardStat, type IntentKind } from './content';
 import { hashString } from './rng';
 import type { FoeKind, Opening, Weapon, WeaponId } from './types';
 
@@ -75,6 +76,8 @@ export interface TacticsState {
   thorns: number;
   /** Ein Hund kämpft mit (Rudelführer). */
   ally: { rounds: number; dmg: number } | null;
+  /** Tasche: Einmal-Karten, die noch übrig sind (jederzeit spielbar, nicht im Stapel). */
+  pouch: Partial<Record<CardId, number>>;
   /** Ausgespielte Einmal-Karten (die sind danach weg). */
   used: Partial<Record<CardId, number>>;
   /** Wie oft eine Karte diese Runde schon gespielt wurde (für „einmal pro Runde“). */
@@ -87,11 +90,15 @@ export interface TacticsState {
   /** Letztes Gefecht: heute noch verfügbar, und ob es in diesem Kampf ausgelöst hat. */
   lastStand: boolean;
   lastStandUsed: boolean;
+  /** Glut: Alles, was du anzündest, brennt so viele Runden länger. */
+  burnBonus: number;
+  /** Lauffeuer: Fällt ein brennender Gegner, brennt der nächste so lange (0 = hast du nicht). */
+  spread: number;
 }
 
-/** Was du an Sammelkarten mitbringst: Einmal-Karten (Anzahl) und Fähigkeiten (Stufe). */
+/** Was du an Sammelkarten mitbringst: Einmal-Karten in der Tasche (Anzahl) und Fähigkeiten (Stufe). */
 export interface CardKit {
-  once?: Partial<Record<CardId, number>>;
+  pouch?: Partial<Record<CardId, number>>;
   skills?: Partial<Record<CardId, number>>;
   /** Letztes Gefecht ist heute noch frei. */
   lastStand?: boolean;
@@ -117,6 +124,7 @@ export type TEvent =
   | { type: 'weaponBroke'; weapon: WeaponId }
   | { type: 'turn'; turn: number }
   | { type: 'burn'; id: number; dmg: number; kill: boolean }
+  | { type: 'spread'; from: number; id: number }
   | { type: 'status'; id: number; status: 'burn' | 'blind' | 'slow' | 'silence' | 'interrupt' }
   | { type: 'miss'; id: number }
   | { type: 'ally'; id: number; dmg: number; kill: boolean }
@@ -148,20 +156,28 @@ function shuffle<T>(st: TacticsState, list: T[]): T[] {
 
 // --- Aufbau --------------------------------------------------------------------------
 
-/** Die Karten, die du mit deiner Ausrüstung hast (dazu Einmal-Karten und Fähigkeiten). */
+/** Die Karten, die du mit deiner Ausrüstung hast (dazu aktive Fähigkeiten; Einmal-Karten liegen in der Tasche). */
 export function deckFor(weapons: Weapon[], medicine: number, kit: CardKit = {}): CardId[] {
   const deck: CardId[] = [...BASE_DECK];
   const kinds = new Set(weapons.filter((w) => w.dur > 0).map((w) => w.kind));
   for (const k of kinds) deck.push(...WEAPON_CARDS[k]);
   for (let i = 0; i < Math.min(TACTICS.maxBandages, medicine); i++) deck.push('bandage');
-  for (const [id, n] of Object.entries(kit.once ?? {}) as [CardId, number][]) {
-    if (CARDS[id]?.kind !== 'once') continue;
-    for (let i = 0; i < Math.min(ONCE_CARRY, n); i++) deck.push(id);
-  }
   for (const [id, lvl] of Object.entries(kit.skills ?? {}) as [CardId, number][]) {
     if (CARDS[id]?.kind === 'skill' && !CARDS[id].passive && lvl > 0) deck.push(id);
   }
   return deck;
+}
+
+/** Die Tasche: höchstens 3 Sorten Einmal-Karten, je bis zu 3 Stück. */
+export function pouchFor(kit: CardKit = {}): Partial<Record<CardId, number>> {
+  const out: Partial<Record<CardId, number>> = {};
+  let slots = 0;
+  for (const [id, n] of Object.entries(kit.pouch ?? {}) as [CardId, number][]) {
+    if (CARDS[id]?.kind !== 'once' || !(n > 0) || slots >= POUCH_SLOTS) continue;
+    out[id] = Math.min(ONCE_CARRY, Math.floor(n));
+    slots++;
+  }
+  return out;
 }
 
 function makeFoe(st: TacticsState, kind: FoeKind, row: 'near' | 'far'): TFoe {
@@ -230,6 +246,7 @@ export function createTactics(o: {
     over: null,
     thorns: 0,
     ally: null,
+    pouch: pouchFor(kit),
     used: {},
     turnPlays: {},
     levels: { ...(kit.skills ?? {}) },
@@ -237,6 +254,8 @@ export function createTactics(o: {
     secondWindUsed: false,
     lastStand: !!kit.lastStand && lvl('laststand') > 0,
     lastStandUsed: false,
+    burnBonus: lvl('embers') ? cardStat('embers', 'burn', lvl('embers')) : 0,
+    spread: lvl('wildfire') ? cardStat('wildfire', 'burn', lvl('wildfire')) : 0,
   };
   for (const w of o.weapons) if (w.dur > 0) st.weaponDur[w.kind] = Math.max(st.weaponDur[w.kind] ?? 0, w.dur);
   st.draw = shuffle(st, deckFor(o.weapons, o.medicine, kit));
@@ -269,6 +288,11 @@ export function createTactics(o: {
   if (o.thirst) st.energy = Math.max(1, st.energy - 1);
   if (o.cold && st.hand.length > 2) st.draw.push(st.hand.pop()!);
   return st;
+}
+
+/** Kann diese Gegnerart Hilfe rufen (Heuler)? Nur bei denen zählt „Still“. */
+export function canHowl(kind: FoeKind): boolean {
+  return FOE_TACTICS[kind].pattern.some((p) => p.kind === 'howl');
 }
 
 export function aliveFoes(st: TacticsState): TFoe[] {
@@ -343,6 +367,25 @@ function damageFoe(st: TacticsState, f: TFoe, raw: number, events: TEvent[]) {
   const kill = f.hp === 0;
   if (kill) st.kills += 1;
   events.push({ type: 'hit', id: f.id, dmg, absorbed, kill });
+  if (kill) spreadFire(st, f, events);
+}
+
+/** Anzünden: Brennt so viele Runden (Glut verlängert). */
+function setBurn(st: TacticsState, f: TFoe, rounds: number, events: TEvent[]) {
+  f.burn = Math.max(f.burn, rounds + st.burnBonus);
+  events.push({ type: 'status', id: f.id, status: 'burn' });
+}
+
+/** Lauffeuer: Ein brennender Gegner fällt, der nächste fängt Feuer (vorne zuerst). */
+function spreadFire(st: TacticsState, dead: TFoe, events: TEvent[]) {
+  if (!st.spread || dead.burn <= 0) return;
+  dead.burn = 0;
+  const next = aliveFoes(st)
+    .filter((x) => x.id !== dead.id)
+    .sort((a, b) => (a.row === b.row ? a.id - b.id : a.row === 'near' ? -1 : 1))[0];
+  if (!next) return;
+  events.push({ type: 'spread', from: dead.id, id: next.id });
+  setBurn(st, next, st.spread, events);
 }
 
 // --- Züge ----------------------------------------------------------------------------
@@ -357,10 +400,40 @@ function interrupt(f: TFoe) {
 
 /** Eine Karte aus der Hand spielen (target: Gegner-id bei Karten mit Zielwahl). */
 export function playCard(st: TacticsState, handIndex: number, target?: number): TEvent[] {
-  const events: TEvent[] = [];
-  if (st.over) return events;
   const card = st.hand[handIndex];
-  if (!card) return events;
+  if (st.over || !card) return [];
+  return resolve(st, card, target, () => {
+    st.hand.splice(handIndex, 1);
+    // Einmal-Karten sind danach weg, alles andere kommt auf den Ablagestapel
+    if (CARDS[card].kind === 'once') st.used[card] = (st.used[card] ?? 0) + 1;
+    else st.discard.push(card);
+  });
+}
+
+/** Eine Einmal-Karte aus der Tasche spielen (jederzeit, solange Kraft da ist). */
+export function playPouch(st: TacticsState, card: CardId, target?: number): TEvent[] {
+  if (st.over || !((st.pouch[card] ?? 0) > 0)) return [];
+  return resolve(st, card, target, () => {
+    st.pouch[card] = (st.pouch[card] ?? 0) - 1;
+    st.used[card] = (st.used[card] ?? 0) + 1;
+  });
+}
+
+/** Kann diese Karte gerade gespielt werden? (Kraft, Medizin, Ziel …) */
+export function playable(st: TacticsState, card: CardId): boolean {
+  const def = CARDS[card];
+  return (
+    def.cost <= st.energy &&
+    (!def.medicine || st.medicine > 0) &&
+    (!def.heal || !!def.gain || st.hp < st.maxHp) &&
+    (!def.perTurn || (st.turnPlays[card] ?? 0) < def.perTurn) &&
+    (def.target === 'self' ? !def.area || !!areaFoes(st, def.area).length || !!def.block || !!def.heal : targetsFor(st, card).length > 0)
+  );
+}
+
+/** Die Wirkung einer Karte (take: nimmt sie aus Hand oder Tasche). */
+function resolve(st: TacticsState, card: CardId, target: number | undefined, take: () => void): TEvent[] {
+  const events: TEvent[] = [];
   const def = CARDS[card];
   if (st.energy < def.cost) return [{ type: 'denied', reason: 'energy' }];
   if (def.medicine && st.medicine < 1) return [{ type: 'denied', reason: 'medicine' }];
@@ -374,10 +447,7 @@ export function playCard(st: TacticsState, handIndex: number, target?: number): 
   }
   if (def.area && !areaFoes(st, def.area).length && !def.block && !def.heal) return [{ type: 'denied', reason: 'target' }];
   st.energy -= def.cost;
-  st.hand.splice(handIndex, 1);
-  // Einmal-Karten sind danach weg, alles andere kommt auf den Ablagestapel
-  if (def.kind === 'once') st.used[card] = (st.used[card] ?? 0) + 1;
-  else st.discard.push(card);
+  take();
   st.turnPlays[card] = (st.turnPlays[card] ?? 0) + 1;
   events.push({ type: 'play', card, target: foe?.id });
 
@@ -391,7 +461,7 @@ export function playCard(st: TacticsState, handIndex: number, target?: number): 
     }
     if (def.vs && f.kind === def.vs.kind) raw += def.vs.dmg;
     if (raw > 0) damageFoe(st, f, raw, events);
-    applyEffects(def, f, events);
+    applyEffects(st, card, f, events);
     // Nagel: trifft noch einen zweiten
     if (first && def.chain) {
       const other = aliveFoes(st)
@@ -452,8 +522,9 @@ export function playCard(st: TacticsState, handIndex: number, target?: number): 
 }
 
 /** Was eine Karte am Gegner bewirkt (außer Schaden). */
-function applyEffects(def: (typeof CARDS)[CardId], f: TFoe, events: TEvent[]) {
+function applyEffects(st: TacticsState, card: CardId, f: TFoe, events: TEvent[]) {
   if (f.hp <= 0) return;
+  const def = CARDS[card];
   const pushIt = (def.push || (def.vs?.push && f.kind === def.vs.kind)) && f.row === 'near';
   if (pushIt) {
     f.row = 'far';
@@ -469,10 +540,8 @@ function applyEffects(def: (typeof CARDS)[CardId], f: TFoe, events: TEvent[]) {
     f.intent = intentOf(f);
     events.push({ type: 'stun', id: f.id });
   }
-  if (def.burn) {
-    f.burn = Math.max(f.burn, def.burn);
-    events.push({ type: 'status', id: f.id, status: 'burn' });
-  }
+  const burn = stat(st, card, 'burn');
+  if (burn) setBurn(st, f, burn, events);
   if (def.blind) {
     f.blind += def.blind;
     events.push({ type: 'status', id: f.id, status: 'blind' });
@@ -483,7 +552,8 @@ function applyEffects(def: (typeof CARDS)[CardId], f: TFoe, events: TEvent[]) {
   }
   if (def.silence) {
     f.silence = Math.max(f.silence, def.silence);
-    events.push({ type: 'status', id: f.id, status: 'silence' });
+    // Gemeldet wird es nur bei denen, die heulen können
+    if (canHowl(f.kind)) events.push({ type: 'status', id: f.id, status: 'silence' });
   }
 }
 
@@ -498,8 +568,9 @@ export function endTurn(st: TacticsState): TEvent[] {
     const t = [...aliveFoes(st)].sort((a, b) => (a.row === b.row ? a.hp - b.hp : a.row === 'near' ? -1 : 1))[0];
     if (t) {
       const before = st.kills;
-      damageFoe(st, t, st.ally.dmg, []);
-      events.push({ type: 'ally', id: t.id, dmg: st.ally.dmg, kill: st.kills > before });
+      const extra: TEvent[] = [];
+      damageFoe(st, t, st.ally.dmg, extra);
+      events.push({ type: 'ally', id: t.id, dmg: st.ally.dmg, kill: st.kills > before }, ...extra.filter((e) => e.type !== 'hit'));
     }
     st.ally.rounds -= 1;
     if (st.ally.rounds <= 0) st.ally = null;
@@ -516,7 +587,12 @@ export function endTurn(st: TacticsState): TEvent[] {
       const kill = f.hp <= 0;
       if (kill) st.kills += 1;
       events.push({ type: 'burn', id: f.id, dmg, kill });
-      if (kill) continue;
+      if (kill) {
+        // Lauffeuer: Es brannte ja noch (die letzte Runde zählt mit)
+        f.burn = Math.max(f.burn, 1);
+        spreadFire(st, f, events);
+        continue;
+      }
     }
     const slowed = f.slow > 0;
     if (f.slow > 0) f.slow -= 1;
@@ -572,8 +648,9 @@ export function endTurn(st: TacticsState): TEvent[] {
         // Konter: wer zuschlägt, nimmt Schaden
         if (st.thorns > 0 && f.hp > 0) {
           const before = st.kills;
-          damageFoe(st, f, st.thorns, []);
-          events.push({ type: 'thorns', id: f.id, dmg: st.thorns, kill: st.kills > before });
+          const extra: TEvent[] = [];
+          damageFoe(st, f, st.thorns, extra);
+          events.push({ type: 'thorns', id: f.id, dmg: st.thorns, kill: st.kills > before }, ...extra.filter((e) => e.type !== 'hit'));
         }
         if (intent.kind === 'grab') {
           st.grabbed = 1;

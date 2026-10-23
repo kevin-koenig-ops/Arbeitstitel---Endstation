@@ -36,6 +36,7 @@ export const REJECT_TEXT: Record<RejectReason, string> = {
   need_filter: 'Staubsturm: Im Staub schlafen Keime. Ohne Staubmaske oder Gasmaske wühlst du hier nicht.',
   gone: 'Zu spät, die Sichtung ist weg. Bald taucht woanders etwas auf.',
   already: 'Das hast du schon eingesammelt.',
+  too_many: 'Dafür ist kein Platz mehr frei.',
 };
 
 /** Fundstellen in der Mehrzahl, für Hinweise wie "Zu finden in: Autos, Packstationen". */

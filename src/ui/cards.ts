@@ -39,12 +39,15 @@ export const CARD_ICON: Record<CardId, string> = {
   drive: 'golfclub',
   pellet: 'slingshot',
   nail: 'nailgun',
+  salvo: 'salvo',
   molotov: 'molotov',
   smoke: 'smoke',
   caltrops: 'caltrops',
   firecracker: 'firecracker',
   lure: 'lure',
   pepper: 'pepper',
+  tinder: 'tinder',
+  oilcan: 'oilcan',
   dressing: 'dressing',
   adrenaline: 'adrenaline',
   flare: 'flare',
@@ -53,6 +56,9 @@ export const CARD_ICON: Record<CardId, string> = {
   counter: 'counter',
   steady: 'steady',
   breath: 'breath',
+  spark: 'spark',
+  embers: 'embers',
+  wildfire: 'wildfire',
   sweep: 'sweep',
   sneak: 'sneak',
   scavenger: 'scavenger',
@@ -138,6 +144,7 @@ export function cardEffect(id: CardId, level = 1): { main: string; tag: string }
   else if (c.gain) main = `+${v('gain')} Kraft`;
   else if (v('draw')) main = `${v('draw')} Karten`;
   else if (c.ally) main = `Hund ${v('allyDmg')} × ${c.ally.rounds}`;
+  else if (c.burn) main = `Brennt ${v('burn')}`;
   else if (c.stun) main = 'Betäubt';
   else if (c.blind) main = 'Blendet';
   else if (c.slow) main = 'Bremst';
@@ -151,7 +158,7 @@ export function cardEffect(id: CardId, level = 1): { main: string; tag: string }
   else if (c.target === 'far') tags.push('hinten');
   if (c.push) tags.push('stößt weg');
   if (c.stun && main !== 'Betäubt') tags.push('betäubt');
-  if (c.burn) tags.push('brennt');
+  if (c.burn && !c.passive && !main.startsWith('Brennt')) tags.push(`brennt ${v('burn')}`);
   if (c.blind && main !== 'Blendet') tags.push('blendet');
   if (c.slow && main !== 'Bremst') tags.push('bremst');
   if (c.silence) tags.push('still');

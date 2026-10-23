@@ -418,13 +418,20 @@ export function openPackPanel(app: App, host: HTMLElement, onClose: () => void, 
       const lines: Child[] = [];
       if (it.kind === 'once') {
         const id = k as CardId;
-        lines.push(`Im Rucksack: ${s.packCards[id] ?? 0} · Im Lager: ${s.stash[id] ?? 0}`);
-        lines.push('In jeden Kampf nimmst du bis zu 3 davon mit. Gespielt sind sie weg. Wirst du niedergeschlagen, sind die mitgenommenen weg.');
+        lines.push(`Dabei: ${s.packCards[id] ?? 0} · Im Lager: ${s.stash[id] ?? 0} · ${s.loadout.pouch.includes(id) ? 'In der Tasche' : 'Nicht in der Tasche'}`);
+        lines.push('Im Kampf liegen Einmal-Karten in der Tasche: 3 Sorten, je bis zu 3 Stück, jederzeit spielbar. Welche Sorten, wählst du zu Hause im Lager. Gespielt sind sie weg, und wirst du niedergeschlagen, ist weg, was du dabeihattest.');
         if (CARDS[id].craft) lines.push(['Am Werktisch zu bauen: ', costChips(CARDS[id].craft!)]);
       } else if (it.kind === 'skill') {
         const p = levelProgress(e.n);
         lines.push(`Stufe ${ROMAN[p.level]} · ${e.n} gefunden${p.next ? ` · Stufe ${ROMAN[p.level + 1]} ab ${p.next}` : ' · höchste Stufe'}`);
-        lines.push(CARDS[k as CardId].passive ? 'Wirkt von selbst, in jedem Kampf.' : 'Ist in jedem Kampf in deinem Stapel.');
+        const on = s.loadout.skills.includes(k as CardId);
+        lines.push(
+          on
+            ? CARDS[k as CardId].passive
+              ? 'Dabei: wirkt von selbst, in jedem Kampf.'
+              : 'Dabei: liegt in jedem Kampf in deinem Stapel.'
+            : 'Nicht dabei. Zu Hause im Lager wählst du 4 Fähigkeiten für den Kampf.',
+        );
       } else {
         const w = it.weapon!;
         const own = s.weapons.find((x) => x.kind === w);

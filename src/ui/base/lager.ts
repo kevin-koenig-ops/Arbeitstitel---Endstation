@@ -1,9 +1,11 @@
-// Das Lager zu Hause: hier liegt alles sicher. Rucksack auspacken,
-// Rohstoffe und Kram ansehen, Kram zum Werktisch geben, Sammelstücke aufstellen.
+// Das Lager zu Hause: hier liegt alles sicher. Rucksack auspacken, für den Kampf packen
+// (Tasche und Fähigkeiten), Rohstoffe und Kram ansehen, Kram zum Werktisch geben,
+// Sammelstücke aufstellen.
 
-import { COLLECTIBLE_ORDER, COLLECTIBLES, KRAM, KRAM_ORDER, MATERIAL_ORDER, RESOURCES } from '../../core/content';
-import { collectiblePlaced, hasWorkbench, kramCount, packCount, workbenchSlots } from '../../core/rules';
+import { CARDS, COLLECTIBLE_ORDER, COLLECTIBLES, KRAM, KRAM_ORDER, MATERIAL_ORDER, ONCE_CARDS, POUCH_SLOTS, RESOURCES, SKILL_CARDS, type CardId } from '../../core/content';
+import { collectiblePlaced, hasWorkbench, kramCount, onceOwned, packCount, skillOf, skillSlots, workbenchSlots } from '../../core/rules';
 import type { Action, CollectibleId, PlayerState } from '../../core/types';
+import { cardFace } from '../cards';
 import type { App } from '../app';
 import { clear, h, svgEl } from '../dom';
 import { icon, resIcon } from '../icons';
@@ -87,6 +89,9 @@ export function openLager(app: App, host: HTMLElement, opts: Opts): { el: HTMLEl
       );
     }
 
+    // --- Für den Kampf: Tasche und Fähigkeiten ---
+    loadoutSection(s);
+
     // --- Rohstoffe ---
     body.append(h('h3', { class: 'ws-sec' }, 'Rohstoffe'));
     body.append(
@@ -162,6 +167,62 @@ export function openLager(app: App, host: HTMLElement, opts: Opts): { el: HTMLEl
         ),
       );
     }
+  };
+
+  /** Antippen: mitnehmen oder hierlassen. Tasche 3 Sorten, Fähigkeiten 4. */
+  const loadoutSection = (s: PlayerState) => {
+    const lo = s.loadout;
+    const once = ONCE_CARDS.filter((id) => onceOwned(s, id) > 0 || lo.pouch.includes(id));
+    const skills = SKILL_CARDS.filter((id) => skillOf(s, id) > 0);
+    if (!once.length && !skills.length) return;
+    const slots = skillSlots(s);
+    const toggle = async (id: CardId) => {
+      const isOnce = CARDS[id].kind === 'once';
+      const list = isOnce ? lo.pouch : lo.skills;
+      const max = isOnce ? POUCH_SLOTS : slots;
+      const on = list.includes(id);
+      if (!on && list.length >= max) {
+        app.toast(isOnce ? `Die Tasche ist voll (${max} Sorten). Nimm erst eine heraus.` : `Alle ${max} Plätze sind belegt. Nimm erst eine Fähigkeit heraus.`, 'warn');
+        return;
+      }
+      const next = on ? list.filter((x) => x !== id) : [...list, id];
+      if (await dispatch(isOnce ? { type: 'setLoadout', pouch: next } : { type: 'setLoadout', skills: next })) render();
+    };
+    const grid = (ids: CardId[], chosen: CardId[]) =>
+      h(
+        'div',
+        { class: 'cbook-grid loadout-grid' },
+        ids.map((id) => {
+          const on = chosen.includes(id);
+          const isOnce = CARDS[id].kind === 'once';
+          return h(
+            'button',
+            {
+              class: `cbook-cell loadout-cell${on ? ' on' : ''}`,
+              type: 'button',
+              'aria-pressed': String(on),
+              'aria-label': `${CARDS[id].name}: ${on ? 'dabei' : 'bleibt hier'}`,
+              title: CARDS[id].desc,
+              onclick: () => void toggle(id),
+            },
+            cardFace(id, isOnce ? { count: onceOwned(s, id) } : { level: skillOf(s, id) }),
+            h('span', { class: 'loadout-mark' }, on ? 'Dabei' : 'Hier'),
+          );
+        }),
+      );
+    body.append(
+      h('h3', { class: 'ws-sec' }, 'Für den Kampf', h('small', null, 'Antippen: mitnehmen oder hierlassen')),
+    );
+    if (once.length)
+      body.append(
+        h('h4', { class: 'loadout-head' }, 'Tasche', h('small', null, `${lo.pouch.length} von ${POUCH_SLOTS} Sorten, je bis zu 3 Stück`)),
+        grid(once, lo.pouch),
+      );
+    if (skills.length)
+      body.append(
+        h('h4', { class: 'loadout-head' }, 'Fähigkeiten', h('small', null, `${lo.skills.length} von ${slots} Plätzen`)),
+        grid(skills, lo.skills),
+      );
   };
 
   const close = () => {

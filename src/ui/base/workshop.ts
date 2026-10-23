@@ -227,7 +227,7 @@ export function openWorkshop(app: App, host: HTMLElement, opts: Opts): { el: HTM
                 disabled: !canAfford(s.inventory, def.craft!),
                 onclick: async () => {
                   const res = await dispatch({ type: 'craftCard', card: id });
-                  if (res?.events[0].type === 'crafted') app.toast(`${def.name} gebaut. Bis zu 3 davon packst du automatisch ein.`, 'good');
+                  if (res?.events[0].type === 'crafted') app.toast(`${def.name} gebaut. Ist die Sorte in deiner Tasche, packst du bis zu 3 ein.`, 'good');
                   render();
                 },
               },

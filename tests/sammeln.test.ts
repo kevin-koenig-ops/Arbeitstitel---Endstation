@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { cellFree, type PlotIndex } from '../src/core/building';
-import { CARDS, skillLevel } from '../src/core/content';
-import { applyAction, cardKit, createPlayer, plotIndexOf, SCHEMA_VERSION, skillOf } from '../src/core/rules';
+import { CARDS, skillLevel, SKILL_SLOTS } from '../src/core/content';
+import { applyAction, cardKit, createPlayer, plotIndexOf, pouchKit, SCHEMA_VERSION, skillOf } from '../src/core/rules';
 import { migrate } from '../src/core/save';
 import { SIGHT, sightingById, sightingsNear, type Sighting } from '../src/core/sightings';
 import { gridSpotsAround } from '../src/core/world';
@@ -59,6 +59,9 @@ describe('Sammelkarten', () => {
     const s = createPlayer('p', hero, T0);
     s.book.counter = { n: 4, at: T0 };
     expect(skillOf(s, 'counter')).toBe(2);
+    // Nur was zu Hause gewählt ist, geht mit in den Kampf
+    expect(cardKit(s, T0).skills).toEqual({});
+    s.loadout.skills = ['counter'];
     expect(cardKit(s, T0).skills).toEqual({ counter: 2 });
   });
 
@@ -101,6 +104,7 @@ describe('Sammelkarten', () => {
     const spot = gridSpotsAround(SEED, HOME, 400, T0)[0];
     let s = createPlayer('p', hero, T0);
     s.book.laststand = { n: 1, at: T0 };
+    s.loadout.skills = ['laststand'];
     expect(cardKit(s, T0).lastStand).toBe(true);
     s.combat = { spot, enemy: 'walker', group: ['walker'], window: 0 };
     s = act(s, { type: 'battleResult', outcome: 'fled', health: 1, kills: 0, usedMedicine: 0, lastStand: true }).state;
@@ -116,6 +120,78 @@ describe('Sammelkarten', () => {
     expect(m.schema).toBe(SCHEMA_VERSION);
     expect(m.book).toEqual({});
     expect(m.pity).toEqual({ rare: 0, legendary: 0 });
+    expect(m.loadout).toEqual({ pouch: [], skills: [] });
+  });
+
+  it('Spielstand 16: Tasche und Fähigkeiten werden sinnvoll vorbelegt', () => {
+    const old = JSON.parse(JSON.stringify(createPlayer('p', hero, T0))) as Record<string, unknown>;
+    old.schema = 16;
+    delete old.loadout;
+    old.packCards = { molotov: 3, pepper: 1 };
+    old.stash = { smoke: 5, lure: 2 };
+    old.book = { molotov: { n: 3, at: T0 }, pepper: { n: 1, at: T0 }, smoke: { n: 5, at: T0 }, lure: { n: 2, at: T0 }, counter: { n: 4, at: T0 }, steady: { n: 1, at: T0 }, breath: { n: 1, at: T0 }, radio: { n: 1, at: T0 }, laststand: { n: 1, at: T0 } };
+    const m = migrate(old)!;
+    expect(m.loadout.pouch).toEqual(['smoke', 'molotov', 'lure']);
+    expect(m.loadout.skills.length).toBe(SKILL_SLOTS);
+    expect(m.loadout.skills.slice(0, 3)).toEqual(['laststand', 'radio', 'counter']);
+  });
+});
+
+describe('Für den Kampf packen (Tasche und Fähigkeiten)', () => {
+  it('Neues kommt von selbst in einen freien Platz', () => {
+    let s = createPlayer('p', hero, T0);
+    for (const card of ['molotov', 'smoke', 'pepper', 'grenade'] as const) s = act(s, { type: 'testGift', card }).state;
+    expect(s.loadout.pouch).toEqual(['molotov', 'smoke', 'pepper']);
+    for (const card of ['counter', 'steady', 'breath', 'spark', 'radio'] as const) s = act(s, { type: 'testGift', card }).state;
+    expect(s.loadout.skills).toEqual(['counter', 'steady', 'breath', 'spark']);
+    // Unterwegs Gefundenes füllt nur freie Taschenplätze
+    expect(Object.keys(pouchKit(s))).toEqual(['molotov', 'smoke', 'pepper']);
+    s.packCards.molotov = 0;
+    expect(Object.keys(pouchKit(s))).toEqual(['smoke', 'pepper', 'grenade']);
+  });
+
+  it('wählen: höchstens 3 Sorten und 4 Fähigkeiten, nur was man hat', () => {
+    let s = createPlayer('p', hero, T0);
+    for (const card of ['molotov', 'smoke', 'pepper', 'grenade', 'counter', 'steady'] as const) s = act(s, { type: 'testGift', card }).state;
+    expect(ev(s, { type: 'setLoadout', pouch: ['molotov', 'smoke', 'pepper', 'grenade'] })).toEqual({ type: 'rejected', reason: 'too_many' });
+    expect(ev(s, { type: 'setLoadout', pouch: ['flare'] })).toEqual({ type: 'rejected', reason: 'not_found' });
+    expect(ev(s, { type: 'setLoadout', skills: ['radio'] })).toEqual({ type: 'rejected', reason: 'not_found' });
+    expect(ev(s, { type: 'setLoadout', skills: ['molotov'] })).toEqual({ type: 'rejected', reason: 'not_found' });
+    const r = act(s, { type: 'setLoadout', pouch: ['grenade', 'molotov'], skills: ['steady'] });
+    expect(r.events[0]).toEqual({ type: 'loadoutSet', pouch: ['grenade', 'molotov'], skills: ['steady'] });
+    // Was nicht in die Tasche gehört, liegt jetzt im Lager
+    expect(r.state.packCards).toEqual({ grenade: 1, molotov: 1 });
+    expect(r.state.stash).toEqual({ smoke: 1, pepper: 1 });
+    expect(cardKit(r.state, T0).skills).toEqual({ steady: 1 });
+  });
+
+  it('Auspacken: Sorten außerhalb der Tasche kommen ins Lager, die Tasche wird aufgefüllt', () => {
+    let s = withWorkbench();
+    s = act(s, { type: 'setLoadout', pouch: [] }).state;
+    s.book.molotov = { n: 5, at: T0 };
+    s.book.pepper = { n: 1, at: T0 };
+    s.stash = { molotov: 4 };
+    s.loadout.pouch = ['molotov'];
+    s.packCards = { pepper: 1, molotov: 1 };
+    const r = act(s, { type: 'unpack' });
+    expect(r.events[0]).toMatchObject({ type: 'unpacked' });
+    expect(r.state.packCards).toEqual({ molotov: 3 });
+    expect(r.state.stash).toEqual({ molotov: 2, pepper: 1 });
+  });
+
+  it('Plündererin wirkt nur, wenn man sie mitnimmt', () => {
+    const spot = gridSpotsAround(SEED, HOME, 400, T0)[0];
+    const fight = (st: PlayerState) => {
+      const x = JSON.parse(JSON.stringify(st)) as PlayerState;
+      x.combat = { spot, enemy: 'walker', group: ['walker'], window: 0, ambush: true };
+      const e = act(x, { type: 'battleResult', outcome: 'won', health: 8, kills: 1, usedMedicine: 0 }).events.find((y) => y.type === 'loot') as Extract<GameEvent, { type: 'loot' }>;
+      return Object.values(e.items).reduce((a, b) => a + (b ?? 0), 0);
+    };
+    const s = createPlayer('p', hero, T0);
+    s.book.scavenger = { n: 1, at: T0 };
+    const without = fight(s);
+    s.loadout.skills = ['scavenger'];
+    expect(fight(s)).toBe(without + 1);
   });
 });
 

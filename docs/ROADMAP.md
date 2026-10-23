@@ -97,8 +97,10 @@ Das Kartensystem wird zum Rückgrat. Erst mehr Karten, dann längere Kämpfe.
 ## Als Nächstes (Stand 22.10. spät)
 
 1. **Charakter-Level mit Aufnähern** (Plan steht im Doc, Reiter „Level & Freischalten“; entschieden: Aufnäher, Werktisch ab Stufe 2, Freischalten zu Hause an der Pinnwand)
-2. **Kartenplan:** rund 60 bis 80 Karten für Version 1.0, ausgewogen nach dem Vorbild von Slay the Spire (in Arbeit)
+2. **Kartenplan:** 75 Karten für Version 1.0 in fünf Spielstilen, ausgewogen nach dem Vorbild von Slay the Spire (Plan im Doc, Reiter „Kartenplan“). Als Nächstes der Stil Fallen und Abstand, dann Schwung (mit Kettensäge), Schutz, Rudel
 3. Danach: eine Woche nichts Neues, draußen testen, Akku und Tempo, Einstieg schleifen
+
+Erledigt am 23.10.: Kartenplan mit Kevin entschieden; Tasche für Einmal-Karten und 4 Fähigkeiten-Plätze (zu Hause im Lager wählen); Steinwurf macht Heuler still, Axthieb 6 und betäubt, Rundumschlag 1 Kraft, Nagelpistole mit Salve; Feuer-Karten Zunder, Ölkanister, Funkenschlag, Glut, Lauffeuer (Bilder fehlen noch, Prompts im Doc).
 
 Erledigt am 22.10. spät: lange Wege über Straßen, Zentrieren zoomt nah ran, Nebel beim Herauszoomen mit gemalter Textur, bekannte Bauwerke in 3D (Kirche mit Turm, Friedhof, Polizei, Feuerwehr, Rathaus, Schule, Kita, Krankenhaus, Bücherei, Museum, Bahnhof, Post), neues Startbild.
 

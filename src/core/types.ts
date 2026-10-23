@@ -539,7 +539,7 @@ export interface PlayerState {
   pack: Partial<Inventory>;
   /** Kram im Rucksack. */
   packKram: KramBag;
-  /** Einmal-Karten im Rucksack (Brandflasche, Granate …): höchstens 3 je Sorte kommen in den Kampf mit. */
+  /** Einmal-Karten, die du dabeihast (Brandflasche, Granate …). In den Kampf kommt die Tasche: 3 Sorten, je bis zu 3. */
   packCards: Partial<Record<CardId, number>>;
   /** Einmal-Karten im Lager zu Hause. */
   stash: Partial<Record<CardId, number>>;
@@ -549,6 +549,8 @@ export interface PlayerState {
   sightings: Record<string, number>;
   /** Glück mit Netz: Sichtungen seit dem letzten seltenen bzw. legendären Fund. */
   pity: { rare: number; legendary: number };
+  /** Zu Hause gewählt: welche Sorten in die Tasche kommen (3) und welche Fähigkeiten mitgehen (4). */
+  loadout: { pouch: CardId[]; skills: CardId[] };
   /** Wann „Letztes Gefecht“ zuletzt gerettet hat (einmal am Tag). */
   lastStandAt?: number;
   /** Gefundene Sammelstücke: id -> Fundzeitpunkt. */
@@ -694,6 +696,8 @@ export type Action =
   | { type: 'claimSighting'; id: string; candidate: number; at: LatLon; accuracyM: number }
   /** Nur zum Testen: eine Sammelkarte oder Waffe bekommen. */
   | { type: 'testGift'; card?: CardId; weapon?: WeaponId }
+  /** Zu Hause: Tasche und Fähigkeiten für den Kampf wählen. */
+  | { type: 'setLoadout'; pouch?: CardId[]; skills?: CardId[] }
   | { type: 'craft'; weapon: WeaponId }
   | { type: 'heal' }
   /** Ein Teil anziehen (ersetzt, was an diesem Platz war). */
@@ -758,6 +762,7 @@ export type RejectReason =
   | 'radio_quiet'
   | 'no_stove'
   | 'no_gear'
+  | 'too_many'
   | 'zone_closed'
   | 'need_filter'
   | 'gone'
@@ -788,6 +793,7 @@ export type GameEvent =
   | { type: 'crafted'; weapon?: WeaponId; card?: CardId }
   | { type: 'sightingClaimed'; id: string; card?: CardId; weapon?: WeaponId; repaired?: boolean; rarity: CardRarity; shiny: boolean; level?: number; levelUp?: boolean; pity?: boolean }
   | { type: 'gifted'; card?: CardId; weapon?: WeaponId; repaired?: boolean; level?: number; levelUp?: boolean }
+  | { type: 'loadoutSet'; pouch: CardId[]; skills: CardId[] }
   | { type: 'healed'; amount: number }
   | { type: 'equipped'; slot: GearSlot; gear: GearId | null }
   | { type: 'dismantleQueued'; kram: KramId; endsAt: number }

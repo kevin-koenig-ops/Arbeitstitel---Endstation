@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CARDS, FOE_TACTICS, START_WEAPONS, TACTICS, WEAPONS } from '../src/core/content';
-import { aliveFoes, createTactics, deckFor, endTurn, flee, intentOf, playCard, targetsFor, type CardKit, type TacticsState } from '../src/core/tactics';
+import { aliveFoes, createTactics, deckFor, endTurn, flee, intentOf, playCard, playPouch, pouchFor, targetsFor, type CardKit, type TacticsState } from '../src/core/tactics';
 import type { FoeKind, Weapon } from '../src/core/types';
 
 const start = (group: FoeKind[], o: { seed?: string; weapons?: Weapon[]; medicine?: number; health?: number; kit?: CardKit; opening?: 'surprise' | 'spotted' } = {}) =>
@@ -213,13 +213,27 @@ describe('Bleicher Wächter', () => {
   });
 
   describe('Sammelkarten', () => {
-    it('Einmal-Karten kommen ins Deck (höchstens 3 je Sorte) und sind nach dem Ausspielen weg', () => {
-      const deck = deckFor(START_WEAPONS, 0, { once: { molotov: 5, grenade: 1 }, skills: { counter: 1, sneak: 2 } });
-      expect(deck.filter((c) => c === 'molotov').length).toBe(3);
-      expect(deck.filter((c) => c === 'grenade').length).toBe(1);
+    it('Einmal-Karten liegen in der Tasche (3 Sorten, je höchstens 3), nicht im Stapel', () => {
+      const kit: CardKit = { pouch: { molotov: 5, grenade: 1, smoke: 2, pepper: 4 }, skills: { counter: 1, sneak: 2 } };
+      const deck = deckFor(START_WEAPONS, 0, kit);
+      expect(deck.some((c) => CARDS[c].kind === 'once')).toBe(false);
       // Aktive Fähigkeit einmal im Deck, die passive nicht
       expect(deck.filter((c) => c === 'counter').length).toBe(1);
       expect(deck.includes('sneak')).toBe(false);
+      expect(pouchFor(kit)).toEqual({ molotov: 3, grenade: 1, smoke: 2 });
+      // Aus der Tasche spielen: jederzeit, danach weg
+      const t = withHand(start(['walker', 'walker'], { kit: { pouch: { grenade: 1, molotov: 2 } } }));
+      t.energy = 3;
+      expect(playPouch(t, 'smoke')).toEqual([]);
+      expect(playPouch(t, 'grenade')[0]).toMatchObject({ type: 'play', card: 'grenade' });
+      expect(t.pouch.grenade).toBe(0);
+      expect(t.used.grenade).toBe(1);
+      expect(t.energy).toBe(1);
+      expect(playPouch(t, 'grenade')).toEqual([]);
+      // Zu wenig Kraft: bleibt in der Tasche
+      t.energy = 0;
+      expect(playPouch(t, 'molotov')[0]).toEqual({ type: 'denied', reason: 'energy' });
+      expect(t.pouch.molotov).toBe(2);
       const st = withHand(start(['walker', 'walker']), 'grenade');
       st.energy = 3;
       playCard(st, 0);
@@ -317,6 +331,82 @@ describe('Bleicher Wächter', () => {
       expect(playCard(st, 0, t)[0]).toEqual({ type: 'denied', reason: 'limit' });
       const hits = playCard(st, 1, aliveFoes(st)[0].id).filter((e) => e.type === 'hit');
       expect(hits.length).toBe(2);
+    });
+
+    it('Kartenplan: Steinwurf macht still, Axthieb betäubt, Rundumschlag kostet 1, Salve trifft alle', () => {
+      // Steinwurf: Der Heuler ruft in seiner nächsten Runde niemanden
+      const st = withHand(start(['walker', 'screamer']), 'throw');
+      const sc = aliveFoes(st).find((f) => f.kind === 'screamer')!;
+      sc.intent = { kind: 'howl' };
+      sc.step = FOE_TACTICS.screamer.pattern.findIndex((p) => p.kind === 'howl');
+      const ev = playCard(st, 0, sc.id);
+      expect(ev.some((e) => e.type === 'status' && e.status === 'silence')).toBe(true);
+      expect(sc.silence).toBe(1);
+      st.hand = [];
+      expect(endTurn(st).some((e) => e.type === 'summon')).toBe(false);
+      // Steinwurf auf einen Wandler: kein „Verstummt“
+      const st2 = withHand(start(['walker']), 'throw');
+      expect(playCard(st2, 0, aliveFoes(st2)[0].id).some((e) => e.type === 'status')).toBe(false);
+      expect(CARDS.chop.dmg).toBe(6);
+      expect(CARDS.chop.stun).toBe(true);
+      expect(CARDS.sweep.cost).toBe(1);
+      // Salve
+      const st3 = withHand(start(['walker', 'walker', 'walker'], { weapons: [{ kind: 'nailgun', dur: 10 }] }), 'salvo');
+      const hits = playCard(st3, 0).filter((e) => e.type === 'hit');
+      expect(hits.length).toBe(3);
+      expect(st3.weaponDur.nailgun).toBe(9);
+    });
+
+    it('Feuer: Zunder trifft auch hinten, Funkenschlag wird mit der Stufe heißer, Glut verlängert', () => {
+      const st = withHand(start(['walker', 'walker', 'walker']), 'spark');
+      const far = aliveFoes(st).find((f) => f.row === 'far')!;
+      st.pouch = { tinder: 1 };
+      playPouch(st, 'tinder', far.id);
+      expect(far.burn).toBe(2);
+      const near = aliveFoes(st).find((f) => f.row === 'near')!;
+      playCard(st, 0, near.id);
+      expect(near.burn).toBe(2);
+      // Stufe III und Glut II: 4 + 2
+      const hot = withHand(start(['brute'], { kit: { skills: { spark: 3, embers: 2 } } }), 'spark');
+      const b = aliveFoes(hot)[0];
+      b.row = 'near';
+      playCard(hot, 0, b.id);
+      expect(b.burn).toBe(6);
+      // Ölkanister: alle, vorne und hinten
+      const oil = start(['walker', 'walker', 'walker'], { kit: { pouch: { oilcan: 1 } } });
+      playPouch(oil, 'oilcan');
+      expect(aliveFoes(oil).every((f) => f.burn === 2)).toBe(true);
+    });
+
+    it('Lauffeuer: Fällt ein brennender Gegner, fängt der nächste Feuer', () => {
+      const st = withHand(start(['walker', 'crawler'], { kit: { skills: { wildfire: 1 } } }), 'pry');
+      const [a, b] = aliveFoes(st);
+      a.row = 'near';
+      a.burn = 2;
+      a.hp = 2;
+      b.burn = 0;
+      const ev = playCard(st, 0, a.id);
+      expect(a.hp).toBe(0);
+      expect(ev.some((e) => e.type === 'spread' && e.from === a.id && e.id === b.id)).toBe(true);
+      expect(b.burn).toBe(2);
+      // Auch wenn das Feuer selbst ihn erledigt
+      const st2 = start(['walker', 'crawler'], { kit: { skills: { wildfire: 2 } } });
+      const [c, d] = aliveFoes(st2);
+      c.burn = 1;
+      c.hp = 1;
+      d.burn = 0;
+      st2.hand = [];
+      const ev2 = endTurn(st2);
+      expect(ev2.some((e) => e.type === 'spread' && e.id === d.id)).toBe(true);
+      expect(d.burn).toBeGreaterThanOrEqual(2);
+      // Ohne Lauffeuer: nichts
+      const st3 = withHand(start(['walker', 'crawler']), 'pry');
+      const [e, f] = aliveFoes(st3);
+      e.row = 'near';
+      e.burn = 2;
+      e.hp = 2;
+      playCard(st3, 0, e.id);
+      expect(f.burn).toBe(0);
     });
   });
 });
