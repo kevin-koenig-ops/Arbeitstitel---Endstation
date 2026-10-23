@@ -78,7 +78,6 @@ const GROUPS: FoeKind[][] = [
   ['shieldbearer', 'archer', 'thief'],
   ['scrapper'],
   ['drover', 'walker'],
-  ['drover', 'walker', 'walker'],
   ['sergeant', 'deserter'],
   ['sergeant', 'deserter', 'deserter'],
   ['deserter', 'deserter'],
