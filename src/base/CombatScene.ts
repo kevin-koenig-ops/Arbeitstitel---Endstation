@@ -77,6 +77,16 @@ const CAM = { x: 0.6, y: 3.4, back: 11.5, lookY: 1.1, lookZ: -0.2, fov: 34, fovT
  */
 const SHOULDER_CAM = { x: PLAYER.x - 3.5, y: 2.2, z: PLAYER.z + 0.8, lookX: PLAYER.x + 6, lookY: 0.95, lookZ: PLAYER.z + 1.7, fov: 42, fovTall: 66, mid: 1.3, nearX: 3.8, nearGap: 3.1, farX: 7.8 };
 
+/**
+ * Gemaltes Bühnenbild (seit 23.10.): eine Bildwand hinter der Straße. Der Horizont im Bild liegt
+ * etwa auf Augenhöhe der Kamera (gut ein Viertel von unten), unten ein Streifen Gras und Büsche,
+ * der in den 3D-Boden übergeht. Tönung je Tageszeit, weil das Bild selbst kein Licht bekommt.
+ */
+const BACKDROP = { z: -16, width: 42, bottom: -0.5 };
+const BACKDROP_TINT: Record<DayPhase, string> = { day: '#ece6da', dusk: '#c99a84', night: '#46506e' };
+/** Mit Bühnenbild: Dunst in der Farbe des Bildes statt dunkler Leere (sonst gibt es eine harte Kante). */
+const BACKDROP_FOG: Record<DayPhase, [string, number, number]> = { day: ['#8c8670', 16, 70], dusk: ['#5e4640', 16, 64], night: ['#161a26', 14, 54] };
+
 export class TacticsScene {
   readonly renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
@@ -101,6 +111,9 @@ export class TacticsScene {
   private selected: number | null = null;
   /** Anvisierter Gegner: Karten treffen ihn, bis man wechselt. */
   private locked: number | null = null;
+  /** Gemaltes Bühnenbild, sobald geladen. */
+  private backdrop: THREE.Mesh | null = null;
+  private disposed = false;
 
   constructor(
     private host: HTMLElement,
@@ -108,8 +121,11 @@ export class TacticsScene {
     weapon: WeaponId | null,
     phase: DayPhase,
     view: 'side' | 'shoulder' = 'side',
+    /** Gemaltes Bühnenbild (URL) oder null für die 3D-Kulisse. Im Schulterblick nicht. */
+    backdrop: string | null = null,
   ) {
     this.shoulder = view === 'shoulder';
+    const painted = !!backdrop && !this.shoulder;
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(Math.min(1.75, window.devicePixelRatio || 1));
     this.renderer.shadowMap.enabled = true;
@@ -120,8 +136,9 @@ export class TacticsScene {
     host.append(this.renderer.domElement);
 
     const p = PHASES[phase];
-    this.scene.background = new THREE.Color(p.fog);
-    this.scene.fog = new THREE.Fog(p.fog, 12, 34);
+    const fog: [string, number, number] = painted ? BACKDROP_FOG[phase] : [p.fog, 12, 34];
+    this.scene.background = new THREE.Color(fog[0]);
+    this.scene.fog = new THREE.Fog(fog[0], fog[1], fog[2]);
     this.hemi.color.set(p.hemi[0]);
     this.hemi.groundColor.set(p.hemi[1]);
     this.hemi.intensity = p.hemi[2];
@@ -141,7 +158,8 @@ export class TacticsScene {
     this.renderer.toneMappingExposure = p.exposure;
     this.lantern.intensity = phase === 'night' ? 4 : phase === 'dusk' ? 1.5 : 0;
 
-    this.buildArena();
+    this.buildArena(painted);
+    if (painted && backdrop) this.loadBackdrop(backdrop, phase);
 
     this.player = new CharacterRig(look);
     this.player.holdWeapon(weapon);
@@ -170,7 +188,25 @@ export class TacticsScene {
 
   // --- Schauplatz ----------------------------------------------------------------------------
 
-  private buildArena() {
+  /** Das gemalte Bild als Wand hinter der Straße (Seitenverhältnis aus dem Bild). */
+  private loadBackdrop(url: string, phase: DayPhase) {
+    new THREE.TextureLoader().load(url, (tex) => {
+      if (this.disposed) return tex.dispose();
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 4;
+      const img = tex.image as { width: number; height: number };
+      const h = BACKDROP.width * (img.height / Math.max(1, img.width));
+      // Ungetönt und ohne Dunst: das Bild hat sein Licht schon, die Tönung macht Abend und Nacht
+      const m = new THREE.MeshBasicMaterial({ map: tex, color: BACKDROP_TINT[phase], fog: false, toneMapped: false });
+      const wall = new THREE.Mesh(new THREE.PlaneGeometry(BACKDROP.width, h), m);
+      wall.position.set(CAM.x, BACKDROP.bottom + h / 2, BACKDROP.z);
+      wall.renderOrder = -1;
+      this.backdrop = wall;
+      this.scene.add(wall);
+    });
+  }
+
+  private buildArena(painted = false) {
     // Boden: Straße von links nach rechts, dahinter Gehweg und Gras, alles leicht unregelmäßig getönt
     const pos: number[] = [];
     const col: number[] = [];
@@ -232,8 +268,12 @@ export class TacticsScene {
       [5, -10, 6],
     ])
       put(i % 2 ? buildTree('scraggly', i, 1.1) : buildBush(i, 1.4), x, z, i);
-    // Häuserruinen hinten
-    for (let i = 0; i < 7; i++) {
+    // Mit Bühnenbild: eine Reihe Büsche verdeckt die Kante zwischen Boden und Bild
+    if (painted)
+      for (let x = -24, i = 0; x < 26; x += 2.2 + (i % 3) * 0.6, i++)
+        put(i % 4 === 3 ? buildTree('scraggly', i + 7, 0.9) : buildBush(i + 11, 1.3 + (i % 3) * 0.35), x, BACKDROP.z + 0.9 + (i % 2) * 0.6, i);
+    // Häuser hinten (nur ohne Bühnenbild)
+    for (let i = 0; i < (painted ? 0 : 7); i++) {
       const ruin = new THREE.Group();
       const w = 6 + (i % 3) * 2;
       const h = 5 + ((i * 7) % 5) * 1.6;
@@ -604,6 +644,13 @@ export class TacticsScene {
   }
 
   dispose() {
+    this.disposed = true;
+    if (this.backdrop) {
+      this.backdrop.geometry.dispose();
+      const m = this.backdrop.material as THREE.MeshBasicMaterial;
+      m.map?.dispose();
+      m.dispose();
+    }
     this.ro.disconnect();
     for (const v of this.foes.values()) v.rig.dispose();
     this.player.dispose();

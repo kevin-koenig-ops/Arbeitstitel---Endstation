@@ -12,6 +12,7 @@ import { AMMO, CARDS, DEVICE_NAMES, styleOf, CLIMATE, FOE_RULES, FOE_TACTICS, KR
 import { isCold, isHot } from '../../core/terrain';
 import { seasonOf } from '../../services/settings';
 import { currentRegion } from './worldState';
+import { backdropUrl } from '../../base/combatBackdrops';
 import { gunAmmoText } from './chips';
 import { aliveFoes, canHowl, createTactics, endTurn, flee, fleeCost, foeById, giveMedicine, lacksMedicine, mercyTarget, playable, playCard, playPouch, targetsFor, type Intent, type TacticsState, type TEvent, type TFoe } from '../../core/tactics';
 import { battleWeapons, bestWeapon, cardKit, currentHealth } from '../../core/rules';
@@ -1393,7 +1394,7 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
   void import('../../base/CombatScene')
     .then((mod) => {
       if (!el.isConnected) return;
-      scene = new mod.TacticsScene(stage, s0.character.look, weapon, phase, app.settings.get().battleView);
+      scene = new mod.TacticsScene(stage, s0.character.look, weapon, phase, app.settings.get().battleView, backdropUrl(region, seasonOf(app.settings.get())));
       scene.setFoes(shownList(), shownList().map((f) => f.id));
       try {
         if (localStorage.getItem('endstation.debug')) {
