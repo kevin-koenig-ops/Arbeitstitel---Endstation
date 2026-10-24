@@ -62,6 +62,8 @@ const MAT = {
   playground: { tex: 'pat-playground', worldM: 10, edge: 'soft' },
   gardens: { tex: 'pat-gardens', worldM: 18, edge: 'wild' },
   townLawn: { tex: 'pat-grass', worldM: 10, edge: 'soft' },
+  wild: { tex: 'pat-wild', worldM: 12, edge: 'wild' },
+  asphalt: { tex: 'pat-asphalt', worldM: 10, edge: 'soft' },
   commercial: { tex: 'pat-commercial', worldM: 10, edge: 'soft' },
   industrial: { tex: 'pat-industrial', worldM: 12, edge: 'soft' },
   railyard: { tex: 'pat-railyard', worldM: 12, edge: 'soft' },
@@ -85,6 +87,10 @@ const WALK_M = 1.5;
 const DRIVE = { widthM: 3, maxM: 30 };
 /** Gärten im Ort: Flecken von etwa dieser Größe (Meter), dazwischen Rasen. Anteil grob 1 - cut. */
 const GARDEN = { scaleM: 24, cut: 0.5 };
+/** Verwilderter Rasen im Ort: Flecken dieser Größe (Meter), Anteil grob 1 - cut. */
+const WILD = { scaleM: 17, cut: 0.46 };
+/** In dichten Kernen: große Asphaltflächen statt Pflaster, Flecken dieser Größe (Meter). */
+const ASPHALT = { scaleM: 55, cut: 0.52 };
 /** Feinheit der Masken (Meter je Zelle, höchstens). */
 const CELL_M = 0.6;
 /** So weit über die Kachel hinaus zählen Häuser für die Dichte (Meter). */
@@ -353,6 +359,20 @@ export class GroundPainter {
       return max;
     };
 
+    /** Nur Flecken einer Fläche behalten (Rauschen in Weltmetern, Größe scaleM, Anteil grob 1 - cut). */
+    const blobs = (a: Float32Array, scaleM: number, cut: number, dx: number, dy: number): Float32Array => {
+      const k = 1 / scaleM;
+      for (let j = 0; j < n; j++) {
+        const yy = wy(j) * k + dy;
+        for (let i = 0; i < n; i++) {
+          const idx = j * n + i;
+          if (a[idx] <= 0) continue;
+          a[idx] *= Math.min(1, Math.max(0, (fbm(wx(i) * k + dx, yy) - cut) / 0.14));
+        }
+      }
+      return a;
+    };
+
     // --- Malen --------------------------------------------------------------------------------
     const main = this.mainCtx;
     const lay = this.layerCtx;
@@ -414,18 +434,9 @@ export class GroundPainter {
       if (id === 'gardens') {
         // Wohngebiet: Rasen als Grund, darauf Gartenflecken mit Büschen und Beeten (nicht alles grün zugewuchert)
         paintMat('townLawn', fillPolys(list));
-        const g = fillPolys(list);
-        const k = 1 / GARDEN.scaleM;
-        for (let j = 0; j < n; j++) {
-          const yy = wy(j) * k;
-          for (let i = 0; i < n; i++) {
-            const idx = j * n + i;
-            if (g[idx] <= 0) continue;
-            const t = Math.min(1, Math.max(0, (fbm(wx(i) * k + 31.7, yy + 5.3) - GARDEN.cut) / 0.14));
-            g[idx] *= t;
-          }
-        }
-        paintMat('gardens', g);
+        // Verwilderte Flecken und Gärten: je eigene Flecken im Rasen
+        paintMat('wild', blobs(fillPolys(list), WILD.scaleM, WILD.cut, 71.3, 12.9));
+        paintMat('gardens', blobs(fillPolys(list), GARDEN.scaleM, GARDEN.cut, 31.7, 5.3));
         continue;
       }
       paintMat(id, fillPolys(list));
@@ -443,6 +454,8 @@ export class GroundPainter {
         core[i] = Math.max(town[i], Math.min(1, dens[i] * 4)) * t;
       }
       paintMat('paved', core);
+      // Große Flächen im Kern: mal Asphalt, mal Pflaster
+      paintMat('asphalt', blobs(core, ASPHALT.scaleM, ASPHALT.cut, 3.1, 47.7));
       if (buildings.length && z >= 16) {
         // Straßen als Strecken in Bildpunkten (für die Einfahrten)
         const segs: number[][] = [];

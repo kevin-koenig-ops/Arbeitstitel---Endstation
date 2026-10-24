@@ -60,6 +60,10 @@ const fileUrl = (name: string): string | undefined => ALL_FILES[`../assets/textu
 // Eigenes Pflaster-/Asphaltbild für Städte, sobald es da ist (pflaster.webp)
 if (fileUrl('pflaster')) IMAGES['pat-paved'] = { url: fileUrl('pflaster')!, pr: 3 };
 if (fileUrl('kies')) IMAGES['pat-gravel'] = { url: fileUrl('kies')!, pr: 2 };
+// Für den selbst gemalten Boden (24.10.): Asphalt für große Plätze, verwilderter Rasen im Wohngebiet.
+// Bis Kevins Bilder da sind, stehen Pflaster und Rasen dafür (dann sieht man keinen Unterschied).
+IMAGES['pat-asphalt'] = { url: fileUrl('asphalt') ?? IMAGES['pat-paved'].url, pr: 3 };
+IMAGES['pat-wild'] = { url: fileUrl('wildwuchs') ?? rasen, pr: 2 };
 const SEASON_NAME: Record<Season, string> = { spring: 'fruehling', summer: 'sommer', autumn: 'herbst', winter: 'winter' };
 /** Muster mit eigenen Bildern je Jahreszeit, z. B. wiese-herbst.webp. Fehlt eins, bleibt das normale. */
 const SEASONAL: Record<string, string> = {
@@ -71,6 +75,8 @@ const SEASONAL: Record<string, string> = {
   'pat-rubble': 'schutt',
   'pat-yard': 'hof',
   'pat-paved': 'pflaster',
+  'pat-asphalt': 'asphalt',
+  'pat-wild': 'wildwuchs',
   'pat-sand': 'sand',
   'pat-gravel': 'kies',
   'pat-rock': 'fels',
