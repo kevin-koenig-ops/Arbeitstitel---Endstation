@@ -10,7 +10,7 @@ import { Assembler, bake, GLOW, LIT } from './bake';
 import { CharacterRig, type CharacterAction } from './character';
 import { box, buildRubble, cyl, mat } from './models';
 import { buildBush, buildCarWreck, buildTree } from './structures';
-import type { Backdrop } from './combatBackdrops';
+import type { Backdrop, Floor } from './combatBackdrops';
 import { ZombieRig } from './zombie';
 
 const PHASES: Record<DayPhase, { hemi: [string, string, number]; sun: [string, number]; fog: string; exposure: number }> = {
@@ -159,7 +159,7 @@ export class TacticsScene {
     this.renderer.toneMappingExposure = p.exposure;
     this.lantern.intensity = phase === 'night' ? 4 : phase === 'dusk' ? 1.5 : 0;
 
-    this.buildArena(painted);
+    this.buildArena(painted, painted ? backdrop?.floor : undefined);
     if (painted && backdrop) this.loadBackdrop(backdrop, phase);
 
     this.player = new CharacterRig(look);
@@ -208,8 +208,41 @@ export class TacticsScene {
     });
   }
 
-  private buildArena(painted = false) {
-    // Boden: Straße von links nach rechts, dahinter Gehweg und Gras, alles leicht unregelmäßig getönt
+  /** Straße und Wiese mit Kevins gemalten Bodenbildern (statt einfarbiger Dreiecke). Etwas abgedunkelt,
+   *  weil die Bilder für die Draufsicht gemalt sind und im Kampflicht sonst zu hell wirken. */
+  private buildFloor(f: Floor) {
+    const loader = new THREE.TextureLoader();
+    const aniso = this.renderer.capabilities.getMaxAnisotropy();
+    const load = (url: string, rx: number, ry: number, clampY = false) => {
+      const t = loader.load(url);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.wrapS = THREE.RepeatWrapping;
+      t.wrapT = clampY ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
+      t.repeat.set(rx, ry);
+      t.anisotropy = aniso;
+      return t;
+    };
+    // Wiese überall (Kachel 3,5 m)
+    const gw = 60, gd = 30;
+    const grass = new THREE.Mesh(new THREE.PlaneGeometry(gw, gd), new THREE.MeshStandardMaterial({ map: load(f.grass, gw / 3.5, gd / 3.5), color: '#9c9a7e', roughness: 1, metalness: 0 }));
+    grass.rotation.x = -Math.PI / 2;
+    grass.position.set(0, -0.01, -1);
+    grass.receiveShadow = true;
+    this.scene.add(grass);
+    // Straße als Streifen von links nach rechts: Bild 1024 × 427 = 6,4 m breit, wiederholt sich alle 15,3 m
+    const rw = 60, rd = 6.4;
+    const road = new THREE.Mesh(
+      new THREE.PlaneGeometry(rw, rd),
+      new THREE.MeshStandardMaterial({ map: load(f.road, rw / (rd * (1024 / 427)), 1, true), color: '#8e877c', roughness: 1, metalness: 0, polygonOffset: true, polygonOffsetFactor: -1 }),
+    );
+    road.rotation.x = -Math.PI / 2;
+    road.position.set(0, 0, 0);
+    road.receiveShadow = true;
+    this.scene.add(road);
+  }
+
+  /** Ohne Bodenbilder: Straße von links nach rechts, dahinter Gehweg und Gras, leicht unregelmäßig getönt. */
+  private buildPlainGround() {
     const pos: number[] = [];
     const col: number[] = [];
     const c = new THREE.Color();
@@ -240,6 +273,11 @@ export class TacticsScene {
     const ground = new THREE.Mesh(g, LIT);
     ground.receiveShadow = true;
     this.scene.add(ground);
+  }
+
+  private buildArena(painted = false, floor?: Floor) {
+    if (floor) this.buildFloor(floor);
+    else this.buildPlainGround();
 
     // Kulisse (vor allem hinter der Straße, damit nichts die Figuren verdeckt)
     const props = new THREE.Group();
@@ -248,8 +286,11 @@ export class TacticsScene {
       o.rotation.y = ry;
       props.add(o);
     };
-    for (let x = -20; x < 20; x += 3) box(props, 1.6, 0.05, 0.18, mat('#d8d2c2'), x, 0.005, 0.05);
-    for (const side of [-1, 1]) box(props, 44, 0.14, 0.25, mat('#6e6a62'), 0, 0, side * 2.7);
+    // Mittelstreifen und Bordsteine nur auf der alten Straße (die Bodenbilder haben eigene Ränder)
+    if (!floor) {
+      for (let x = -20; x < 20; x += 3) box(props, 1.6, 0.05, 0.18, mat('#d8d2c2'), x, 0.005, 0.05);
+      for (const side of [-1, 1]) box(props, 44, 0.14, 0.25, mat('#6e6a62'), 0, 0, side * 2.7);
+    }
     put(buildCarWreck(2), -6.6, -3.5, Math.PI / 2 + 0.2);
     put(buildCarWreck(5), 7.4, -3.7, -Math.PI / 2 + 0.3);
     put(buildRubble(2, 2, 41), 4.6, -5.2);

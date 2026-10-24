@@ -37,6 +37,38 @@ export interface Backdrop {
   url: string;
   /** Anteil der Bildhöhe (von unten), der auf dem 3D-Boden steht. */
   ground: number;
+  /** Kevins Bodenbilder von der Karte für die 3D-Straße und den Boden daneben (Kevin 24.10.). */
+  floor?: Floor;
+}
+
+export interface Floor {
+  /** Straßenstreifen quer zur Blickrichtung (Bild 1024 × 427, Ränder oben und unten). */
+  road: string;
+  /** Boden links und rechts der Straße, gekachelt. */
+  grass: string;
+}
+
+const TEX = import.meta.glob<string>('../assets/textures/*.webp', { eager: true, import: 'default' });
+const tex = (name: string): string | undefined => TEX[`../assets/textures/${name}.webp`];
+
+/** Welche Straße zur Gegend passt: Hauptstraße in der Stadt, Feldweg in Wald und Bergen, sonst Nebenstraße. */
+const FLOOR_ROAD: Record<RegionId, string> = {
+  village: 'strasse-neben',
+  town: 'strasse-haupt',
+  city: 'strasse-haupt',
+  wild: 'feldweg',
+  mountain: 'feldweg',
+  coast: 'strasse-neben',
+  desert: 'strasse-neben',
+  snow: 'strasse-neben',
+};
+
+/** Bodenbilder für den Kampf; im Schneeland immer Winter, in der Wüste Sand statt Wiese. */
+export function floorFor(region: RegionId, season: Season): Floor | undefined {
+  const s = region === 'snow' ? 'winter' : region === 'desert' ? 'sommer' : BACKDROP_SEASON[season];
+  const road = tex(`${FLOOR_ROAD[region]}-${s}`) ?? tex(`strasse-neben-${s}`);
+  const grass = (region === 'desert' ? tex('sand') : undefined) ?? tex(`wiese-${s}`);
+  return road && grass ? { road, grass } : undefined;
 }
 
 /**
@@ -47,7 +79,7 @@ export function backdropFor(region: RegionId, season: Season): Backdrop | null {
   const s = BACKDROP_SEASON[season];
   for (const name of [`${BACKDROP_REGION[region]}-${s}`, BACKDROP_REGION[region], `dorf-${s}`, 'dorf']) {
     const url = BY_NAME.get(name);
-    if (url) return { url, ground: GROUND[name] ?? GROUND[name.split('-')[0]] ?? DEFAULT_GROUND };
+    if (url) return { url, ground: GROUND[name] ?? GROUND[name.split('-')[0]] ?? DEFAULT_GROUND, floor: floorFor(region, season) };
   }
   return null;
 }
