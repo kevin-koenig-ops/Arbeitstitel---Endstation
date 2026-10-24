@@ -221,9 +221,9 @@ export class TacticsScene {
       t.anisotropy = aniso;
       return t;
     };
-    // Wiese überall (Kachel 3,5 m)
+    // Boden überall (Wiese, Pflaster oder Sand), darüber die Straße
     const gw = 60, gd = 30;
-    const grass = new THREE.Mesh(new THREE.PlaneGeometry(gw, gd), new THREE.MeshStandardMaterial({ map: load(f.grass, gw / 3.5, gd / 3.5), color: f.tint[1], roughness: 1, metalness: 0 }));
+    const grass = new THREE.Mesh(new THREE.PlaneGeometry(gw, gd), new THREE.MeshStandardMaterial({ map: load(f.grass, gw / f.grassM, gd / f.grassM), color: f.tint[1], roughness: 1, metalness: 0 }));
     grass.rotation.x = -Math.PI / 2;
     grass.position.set(0, -0.01, -1);
     grass.receiveShadow = true;

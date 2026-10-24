@@ -30,6 +30,8 @@ export const BACKDROP_SEASON: Record<Season, string> = { spring: 'fruehling', su
 const GROUND: Record<string, number> = {
   // Kevins Dorfrand (23.10.): vorne Wiese, die Zäune stehen gut ein Fünftel über dem unteren Rand
   dorf: 0.21,
+  // Kevins Kleinstadt (24.10.): vorne Unkraut, dahinter ein Streifen Kopfsteinpflaster, die Häuser stehen bei 0,18
+  kleinstadt: 0.12,
 };
 const DEFAULT_GROUND = 0.03;
 
@@ -46,6 +48,8 @@ export interface Floor {
   road: string;
   /** Boden links und rechts der Straße, gekachelt. */
   grass: string;
+  /** So viele Meter misst eine Kachel des Bodens. */
+  grassM: number;
   /** Abdunkeln (Farbe, mit der das Bild malgenommen wird), Straße und Boden. Schnee bleibt heller. */
   tint: [string, string];
 }
@@ -65,15 +69,19 @@ const FLOOR_ROAD: Record<RegionId, string> = {
   snow: 'strasse-neben',
 };
 
+/** Boden neben der Straße: in Kleinstadt und Stadt Pflaster (wie der Platz im Bild), sonst Wiese. */
+const FLOOR_GROUND: Partial<Record<RegionId, string>> = { town: 'pflaster', city: 'pflaster' };
+
 /** Bodenbilder für den Kampf; im Schneeland immer Winter, in der Wüste Sand statt Wiese. */
 export function floorFor(region: RegionId, season: Season): Floor | undefined {
   const s = region === 'snow' ? 'winter' : region === 'desert' ? 'sommer' : BACKDROP_SEASON[season];
   const road = tex(`${FLOOR_ROAD[region]}-${s}`) ?? tex(`strasse-neben-${s}`);
-  const grass = (region === 'desert' ? tex('sand') : undefined) ?? tex(`wiese-${s}`);
+  const paved = FLOOR_GROUND[region] ? tex(`${FLOOR_GROUND[region]}-${s}`) ?? tex(FLOOR_GROUND[region]!) : undefined;
+  const grass = paved ?? (region === 'desert' ? tex('sand') : undefined) ?? tex(`wiese-${s}`);
   // Die Bilder sind für die Draufsicht gemalt und wirken im warmen Kampflicht zu hell; Schnee nur
-  // wenig abdunkeln und etwas kühler, sonst wird er bräunlich
-  const tint: [string, string] = s === 'winter' ? ['#c9ccd2', '#d4d8de'] : ['#8e877c', '#9c9a7e'];
-  return road && grass ? { road, grass, tint } : undefined;
+  // wenig abdunkeln und etwas kühler, sonst wird er bräunlich. Pflaster grau statt gelblich.
+  const tint: [string, string] = s === 'winter' ? ['#c9ccd2', '#d4d8de'] : ['#8e877c', paved ? '#a29f98' : '#9c9a7e'];
+  return road && grass ? { road, grass, grassM: paved ? 2.5 : 3.5, tint } : undefined;
 }
 
 /**
