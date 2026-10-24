@@ -162,6 +162,71 @@ export function styleMark(style: CardStyle | undefined, cls: string, size = 12):
   return h('span', { class: `${cls} st-${style}`, title: `Stil: ${STYLE_NAMES[style]}`, 'aria-label': `Stil: ${STYLE_NAMES[style]}` }, svgEl(icon(STYLE_ICON[style], size)));
 }
 
+// --- Rahmen (Kevin 24.10., nach seiner Vorlage) ---------------------------------------------------
+// Die Kartenart bestimmt das Material (Grundkarte Papier mit Stacheldraht, Waffe genietetes Stahlblech,
+// Fähigkeit Emaille-Blech, Einmal-Karte Packpappe mit Klebeband, Kurzzeit Kreide auf Holz), die
+// Seltenheit die Verzierung (rostig, Kupfer mit blauem Stein, violettes Glimmen, Gold mit Glut).
+// Oben in der Mitte zeigt ein Zeichen die Art: Faust, Klinge, Sanduhr (verbraucht sich), Unendlich (bleibt).
+export type FrameKind = 'base' | 'weapon' | 'once' | 'skill' | 'temp';
+const FRAME_ICON: Record<FrameKind, string> = { base: 'fist', weapon: 'sword', once: 'hourglass', skill: 'infinity', temp: 'clock' };
+const FRAME_NAME: Record<FrameKind, string> = {
+  base: 'Grundkarte',
+  weapon: 'Waffenkarte: nutzt die Waffe ab',
+  once: 'Einmal-Karte: verbraucht sich',
+  skill: 'Fähigkeit: bleibt',
+  temp: 'Nur in diesem Kampf',
+};
+
+/** Seltenheit einer Kampfkarte (Waffenkarten haben die Seltenheit ihrer Waffe). */
+export function cardRarity(id: CardId): CardRarity {
+  const d = CARDS[id];
+  return d.rarity ?? (d.weapon ? (WEAPONS[d.weapon].rarity ?? 'common') : 'common');
+}
+
+/** Klassen und Schmuck des Rahmens: Art-Zeichen oben und die Ebene für Glanz und Glut. */
+export function frameBits(kind: FrameKind, rarity: CardRarity, size = 13): { cls: string; type: HTMLElement; fx: HTMLElement } {
+  return {
+    cls: `kc k-${kind} r-${rarity}`,
+    type: h('span', { class: 'kc-type', title: FRAME_NAME[kind], 'aria-label': FRAME_NAME[kind] }, svgEl(icon(FRAME_ICON[kind], size))),
+    fx: h('span', { class: 'kc-fx', 'aria-hidden': 'true' }),
+  };
+}
+
+/** Wortenden, vor denen ein langer Kartenname umbrechen darf (Luftpistolen-schuss). */
+const NAME_TAILS = ['schuss', 'schlagen', 'schlag', 'schwung', 'granate', 'batterie', 'spritze', 'fackel', 'draht', 'gerät', 'melder', 'lampe', 'spray', 'rolle', 'mittel', 'kugel', 'taschen', 'beißen', 'steller'];
+
+/** Langen Namen an der besten Stelle in zwei Zeilen teilen (Leerzeichen, Bindestrich oder Wortende). */
+function splitName(name: string): { first: string; second: string; hyphen: boolean } | null {
+  if (name.length < 15) return null;
+  let best: { first: string; second: string; hyphen: boolean } | null = null;
+  let bestLen = name.length - 3;
+  const consider = (first: string, second: string, hyphen: boolean) => {
+    const len = Math.max(first.length + (hyphen ? 1 : 0), second.length);
+    if (len < bestLen) { bestLen = len; best = { first, second, hyphen }; }
+  };
+  for (let i = 1; i < name.length; i++) {
+    if (name[i] === ' ') consider(name.slice(0, i), name.slice(i + 1), false);
+    if (name[i - 1] === '-') consider(name.slice(0, i), name.slice(i), false);
+  }
+  for (const t of NAME_TAILS) {
+    for (let at = name.toLowerCase().indexOf(t, 4); at > 0; at = name.toLowerCase().indexOf(t, at + 1)) {
+      if (/\p{L}/u.test(name[at - 1])) consider(name.slice(0, at), name.slice(at), true);
+    }
+  }
+  return best;
+}
+
+/** Kartenname als Element. Die Schrift wird so klein, dass der Name ganz draufpasst (siehe --len im CSS);
+ *  sehr lange Namen stehen auf kleinen Karten in zwei Zeilen, auf großen in einer. */
+export function nameEl(cls: string, name: string): HTMLElement {
+  const split = splitName(name);
+  if (!split) return h('b', { class: cls, style: `--len:${name.length};--len1:${name.length}` }, name);
+  const { first, second, hyphen } = split;
+  const len = Math.max(first.length + (hyphen ? 1 : 0), second.length);
+  return h('b', { class: `${cls} two`, style: `--len:${len};--len1:${name.length}` },
+    first, hyphen ? h('span', { class: 'nm-hy' }, '-') : null, h('span', { class: 'nm-br' }), second);
+}
+
 /** Eintrag im Sammelbuch: eine Karte oder „w:Waffe“. */
 export type BookKey = CardId | `w:${WeaponId}`;
 export const BOOK_ORDER: BookKey[] = [...ONCE_CARDS, ...FOUND_WEAPONS.map((w) => `w:${w}` as const), ...SKILL_CARDS];
@@ -299,21 +364,31 @@ export function cardFace(key: BookKey, o: { level?: number; count?: number; shin
   const eff = it.card ? cardEffect(it.card, level) : { main: `${WEAPONS[it.weapon!].dur} Haltbarkeit`, tag: 'Waffe' };
   const cost = it.card && !CARDS[it.card].passive ? CARDS[it.card].cost : null;
   const art = !locked && it.art ? h('img', { class: 'cc-img', src: it.art, alt: '', draggable: 'false' }) : svgEl(icon(locked ? 'question' : it.icon, o.big ? 64 : 34), 'cc-ico');
+  const frame = frameBits(it.kind, it.rarity, o.big ? 17 : 11);
+  // Heilen, Abfangen und Ähnliches grün, Schaden rot
+  const kind = it.card ? CARDS[it.card] : null;
+  const calm = !!kind && (kind.target === 'self' || kind.passive);
   return h(
     'div',
     {
-      class: `cc rar-${it.rarity} kind-${it.kind}${locked ? ' locked' : ''}${o.shiny && !locked ? ' shiny' : ''}${o.big ? ' big' : ''}`,
+      class: `cc ${frame.cls} rar-${it.rarity} kind-${it.kind}${locked ? ' locked' : ''}${o.shiny && !locked ? ' shiny' : ''}${o.big ? ' big' : ''}${calm ? ' calm' : ''}`,
       'data-key': key,
     },
-    h('span', { class: 'cc-art' }, art),
+    frame.fx,
+    // Stil-Zeichen unten rechts im Bildfenster
+    h('span', { class: 'cc-art' }, art, styleMark(it.style, 'cc-style', o.big ? 16 : 11)),
     cost !== null && !locked ? h('span', { class: 'cc-cost', title: 'Kraft' }, String(cost)) : null,
+    frame.type,
     it.kind === 'skill' && !locked && level > 0 ? h('span', { class: 'cc-level' }, ROMAN[Math.min(5, level)]) : null,
     o.count && o.count > 1 && !locked ? h('span', { class: 'cc-count' }, `×${o.count}`) : null,
-    styleMark(it.style, 'cc-style', o.big ? 16 : 11),
-    h('b', { class: 'cc-name' }, locked ? '???' : it.name),
-    locked ? h('small', { class: 'cc-where' }, it.where) : h('span', { class: 'cc-eff' }, eff.main),
-    o.big && !locked ? h('small', { class: 'cc-tag' }, eff.tag) : null,
-    o.big && !locked ? h('p', { class: 'cc-desc' }, it.desc) : null,
+    h(
+      'span',
+      { class: 'kc-plate' },
+      locked ? h('b', { class: 'cc-name' }, '???') : nameEl('cc-name', it.name),
+      locked ? h('small', { class: 'cc-where' }, it.where) : h('span', { class: 'cc-eff' }, eff.main),
+      o.big && !locked ? h('small', { class: 'cc-tag' }, eff.tag) : null,
+      o.big && !locked ? h('span', { class: 'cc-desc' }, it.desc) : null,
+    ),
     h('span', { class: 'cc-foot' }, o.big ? `${RARITY_NAMES[it.rarity]} · ${BOOK_KIND_NAMES[it.kind]}` : RARITY_NAMES[it.rarity]),
   );
 }

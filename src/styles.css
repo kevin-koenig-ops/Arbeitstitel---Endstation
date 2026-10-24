@@ -1107,7 +1107,6 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .t-devices { display: flex; gap: 4px; margin-top: 2px; }
 .t-devices:empty { display: none; }
 .t-dev { display: inline-flex; align-items: center; gap: 2px; padding: 1px 5px; border-radius: 6px; background: #4a3d0e; color: #ffe070; font: 800 11px/1.2 var(--font-ui); }
-.t-card.kind-temp { background: linear-gradient(#e3e6ea, #b9c0c8); }
 .st-tinker { --st: #c9a227; }
 .st-wear { --st: #7d8794; }
 .st-junk { --st: #a8607e; }
@@ -1151,10 +1150,6 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); out
 .t-hand { display: flex; justify-content: center; gap: 8px; min-height: 112px; transition: transform 0.22s ease-in, opacity 0.22s; }
 .t-hand.away { transform: translateY(120px); opacity: 0; pointer-events: none; }
 .t-card { position: relative; width: 92px; height: 112px; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; padding: 8px 5px 6px; border-radius: 10px; border: 0; cursor: pointer; touch-action: manipulation; color: var(--paper-ink); background: linear-gradient(#efe6cf, #d9cba8); box-shadow: 0 0 0 2px #2b261e, 0 6px 14px rgba(0, 0, 0, 0.55); font-family: var(--font-ui); transition: transform 0.15s, opacity 0.15s, filter 0.15s; }
-/* Kartenfarbe = Sorte: Grundkarten Papier, Waffen Stahl, Einmal-Karten Rost, Fähigkeiten Grün */
-.t-card.kind-weapon { background: linear-gradient(#e6e7e3, #a7aba5); }
-.t-card.kind-once { background: linear-gradient(#f2cdb8, #d48a68); }
-.t-card.kind-skill { background: linear-gradient(#e0ead2, #a6bf8a); }
 .t-card:hover { transform: translateY(-4px); }
 .t-card.picked { transform: translateY(-16px); box-shadow: 0 0 0 3px var(--amber), 0 0 22px var(--amber-glow), 0 10px 18px rgba(0, 0, 0, 0.6); }
 .t-card.off { filter: grayscale(0.7) brightness(0.65); }
@@ -1842,9 +1837,6 @@ button.base-res { align-items: center; padding: 3px 6px 3px 4px; border: 1px sol
 
 /* Karte als Bildchen (Sammelbuch, Fund, Fundbeleg) */
 .cc { position: relative; width: 96px; aspect-ratio: 5 / 7; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 6px 18px; border-radius: 9px; color: var(--paper-ink); background: linear-gradient(#efe6cf, #d6c7a2); box-shadow: 0 0 0 2px var(--rar), 0 0 0 4px #1b1915, 0 4px 12px rgba(0, 0, 0, 0.5); font-family: var(--font-ui); overflow: hidden; text-align: center; }
-.cc.kind-weapon { background: linear-gradient(#e6e7e3, #a7aba5); }
-.cc.kind-once { background: linear-gradient(#f2cdb8, #d48a68); }
-.cc.kind-skill { background: linear-gradient(#e0ead2, #a6bf8a); }
 .cc-art { display: grid; place-items: center; width: 100%; flex: 1 1 auto; min-height: 0; border-radius: 6px; background: radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.55), rgba(0, 0, 0, 0.08)); color: #3a2e1e; overflow: hidden; }
 .cc-img { width: 100%; height: 100%; object-fit: cover; }
 .cc-name { font: 800 12px/1.05 var(--font-ui); }
@@ -1870,12 +1862,9 @@ button.base-res { align-items: center; padding: 3px 6px 3px 4px; border: 1px sol
 .cc.locked .cc-where { color: var(--dust); }
 .cc.locked .cc-foot { background: #4a453c; color: #8a8270; }
 .cc.shiny::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.55) 45%, rgba(255, 230, 160, 0.4) 52%, transparent 66%); background-size: 260% 100%; animation: shine 2.6s linear infinite; mix-blend-mode: overlay; }
-.cc.rar-legendary:not(.locked) { box-shadow: 0 0 0 2px var(--rar), 0 0 0 4px #1b1915, 0 0 18px var(--rar-dim), 0 4px 12px rgba(0, 0, 0, 0.5); }
 @keyframes shine { from { background-position: 130% 0; } to { background-position: -130% 0; } }
 
 /* Kampf: Sammelkarten auf der Hand, Zustände, Effekte */
-.t-card.collect { box-shadow: 0 0 0 2px var(--rar), 0 0 0 4px #2b261e, 0 6px 14px rgba(0, 0, 0, 0.55); }
-.t-card.collect.rar-legendary, .t-card.collect.rar-epic { box-shadow: 0 0 0 2px var(--rar), 0 0 0 4px #2b261e, 0 0 16px var(--rar-dim), 0 6px 14px rgba(0, 0, 0, 0.55); }
 .t-status { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; margin-top: 2px; }
 .t-st { padding: 1px 5px; border-radius: 8px; font: 700 9.5px/1.3 var(--font-ui); color: #fff; background: rgba(0, 0, 0, 0.6); text-shadow: none; }
 .t-st.st-burn { background: #b8461e; }
@@ -2322,3 +2311,192 @@ button.base-res { align-items: center; padding: 3px 6px 3px 4px; border: 1px sol
 .build-list li { display: flex; flex-direction: column; gap: 5px; }
 .build-list-main { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 .build-list-main small { color: var(--dust); white-space: nowrap; }
+
+/* --- Kartenrahmen (Kevin 24.10., nach seiner Vorlage) --------------------------------------------
+   Art = Material: Grundkarte Papier mit Stacheldraht, Waffe genietetes Stahlblech, Fähigkeit
+   Emaille-Blech in Petrol, Einmal-Karte Packpappe mit Klebeband, Kurzzeit Kreide auf Holz.
+   Seltenheit = Verzierung: gewöhnlich rostig, selten Kupfer mit blauem Stein, episch violettes
+   Glimmen, legendär Gold mit Glut und Funken. Das Material liegt auf ::before, die Seltenheit als
+   Zusatzschicht davor (--kc-rar). Gemalte Rahmen von Kevin können das später ersetzen. */
+.kc {
+  --kc-ink: #2b2118;
+  --kc-plate: linear-gradient(#efe6cf, #ddd0ae);
+  --kc-win: radial-gradient(circle at 50% 38%, #75684f, #3b3226);
+  --kc-gem: radial-gradient(circle at 40% 35%, #b3aa9a, #5f574c 70%);
+  --kc-rar: linear-gradient(transparent, transparent);
+  --kc-shadow: 0 6px 14px rgba(0, 0, 0, 0.55);
+  --kc-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .2 0 0 0 0 .14 0 0 0 0 .08 -.8 0 0 0 .45'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  isolation: isolate;
+  background: none;
+  color: var(--kc-ink);
+  box-shadow: 0 0 0 1.5px #15120e, var(--kc-shadow);
+}
+.kc::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--kc-rar), var(--kc-frame); pointer-events: none; }
+.kc-fx { position: absolute; inset: 0; z-index: 3; border-radius: inherit; pointer-events: none; }
+
+/* Grundkarte: altes Papier, eingerissene Ränder, Stacheldraht über zwei Ecken, angekohlte Ecke */
+.kc.k-base {
+  --kc-plate: none;
+  --kc-frame:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140' preserveAspectRatio='none'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M-4 34Q9 22 15 15T36-5M-2 37Q11 24 17 17T38-3M64 145Q77 133 83 126T104 106M66 147Q79 135 85 128T106 108' stroke='%233a322b' stroke-width='1.3'/%3E%3Cpath d='M3 24l5 4M7 28l2-6M14 14l5 4M18 18l2-6M25 4l5 4M29 8l2-6M70 133l5 4M74 137l2-6M81 123l5 4M85 127l2-6M92 113l5 4M96 117l2-6' stroke='%23463c33' stroke-width='1.1'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat,
+    radial-gradient(circle at 100% 0%, rgba(40, 18, 6, 0.75), rgba(150, 70, 20, 0.35) 12%, transparent 24%),
+    radial-gradient(circle at 0% 100%, rgba(90, 50, 20, 0.28), transparent 22%),
+    var(--kc-grain),
+    linear-gradient(170deg, #f2e6c8, #e0cda3 60%, #d2bb8c);
+  box-shadow: none;
+  filter: drop-shadow(0 0 1px #15120e) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5));
+}
+.kc.k-base::before { border-radius: 2px; clip-path: polygon(0.0% 0.4%, 8.3% 2.0%, 16.7% 0.7%, 25.0% 1.9%, 33.3% 0.4%, 41.7% 2.1%, 50.0% 0.1%, 58.3% 2.0%, 66.7% 0.5%, 75.0% 2.3%, 83.3% 0.1%, 91.7% 1.7%, 99.9% 0.0%, 96.9% 7.1%, 99.3% 14.3%, 98.2% 21.4%, 99.0% 28.6%, 96.7% 35.7%, 99.3% 42.9%, 97.3% 50.0%, 99.8% 57.1%, 98.3% 64.3%, 99.5% 71.4%, 98.2% 78.6%, 99.8% 85.7%, 97.9% 92.9%, 100.0% 100.0%, 91.7% 98.1%, 83.3% 99.7%, 75.0% 97.6%, 66.7% 99.6%, 58.3% 97.9%, 50.0% 99.6%, 41.7% 97.8%, 33.3% 99.6%, 25.0% 98.3%, 16.7% 99.2%, 8.3% 97.4%, 0.9% 100.0%, 2.9% 92.9%, 0.3% 85.7%, 2.1% 78.6%, 0.3% 71.4%, 1.8% 64.3%, 0.8% 57.1%, 2.4% 50.0%, 0.9% 42.9%, 2.4% 35.7%, 1.0% 28.6%, 3.1% 21.4%, 0.0% 14.3%, 2.1% 7.1%); }
+
+/* Waffe: genietetes, gebürstetes Stahlblech, helles Schild für den Text */
+.kc.k-weapon {
+  --kc-plate: linear-gradient(#e6e5de, #c8c7be);
+  --kc-win: radial-gradient(circle at 50% 38%, #636871, #2d3036);
+  --kc-frame:
+    radial-gradient(circle at 6px 6px, #f2f0ea 0 1.4px, #3e3b36 2px, transparent 2.6px),
+    radial-gradient(circle at calc(100% - 6px) 6px, #f2f0ea 0 1.4px, #3e3b36 2px, transparent 2.6px),
+    radial-gradient(circle at 6px calc(100% - 6px), #f2f0ea 0 1.4px, #3e3b36 2px, transparent 2.6px),
+    radial-gradient(circle at calc(100% - 6px) calc(100% - 6px), #f2f0ea 0 1.4px, #3e3b36 2px, transparent 2.6px),
+    radial-gradient(circle at 4.5px 50%, #e6e3dc 0 1.2px, #3e3b36 1.8px, transparent 2.4px),
+    radial-gradient(circle at calc(100% - 4.5px) 50%, #e6e3dc 0 1.2px, #3e3b36 1.8px, transparent 2.4px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 3px),
+    linear-gradient(155deg, #c9cbc6, #8e928c 32%, #6b6f6a 58%, #aeb1ab);
+  border-radius: 6px;
+}
+
+/* Fähigkeit: Emaille-Blech in Petrol, abgeplatzt, mit Schrauben */
+.kc.k-skill {
+  --kc-plate: linear-gradient(#e9efe6, #cfdccc);
+  --kc-win: radial-gradient(circle at 50% 38%, #4f7473, #213a3a);
+  --kc-frame:
+    radial-gradient(circle at 6px 6px, #dfe6e3 0 1.3px, #1f3434 1.9px, transparent 2.5px),
+    radial-gradient(circle at calc(100% - 6px) 6px, #dfe6e3 0 1.3px, #1f3434 1.9px, transparent 2.5px),
+    radial-gradient(circle at 6px calc(100% - 6px), #dfe6e3 0 1.3px, #1f3434 1.9px, transparent 2.5px),
+    radial-gradient(circle at calc(100% - 6px) calc(100% - 6px), #dfe6e3 0 1.3px, #1f3434 1.9px, transparent 2.5px),
+    radial-gradient(circle at 9% 93%, #6e4a2e 0 2px, #9a6a40 2.6px, transparent 3.6px),
+    radial-gradient(circle at 93% 30%, #6e4a2e 0 1.6px, #9a6a40 2.2px, transparent 3.2px),
+    radial-gradient(circle at 60% 2%, #6e4a2e 0 1.4px, transparent 2.6px),
+    linear-gradient(155deg, #58a3a0, #337476 42%, #245a5c);
+  border-radius: 7px;
+}
+
+/* Einmal-Karte: Packpappe mit Wellen, Klebeband über den oberen Ecken */
+.kc.k-once {
+  --kc-plate: linear-gradient(#f4e5c6, #e3cb9e);
+  --kc-win: radial-gradient(circle at 50% 38%, #7f5d3b, #3e2c1b);
+  --kc-frame:
+    linear-gradient(135deg, transparent 0 8px, rgba(240, 230, 196, 0.9) 8px 19px, transparent 19px) 0 0 / 28px 28px no-repeat,
+    linear-gradient(225deg, transparent 0 8px, rgba(240, 230, 196, 0.9) 8px 19px, transparent 19px) 100% 0 / 28px 28px no-repeat,
+    repeating-linear-gradient(0deg, rgba(70, 40, 12, 0.1) 0 1px, transparent 1px 4px),
+    var(--kc-grain),
+    linear-gradient(#d2a06a, #ad7846);
+  border-radius: 4px;
+}
+
+/* Nur in diesem Kampf: Kreide auf dunklem Holz */
+.kc.k-temp {
+  --kc-ink: #f3eee2;
+  --kc-plate: none;
+  --kc-win: rgba(0, 0, 0, 0.28);
+  --kc-frame: repeating-linear-gradient(90deg, #4c3725 0 17px, #3b2a1b 17px 18px), linear-gradient(#56402b, #3a2a1b);
+  border-radius: 5px;
+}
+
+/* Seltenheit: Edelstein im Art-Zeichen, Rand und Glanz */
+.kc.r-common.k-weapon, .kc.r-common.k-skill {
+  --kc-rar: radial-gradient(circle at 18% 4%, rgba(130, 64, 22, 0.55) 0 2.5px, transparent 4.5px), radial-gradient(circle at 88% 96%, rgba(130, 64, 22, 0.5) 0 3.5px, transparent 6px), radial-gradient(circle at 3% 62%, rgba(130, 64, 22, 0.45) 0 2px, transparent 4px);
+}
+.kc.r-rare { --kc-gem: radial-gradient(circle at 40% 35%, #cfe8ff, #3d7fc0 55%, #1f4a78); outline: 2px solid #c27a45; outline-offset: -3px; }
+.kc.r-epic { --kc-gem: radial-gradient(circle at 40% 35%, #f2e2ff, #9a63d8 55%, #52307e); outline: 2px solid #9a63d8; outline-offset: -3px; box-shadow: 0 0 0 1.5px #15120e, 0 0 14px rgba(154, 99, 216, 0.55), var(--kc-shadow); }
+.kc.r-legendary {
+  --kc-gem: radial-gradient(circle at 40% 35%, #fff4c6, #ffc43d 50%, #a5730c);
+  --kc-rar:
+    linear-gradient(#f0c25a, #b07a1c) 4px 4px / 15px 2.5px no-repeat, linear-gradient(#f0c25a, #b07a1c) 4px 4px / 2.5px 15px no-repeat,
+    linear-gradient(#f0c25a, #b07a1c) calc(100% - 4px) 4px / 15px 2.5px no-repeat, linear-gradient(#f0c25a, #b07a1c) calc(100% - 4px) 4px / 2.5px 15px no-repeat,
+    linear-gradient(#f0c25a, #b07a1c) 4px calc(100% - 4px) / 15px 2.5px no-repeat, linear-gradient(#f0c25a, #b07a1c) 4px calc(100% - 4px) / 2.5px 15px no-repeat,
+    linear-gradient(#f0c25a, #b07a1c) calc(100% - 4px) calc(100% - 4px) / 15px 2.5px no-repeat, linear-gradient(#f0c25a, #b07a1c) calc(100% - 4px) calc(100% - 4px) / 2.5px 15px no-repeat,
+    radial-gradient(ellipse 80% 60% at 50% 100%, rgba(255, 120, 30, 0.35), transparent 70%);
+  outline: 2px solid #e8b84e;
+  outline-offset: -3px;
+  box-shadow: 0 0 0 1.5px #15120e, 0 0 16px rgba(255, 150, 50, 0.6), var(--kc-shadow);
+}
+/* Glut und Funken: steigen am Rand auf, die Mitte bleibt lesbar */
+.kc.r-legendary .kc-fx {
+  background:
+    radial-gradient(circle, rgba(255, 214, 120, 0.95) 0 0.9px, transparent 1.7px) 0 0 / 19px 29px,
+    radial-gradient(circle, rgba(255, 130, 40, 0.9) 0 1.1px, transparent 2px) 9px 13px / 27px 37px;
+  /* Nur im Rand (Polster der Ebene), nicht über Bild und Text */
+  padding: 7px;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: kc-embers 3.2s linear infinite;
+}
+@keyframes kc-embers { to { background-position: 0 -58px, 9px -61px; } }
+.kc.r-epic .kc-type { box-shadow: 0 0 0 1.5px #15120e, 0 0 8px rgba(176, 124, 232, 0.9); }
+.kc.r-legendary .kc-type { box-shadow: 0 0 0 1.5px #15120e, 0 0 9px rgba(255, 190, 70, 0.95); }
+@media (prefers-reduced-motion: reduce) { .kc.r-legendary .kc-fx { animation: none; } }
+
+/* Art-Zeichen oben in der Mitte */
+.kc-type { position: absolute; top: 3px; left: 50%; z-index: 2; transform: translateX(-50%); display: grid; place-items: center; width: 19px; height: 19px; border-radius: 50%; background: var(--kc-gem); color: #fbf6ea; box-shadow: 0 0 0 1.5px #15120e, inset 0 1px 1px rgba(255, 255, 255, 0.35); }
+.kc-type svg { filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.5)); }
+
+/* Textschild und Bildfenster */
+.kc-plate { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; width: 100%; padding: 3px 3px 2px; border-radius: 4px; background: var(--kc-plate); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+.kc.k-base .kc-plate, .kc.k-temp .kc-plate { box-shadow: none; }
+.kc .cc-name, .kc .t-card-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 800 11.5px/1.1 'Roboto Slab', 'Rockwell', Georgia, serif; color: var(--kc-ink); text-align: center; }
+/* Namen passen sich der Kartenbreite an: --len ist die Zeichenzahl der längsten Zeile */
+.kc .kc-plate { container-type: inline-size; }
+.kc .cc-name, .kc .t-card-name { flex: none; font-size: min(11.5px, calc(100cqi / (var(--len, 10) * 0.63))); }
+.kc .two { line-height: 1.02; }
+.nm-br::after { content: '\A'; white-space: pre; }
+.kc .t-card-name.two ~ .t-card-tag { -webkit-line-clamp: 1; }
+.kc .t-card-tag { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 9px; line-height: 1.08; }
+.kc .cc-eff, .kc .t-card-eff { color: #9a2b14; }
+.kc.self .t-card-eff, .kc.calm .cc-eff { color: #2c6a2c; }
+.kc.k-temp .t-card-eff { color: #ffb48c; }
+.kc.k-temp.self .t-card-eff { color: #b8f0a0; }
+.kc.k-temp .t-card-tag { color: #d8cdb8; }
+
+/* Kampf: Karten auf der Hand */
+.t-card.kc { gap: 3px; padding: 19px 6px 6px; border-radius: 8px; }
+.t-card.kc.k-base { border-radius: 2px; }
+.t-card-win { position: relative; z-index: 1; display: grid; place-items: center; width: 100%; height: 32px; flex: none; overflow: hidden; border-radius: 4px; background: var(--kc-win); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45), inset 0 2px 6px rgba(0, 0, 0, 0.45); color: #f2ead8; }
+.t-card-win .t-card-art { width: 100%; height: 100%; border-radius: 0; object-fit: cover; box-shadow: none; }
+.t-card-win .t-card-icon { color: #f2ead8; margin: 0; }
+.t-card.kc .kc-plate { flex: 1 1 auto; justify-content: center; min-height: 0; }
+.t-card.kc .t-card-eff { font-size: 12.5px; }
+.t-card.kc .t-cost { z-index: 4; }
+.t-card.kc .t-style { z-index: 2; left: auto; right: 2px; top: auto; bottom: 2px; width: 15px; height: 15px; }
+.t-card.kc kbd { z-index: 4; }
+.t-card.kc.picked { box-shadow: 0 0 0 3px var(--amber), 0 0 22px var(--amber-glow), 0 10px 18px rgba(0, 0, 0, 0.6); }
+.t-card.kc.k-base.off { filter: grayscale(0.7) brightness(0.65) drop-shadow(0 0 1px #15120e); }
+@media (max-height: 420px) {
+  .t-card.kc { padding-top: 18px; }
+  .t-card-win { height: 25px; }
+  .kc .t-card-name { font-size: min(11px, calc(100cqi / (var(--len, 10) * 0.63))); }
+  .t-card.kc .t-card-eff { font-size: 11.5px; }
+}
+
+/* Sammelbuch, Lager und Fundbeleg */
+.cc.kc { padding: 19px 5px 16px; gap: 3px; }
+.cc.kc .cc-art { flex: 1 1 auto; border-radius: 4px; background: var(--kc-win); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45), inset 0 2px 6px rgba(0, 0, 0, 0.45); color: #f2ead8; position: relative; z-index: 1; }
+.cc.kc .cc-cost { left: -2px; top: -2px; z-index: 4; width: 21px; height: 21px; min-width: 0; padding: 0; border-radius: 50%; color: #3a2208; background: radial-gradient(circle at 35% 30%, #ffe9a0, #ffb22e 60%, #c07a10); box-shadow: 0 0 0 1.5px #2b261e; }
+.cc.kc .cc-level, .cc.kc .cc-count { z-index: 4; }
+.cc.kc .cc-style { z-index: 2; top: auto; bottom: 3px; right: 3px; }
+.cc.kc.big .cc-style { bottom: 5px; right: 5px; }
+.cc.kc .cc-desc { display: block; margin: 3px 0 0; }
+.cc.kc .cc-foot { z-index: 2; padding: 2px 4px; background: rgba(21, 18, 14, 0.82); color: var(--rar); border-radius: 0 0 6px 6px; }
+.cc.kc.k-base .cc-foot, .cc.kc.k-once .cc-foot { border-radius: 0; }
+.cc.kc.big { padding: 30px 12px 26px; gap: 6px; }
+.cc.kc.big .kc-type { top: 5px; width: 28px; height: 28px; }
+.cc.kc.big .cc-cost { width: 30px; height: 30px; font-size: 15px; left: -4px; top: -4px; }
+.cc.kc.big .cc-name { font-size: min(19px, calc(100cqi / (var(--len1, 10) * 0.63))); }
+.cc.kc.big .nm-hy, .cc.kc.big .nm-br { display: none; }
+.cc.kc.big .kc-plate { padding: 6px 6px 5px; gap: 3px; }
+.cc.kc.locked::before { filter: grayscale(1) brightness(0.42); }
+.cc.kc.locked { color: var(--dust); outline: none; box-shadow: 0 0 0 1.5px #15120e, var(--kc-shadow); }
+.cc.kc.locked .kc-plate { background: rgba(0, 0, 0, 0.25); box-shadow: none; }
+.cc.kc.locked .cc-name { color: var(--dust); }
+.cc.kc.locked .kc-fx { display: none; }
+.cc.kc.locked .cc-art { filter: grayscale(1) brightness(0.6); }

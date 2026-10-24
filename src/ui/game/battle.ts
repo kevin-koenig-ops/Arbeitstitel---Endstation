@@ -16,7 +16,7 @@ import { backdropFor } from '../../base/combatBackdrops';
 import { gunAmmoText } from './chips';
 import { aliveFoes, canHowl, createTactics, endTurn, flee, fleeCost, foeById, giveMedicine, lacksMedicine, mercyTarget, playable, playCard, playPouch, targetsFor, type Intent, type TacticsState, type TEvent, type TFoe } from '../../core/tactics';
 import { battleWeapons, bestWeapon, cardKit, currentHealth } from '../../core/rules';
-import { artUrl, CARD_ICON, cardEffect, styleMark } from '../cards';
+import { artUrl, CARD_ICON, cardEffect, cardRarity, frameBits, nameEl, styleMark } from '../cards';
 import type { DayPhase } from '../../core/sun';
 import type { EnemyId, GameEvent, Inventory, KramBag, Spot } from '../../core/types';
 import type { App } from '../app';
@@ -1187,10 +1187,11 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
       const ok = playable(st, card);
       let pressTimer = 0;
       let longPressed = false;
+      const frame = frameBits(def.kind, cardRarity(card), 11);
       const btn = h(
         'button',
         {
-          class: `t-card kind-${def.kind}${def.target === 'self' ? ' self' : ''}${def.kind === 'once' || def.kind === 'skill' ? ` collect rar-${def.rarity ?? 'common'}` : ''}${ok ? '' : ' off'}${sameSel(selected, { hand: i }) ? ' picked' : ''}${deal ? ' deal' : ''}`,
+          class: `t-card ${frame.cls} kind-${def.kind}${def.target === 'self' ? ' self' : ''}${ok ? '' : ' off'}${sameSel(selected, { hand: i }) ? ' picked' : ''}${deal ? ' deal' : ''}`,
           type: 'button',
           style: `--i:${i}`,
           'aria-label': `${def.name}, kostet ${def.cost} Kraft: ${def.desc}`,
@@ -1208,13 +1209,17 @@ export function openBattle(app: App, host: HTMLElement, phase: DayPhase, onEnd: 
             tryCard(i);
           },
         },
+        frame.fx,
         h('span', { class: 't-cost' }, String(def.cost)),
-        def.kind === 'temp' ? null : styleMark(styleOf(card), 't-style', 12),
-        // Gemaltes Kartenbild, sobald es eins gibt, sonst das Symbol
-        artUrl(def.art) ? h('img', { class: 't-card-art', src: artUrl(def.art)!, alt: '', draggable: 'false' }) : svgEl(icon(CARD_ICON[card], 26), 't-card-icon'),
-        h('b', { class: 't-card-name' }, def.name),
-        h('span', { class: 't-card-eff' }, eff.main),
-        eff.tag ? h('small', { class: 't-card-tag' }, eff.tag) : null,
+        frame.type,
+        // Gemaltes Kartenbild im Fenster, sobald es eins gibt, sonst das Symbol; Stil-Zeichen unten rechts darin
+        h(
+          'span',
+          { class: 't-card-win' },
+          artUrl(def.art) ? h('img', { class: 't-card-art', src: artUrl(def.art)!, alt: '', draggable: 'false' }) : svgEl(icon(CARD_ICON[card], 22), 't-card-icon'),
+          def.kind === 'temp' ? null : styleMark(styleOf(card), 't-style', 10),
+        ),
+        h('span', { class: 'kc-plate' }, nameEl('t-card-name', def.name), h('span', { class: 't-card-eff' }, eff.main), eff.tag ? h('small', { class: 't-card-tag' }, eff.tag) : null),
         h('kbd', null, String(i + 1)),
       );
       handEl.append(btn);

@@ -66,6 +66,9 @@ const P: Record<string, string> = {
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
   back: '<path d="M15 5l-7 7 7 7"/>',
   clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  // Kartenarten (Kevin 24.10.): Sanduhr = verbraucht sich, Unendlich = bleibt
+  hourglass: '<path d="M6.5 3.5h11M6.5 20.5h11"/><path d="M8 3.5c0 4.5 8 4.5 8 8.5s-8 4-8 8.5M16 3.5c0 4.5-8 4.5-8 8.5s8 4 8 8.5"/><path d="M10 18.5h4" stroke-width="2.4"/>',
+  infinity: '<path d="M12 12c-2-2.6-3.6-4.2-5.6-4.2a4.2 4.2 0 0 0 0 8.4c2 0 3.6-1.6 5.6-4.2zm0 0c2 2.6 3.6 4.2 5.6 4.2a4.2 4.2 0 0 0 0-8.4c-2 0-3.6 1.6-5.6 4.2z"/>',
   // Schläft (Zz)
   sleep: '<path d="M4 10h5l-5 6h5M12 4.5h7l-7 9h7"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
