@@ -34,6 +34,8 @@ const GROUND: Record<string, number> = {
   kleinstadt: 0.12,
   // Kevins Wald (24.10.): vorne Farn, der umgestürzte Stamm liegt bei 0,15
   wald: 0.12,
+  // Kevins Großstadt (24.10.): vorne Unkraut, dann eine gemalte Straße; die Häuser stehen bei 0,22 auf dem Gehweg
+  stadt: 0.2,
 };
 const DEFAULT_GROUND = 0.03;
 
