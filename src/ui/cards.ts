@@ -183,12 +183,27 @@ export function cardRarity(id: CardId): CardRarity {
   return d.rarity ?? (d.weapon ? (WEAPONS[d.weapon].rarity ?? 'common') : 'common');
 }
 
-/** Klassen und Schmuck des Rahmens: Art-Zeichen oben und die Ebene für Glanz und Glut. */
-export function frameBits(kind: FrameKind, rarity: CardRarity, size = 13): { cls: string; type: HTMLElement; fx: HTMLElement } {
+// Gemalte Rahmen von Kevin: src/assets/rahmen/rahmen-<art>.webp (scripts/kartenrahmen.py).
+// Fehlt ein Bild, zeichnet der Code den Rahmen (styles.css, „Kartenrahmen“).
+const FRAME_ART = import.meta.glob<string>('../assets/rahmen/rahmen-*.webp', { eager: true, import: 'default' });
+const FRAME_FILE: Record<FrameKind, string> = { base: 'grund', weapon: 'waffe', once: 'einmal', skill: 'faehigkeit', temp: 'kurz' };
+const RARITY_FILE: Record<CardRarity, string> = { common: 'gewoehnlich', rare: 'selten', epic: 'episch', legendary: 'legendaer' };
+function frameArt(kind: FrameKind, rarity: CardRarity): string | null {
+  const name = kind === 'base' || kind === 'temp' ? FRAME_FILE[kind] : `${FRAME_FILE[kind]}-${RARITY_FILE[rarity]}`;
+  return FRAME_ART[`../assets/rahmen/rahmen-${name}.webp`] ?? null;
+}
+
+/** Klassen und Schmuck des Rahmens: Art-Zeichen oben, die Ebene für Glanz und Glut und,
+ *  wenn es ihn schon gibt, der gemalte Rahmen (liegt über dem Inhalt, innen durchsichtig). */
+export function frameBits(kind: FrameKind, rarity: CardRarity, size = 13): { cls: string; type: HTMLElement; fx: HTMLElement[] } {
+  const art = frameArt(kind, rarity);
   return {
-    cls: `kc k-${kind} r-${rarity}`,
+    cls: `kc k-${kind} r-${rarity}${art ? ' painted' : ''}`,
     type: h('span', { class: 'kc-type', title: FRAME_NAME[kind], 'aria-label': FRAME_NAME[kind] }, svgEl(icon(FRAME_ICON[kind], size))),
-    fx: h('span', { class: 'kc-fx', 'aria-hidden': 'true' }),
+    fx: [
+      h('span', { class: 'kc-fx', 'aria-hidden': 'true' }),
+      ...(art ? [h('img', { class: 'kc-paint', src: art, alt: '', draggable: 'false', 'aria-hidden': 'true' })] : []),
+    ],
   };
 }
 
