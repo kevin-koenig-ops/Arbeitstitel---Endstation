@@ -36,6 +36,13 @@ const GROUND: Record<string, number> = {
   wald: 0.12,
   // Kevins Großstadt (24.10.): vorne Unkraut, dann eine gemalte Straße; die Häuser stehen bei 0,22 auf dem Gehweg
   stadt: 0.2,
+  // Kevins Berge (24.10.): vorne Wiese mit Steinen, Hütte und Zaun stehen bei 0,15
+  berge: 0.13,
+  // Kevins Küste (24.10.): vorne Uferwiese, Hütten und Steg stehen bei 0,17
+  kueste: 0.15,
+  // Kevins Schneeland und Steppe (24.10.), je ein Bild fürs ganze Jahr
+  schnee: 0.14,
+  wueste: 0.16,
 };
 const DEFAULT_GROUND = 0.03;
 
