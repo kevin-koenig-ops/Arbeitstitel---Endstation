@@ -46,6 +46,8 @@ export interface Floor {
   road: string;
   /** Boden links und rechts der Straße, gekachelt. */
   grass: string;
+  /** Abdunkeln (Farbe, mit der das Bild malgenommen wird), Straße und Boden. Schnee bleibt heller. */
+  tint: [string, string];
 }
 
 const TEX = import.meta.glob<string>('../assets/textures/*.webp', { eager: true, import: 'default' });
@@ -68,7 +70,10 @@ export function floorFor(region: RegionId, season: Season): Floor | undefined {
   const s = region === 'snow' ? 'winter' : region === 'desert' ? 'sommer' : BACKDROP_SEASON[season];
   const road = tex(`${FLOOR_ROAD[region]}-${s}`) ?? tex(`strasse-neben-${s}`);
   const grass = (region === 'desert' ? tex('sand') : undefined) ?? tex(`wiese-${s}`);
-  return road && grass ? { road, grass } : undefined;
+  // Die Bilder sind für die Draufsicht gemalt und wirken im warmen Kampflicht zu hell; Schnee nur
+  // wenig abdunkeln und etwas kühler, sonst wird er bräunlich
+  const tint: [string, string] = s === 'winter' ? ['#c9ccd2', '#d4d8de'] : ['#8e877c', '#9c9a7e'];
+  return road && grass ? { road, grass, tint } : undefined;
 }
 
 /**

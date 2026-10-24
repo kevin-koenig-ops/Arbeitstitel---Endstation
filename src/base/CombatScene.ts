@@ -208,8 +208,7 @@ export class TacticsScene {
     });
   }
 
-  /** Straße und Wiese mit Kevins gemalten Bodenbildern (statt einfarbiger Dreiecke). Etwas abgedunkelt,
-   *  weil die Bilder für die Draufsicht gemalt sind und im Kampflicht sonst zu hell wirken. */
+  /** Straße und Wiese mit Kevins gemalten Bodenbildern (statt einfarbiger Dreiecke), getönt mit f.tint. */
   private buildFloor(f: Floor) {
     const loader = new THREE.TextureLoader();
     const aniso = this.renderer.capabilities.getMaxAnisotropy();
@@ -224,7 +223,7 @@ export class TacticsScene {
     };
     // Wiese überall (Kachel 3,5 m)
     const gw = 60, gd = 30;
-    const grass = new THREE.Mesh(new THREE.PlaneGeometry(gw, gd), new THREE.MeshStandardMaterial({ map: load(f.grass, gw / 3.5, gd / 3.5), color: '#9c9a7e', roughness: 1, metalness: 0 }));
+    const grass = new THREE.Mesh(new THREE.PlaneGeometry(gw, gd), new THREE.MeshStandardMaterial({ map: load(f.grass, gw / 3.5, gd / 3.5), color: f.tint[1], roughness: 1, metalness: 0 }));
     grass.rotation.x = -Math.PI / 2;
     grass.position.set(0, -0.01, -1);
     grass.receiveShadow = true;
@@ -233,7 +232,7 @@ export class TacticsScene {
     const rw = 60, rd = 6.4;
     const road = new THREE.Mesh(
       new THREE.PlaneGeometry(rw, rd),
-      new THREE.MeshStandardMaterial({ map: load(f.road, rw / (rd * (1024 / 427)), 1, true), color: '#8e877c', roughness: 1, metalness: 0, polygonOffset: true, polygonOffsetFactor: -1 }),
+      new THREE.MeshStandardMaterial({ map: load(f.road, rw / (rd * (1024 / 427)), 1, true), color: f.tint[0], roughness: 1, metalness: 0, polygonOffset: true, polygonOffsetFactor: -1 }),
     );
     road.rotation.x = -Math.PI / 2;
     road.position.set(0, 0, 0);
